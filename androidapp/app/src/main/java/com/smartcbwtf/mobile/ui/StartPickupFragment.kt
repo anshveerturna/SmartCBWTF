@@ -94,5 +94,7 @@ class HcfAdapter(private val onClick: (HcfEntity) -> Unit) : RecyclerView.Adapte
         holder.itemView.setOnClickListener { onClick(item) }
     }
 
+    override fun getItemCount(): Int = items.size
+
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view)
 }

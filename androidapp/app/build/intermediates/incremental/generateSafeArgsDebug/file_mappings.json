@@ -1,0 +1,1 @@
+[{"navFile":"src/main/res/navigation/nav_graph.xml","javaFiles":["com.smartcbwtf.mobile.ui.SplashFragmentDirections","com.smartcbwtf.mobile.ui.LoginFragmentDirections","com.smartcbwtf.mobile.ui.HomeFragmentDirections","com.smartcbwtf.mobile.ui.StartPickupFragmentDirections","com.smartcbwtf.mobile.ui.ScanWeighFragmentArgs"]}]

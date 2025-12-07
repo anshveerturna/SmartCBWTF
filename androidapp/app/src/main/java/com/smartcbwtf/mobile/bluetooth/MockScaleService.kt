@@ -49,4 +49,10 @@ class MockScaleService @Inject constructor() : ScaleService {
             _weight.value = String.format("%.2f", randomWeight).toDouble()
         }
     }
+
+    override suspend fun simulateWeight(value: Double?) {
+        delay(2000)
+        val w = value ?: (5.0 + (Math.random() * 45.0))
+        _weight.value = String.format("%.2f", w).toDouble()
+    }
 }

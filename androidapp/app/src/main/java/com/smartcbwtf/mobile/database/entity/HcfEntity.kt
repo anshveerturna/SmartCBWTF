@@ -12,5 +12,7 @@ data class HcfEntity(
     val state: String?,
     val postalCode: String?,
     val phone: String?,
+    val latitude: Double?,
+    val longitude: Double?,
     val approved: Boolean = false,
 )

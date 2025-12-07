@@ -105,6 +105,7 @@ Key endpoints (non-exhaustive):
 - **Architecture**: MVVM + Repository; Coroutines + Flow; Hilt for DI.
 - **Storage**: Room DB for cached HCFs, bag labels (optional), unsynced events (with idempotency keys).
 - **Networking**: Retrofit + OkHttp interceptors (auth header, logging in debug).
+- **Config**: Base API URL is provided via `BuildConfig.BASE_URL`; override at build time with Gradle property `-PAPI_BASE_URL=https://your.endpoint/`.
 - **Auth**: login screen, stores JWT securely (EncryptedSharedPreferences/Datastore); token refresh support.
 - **Location**: Fused Location Provider; no UI for manual entry.
 - **QR Scan**: ZXing/ML Kit.

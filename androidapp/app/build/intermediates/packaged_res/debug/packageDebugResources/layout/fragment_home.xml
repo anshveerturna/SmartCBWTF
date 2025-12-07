@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="center">
+
+    <TextView
+        android:id="@+id/tvPending"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pending events: 0"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnStartPickup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start Pickup" />
+
+    <Button
+        android:id="@+id/btnVerifyAtCbtwf"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Verify at CBWTF" />
+
+    <Button
+        android:id="@+id/btnRegisterHcf"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Register HCF" />
+
+    <Button
+        android:id="@+id/btnLogout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:text="Logout" />
+
+</LinearLayout>

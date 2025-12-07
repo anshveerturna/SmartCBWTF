@@ -44,7 +44,9 @@ class StartPickupViewModel @Inject constructor(
                 val location = locationHelper.getCurrentLocation()
                 hcfRepository.getAll().collect { list ->
                     _hcfs.value = location?.let { loc ->
-                        list.sortedBy { distanceKm(loc.latitude, loc.longitude, it) }.take(3)
+                        list.sortedBy { distanceKm(loc.latitude, loc.longitude, it) }
+                            .sortedBy { if (it.latitude == null || it.longitude == null) 1 else 0 }
+                            .take(3)
                     } ?: list.take(3)
                 }
             } catch (e: Exception) {
@@ -56,11 +58,8 @@ class StartPickupViewModel @Inject constructor(
     }
 
     private fun distanceKm(lat: Double, lon: Double, hcf: HcfEntity): Double {
-        if (hcf.city == null && hcf.state == null) return Double.MAX_VALUE
-        // If HCF lacks coordinates, return max; otherwise use haversine over provided lat/lon if available
-        // Currently HcfEntity has no lat/lon fields; using 0 as fallback
-        val lat2 = 0.0
-        val lon2 = 0.0
+        val lat2 = hcf.latitude ?: return Double.MAX_VALUE
+        val lon2 = hcf.longitude ?: return Double.MAX_VALUE
         val dLat = Math.toRadians(lat2 - lat)
         val dLon = Math.toRadians(lon2 - lon)
         val a = sin(dLat / 2) * sin(dLat / 2) + cos(Math.toRadians(lat)) * cos(Math.toRadians(lat2)) * sin(dLon / 2) * sin(dLon / 2)

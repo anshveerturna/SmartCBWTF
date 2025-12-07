@@ -120,6 +120,10 @@ class RealBluetoothScaleService @Inject constructor(
         _weight.value = null
     }
 
+    override suspend fun simulateWeight(value: Double?) {
+        // No-op for real hardware
+    }
+
     private val gattCallback = object : BluetoothGattCallback() {
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {

@@ -1,8 +1,8 @@
 package com.smartcbwtf.mobile.di
 
-import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.smartcbwtf.mobile.BuildConfig
 import com.smartcbwtf.mobile.network.AuthInterceptor
 import com.smartcbwtf.mobile.network.api.AuthApi
 import com.smartcbwtf.mobile.network.api.BagEventApi
@@ -41,7 +41,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(client: OkHttpClient, gson: Gson): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://api.smartcbwtf.local/")
+            .baseUrl(BuildConfig.BASE_URL)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()

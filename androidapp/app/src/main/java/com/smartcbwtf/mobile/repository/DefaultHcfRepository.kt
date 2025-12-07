@@ -31,6 +31,8 @@ class DefaultHcfRepository @Inject constructor(
                 state = it.state,
                 postalCode = it.postalCode,
                 phone = it.phone,
+                latitude = it.latitude,
+                longitude = it.longitude,
                 approved = it.approved,
             )
         }

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/splashFragment">
+
+    <fragment
+        android:id="@+id/splashFragment"
+        android:name="com.smartcbwtf.mobile.ui.SplashFragment"
+        android:label="SplashFragment"
+        tools:layout="@layout/fragment_splash">
+        <action
+            android:id="@+id/action_splashFragment_to_loginFragment"
+            app:destination="@id/loginFragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_splashFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.smartcbwtf.mobile.ui.LoginFragment"
+        android:label="LoginFragment"
+        tools:layout="@layout/fragment_login">
+        <action
+            android:id="@+id/action_loginFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/loginFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.smartcbwtf.mobile.ui.HomeFragment"
+        android:label="HomeFragment"
+        tools:layout="@layout/fragment_home">
+        <action
+            android:id="@+id/action_homeFragment_to_startPickupFragment"
+            app:destination="@id/startPickupFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_verifyAtCbtwfFragment"
+            app:destination="@id/scanWeighFragment">
+            <argument
+                android:name="hcfId"
+                app:argType="string"
+                android:defaultValue="" />
+            <argument
+                android:name="eventType"
+                app:argType="string"
+                android:defaultValue="CBWTF_VERIFICATION" />
+        </action>
+        <action
+            android:id="@+id/action_homeFragment_to_hcfRegistrationFragment"
+            app:destination="@id/hcfRegistrationFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_loginFragment"
+            app:destination="@id/loginFragment"
+            app:popUpTo="@id/homeFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/startPickupFragment"
+        android:name="com.smartcbwtf.mobile.ui.StartPickupFragment"
+        android:label="Start Pickup"
+        tools:layout="@layout/fragment_start_pickup">
+        <action
+            android:id="@+id/action_startPickupFragment_to_scanWeighFragment"
+            app:destination="@id/scanWeighFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/scanWeighFragment"
+        android:name="com.smartcbwtf.mobile.ui.ScanWeighFragment"
+        android:label="Scan &amp; Weigh"
+        tools:layout="@layout/fragment_scan_weigh">
+        <argument
+            android:name="hcfId"
+            app:argType="string" />
+        <argument
+            android:name="eventType"
+            app:argType="string"
+            android:defaultValue="COLLECTION" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/hcfRegistrationFragment"
+        android:name="com.smartcbwtf.mobile.ui.HcfRegistrationFragment"
+        android:label="Register HCF"
+        tools:layout="@layout/fragment_hcf_registration" />
+
+</navigation>

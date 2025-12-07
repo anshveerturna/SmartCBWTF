@@ -36,11 +36,11 @@ class DefaultBagEventRepository @Inject constructor(
     }
 
     override suspend fun syncPending() = withContext(ioDispatcher) {
-        val pending = dao.getPending().map { it.map(BagEventEntity::toPayload) }.firstOrNull() ?: emptyList()
+        val pending = dao.getPending().firstOrNull()?.map(BagEventEntity::toPayload) ?: emptyList()
         if (pending.isEmpty()) return@withContext
 
         val response = api.sync(pending)
-        val successIds = response.successIds.mapNotNull { runCatching(UUID::fromString).getOrNull() }
+        val successIds = response.successIds.mapNotNull { id -> runCatching { UUID.fromString(id) }.getOrNull() }
         if (successIds.isNotEmpty()) {
             dao.markSynced(successIds)
         }

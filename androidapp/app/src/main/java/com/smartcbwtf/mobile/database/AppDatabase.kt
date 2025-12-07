@@ -10,7 +10,7 @@ import com.smartcbwtf.mobile.database.entity.HcfEntity
 
 @Database(
     entities = [BagEventEntity::class, HcfEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(DatabaseConverters::class)

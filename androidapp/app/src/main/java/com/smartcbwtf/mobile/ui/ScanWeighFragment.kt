@@ -1,6 +1,5 @@
 package com.smartcbwtf.mobile.ui
 
-import android.Manifest
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -11,13 +10,16 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.google.zxing.integration.android.IntentIntegrator
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.smartcbwtf.mobile.R
+import com.smartcbwtf.mobile.BuildConfig
 import com.smartcbwtf.mobile.bluetooth.ConnectionState
 import com.smartcbwtf.mobile.databinding.FragmentScanWeighBinding
 import com.smartcbwtf.mobile.utils.PermissionHelper
 import com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel
 import com.smartcbwtf.mobile.viewmodel.SubmissionState
+import com.smartcbwtf.mobile.viewmodel.LocationState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -39,19 +41,16 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         val denied = permissions.filterValues { granted -> !granted }
         if (denied.isNotEmpty()) {
             Toast.makeText(requireContext(), "Permissions needed for scan/weight", Toast.LENGTH_LONG).show()
+        } else {
+            viewModel.refreshLocation()
         }
     }
 
-    private val qrScanLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val intentResult = IntentIntegrator.parseActivityResult(
-            IntentIntegrator.REQUEST_CODE,
-            result.resultCode,
-            result.data
-        )
-        if (intentResult != null && intentResult.contents != null) {
-            viewModel.onQrScanned(intentResult.contents)
+    private val qrScannerLauncher = registerForActivityResult(ScanContract()) { result ->
+        if (result.contents != null) {
+            viewModel.onQrScanned(result.contents)
+        } else {
+            Toast.makeText(requireContext(), "QR scan cancelled", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -59,8 +58,22 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentScanWeighBinding.bind(view)
 
+        val isVerification = args.eventType.equals("CBWTF_VERIFICATION", ignoreCase = true)
+        binding.tvModeTitle.text = if (isVerification) "Verify at CBWTF" else "Scan & Weigh at HCF"
+        binding.tvModeSubtitle.text = if (isVerification) "Confirm inbound bags at the CBWTF" else "Collect bags at the HCF"
+        if (isVerification) {
+            binding.btnSubmit.text = "Save Verification"
+        }
+
+        if (permissionHelper.hasLocationPermission()) {
+            viewModel.refreshLocation()
+        }
+
         // Request permissions on start
         requestPermissionLauncher.launch(permissionHelper.getRequiredPermissions().toTypedArray())
+
+        // Enable simulate button only in debug builds to avoid production exposure
+        binding.btnSimulateWeight.isVisible = BuildConfig.DEBUG
 
         binding.btnConnectScale.setOnClickListener {
             if (permissionHelper.hasBluetoothPermissions()) {
@@ -72,24 +85,28 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
 
         binding.btnScanQr.setOnClickListener {
             if (permissionHelper.hasCameraPermission()) {
-                val integrator = IntentIntegrator.forSupportFragment(this)
-                integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
-                integrator.setPrompt("Scan Bag QR Code")
-                integrator.setCameraId(0)
-                integrator.setBeepEnabled(true)
-                integrator.setBarcodeImageEnabled(false)
-                // We use custom launcher instead of integrator.initiateScan() to handle result cleanly
-                // But IntentIntegrator internally uses startActivityForResult, so we need to override onActivityResult
-                // OR use the modern way. The library is old.
-                // Let's try the standard way:
-                integrator.initiateScan() 
+                val options = ScanOptions().apply {
+                    setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                    setPrompt("Scan Bag QR Code")
+                    setBeepEnabled(true)
+                    setCameraId(0)
+                    setOrientationLocked(false)
+                }
+                qrScannerLauncher.launch(options)
             } else {
                 Toast.makeText(requireContext(), "Camera permission required", Toast.LENGTH_SHORT).show()
+                requestPermissionLauncher.launch(permissionHelper.getRequiredPermissions().toTypedArray())
             }
         }
 
         binding.btnSubmit.setOnClickListener {
             viewModel.submit(args.hcfId, args.eventType)
+        }
+
+        binding.btnSimulateWeight.setOnClickListener {
+            viewLifecycleOwner.lifecycleScope.launch {
+                viewModel.simulateWeight()
+            }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -117,6 +134,34 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.qrError.collect { message ->
+                binding.tvQrCodeError.isVisible = !message.isNullOrBlank()
+                binding.tvQrCodeError.text = message ?: ""
+                updateSubmitButton()
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.location.collect { state ->
+                when (state) {
+                    is LocationState.Waiting -> {
+                        binding.tvLocationStatus.text = "Location: Waiting for GPS"
+                        binding.tvLocationCoords.text = "Lat: --, Lon: --"
+                    }
+                    is LocationState.Ready -> {
+                        binding.tvLocationStatus.text = "Location: OK"
+                        binding.tvLocationCoords.text = "Lat: ${state.lat}, Lon: ${state.lon}"
+                    }
+                    is LocationState.Error -> {
+                        binding.tvLocationStatus.text = "Location: Error"
+                        binding.tvLocationCoords.text = state.message
+                    }
+                }
+                updateSubmitButton()
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
             viewModel.submissionState.collect { state ->
                 binding.btnSubmit.isEnabled = state !is SubmissionState.Loading
                 if (state is SubmissionState.Success) {
@@ -137,22 +182,13 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         }
     }
 
-    // Legacy onActivityResult for ZXing
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
-        val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
-        if (result != null) {
-            if (result.contents != null) {
-                viewModel.onQrScanned(result.contents)
-            }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data)
-        }
-    }
-
     private fun updateSubmitButton() {
         val hasWeight = viewModel.weight.value != null
         val hasQr = viewModel.scannedQr.value != null
-        binding.btnSubmit.isEnabled = hasWeight && hasQr
+        val hasLocation = viewModel.location.value is LocationState.Ready
+        val hasQrError = viewModel.qrError.value != null
+        val isSubmitting = viewModel.submissionState.value is SubmissionState.Loading
+        binding.btnSubmit.isEnabled = hasWeight && hasQr && hasLocation && !hasQrError && !isSubmitting
     }
 
     override fun onDestroyView() {
