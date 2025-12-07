@@ -29,7 +29,11 @@
             android:authorities="${applicationId}.startup"
             android:exported="false"
             tools:replace="android:authorities"
-            tools:node="merge" />
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                tools:node="remove" />
+        </provider>
     </application>
 
 </manifest>

@@ -43,6 +43,7 @@ id rvHcfs
 id scanWeighFragment
 id splashFragment
 id startPickupFragment
+id toolbar
 id tvLocationCoords
 id tvLocationStatus
 id tvModeSubtitle

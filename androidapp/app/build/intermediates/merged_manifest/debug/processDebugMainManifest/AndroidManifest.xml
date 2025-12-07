@@ -53,6 +53,7 @@
         android:extractNativeLibs="false"
         android:icon="@mipmap/ic_launcher"
         android:label="Smart CBWTF"
+        android:testOnly="true"
         android:theme="@style/Theme.SmartCBWTF" >
         <activity
             android:name="com.smartcbwtf.mobile.MainActivity"
@@ -70,9 +71,6 @@
             android:exported="false" >
             <meta-data
                 android:name="androidx.emoji2.text.EmojiCompatInitializer"
-                android:value="androidx.startup" />
-            <meta-data
-                android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup" />
             <meta-data
                 android:name="androidx.lifecycle.ProcessLifecycleInitializer"

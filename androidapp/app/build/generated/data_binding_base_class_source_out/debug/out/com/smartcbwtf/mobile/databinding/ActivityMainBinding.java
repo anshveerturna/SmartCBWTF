@@ -10,6 +10,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.FragmentContainerView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.smartcbwtf.mobile.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -22,10 +23,14 @@ public final class ActivityMainBinding implements ViewBinding {
   @NonNull
   public final FragmentContainerView navHostFragment;
 
+  @NonNull
+  public final MaterialToolbar toolbar;
+
   private ActivityMainBinding(@NonNull ConstraintLayout rootView,
-      @NonNull FragmentContainerView navHostFragment) {
+      @NonNull FragmentContainerView navHostFragment, @NonNull MaterialToolbar toolbar) {
     this.rootView = rootView;
     this.navHostFragment = navHostFragment;
+    this.toolbar = toolbar;
   }
 
   @Override
@@ -61,7 +66,13 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityMainBinding((ConstraintLayout) rootView, navHostFragment);
+      id = R.id.toolbar;
+      MaterialToolbar toolbar = ViewBindings.findChildViewById(rootView, id);
+      if (toolbar == null) {
+        break missingId;
+      }
+
+      return new ActivityMainBinding((ConstraintLayout) rootView, navHostFragment, toolbar);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));
