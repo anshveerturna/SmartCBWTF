@@ -7,6 +7,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -20,6 +21,9 @@ class AuthViewModel @Inject constructor(
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
+
+    private val _authEvents = kotlinx.coroutines.channels.Channel<AuthEvent>(kotlinx.coroutines.channels.Channel.BUFFERED)
+    val authEvents = _authEvents.receiveAsFlow()
 
     init {
         observeAuth()
@@ -40,19 +44,6 @@ class AuthViewModel @Inject constructor(
     fun login(username: String, password: String) {
         // 1. Input Validation
         if (username.isBlank() && password.isBlank()) {
-            _loginState.value = LoginState.Error(LoginError.EmptyUsername) // Prioritize one or emit a combined state if needed. 
-            // For simplicity and per requirements, let's emit EmptyUsername first or handle both in UI if we had a list.
-            // The requirement says: "If both are empty → prioritize showing both inline errors or a combined message."
-            // To show both, I might need a list of errors or a specific state.
-            // Let's change LoginState.Error to hold a list or specific flags.
-            // Or simpler: emit a specific error that implies both, or just emit one and let the user fix it.
-            // Re-reading: "If both are empty → prioritize showing both inline errors or a combined message."
-            // I will define a specific error for both or use a data class for validation errors.
-            // Let's stick to the sealed class structure requested but maybe add a Combined one or just handle it sequentially.
-            // Actually, the cleanest way is to have the Error state hold a set of errors.
-            // But the prompt asked for: sealed class LoginError { object EmptyUsername ... }
-            // So I will use a list of LoginErrors in the state, or just emit one.
-            // Let's try to emit a list of errors in the state.
             _loginState.value = LoginState.ValidationFailed(setOf(LoginError.EmptyUsername, LoginError.EmptyPassword))
             return
         }
@@ -72,6 +63,7 @@ class AuthViewModel @Inject constructor(
                 if (success) {
                     _loginState.value = LoginState.Success
                     _authState.value = AuthState.Authenticated
+                    _authEvents.send(AuthEvent.NavigateToHome)
                 } else {
                     // This branch might not be reached if repository throws on failure, 
                     // but if it returns false, it's likely invalid credentials.
@@ -109,6 +101,10 @@ class AuthViewModel @Inject constructor(
              _loginState.value = LoginState.Idle
         }
     }
+}
+
+sealed class AuthEvent {
+    object NavigateToHome : AuthEvent()
 }
 
 sealed class LoginError {

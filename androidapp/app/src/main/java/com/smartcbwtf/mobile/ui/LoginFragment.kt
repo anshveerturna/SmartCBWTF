@@ -6,23 +6,27 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.smartcbwtf.mobile.R
 import com.smartcbwtf.mobile.databinding.FragmentLoginBinding
+import com.smartcbwtf.mobile.viewmodel.AuthEvent
 import com.smartcbwtf.mobile.viewmodel.AuthState
 import com.smartcbwtf.mobile.viewmodel.AuthViewModel
 import com.smartcbwtf.mobile.viewmodel.LoginError
 import com.smartcbwtf.mobile.viewmodel.LoginState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.Lifecycle
+import android.util.Log
 
 @AndroidEntryPoint
 class LoginFragment : Fragment(R.layout.fragment_login) {
 
-    private val viewModel: AuthViewModel by viewModels()
+    private val viewModel: AuthViewModel by activityViewModels()
     private var _binding: FragmentLoginBinding? = null
     private val binding get() = _binding!!
 
@@ -77,15 +81,33 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.loginState.collect { state ->
-                handleLoginState(state)
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.authState.collect { state ->
-                if (state is AuthState.Authenticated) {
-                    findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.loginState.collect { state ->
+                        handleLoginState(state)
+                    }
+                }
+                launch {
+                    viewModel.authEvents.collect { event ->
+                        Log.d("LoginFragment", "Received event: $event")
+                        when (event) {
+                            is AuthEvent.NavigateToHome -> {
+                                try {
+                                    val navController = findNavController()
+                                    Log.d("LoginFragment", "Current destination: ${navController.currentDestination?.label} (ID: ${navController.currentDestination?.id})")
+                                    if (navController.currentDestination?.id == R.id.loginFragment) {
+                                        Log.d("LoginFragment", "Navigating to Home with action ID: ${R.id.action_loginFragment_to_homeFragment}")
+                                        navController.navigate(R.id.action_loginFragment_to_homeFragment)
+                                        Log.d("LoginFragment", "Navigate called, new destination: ${navController.currentDestination?.label} (ID: ${navController.currentDestination?.id})")
+                                    } else {
+                                        Log.e("LoginFragment", "Cannot navigate: Current destination is not LoginFragment")
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("LoginFragment", "Navigation failed", e)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

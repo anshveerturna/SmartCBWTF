@@ -3,6 +3,7 @@ package com.smartcbwtf.mobile.ui
 import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -17,7 +18,7 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
-    private val viewModel: AuthViewModel by viewModels()
+    private val viewModel: AuthViewModel by activityViewModels()
     private val homeViewModel: HomeViewModel by viewModels()
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
@@ -25,6 +26,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentHomeBinding.bind(view)
+
+        android.util.Log.d("HomeFragment", "onViewCreated")
 
         binding.btnStartPickup.setOnClickListener {
             findNavController().navigate(R.id.action_homeFragment_to_startPickupFragment)
@@ -69,6 +72,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        android.util.Log.d("HomeFragment", "onDestroyView")
         _binding = null
     }
 }
