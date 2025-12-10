@@ -61,9 +61,7 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         val isVerification = args.eventType.equals("CBWTF_VERIFICATION", ignoreCase = true)
         binding.tvModeTitle.text = if (isVerification) "Verify at CBWTF" else "Scan & Weigh at HCF"
         binding.tvModeSubtitle.text = if (isVerification) "Confirm inbound bags at the CBWTF" else "Collect bags at the HCF"
-        if (isVerification) {
-            binding.btnSubmit.text = "Save Verification"
-        }
+        binding.btnSubmit.text = if (isVerification) "Save Verification" else "Save Collection"
 
         if (permissionHelper.hasLocationPermission()) {
             viewModel.refreshLocation()
@@ -122,14 +120,12 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.weight.collect { weight ->
                 binding.tvWeight.text = if (weight != null) "$weight kg" else "-- kg"
-                updateSubmitButton()
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.scannedQr.collect { qr ->
                 binding.tvQrCode.text = qr ?: "No QR Scanned"
-                updateSubmitButton()
             }
         }
 
@@ -137,7 +133,6 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
             viewModel.qrError.collect { message ->
                 binding.tvQrCodeError.isVisible = !message.isNullOrBlank()
                 binding.tvQrCodeError.text = message ?: ""
-                updateSubmitButton()
             }
         }
 
@@ -157,13 +152,17 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
                         binding.tvLocationCoords.text = state.message
                     }
                 }
-                updateSubmitButton()
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.isSubmitEnabled.collect { enabled ->
+                binding.btnSubmit.isEnabled = enabled
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.submissionState.collect { state ->
-                binding.btnSubmit.isEnabled = state !is SubmissionState.Loading
                 if (state is SubmissionState.Success) {
                     Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
                     findNavController().popBackStack()
@@ -180,15 +179,6 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
                 }
             }
         }
-    }
-
-    private fun updateSubmitButton() {
-        val hasWeight = viewModel.weight.value != null
-        val hasQr = viewModel.scannedQr.value != null
-        val hasLocation = viewModel.location.value is LocationState.Ready
-        val hasQrError = viewModel.qrError.value != null
-        val isSubmitting = viewModel.submissionState.value is SubmissionState.Loading
-        binding.btnSubmit.isEnabled = hasWeight && hasQr && hasLocation && !hasQrError && !isSubmitting
     }
 
     override fun onDestroyView() {

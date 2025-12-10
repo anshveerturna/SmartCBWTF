@@ -38,6 +38,10 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             findNavController().navigate(R.id.action_homeFragment_to_hcfRegistrationFragment)
         }
 
+        binding.btnSettings.setOnClickListener {
+            findNavController().navigate(R.id.action_homeFragment_to_settingsFragment)
+        }
+
         binding.btnLogout.setOnClickListener {
             viewModel.logout()
         }
@@ -53,6 +57,12 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         viewLifecycleOwner.lifecycleScope.launch {
             homeViewModel.pendingCount.collect { count ->
                 binding.tvPending.text = "Pending events: $count"
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            homeViewModel.lastSyncFailed.collect { failed ->
+                binding.tvSyncError.visibility = if (failed) View.VISIBLE else View.GONE
             }
         }
     }

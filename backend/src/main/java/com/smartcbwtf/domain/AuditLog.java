@@ -1,6 +1,8 @@
 package com.smartcbwtf.domain;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -22,7 +24,8 @@ public class AuditLog {
 
     private Instant ts = Instant.now();
 
-    @Lob
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
     private String dataJson;
 
     private String dataHash;

@@ -29,7 +29,6 @@ public class Agreement {
     @Column(nullable = false)
     private BigDecimal perBedPerDayRate;
 
-    @Lob
     private String termsText;
 
     private String pdfUrl;

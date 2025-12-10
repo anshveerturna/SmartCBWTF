@@ -13,6 +13,15 @@
         android:text="Pending events: 0"
         android:layout_marginBottom="16dp" />
 
+    <TextView
+        android:id="@+id/tvSyncError"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Last sync failed. Will retry automatically."
+        android:textColor="#B00020"
+        android:visibility="gone"
+        android:layout_marginBottom="8dp" />
+
     <Button
         android:id="@+id/btnStartPickup"
         android:layout_width="match_parent"
@@ -32,6 +41,14 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="Register HCF" />
+
+    <Button
+        android:id="@+id/btnSettings"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:text="Settings / About" />
 
     <Button
         android:id="@+id/btnLogout"

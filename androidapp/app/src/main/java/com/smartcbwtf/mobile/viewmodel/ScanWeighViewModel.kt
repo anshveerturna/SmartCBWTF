@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
@@ -39,6 +40,16 @@ class ScanWeighViewModel @Inject constructor(
 
     private val _location = MutableStateFlow<LocationState>(LocationState.Waiting)
     val location: StateFlow<LocationState> = _location.asStateFlow()
+
+    val isSubmitEnabled = combine(
+        scannedQr,
+        weight,
+        location,
+        qrError,
+        submissionState
+    ) { qr, w, loc, qrErr, subState ->
+        !qr.isNullOrBlank() && qrErr == null && w != null && w > 0.0 && loc is LocationState.Ready && subState !is SubmissionState.Loading
+    }
 
     fun connectScale() {
         viewModelScope.launch {

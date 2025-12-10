@@ -23,6 +23,7 @@ public class Facility {
     private String contactPhone;
     private Double gpsLat;
     private Double gpsLon;
+    @Column(name = "geofence_radius_m")
     private Integer geofenceRadiusM;
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();

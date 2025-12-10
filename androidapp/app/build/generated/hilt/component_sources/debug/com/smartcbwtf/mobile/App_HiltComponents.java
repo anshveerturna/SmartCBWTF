@@ -12,6 +12,7 @@ import com.smartcbwtf.mobile.ui.HcfRegistrationFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.HomeFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.LoginFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.ScanWeighFragment_GeneratedInjector;
+import com.smartcbwtf.mobile.ui.SettingsFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.SplashFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.StartPickupFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.VerifyAtCbtwfFragment_GeneratedInjector;
@@ -19,6 +20,7 @@ import com.smartcbwtf.mobile.viewmodel.AuthViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.HomeViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel_HiltModules;
+import com.smartcbwtf.mobile.viewmodel.SettingsViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.StartPickupViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel_HiltModules;
 import com.smartcbwtf.mobile.work.SyncBagEventsWorker_HiltModule;
@@ -189,6 +191,7 @@ public final class App_HiltComponents {
           HiltWrapper_SavedStateHandleModule.class,
           HomeViewModel_HiltModules.KeyModule.class,
           ScanWeighViewModel_HiltModules.KeyModule.class,
+          SettingsViewModel_HiltModules.KeyModule.class,
           StartPickupViewModel_HiltModules.KeyModule.class,
           VerifyAtPlantViewModel_HiltModules.KeyModule.class
       }
@@ -231,6 +234,7 @@ public final class App_HiltComponents {
           HiltWrapper_HiltViewModelFactory_ViewModelModule.class,
           HomeViewModel_HiltModules.BindsModule.class,
           ScanWeighViewModel_HiltModules.BindsModule.class,
+          SettingsViewModel_HiltModules.BindsModule.class,
           StartPickupViewModel_HiltModules.BindsModule.class,
           VerifyAtPlantViewModel_HiltModules.BindsModule.class
       }
@@ -261,6 +265,7 @@ public final class App_HiltComponents {
       HomeFragment_GeneratedInjector,
       LoginFragment_GeneratedInjector,
       ScanWeighFragment_GeneratedInjector,
+      SettingsFragment_GeneratedInjector,
       SplashFragment_GeneratedInjector,
       StartPickupFragment_GeneratedInjector,
       VerifyAtCbtwfFragment_GeneratedInjector,

@@ -4,6 +4,7 @@ import com.smartcbwtf.mobile.database.dao.HcfDao
 import com.smartcbwtf.mobile.database.entity.HcfEntity
 import com.smartcbwtf.mobile.network.api.HcfApi
 import com.smartcbwtf.mobile.network.model.HcfRegistrationRequest
+import com.smartcbwtf.mobile.utils.NetworkMonitor
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -15,12 +16,16 @@ import javax.inject.Singleton
 class DefaultHcfRepository @Inject constructor(
     private val dao: HcfDao,
     private val api: HcfApi,
+    private val networkMonitor: NetworkMonitor,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : HcfRepository {
 
     override fun getAll(): Flow<List<HcfEntity>> = dao.getAll()
 
     override suspend fun refresh() = withContext(ioDispatcher) {
+        if (!networkMonitor.isOnline()) {
+            throw Exception("No internet connection")
+        }
         val remote = api.getAll()
         val entities = remote.map {
             HcfEntity(
@@ -51,6 +56,9 @@ class DefaultHcfRepository @Inject constructor(
         latitude: Double?,
         longitude: Double?
     ) = withContext(ioDispatcher) {
+        if (!networkMonitor.isOnline()) {
+            throw Exception("No internet connection")
+        }
         api.register(
             HcfRegistrationRequest(
                 name = name,

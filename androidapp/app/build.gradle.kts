@@ -26,6 +26,8 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
+            // Point debug builds to local backend (emulator -> host). If running on device, swap to LAN IP.
+            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/api/\"")
         }
         release {
             isMinifyEnabled = false

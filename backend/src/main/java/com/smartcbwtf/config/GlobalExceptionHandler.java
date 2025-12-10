@@ -41,8 +41,16 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
     }
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ApiError> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, "Authentication failed", request, null);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleInternal(Exception ex, HttpServletRequest request) {
+        log.error("Unhandled exception", ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", request, null);
     }
 

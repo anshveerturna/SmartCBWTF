@@ -62,6 +62,9 @@
             app:destination="@id/loginFragment"
             app:popUpTo="@id/homeFragment"
             app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_homeFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
     </fragment>
 
     <fragment
@@ -93,5 +96,11 @@
         android:name="com.smartcbwtf.mobile.ui.HcfRegistrationFragment"
         android:label="Register HCF"
         tools:layout="@layout/fragment_hcf_registration" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.smartcbwtf.mobile.ui.SettingsFragment"
+        android:label="Settings"
+        tools:layout="@layout/fragment_settings" />
 
 </navigation>

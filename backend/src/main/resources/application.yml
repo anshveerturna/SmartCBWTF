@@ -22,7 +22,8 @@ server:
 
 security:
   jwt:
-    secret: "change-this-secret"
+    # Use a 256-bit+ secret for HMAC-SHA signing; keep this out of VCS in real deployments.
+    secret: "change-this-secret-please-use-32b-minimum-2025"
     issuer: "smart-cbwtf"
     access-token-ttl-minutes: 30
 

@@ -27,6 +27,9 @@ public final class FragmentHomeBinding implements ViewBinding {
   public final Button btnRegisterHcf;
 
   @NonNull
+  public final Button btnSettings;
+
+  @NonNull
   public final Button btnStartPickup;
 
   @NonNull
@@ -35,15 +38,21 @@ public final class FragmentHomeBinding implements ViewBinding {
   @NonNull
   public final TextView tvPending;
 
+  @NonNull
+  public final TextView tvSyncError;
+
   private FragmentHomeBinding(@NonNull LinearLayout rootView, @NonNull Button btnLogout,
-      @NonNull Button btnRegisterHcf, @NonNull Button btnStartPickup,
-      @NonNull Button btnVerifyAtCbtwf, @NonNull TextView tvPending) {
+      @NonNull Button btnRegisterHcf, @NonNull Button btnSettings, @NonNull Button btnStartPickup,
+      @NonNull Button btnVerifyAtCbtwf, @NonNull TextView tvPending,
+      @NonNull TextView tvSyncError) {
     this.rootView = rootView;
     this.btnLogout = btnLogout;
     this.btnRegisterHcf = btnRegisterHcf;
+    this.btnSettings = btnSettings;
     this.btnStartPickup = btnStartPickup;
     this.btnVerifyAtCbtwf = btnVerifyAtCbtwf;
     this.tvPending = tvPending;
+    this.tvSyncError = tvSyncError;
   }
 
   @Override
@@ -85,6 +94,12 @@ public final class FragmentHomeBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.btnSettings;
+      Button btnSettings = ViewBindings.findChildViewById(rootView, id);
+      if (btnSettings == null) {
+        break missingId;
+      }
+
       id = R.id.btnStartPickup;
       Button btnStartPickup = ViewBindings.findChildViewById(rootView, id);
       if (btnStartPickup == null) {
@@ -103,8 +118,14 @@ public final class FragmentHomeBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.tvSyncError;
+      TextView tvSyncError = ViewBindings.findChildViewById(rootView, id);
+      if (tvSyncError == null) {
+        break missingId;
+      }
+
       return new FragmentHomeBinding((LinearLayout) rootView, btnLogout, btnRegisterHcf,
-          btnStartPickup, btnVerifyAtCbtwf, tvPending);
+          btnSettings, btnStartPickup, btnVerifyAtCbtwf, tvPending, tvSyncError);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

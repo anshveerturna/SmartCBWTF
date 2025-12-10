@@ -5,13 +5,18 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.cardview.widget.CardView;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.smartcbwtf.mobile.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -19,10 +24,16 @@ import java.lang.String;
 
 public final class FragmentLoginBinding implements ViewBinding {
   @NonNull
-  private final LinearLayout rootView;
+  private final ConstraintLayout rootView;
+
+  @NonNull
+  public final Button btnForgotPassword;
 
   @NonNull
   public final Button btnLogin;
+
+  @NonNull
+  public final CardView cardLogin;
 
   @NonNull
   public final TextInputEditText etPassword;
@@ -31,21 +42,55 @@ public final class FragmentLoginBinding implements ViewBinding {
   public final TextInputEditText etUsername;
 
   @NonNull
+  public final ImageView ivLogo;
+
+  @NonNull
+  public final LinearLayout layoutErrorBanner;
+
+  @NonNull
   public final ProgressBar progressBar;
 
-  private FragmentLoginBinding(@NonNull LinearLayout rootView, @NonNull Button btnLogin,
+  @NonNull
+  public final TextInputLayout tilPassword;
+
+  @NonNull
+  public final TextInputLayout tilUsername;
+
+  @NonNull
+  public final TextView tvAppSubtitle;
+
+  @NonNull
+  public final TextView tvAppTitle;
+
+  @NonNull
+  public final View viewHeader;
+
+  private FragmentLoginBinding(@NonNull ConstraintLayout rootView,
+      @NonNull Button btnForgotPassword, @NonNull Button btnLogin, @NonNull CardView cardLogin,
       @NonNull TextInputEditText etPassword, @NonNull TextInputEditText etUsername,
-      @NonNull ProgressBar progressBar) {
+      @NonNull ImageView ivLogo, @NonNull LinearLayout layoutErrorBanner,
+      @NonNull ProgressBar progressBar, @NonNull TextInputLayout tilPassword,
+      @NonNull TextInputLayout tilUsername, @NonNull TextView tvAppSubtitle,
+      @NonNull TextView tvAppTitle, @NonNull View viewHeader) {
     this.rootView = rootView;
+    this.btnForgotPassword = btnForgotPassword;
     this.btnLogin = btnLogin;
+    this.cardLogin = cardLogin;
     this.etPassword = etPassword;
     this.etUsername = etUsername;
+    this.ivLogo = ivLogo;
+    this.layoutErrorBanner = layoutErrorBanner;
     this.progressBar = progressBar;
+    this.tilPassword = tilPassword;
+    this.tilUsername = tilUsername;
+    this.tvAppSubtitle = tvAppSubtitle;
+    this.tvAppTitle = tvAppTitle;
+    this.viewHeader = viewHeader;
   }
 
   @Override
   @NonNull
-  public LinearLayout getRoot() {
+  public ConstraintLayout getRoot() {
     return rootView;
   }
 
@@ -70,9 +115,21 @@ public final class FragmentLoginBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.btnForgotPassword;
+      Button btnForgotPassword = ViewBindings.findChildViewById(rootView, id);
+      if (btnForgotPassword == null) {
+        break missingId;
+      }
+
       id = R.id.btnLogin;
       Button btnLogin = ViewBindings.findChildViewById(rootView, id);
       if (btnLogin == null) {
+        break missingId;
+      }
+
+      id = R.id.cardLogin;
+      CardView cardLogin = ViewBindings.findChildViewById(rootView, id);
+      if (cardLogin == null) {
         break missingId;
       }
 
@@ -88,14 +145,57 @@ public final class FragmentLoginBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.ivLogo;
+      ImageView ivLogo = ViewBindings.findChildViewById(rootView, id);
+      if (ivLogo == null) {
+        break missingId;
+      }
+
+      id = R.id.layoutErrorBanner;
+      LinearLayout layoutErrorBanner = ViewBindings.findChildViewById(rootView, id);
+      if (layoutErrorBanner == null) {
+        break missingId;
+      }
+
       id = R.id.progressBar;
       ProgressBar progressBar = ViewBindings.findChildViewById(rootView, id);
       if (progressBar == null) {
         break missingId;
       }
 
-      return new FragmentLoginBinding((LinearLayout) rootView, btnLogin, etPassword, etUsername,
-          progressBar);
+      id = R.id.tilPassword;
+      TextInputLayout tilPassword = ViewBindings.findChildViewById(rootView, id);
+      if (tilPassword == null) {
+        break missingId;
+      }
+
+      id = R.id.tilUsername;
+      TextInputLayout tilUsername = ViewBindings.findChildViewById(rootView, id);
+      if (tilUsername == null) {
+        break missingId;
+      }
+
+      id = R.id.tvAppSubtitle;
+      TextView tvAppSubtitle = ViewBindings.findChildViewById(rootView, id);
+      if (tvAppSubtitle == null) {
+        break missingId;
+      }
+
+      id = R.id.tvAppTitle;
+      TextView tvAppTitle = ViewBindings.findChildViewById(rootView, id);
+      if (tvAppTitle == null) {
+        break missingId;
+      }
+
+      id = R.id.viewHeader;
+      View viewHeader = ViewBindings.findChildViewById(rootView, id);
+      if (viewHeader == null) {
+        break missingId;
+      }
+
+      return new FragmentLoginBinding((ConstraintLayout) rootView, btnForgotPassword, btnLogin,
+          cardLogin, etPassword, etUsername, ivLogo, layoutErrorBanner, progressBar, tilPassword,
+          tilUsername, tvAppSubtitle, tvAppTitle, viewHeader);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

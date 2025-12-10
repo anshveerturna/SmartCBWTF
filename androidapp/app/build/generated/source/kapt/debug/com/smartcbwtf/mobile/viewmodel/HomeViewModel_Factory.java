@@ -1,5 +1,6 @@
 package com.smartcbwtf.mobile.viewmodel;
 
+import androidx.work.WorkManager;
 import com.smartcbwtf.mobile.repository.AuthRepository;
 import com.smartcbwtf.mobile.repository.BagEventRepository;
 import dagger.internal.DaggerGenerated;
@@ -28,24 +29,29 @@ public final class HomeViewModel_Factory implements Factory<HomeViewModel> {
 
   private final Provider<BagEventRepository> bagEventRepositoryProvider;
 
+  private final Provider<WorkManager> workManagerProvider;
+
   public HomeViewModel_Factory(Provider<AuthRepository> authRepositoryProvider,
-      Provider<BagEventRepository> bagEventRepositoryProvider) {
+      Provider<BagEventRepository> bagEventRepositoryProvider,
+      Provider<WorkManager> workManagerProvider) {
     this.authRepositoryProvider = authRepositoryProvider;
     this.bagEventRepositoryProvider = bagEventRepositoryProvider;
+    this.workManagerProvider = workManagerProvider;
   }
 
   @Override
   public HomeViewModel get() {
-    return newInstance(authRepositoryProvider.get(), bagEventRepositoryProvider.get());
+    return newInstance(authRepositoryProvider.get(), bagEventRepositoryProvider.get(), workManagerProvider.get());
   }
 
   public static HomeViewModel_Factory create(Provider<AuthRepository> authRepositoryProvider,
-      Provider<BagEventRepository> bagEventRepositoryProvider) {
-    return new HomeViewModel_Factory(authRepositoryProvider, bagEventRepositoryProvider);
+      Provider<BagEventRepository> bagEventRepositoryProvider,
+      Provider<WorkManager> workManagerProvider) {
+    return new HomeViewModel_Factory(authRepositoryProvider, bagEventRepositoryProvider, workManagerProvider);
   }
 
   public static HomeViewModel newInstance(AuthRepository authRepository,
-      BagEventRepository bagEventRepository) {
-    return new HomeViewModel(authRepository, bagEventRepository);
+      BagEventRepository bagEventRepository, WorkManager workManager) {
+    return new HomeViewModel(authRepository, bagEventRepository, workManager);
   }
 }
