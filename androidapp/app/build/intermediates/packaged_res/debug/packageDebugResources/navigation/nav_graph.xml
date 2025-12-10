@@ -55,6 +55,18 @@
                 android:defaultValue="CBWTF_VERIFICATION" />
         </action>
         <action
+            android:id="@+id/action_homeFragment_to_scanWeighFragment"
+            app:destination="@id/scanWeighFragment">
+            <argument
+                android:name="hcfId"
+                app:argType="string"
+                android:defaultValue="" />
+            <argument
+                android:name="eventType"
+                app:argType="string"
+                android:defaultValue="HCF_COLLECTION" />
+        </action>
+        <action
             android:id="@+id/action_homeFragment_to_hcfRegistrationFragment"
             app:destination="@id/hcfRegistrationFragment" />
         <action
@@ -93,11 +105,12 @@
         tools:layout="@layout/fragment_scan_weigh">
         <argument
             android:name="hcfId"
-            app:argType="string" />
+            app:argType="string"
+            android:defaultValue="" />
         <argument
             android:name="eventType"
             app:argType="string"
-            android:defaultValue="COLLECTION" />
+            android:defaultValue="HCF_COLLECTION" />
     </fragment>
 
     <fragment

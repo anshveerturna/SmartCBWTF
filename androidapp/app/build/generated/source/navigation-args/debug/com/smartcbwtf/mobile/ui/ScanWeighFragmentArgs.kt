@@ -8,8 +8,8 @@ import kotlin.String
 import kotlin.jvm.JvmStatic
 
 public data class ScanWeighFragmentArgs(
-  public val hcfId: String,
-  public val eventType: String = "COLLECTION",
+  public val hcfId: String = "",
+  public val eventType: String = "HCF_COLLECTION",
 ) : NavArgs {
   public fun toBundle(): Bundle {
     val result = Bundle()
@@ -36,7 +36,7 @@ public data class ScanWeighFragmentArgs(
           throw IllegalArgumentException("Argument \"hcfId\" is marked as non-null but was passed a null value.")
         }
       } else {
-        throw IllegalArgumentException("Required argument \"hcfId\" is missing and does not have an android:defaultValue")
+        __hcfId = ""
       }
       val __eventType : String?
       if (bundle.containsKey("eventType")) {
@@ -45,7 +45,7 @@ public data class ScanWeighFragmentArgs(
           throw IllegalArgumentException("Argument \"eventType\" is marked as non-null but was passed a null value.")
         }
       } else {
-        __eventType = "COLLECTION"
+        __eventType = "HCF_COLLECTION"
       }
       return ScanWeighFragmentArgs(__hcfId, __eventType)
     }
@@ -59,7 +59,7 @@ public data class ScanWeighFragmentArgs(
           throw IllegalArgumentException("Argument \"hcfId\" is marked as non-null but was passed a null value")
         }
       } else {
-        throw IllegalArgumentException("Required argument \"hcfId\" is missing and does not have an android:defaultValue")
+        __hcfId = ""
       }
       val __eventType : String?
       if (savedStateHandle.contains("eventType")) {
@@ -68,7 +68,7 @@ public data class ScanWeighFragmentArgs(
           throw IllegalArgumentException("Argument \"eventType\" is marked as non-null but was passed a null value")
         }
       } else {
-        __eventType = "COLLECTION"
+        __eventType = "HCF_COLLECTION"
       }
       return ScanWeighFragmentArgs(__hcfId, __eventType)
     }

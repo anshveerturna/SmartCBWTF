@@ -16,6 +16,28 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
+/**
+ * Data class representing a single bag entry in the pickup session
+ */
+data class BagEntry(
+    val qrCode: String,
+    val weightKg: Double,
+    val gpsLat: Double,
+    val gpsLon: Double,
+    val timestamp: Long
+)
+
+/**
+ * State representing the current pickup session
+ */
+data class PickupSessionState(
+    val bags: List<BagEntry> = emptyList(),
+    val totalBags: Int = 0,
+    val totalWeight: Double = 0.0
+) {
+    val hasUnsavedBags: Boolean get() = bags.isNotEmpty()
+}
+
 @HiltViewModel
 class ScanWeighViewModel @Inject constructor(
     private val scaleService: ScaleService,
@@ -25,6 +47,7 @@ class ScanWeighViewModel @Inject constructor(
 
     val weight = scaleService.weight
     val connectionState = scaleService.connectionState
+    val discoveredDevices = scaleService.discoveredDevices
 
     private val _scannedQr = MutableStateFlow<String?>(null)
     val scannedQr: StateFlow<String?> = _scannedQr.asStateFlow()
@@ -41,6 +64,29 @@ class ScanWeighViewModel @Inject constructor(
     private val _location = MutableStateFlow<LocationState>(LocationState.Waiting)
     val location: StateFlow<LocationState> = _location.asStateFlow()
 
+    // Session state for multi-bag workflow
+    private val _sessionState = MutableStateFlow(PickupSessionState())
+    val sessionState: StateFlow<PickupSessionState> = _sessionState.asStateFlow()
+
+    // Can add bag: valid QR + weight > 0 + GPS ready + no QR error
+    val canAddBag = combine(
+        scannedQr,
+        weight,
+        location,
+        qrError
+    ) { qr, w, loc, qrErr ->
+        !qr.isNullOrBlank() && qrErr == null && w != null && w > 0.0 && loc is LocationState.Ready
+    }
+
+    // Can submit all: session has bags
+    val canSubmitAll = _sessionState.asStateFlow()
+        .let { flow ->
+            combine(flow, _submissionState) { session, subState ->
+                session.bags.isNotEmpty() && subState !is SubmissionState.Loading
+            }
+        }
+
+    // Legacy single submit enabled (kept for backward compatibility)
     val isSubmitEnabled = combine(
         scannedQr,
         weight,
@@ -62,6 +108,23 @@ class ScanWeighViewModel @Inject constructor(
         }
     }
 
+    fun connectToDevice(device: android.bluetooth.BluetoothDevice) {
+        viewModelScope.launch {
+            _error.value = null
+            try {
+                scaleService.connectToDevice(device)
+            } catch (e: Exception) {
+                _error.value = e.message
+            }
+        }
+    }
+
+    fun stopScanning() {
+        viewModelScope.launch {
+            scaleService.stopScan()
+        }
+    }
+
     fun disconnectScale() {
         viewModelScope.launch {
             scaleService.disconnect()
@@ -76,6 +139,89 @@ class ScanWeighViewModel @Inject constructor(
             _qrError.value = "Invalid QR format"
             _scannedQr.value = null
         }
+    }
+
+    /**
+     * Add current bag to the session list
+     */
+    fun addBag(): Boolean {
+        val qr = _scannedQr.value
+        val w = weight.value
+        val loc = _location.value as? LocationState.Ready
+
+        if (qr == null || w == null || w <= 0.0 || loc == null) {
+            _error.value = "Cannot add bag: missing QR, weight, or GPS"
+            return false
+        }
+
+        val entry = BagEntry(
+            qrCode = qr,
+            weightKg = w,
+            gpsLat = loc.lat,
+            gpsLon = loc.lon,
+            timestamp = System.currentTimeMillis()
+        )
+
+        val currentState = _sessionState.value
+        val newBags = currentState.bags + entry
+        _sessionState.value = PickupSessionState(
+            bags = newBags,
+            totalBags = newBags.size,
+            totalWeight = newBags.sumOf { it.weightKg }
+        )
+
+        // Clear for next scan
+        _scannedQr.value = null
+        _qrError.value = null
+
+        return true
+    }
+
+    /**
+     * Submit all bags in the session to the repository
+     */
+    fun submitAll(eventType: String = "HCF_COLLECTION") {
+        val bags = _sessionState.value.bags
+        if (bags.isEmpty()) {
+            _error.value = "No bags to submit"
+            return
+        }
+
+        viewModelScope.launch {
+            _submissionState.value = SubmissionState.Loading
+            try {
+                val events = bags.map { bag ->
+                    BagEvent(
+                        id = UUID.randomUUID(),
+                        qrCode = bag.qrCode,
+                        eventType = eventType,
+                        eventTs = bag.timestamp,
+                        gpsLat = bag.gpsLat,
+                        gpsLon = bag.gpsLon,
+                        weightKg = bag.weightKg,
+                        hcfId = "", // Backend resolves from QR
+                        facilityId = null,
+                        synced = false
+                    )
+                }
+                bagEventRepository.recordBatch(events)
+                _submissionState.value = SubmissionState.BatchSuccess(bags.size)
+                
+                // Clear session after successful submit
+                clearSession()
+            } catch (e: Exception) {
+                _submissionState.value = SubmissionState.Error(e.message ?: "Batch submission failed")
+            }
+        }
+    }
+
+    /**
+     * Clear the current session
+     */
+    fun clearSession() {
+        _sessionState.value = PickupSessionState()
+        _scannedQr.value = null
+        _qrError.value = null
     }
 
     fun submit(hcfId: String, eventType: String) {
@@ -122,13 +268,24 @@ class ScanWeighViewModel @Inject constructor(
         _qrError.value = null
     }
 
+    fun resetForNextScan() {
+        _submissionState.value = SubmissionState.Idle
+        _scannedQr.value = null
+        _qrError.value = null
+        // Keep location, keep scale connected
+    }
+
     fun refreshLocation() {
         viewModelScope.launch {
             _location.value = LocationState.Waiting
             try {
                 val loc = locationHelper.getCurrentLocation()
                 if (loc != null) {
-                    _location.value = LocationState.Ready(loc.latitude, loc.longitude)
+                    _location.value = LocationState.Ready(
+                        lat = loc.latitude, 
+                        lon = loc.longitude,
+                        accuracy = loc.accuracy
+                    )
                 } else {
                     _location.value = LocationState.Error("Location unavailable")
                 }
@@ -150,7 +307,7 @@ class ScanWeighViewModel @Inject constructor(
 
 sealed class LocationState {
     object Waiting : LocationState()
-    data class Ready(val lat: Double, val lon: Double) : LocationState()
+    data class Ready(val lat: Double, val lon: Double, val accuracy: Float? = null) : LocationState()
     data class Error(val message: String) : LocationState()
 }
 
@@ -158,5 +315,6 @@ sealed class SubmissionState {
     object Idle : SubmissionState()
     object Loading : SubmissionState()
     object Success : SubmissionState()
+    data class BatchSuccess(val count: Int) : SubmissionState()
     data class Error(val message: String) : SubmissionState()
 }

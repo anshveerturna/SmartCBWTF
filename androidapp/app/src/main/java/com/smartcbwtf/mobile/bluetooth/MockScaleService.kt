@@ -1,5 +1,6 @@
 package com.smartcbwtf.mobile.bluetooth
 
+import android.bluetooth.BluetoothDevice
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,11 +17,19 @@ class MockScaleService @Inject constructor() : ScaleService {
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
+    private val _discoveredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
+    override val discoveredDevices: StateFlow<List<BluetoothDevice>> = _discoveredDevices.asStateFlow()
+
     override suspend fun connect() {
         _connectionState.value = ConnectionState.CONNECTING
         delay(1000)
         _connectionState.value = ConnectionState.CONNECTED
         simulateWeight()
+    }
+
+    override suspend fun connectToDevice(device: BluetoothDevice) {
+        // Mock implementation - just connect
+        connect()
     }
 
     override suspend fun disconnect() {

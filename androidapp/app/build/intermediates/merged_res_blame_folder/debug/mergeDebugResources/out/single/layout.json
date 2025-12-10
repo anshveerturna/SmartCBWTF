@@ -16,6 +16,10 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-62:/layout/fragment_start_pickup.xml"
     },
     {
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-mergeDebugResources-59:/layout/item_hcf_card.xml",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-62:/layout/item_hcf_card.xml"
+    },
+    {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-mergeDebugResources-59:/layout/fragment_scan_weigh.xml",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-62:/layout/fragment_scan_weigh.xml"
     },
@@ -28,15 +32,15 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-62:/layout/fragment_profile.xml"
     },
     {
+        "merged": "com.smartcbwtf.mobile.app-mergeDebugResources-59:/layout/fragment_scan_weigh.xml",
+        "source": "com.smartcbwtf.mobile.app-main-62:/layout/fragment_scan_weigh.xml"
+    },
+    {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-mergeDebugResources-59:/layout/fragment_settings.xml",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-62:/layout/fragment_settings.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-mergeDebugResources-59:/layout/fragment_hcf_registration.xml",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-62:/layout/fragment_hcf_registration.xml"
-    },
-    {
-        "merged": "com.smartcbwtf.mobile.app-mergeDebugResources-59:/layout/fragment_home.xml",
-        "source": "com.smartcbwtf.mobile.app-main-62:/layout/fragment_home.xml"
     }
 ]

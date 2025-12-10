@@ -4,13 +4,16 @@ package com.smartcbwtf.mobile.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.widget.NestedScrollView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
 import com.smartcbwtf.mobile.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -18,25 +21,73 @@ import java.lang.String;
 
 public final class FragmentScanWeighBinding implements ViewBinding {
   @NonNull
-  private final LinearLayout rootView;
+  private final NestedScrollView rootView;
 
   @NonNull
-  public final Button btnConnectScale;
+  public final LinearLayout bluetoothStatusBadge;
 
   @NonNull
-  public final Button btnScanQr;
+  public final View bluetoothStatusDot;
 
   @NonNull
-  public final Button btnSimulateWeight;
+  public final MaterialButton btnAddBag;
 
   @NonNull
-  public final Button btnSubmit;
+  public final MaterialButton btnConnectScale;
+
+  @NonNull
+  public final MaterialButton btnScanAgain;
+
+  @NonNull
+  public final MaterialButton btnScanQr;
+
+  @NonNull
+  public final MaterialButton btnSubmit;
+
+  @NonNull
+  public final MaterialButton btnSubmitAll;
+
+  @NonNull
+  public final MaterialCardView cardQrScan;
+
+  @NonNull
+  public final MaterialCardView cardSessionSummary;
+
+  @NonNull
+  public final MaterialCardView cardWeight;
+
+  @NonNull
+  public final LinearLayout footerStatus;
+
+  @NonNull
+  public final LinearLayout gpsStatusBadge;
+
+  @NonNull
+  public final View gpsStatusDot;
+
+  @NonNull
+  public final LinearLayout headerSection;
+
+  @NonNull
+  public final ProgressBar progressSubmit;
+
+  @NonNull
+  public final LinearLayout qrScanPrompt;
+
+  @NonNull
+  public final LinearLayout qrScannedInfo;
+
+  @NonNull
+  public final LinearLayout sessionActionsLayout;
+
+  @NonNull
+  public final TextView tvBluetoothStatus;
+
+  @NonNull
+  public final TextView tvGpsStatus;
 
   @NonNull
   public final TextView tvLocationCoords;
-
-  @NonNull
-  public final TextView tvLocationStatus;
 
   @NonNull
   public final TextView tvModeSubtitle;
@@ -45,40 +96,84 @@ public final class FragmentScanWeighBinding implements ViewBinding {
   public final TextView tvModeTitle;
 
   @NonNull
+  public final TextView tvPendingSync;
+
+  @NonNull
   public final TextView tvQrCode;
 
   @NonNull
   public final TextView tvQrCodeError;
 
   @NonNull
-  public final TextView tvStatus;
+  public final TextView tvQrTimestamp;
+
+  @NonNull
+  public final TextView tvScaleStatus;
+
+  @NonNull
+  public final TextView tvSessionBagCount;
+
+  @NonNull
+  public final TextView tvSessionTotalWeight;
 
   @NonNull
   public final TextView tvWeight;
 
-  private FragmentScanWeighBinding(@NonNull LinearLayout rootView, @NonNull Button btnConnectScale,
-      @NonNull Button btnScanQr, @NonNull Button btnSimulateWeight, @NonNull Button btnSubmit,
-      @NonNull TextView tvLocationCoords, @NonNull TextView tvLocationStatus,
-      @NonNull TextView tvModeSubtitle, @NonNull TextView tvModeTitle, @NonNull TextView tvQrCode,
-      @NonNull TextView tvQrCodeError, @NonNull TextView tvStatus, @NonNull TextView tvWeight) {
+  private FragmentScanWeighBinding(@NonNull NestedScrollView rootView,
+      @NonNull LinearLayout bluetoothStatusBadge, @NonNull View bluetoothStatusDot,
+      @NonNull MaterialButton btnAddBag, @NonNull MaterialButton btnConnectScale,
+      @NonNull MaterialButton btnScanAgain, @NonNull MaterialButton btnScanQr,
+      @NonNull MaterialButton btnSubmit, @NonNull MaterialButton btnSubmitAll,
+      @NonNull MaterialCardView cardQrScan, @NonNull MaterialCardView cardSessionSummary,
+      @NonNull MaterialCardView cardWeight, @NonNull LinearLayout footerStatus,
+      @NonNull LinearLayout gpsStatusBadge, @NonNull View gpsStatusDot,
+      @NonNull LinearLayout headerSection, @NonNull ProgressBar progressSubmit,
+      @NonNull LinearLayout qrScanPrompt, @NonNull LinearLayout qrScannedInfo,
+      @NonNull LinearLayout sessionActionsLayout, @NonNull TextView tvBluetoothStatus,
+      @NonNull TextView tvGpsStatus, @NonNull TextView tvLocationCoords,
+      @NonNull TextView tvModeSubtitle, @NonNull TextView tvModeTitle,
+      @NonNull TextView tvPendingSync, @NonNull TextView tvQrCode, @NonNull TextView tvQrCodeError,
+      @NonNull TextView tvQrTimestamp, @NonNull TextView tvScaleStatus,
+      @NonNull TextView tvSessionBagCount, @NonNull TextView tvSessionTotalWeight,
+      @NonNull TextView tvWeight) {
     this.rootView = rootView;
+    this.bluetoothStatusBadge = bluetoothStatusBadge;
+    this.bluetoothStatusDot = bluetoothStatusDot;
+    this.btnAddBag = btnAddBag;
     this.btnConnectScale = btnConnectScale;
+    this.btnScanAgain = btnScanAgain;
     this.btnScanQr = btnScanQr;
-    this.btnSimulateWeight = btnSimulateWeight;
     this.btnSubmit = btnSubmit;
+    this.btnSubmitAll = btnSubmitAll;
+    this.cardQrScan = cardQrScan;
+    this.cardSessionSummary = cardSessionSummary;
+    this.cardWeight = cardWeight;
+    this.footerStatus = footerStatus;
+    this.gpsStatusBadge = gpsStatusBadge;
+    this.gpsStatusDot = gpsStatusDot;
+    this.headerSection = headerSection;
+    this.progressSubmit = progressSubmit;
+    this.qrScanPrompt = qrScanPrompt;
+    this.qrScannedInfo = qrScannedInfo;
+    this.sessionActionsLayout = sessionActionsLayout;
+    this.tvBluetoothStatus = tvBluetoothStatus;
+    this.tvGpsStatus = tvGpsStatus;
     this.tvLocationCoords = tvLocationCoords;
-    this.tvLocationStatus = tvLocationStatus;
     this.tvModeSubtitle = tvModeSubtitle;
     this.tvModeTitle = tvModeTitle;
+    this.tvPendingSync = tvPendingSync;
     this.tvQrCode = tvQrCode;
     this.tvQrCodeError = tvQrCodeError;
-    this.tvStatus = tvStatus;
+    this.tvQrTimestamp = tvQrTimestamp;
+    this.tvScaleStatus = tvScaleStatus;
+    this.tvSessionBagCount = tvSessionBagCount;
+    this.tvSessionTotalWeight = tvSessionTotalWeight;
     this.tvWeight = tvWeight;
   }
 
   @Override
   @NonNull
-  public LinearLayout getRoot() {
+  public NestedScrollView getRoot() {
     return rootView;
   }
 
@@ -103,39 +198,135 @@ public final class FragmentScanWeighBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.bluetoothStatusBadge;
+      LinearLayout bluetoothStatusBadge = ViewBindings.findChildViewById(rootView, id);
+      if (bluetoothStatusBadge == null) {
+        break missingId;
+      }
+
+      id = R.id.bluetoothStatusDot;
+      View bluetoothStatusDot = ViewBindings.findChildViewById(rootView, id);
+      if (bluetoothStatusDot == null) {
+        break missingId;
+      }
+
+      id = R.id.btnAddBag;
+      MaterialButton btnAddBag = ViewBindings.findChildViewById(rootView, id);
+      if (btnAddBag == null) {
+        break missingId;
+      }
+
       id = R.id.btnConnectScale;
-      Button btnConnectScale = ViewBindings.findChildViewById(rootView, id);
+      MaterialButton btnConnectScale = ViewBindings.findChildViewById(rootView, id);
       if (btnConnectScale == null) {
         break missingId;
       }
 
+      id = R.id.btnScanAgain;
+      MaterialButton btnScanAgain = ViewBindings.findChildViewById(rootView, id);
+      if (btnScanAgain == null) {
+        break missingId;
+      }
+
       id = R.id.btnScanQr;
-      Button btnScanQr = ViewBindings.findChildViewById(rootView, id);
+      MaterialButton btnScanQr = ViewBindings.findChildViewById(rootView, id);
       if (btnScanQr == null) {
         break missingId;
       }
 
-      id = R.id.btnSimulateWeight;
-      Button btnSimulateWeight = ViewBindings.findChildViewById(rootView, id);
-      if (btnSimulateWeight == null) {
+      id = R.id.btnSubmit;
+      MaterialButton btnSubmit = ViewBindings.findChildViewById(rootView, id);
+      if (btnSubmit == null) {
         break missingId;
       }
 
-      id = R.id.btnSubmit;
-      Button btnSubmit = ViewBindings.findChildViewById(rootView, id);
-      if (btnSubmit == null) {
+      id = R.id.btnSubmitAll;
+      MaterialButton btnSubmitAll = ViewBindings.findChildViewById(rootView, id);
+      if (btnSubmitAll == null) {
+        break missingId;
+      }
+
+      id = R.id.cardQrScan;
+      MaterialCardView cardQrScan = ViewBindings.findChildViewById(rootView, id);
+      if (cardQrScan == null) {
+        break missingId;
+      }
+
+      id = R.id.cardSessionSummary;
+      MaterialCardView cardSessionSummary = ViewBindings.findChildViewById(rootView, id);
+      if (cardSessionSummary == null) {
+        break missingId;
+      }
+
+      id = R.id.cardWeight;
+      MaterialCardView cardWeight = ViewBindings.findChildViewById(rootView, id);
+      if (cardWeight == null) {
+        break missingId;
+      }
+
+      id = R.id.footerStatus;
+      LinearLayout footerStatus = ViewBindings.findChildViewById(rootView, id);
+      if (footerStatus == null) {
+        break missingId;
+      }
+
+      id = R.id.gpsStatusBadge;
+      LinearLayout gpsStatusBadge = ViewBindings.findChildViewById(rootView, id);
+      if (gpsStatusBadge == null) {
+        break missingId;
+      }
+
+      id = R.id.gpsStatusDot;
+      View gpsStatusDot = ViewBindings.findChildViewById(rootView, id);
+      if (gpsStatusDot == null) {
+        break missingId;
+      }
+
+      id = R.id.headerSection;
+      LinearLayout headerSection = ViewBindings.findChildViewById(rootView, id);
+      if (headerSection == null) {
+        break missingId;
+      }
+
+      id = R.id.progressSubmit;
+      ProgressBar progressSubmit = ViewBindings.findChildViewById(rootView, id);
+      if (progressSubmit == null) {
+        break missingId;
+      }
+
+      id = R.id.qrScanPrompt;
+      LinearLayout qrScanPrompt = ViewBindings.findChildViewById(rootView, id);
+      if (qrScanPrompt == null) {
+        break missingId;
+      }
+
+      id = R.id.qrScannedInfo;
+      LinearLayout qrScannedInfo = ViewBindings.findChildViewById(rootView, id);
+      if (qrScannedInfo == null) {
+        break missingId;
+      }
+
+      id = R.id.sessionActionsLayout;
+      LinearLayout sessionActionsLayout = ViewBindings.findChildViewById(rootView, id);
+      if (sessionActionsLayout == null) {
+        break missingId;
+      }
+
+      id = R.id.tvBluetoothStatus;
+      TextView tvBluetoothStatus = ViewBindings.findChildViewById(rootView, id);
+      if (tvBluetoothStatus == null) {
+        break missingId;
+      }
+
+      id = R.id.tvGpsStatus;
+      TextView tvGpsStatus = ViewBindings.findChildViewById(rootView, id);
+      if (tvGpsStatus == null) {
         break missingId;
       }
 
       id = R.id.tvLocationCoords;
       TextView tvLocationCoords = ViewBindings.findChildViewById(rootView, id);
       if (tvLocationCoords == null) {
-        break missingId;
-      }
-
-      id = R.id.tvLocationStatus;
-      TextView tvLocationStatus = ViewBindings.findChildViewById(rootView, id);
-      if (tvLocationStatus == null) {
         break missingId;
       }
 
@@ -151,6 +342,12 @@ public final class FragmentScanWeighBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.tvPendingSync;
+      TextView tvPendingSync = ViewBindings.findChildViewById(rootView, id);
+      if (tvPendingSync == null) {
+        break missingId;
+      }
+
       id = R.id.tvQrCode;
       TextView tvQrCode = ViewBindings.findChildViewById(rootView, id);
       if (tvQrCode == null) {
@@ -163,9 +360,27 @@ public final class FragmentScanWeighBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.tvStatus;
-      TextView tvStatus = ViewBindings.findChildViewById(rootView, id);
-      if (tvStatus == null) {
+      id = R.id.tvQrTimestamp;
+      TextView tvQrTimestamp = ViewBindings.findChildViewById(rootView, id);
+      if (tvQrTimestamp == null) {
+        break missingId;
+      }
+
+      id = R.id.tvScaleStatus;
+      TextView tvScaleStatus = ViewBindings.findChildViewById(rootView, id);
+      if (tvScaleStatus == null) {
+        break missingId;
+      }
+
+      id = R.id.tvSessionBagCount;
+      TextView tvSessionBagCount = ViewBindings.findChildViewById(rootView, id);
+      if (tvSessionBagCount == null) {
+        break missingId;
+      }
+
+      id = R.id.tvSessionTotalWeight;
+      TextView tvSessionTotalWeight = ViewBindings.findChildViewById(rootView, id);
+      if (tvSessionTotalWeight == null) {
         break missingId;
       }
 
@@ -175,9 +390,13 @@ public final class FragmentScanWeighBinding implements ViewBinding {
         break missingId;
       }
 
-      return new FragmentScanWeighBinding((LinearLayout) rootView, btnConnectScale, btnScanQr,
-          btnSimulateWeight, btnSubmit, tvLocationCoords, tvLocationStatus, tvModeSubtitle,
-          tvModeTitle, tvQrCode, tvQrCodeError, tvStatus, tvWeight);
+      return new FragmentScanWeighBinding((NestedScrollView) rootView, bluetoothStatusBadge,
+          bluetoothStatusDot, btnAddBag, btnConnectScale, btnScanAgain, btnScanQr, btnSubmit,
+          btnSubmitAll, cardQrScan, cardSessionSummary, cardWeight, footerStatus, gpsStatusBadge,
+          gpsStatusDot, headerSection, progressSubmit, qrScanPrompt, qrScannedInfo,
+          sessionActionsLayout, tvBluetoothStatus, tvGpsStatus, tvLocationCoords, tvModeSubtitle,
+          tvModeTitle, tvPendingSync, tvQrCode, tvQrCodeError, tvQrTimestamp, tvScaleStatus,
+          tvSessionBagCount, tvSessionTotalWeight, tvWeight);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

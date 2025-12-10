@@ -23,6 +23,21 @@ public class HomeFragmentDirections private constructor() {
       }
   }
 
+  private data class ActionHomeFragmentToScanWeighFragment(
+    public val hcfId: String = "",
+    public val eventType: String = "HCF_COLLECTION",
+  ) : NavDirections {
+    public override val actionId: Int = R.id.action_homeFragment_to_scanWeighFragment
+
+    public override val arguments: Bundle
+      get() {
+        val result = Bundle()
+        result.putString("hcfId", this.hcfId)
+        result.putString("eventType", this.eventType)
+        return result
+      }
+  }
+
   public companion object {
     public fun actionHomeFragmentToStartPickupFragment(): NavDirections =
         ActionOnlyNavDirections(R.id.action_homeFragment_to_startPickupFragment)
@@ -30,6 +45,9 @@ public class HomeFragmentDirections private constructor() {
     public fun actionHomeFragmentToVerifyAtCbtwfFragment(hcfId: String = "", eventType: String =
         "CBWTF_VERIFICATION"): NavDirections = ActionHomeFragmentToVerifyAtCbtwfFragment(hcfId,
         eventType)
+
+    public fun actionHomeFragmentToScanWeighFragment(hcfId: String = "", eventType: String =
+        "HCF_COLLECTION"): NavDirections = ActionHomeFragmentToScanWeighFragment(hcfId, eventType)
 
     public fun actionHomeFragmentToHcfRegistrationFragment(): NavDirections =
         ActionOnlyNavDirections(R.id.action_homeFragment_to_hcfRegistrationFragment)

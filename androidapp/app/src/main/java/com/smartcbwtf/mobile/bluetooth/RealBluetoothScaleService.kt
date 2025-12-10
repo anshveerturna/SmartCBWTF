@@ -41,11 +41,15 @@ class RealBluetoothScaleService @Inject constructor(
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
+    private val _discoveredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
+    override val discoveredDevices: StateFlow<List<BluetoothDevice>> = _discoveredDevices.asStateFlow()
+
     private var bluetoothGatt: BluetoothGatt? = null
     private var scanCallback: ScanCallback? = null
     private val scope = CoroutineScope(Dispatchers.IO)
     private var connectionJob: Job? = null
     private val recentWeights = ArrayDeque<Double>()
+    private val discoveredDeviceSet = mutableSetOf<String>() // Track by address to avoid duplicates
 
     // Known UUIDs for common BLE scales - replace with actual device UUIDs
     private val SERVICE_UUID = UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb")
@@ -58,28 +62,38 @@ class RealBluetoothScaleService @Inject constructor(
             return
         }
 
+        // Clear previous discovered devices
+        discoveredDeviceSet.clear()
+        _discoveredDevices.value = emptyList()
         _connectionState.value = ConnectionState.SCANNING
         
         scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val device = result.device
-                // Simple logic: connect to first device with "Scale" in name or specific MAC
-                if (device.name?.contains("Scale", ignoreCase = true) == true) {
-                    stopScanInternal()
-                    connectToDevice(device)
+                val deviceAddress = device.address
+                val deviceName = device.name
+                
+                // Add device if it has a name and hasn't been discovered yet
+                if (deviceName != null && deviceAddress !in discoveredDeviceSet) {
+                    discoveredDeviceSet.add(deviceAddress)
+                    val currentList = _discoveredDevices.value.toMutableList()
+                    currentList.add(device)
+                    _discoveredDevices.value = currentList
+                    Log.d("RealBluetoothScaleService", "Discovered device: $deviceName ($deviceAddress)")
                 }
             }
 
             override fun onScanFailed(errorCode: Int) {
+                Log.e("RealBluetoothScaleService", "Scan failed with error code: $errorCode")
                 _connectionState.value = ConnectionState.ERROR
             }
         }
 
         bluetoothAdapter.bluetoothLeScanner.startScan(scanCallback)
         
-        // Timeout scan after 10 seconds
+        // Timeout scan after 15 seconds
         scope.launch {
-            delay(10000)
+            delay(15000)
             if (_connectionState.value == ConnectionState.SCANNING) {
                 stopScan()
             }
@@ -102,12 +116,14 @@ class RealBluetoothScaleService @Inject constructor(
     }
 
     @SuppressLint("MissingPermission")
-    private fun connectToDevice(device: BluetoothDevice) {
+    override suspend fun connectToDevice(device: BluetoothDevice) {
+        stopScanInternal()
         _connectionState.value = ConnectionState.CONNECTING
         bluetoothGatt = device.connectGatt(context, false, gattCallback)
     }
 
     override suspend fun connect() {
+        // Start scanning - UI will handle device selection
         startScan()
     }
 

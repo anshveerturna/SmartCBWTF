@@ -6,6 +6,7 @@ import java.util.UUID
 
 interface BagEventRepository {
     suspend fun record(event: BagEvent)
+    suspend fun recordBatch(events: List<BagEvent>)
     fun getPending(): Flow<List<BagEvent>>
     fun pendingCount(): Flow<Int>
     suspend fun markSynced(ids: List<UUID>)

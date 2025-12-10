@@ -26,6 +26,12 @@ class DefaultBagEventRepository @Inject constructor(
         dao.upsert(event.toEntity())
     }
 
+    override suspend fun recordBatch(events: List<BagEvent>) = withContext(ioDispatcher) {
+        events.forEach { event ->
+            dao.upsert(event.toEntity())
+        }
+    }
+
     override fun getPending(): Flow<List<BagEvent>> =
         dao.getPending().map { list -> list.map { it.toDomain() } }
 

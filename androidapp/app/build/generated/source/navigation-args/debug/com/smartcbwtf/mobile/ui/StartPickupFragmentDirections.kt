@@ -8,8 +8,8 @@ import kotlin.String
 
 public class StartPickupFragmentDirections private constructor() {
   private data class ActionStartPickupFragmentToScanWeighFragment(
-    public val hcfId: String,
-    public val eventType: String = "COLLECTION",
+    public val hcfId: String = "",
+    public val eventType: String = "HCF_COLLECTION",
   ) : NavDirections {
     public override val actionId: Int = R.id.action_startPickupFragment_to_scanWeighFragment
 
@@ -23,8 +23,8 @@ public class StartPickupFragmentDirections private constructor() {
   }
 
   public companion object {
-    public fun actionStartPickupFragmentToScanWeighFragment(hcfId: String, eventType: String =
-        "COLLECTION"): NavDirections = ActionStartPickupFragmentToScanWeighFragment(hcfId,
+    public fun actionStartPickupFragmentToScanWeighFragment(hcfId: String = "", eventType: String =
+        "HCF_COLLECTION"): NavDirections = ActionStartPickupFragmentToScanWeighFragment(hcfId,
         eventType)
   }
 }

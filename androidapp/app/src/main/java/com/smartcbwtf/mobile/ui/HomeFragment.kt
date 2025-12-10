@@ -65,7 +65,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         }
 
         binding.cardPickup.setOnClickListener {
-            findNavController().navigate(R.id.action_homeFragment_to_startPickupFragment)
+            findNavController().navigate(R.id.action_homeFragment_to_scanWeighFragment)
         }
 
         binding.cardVerify.setOnClickListener {
