@@ -4,13 +4,17 @@ package com.smartcbwtf.mobile.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.widget.NestedScrollView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.imageview.ShapeableImageView;
 import com.smartcbwtf.mobile.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -18,46 +22,123 @@ import java.lang.String;
 
 public final class FragmentHomeBinding implements ViewBinding {
   @NonNull
-  private final LinearLayout rootView;
+  private final NestedScrollView rootView;
 
   @NonNull
-  public final Button btnLogout;
+  public final LinearLayout actionCardsContainer;
 
   @NonNull
-  public final Button btnRegisterHcf;
+  public final ShapeableImageView avatarView;
 
   @NonNull
-  public final Button btnSettings;
+  public final MaterialButton btnSettings;
 
   @NonNull
-  public final Button btnStartPickup;
+  public final MaterialCardView cardGreeting;
 
   @NonNull
-  public final Button btnVerifyAtCbtwf;
+  public final MaterialCardView cardPickup;
 
   @NonNull
-  public final TextView tvPending;
+  public final MaterialCardView cardRegister;
 
   @NonNull
-  public final TextView tvSyncError;
+  public final MaterialCardView cardStatus;
 
-  private FragmentHomeBinding(@NonNull LinearLayout rootView, @NonNull Button btnLogout,
-      @NonNull Button btnRegisterHcf, @NonNull Button btnSettings, @NonNull Button btnStartPickup,
-      @NonNull Button btnVerifyAtCbtwf, @NonNull TextView tvPending,
-      @NonNull TextView tvSyncError) {
+  @NonNull
+  public final MaterialCardView cardVerify;
+
+  @NonNull
+  public final LinearLayout headerContainer;
+
+  @NonNull
+  public final ImageView iconPending;
+
+  @NonNull
+  public final ImageView iconSync;
+
+  @NonNull
+  public final ImageView imgLogo;
+
+  @NonNull
+  public final TextView textAppName;
+
+  @NonNull
+  public final TextView textAppSubtitle;
+
+  @NonNull
+  public final TextView textGreetingSubtitle;
+
+  @NonNull
+  public final TextView textGreetingTitle;
+
+  @NonNull
+  public final TextView textPendingValue;
+
+  @NonNull
+  public final TextView textPickupSubtitle;
+
+  @NonNull
+  public final TextView textPickupTitle;
+
+  @NonNull
+  public final TextView textRegisterSubtitle;
+
+  @NonNull
+  public final TextView textRegisterTitle;
+
+  @NonNull
+  public final TextView textSyncValue;
+
+  @NonNull
+  public final TextView textVerifySubtitle;
+
+  @NonNull
+  public final TextView textVerifyTitle;
+
+  private FragmentHomeBinding(@NonNull NestedScrollView rootView,
+      @NonNull LinearLayout actionCardsContainer, @NonNull ShapeableImageView avatarView,
+      @NonNull MaterialButton btnSettings, @NonNull MaterialCardView cardGreeting,
+      @NonNull MaterialCardView cardPickup, @NonNull MaterialCardView cardRegister,
+      @NonNull MaterialCardView cardStatus, @NonNull MaterialCardView cardVerify,
+      @NonNull LinearLayout headerContainer, @NonNull ImageView iconPending,
+      @NonNull ImageView iconSync, @NonNull ImageView imgLogo, @NonNull TextView textAppName,
+      @NonNull TextView textAppSubtitle, @NonNull TextView textGreetingSubtitle,
+      @NonNull TextView textGreetingTitle, @NonNull TextView textPendingValue,
+      @NonNull TextView textPickupSubtitle, @NonNull TextView textPickupTitle,
+      @NonNull TextView textRegisterSubtitle, @NonNull TextView textRegisterTitle,
+      @NonNull TextView textSyncValue, @NonNull TextView textVerifySubtitle,
+      @NonNull TextView textVerifyTitle) {
     this.rootView = rootView;
-    this.btnLogout = btnLogout;
-    this.btnRegisterHcf = btnRegisterHcf;
+    this.actionCardsContainer = actionCardsContainer;
+    this.avatarView = avatarView;
     this.btnSettings = btnSettings;
-    this.btnStartPickup = btnStartPickup;
-    this.btnVerifyAtCbtwf = btnVerifyAtCbtwf;
-    this.tvPending = tvPending;
-    this.tvSyncError = tvSyncError;
+    this.cardGreeting = cardGreeting;
+    this.cardPickup = cardPickup;
+    this.cardRegister = cardRegister;
+    this.cardStatus = cardStatus;
+    this.cardVerify = cardVerify;
+    this.headerContainer = headerContainer;
+    this.iconPending = iconPending;
+    this.iconSync = iconSync;
+    this.imgLogo = imgLogo;
+    this.textAppName = textAppName;
+    this.textAppSubtitle = textAppSubtitle;
+    this.textGreetingSubtitle = textGreetingSubtitle;
+    this.textGreetingTitle = textGreetingTitle;
+    this.textPendingValue = textPendingValue;
+    this.textPickupSubtitle = textPickupSubtitle;
+    this.textPickupTitle = textPickupTitle;
+    this.textRegisterSubtitle = textRegisterSubtitle;
+    this.textRegisterTitle = textRegisterTitle;
+    this.textSyncValue = textSyncValue;
+    this.textVerifySubtitle = textVerifySubtitle;
+    this.textVerifyTitle = textVerifyTitle;
   }
 
   @Override
   @NonNull
-  public LinearLayout getRoot() {
+  public NestedScrollView getRoot() {
     return rootView;
   }
 
@@ -82,50 +163,156 @@ public final class FragmentHomeBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
-      id = R.id.btnLogout;
-      Button btnLogout = ViewBindings.findChildViewById(rootView, id);
-      if (btnLogout == null) {
+      id = R.id.actionCardsContainer;
+      LinearLayout actionCardsContainer = ViewBindings.findChildViewById(rootView, id);
+      if (actionCardsContainer == null) {
         break missingId;
       }
 
-      id = R.id.btnRegisterHcf;
-      Button btnRegisterHcf = ViewBindings.findChildViewById(rootView, id);
-      if (btnRegisterHcf == null) {
+      id = R.id.avatarView;
+      ShapeableImageView avatarView = ViewBindings.findChildViewById(rootView, id);
+      if (avatarView == null) {
         break missingId;
       }
 
       id = R.id.btnSettings;
-      Button btnSettings = ViewBindings.findChildViewById(rootView, id);
+      MaterialButton btnSettings = ViewBindings.findChildViewById(rootView, id);
       if (btnSettings == null) {
         break missingId;
       }
 
-      id = R.id.btnStartPickup;
-      Button btnStartPickup = ViewBindings.findChildViewById(rootView, id);
-      if (btnStartPickup == null) {
+      id = R.id.cardGreeting;
+      MaterialCardView cardGreeting = ViewBindings.findChildViewById(rootView, id);
+      if (cardGreeting == null) {
         break missingId;
       }
 
-      id = R.id.btnVerifyAtCbtwf;
-      Button btnVerifyAtCbtwf = ViewBindings.findChildViewById(rootView, id);
-      if (btnVerifyAtCbtwf == null) {
+      id = R.id.cardPickup;
+      MaterialCardView cardPickup = ViewBindings.findChildViewById(rootView, id);
+      if (cardPickup == null) {
         break missingId;
       }
 
-      id = R.id.tvPending;
-      TextView tvPending = ViewBindings.findChildViewById(rootView, id);
-      if (tvPending == null) {
+      id = R.id.cardRegister;
+      MaterialCardView cardRegister = ViewBindings.findChildViewById(rootView, id);
+      if (cardRegister == null) {
         break missingId;
       }
 
-      id = R.id.tvSyncError;
-      TextView tvSyncError = ViewBindings.findChildViewById(rootView, id);
-      if (tvSyncError == null) {
+      id = R.id.cardStatus;
+      MaterialCardView cardStatus = ViewBindings.findChildViewById(rootView, id);
+      if (cardStatus == null) {
         break missingId;
       }
 
-      return new FragmentHomeBinding((LinearLayout) rootView, btnLogout, btnRegisterHcf,
-          btnSettings, btnStartPickup, btnVerifyAtCbtwf, tvPending, tvSyncError);
+      id = R.id.cardVerify;
+      MaterialCardView cardVerify = ViewBindings.findChildViewById(rootView, id);
+      if (cardVerify == null) {
+        break missingId;
+      }
+
+      id = R.id.headerContainer;
+      LinearLayout headerContainer = ViewBindings.findChildViewById(rootView, id);
+      if (headerContainer == null) {
+        break missingId;
+      }
+
+      id = R.id.iconPending;
+      ImageView iconPending = ViewBindings.findChildViewById(rootView, id);
+      if (iconPending == null) {
+        break missingId;
+      }
+
+      id = R.id.iconSync;
+      ImageView iconSync = ViewBindings.findChildViewById(rootView, id);
+      if (iconSync == null) {
+        break missingId;
+      }
+
+      id = R.id.imgLogo;
+      ImageView imgLogo = ViewBindings.findChildViewById(rootView, id);
+      if (imgLogo == null) {
+        break missingId;
+      }
+
+      id = R.id.textAppName;
+      TextView textAppName = ViewBindings.findChildViewById(rootView, id);
+      if (textAppName == null) {
+        break missingId;
+      }
+
+      id = R.id.textAppSubtitle;
+      TextView textAppSubtitle = ViewBindings.findChildViewById(rootView, id);
+      if (textAppSubtitle == null) {
+        break missingId;
+      }
+
+      id = R.id.textGreetingSubtitle;
+      TextView textGreetingSubtitle = ViewBindings.findChildViewById(rootView, id);
+      if (textGreetingSubtitle == null) {
+        break missingId;
+      }
+
+      id = R.id.textGreetingTitle;
+      TextView textGreetingTitle = ViewBindings.findChildViewById(rootView, id);
+      if (textGreetingTitle == null) {
+        break missingId;
+      }
+
+      id = R.id.textPendingValue;
+      TextView textPendingValue = ViewBindings.findChildViewById(rootView, id);
+      if (textPendingValue == null) {
+        break missingId;
+      }
+
+      id = R.id.textPickupSubtitle;
+      TextView textPickupSubtitle = ViewBindings.findChildViewById(rootView, id);
+      if (textPickupSubtitle == null) {
+        break missingId;
+      }
+
+      id = R.id.textPickupTitle;
+      TextView textPickupTitle = ViewBindings.findChildViewById(rootView, id);
+      if (textPickupTitle == null) {
+        break missingId;
+      }
+
+      id = R.id.textRegisterSubtitle;
+      TextView textRegisterSubtitle = ViewBindings.findChildViewById(rootView, id);
+      if (textRegisterSubtitle == null) {
+        break missingId;
+      }
+
+      id = R.id.textRegisterTitle;
+      TextView textRegisterTitle = ViewBindings.findChildViewById(rootView, id);
+      if (textRegisterTitle == null) {
+        break missingId;
+      }
+
+      id = R.id.textSyncValue;
+      TextView textSyncValue = ViewBindings.findChildViewById(rootView, id);
+      if (textSyncValue == null) {
+        break missingId;
+      }
+
+      id = R.id.textVerifySubtitle;
+      TextView textVerifySubtitle = ViewBindings.findChildViewById(rootView, id);
+      if (textVerifySubtitle == null) {
+        break missingId;
+      }
+
+      id = R.id.textVerifyTitle;
+      TextView textVerifyTitle = ViewBindings.findChildViewById(rootView, id);
+      if (textVerifyTitle == null) {
+        break missingId;
+      }
+
+      return new FragmentHomeBinding((NestedScrollView) rootView, actionCardsContainer, avatarView,
+          btnSettings, cardGreeting, cardPickup, cardRegister, cardStatus, cardVerify,
+          headerContainer, iconPending, iconSync, imgLogo, textAppName, textAppSubtitle,
+          textGreetingSubtitle, textGreetingTitle, textPendingValue, textPickupSubtitle,
+          textPickupTitle, textRegisterSubtitle, textRegisterTitle, textSyncValue,
+          textVerifySubtitle, textVerifyTitle);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

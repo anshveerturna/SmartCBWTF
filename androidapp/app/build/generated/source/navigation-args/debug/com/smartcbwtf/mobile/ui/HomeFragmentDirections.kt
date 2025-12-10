@@ -39,5 +39,8 @@ public class HomeFragmentDirections private constructor() {
 
     public fun actionHomeFragmentToSettingsFragment(): NavDirections =
         ActionOnlyNavDirections(R.id.action_homeFragment_to_settingsFragment)
+
+    public fun actionHomeFragmentToProfileFragment(): NavDirections =
+        ActionOnlyNavDirections(R.id.action_homeFragment_to_profileFragment)
   }
 }
