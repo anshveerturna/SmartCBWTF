@@ -24,4 +24,6 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 	Optional<BagEvent> findFirstByBagLabelIdAndEventTypeOrderByEventTsDesc(UUID bagLabelId, String eventType);
 
 	boolean existsByBagLabelIdAndEventTypeAndEventTs(UUID bagLabelId, String eventType, Instant eventTs);
+
+	boolean existsByBagLabelIdAndEventType(UUID bagLabelId, String eventType);
 }

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.animation.ValueAnimator
 import android.bluetooth.BluetoothDevice
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.OvershootInterpolator
@@ -13,6 +14,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -24,11 +26,14 @@ import com.google.android.material.snackbar.Snackbar
 import com.smartcbwtf.mobile.R
 import com.smartcbwtf.mobile.bluetooth.ConnectionState
 import com.smartcbwtf.mobile.databinding.FragmentScanWeighBinding
+import com.smartcbwtf.mobile.model.OperationMode
 import com.smartcbwtf.mobile.utils.PermissionHelper
+import com.smartcbwtf.mobile.viewmodel.GeofenceState
 import com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel
 import com.smartcbwtf.mobile.viewmodel.SubmissionState
 import com.smartcbwtf.mobile.viewmodel.LocationState
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -49,6 +54,13 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
 
     private var lastScanTime: Long = 0
     private var bluetoothDialog: AlertDialog? = null
+    private var geofenceBlockingDialog: AlertDialog? = null
+    
+    private val isVerificationMode: Boolean
+        get() = args.eventType.equals("CBWTF_VERIFICATION", ignoreCase = true)
+    
+    private val deviceId: String
+        get() = Settings.Secure.getString(requireContext().contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown"
 
     private val backPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
@@ -79,12 +91,21 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         // Register back press callback
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backPressedCallback)
 
+        // Set operation mode based on navigation args
+        val mode = if (isVerificationMode) OperationMode.VERIFY else OperationMode.COLLECTION
+        viewModel.setOperationMode(mode)
+
         setupUI()
         setupListeners()
         setupObservers()
 
         if (permissionHelper.hasLocationPermission()) {
-            viewModel.refreshLocation()
+            if (isVerificationMode) {
+                // Initialize verification mode with GPS gating
+                viewModel.initializeVerificationMode()
+            } else {
+                viewModel.refreshLocation()
+            }
         }
 
         // Request permissions on start
@@ -94,11 +115,18 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
     private fun setupUI() {
         val isVerification = args.eventType.equals("CBWTF_VERIFICATION", ignoreCase = true)
         
+        // Update toolbar title based on mode
+        (activity as? AppCompatActivity)?.supportActionBar?.title = 
+            if (isVerification) "Verify at CBWTF" else "Scan & Weigh"
+        
         binding.tvModeTitle.text = if (isVerification) "Verify Waste" else "Pickup Waste"
         binding.tvModeSubtitle.text = if (isVerification) 
-            "Confirm inbound bags at the CBWTF facility." 
+            "Scan bag QR and verify using the plant Bluetooth scale." 
         else 
             "Scan bag QR and weigh using the Bluetooth scale."
+
+        // Update submit button text based on mode
+        binding.btnSubmitAll.text = if (isVerification) "Verify" else "Submit"
 
         // Initial session summary
         updateSessionSummary(0, 0.0)
@@ -141,8 +169,12 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         // Submit All button
         binding.btnSubmitAll.setOnClickListener {
             animateButtonPress(it)
-            val eventType = args.eventType.ifBlank { "HCF_COLLECTION" }
-            viewModel.submitAll(eventType)
+            if (isVerificationMode) {
+                viewModel.verifyBag(deviceId)
+            } else {
+                val eventType = args.eventType.ifBlank { "HCF_COLLECTION" }
+                viewModel.submitAll(eventType)
+            }
         }
     }
 
@@ -275,7 +307,30 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
                         }.show()
                         
                         // Reset button text
-                        binding.btnSubmitAll.text = "Submit"
+                        binding.btnSubmitAll.text = if (isVerificationMode) "Verify" else "Submit"
+                    }
+                    is SubmissionState.VerifySuccess -> {
+                        binding.progressSubmit.isVisible = false
+                        binding.btnSubmitAll.text = "Verify"
+                        
+                        // Show verification result
+                        val message = if (state.anomalyState == "MISMATCH") {
+                            "Verified with MISMATCH! Weight delta: ${state.deltaKg?.let { "%.2f".format(it) } ?: "N/A"} kg"
+                        } else {
+                            "Bag verified successfully!"
+                        }
+                        
+                        val snackbarColor = if (state.anomalyState == "MISMATCH") {
+                            com.google.android.material.R.color.design_default_color_error
+                        } else {
+                            R.color.success
+                        }
+                        
+                        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG)
+                            .setAction("Next") {
+                                viewModel.resetForNextScan()
+                            }
+                            .show()
                     }
                     is SubmissionState.Success -> {
                         binding.progressSubmit.isVisible = false
@@ -284,7 +339,7 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
                     }
                     is SubmissionState.Error -> {
                         binding.progressSubmit.isVisible = false
-                        binding.btnSubmitAll.text = "Submit"
+                        binding.btnSubmitAll.text = if (isVerificationMode) "Verify" else "Submit"
                         Toast.makeText(requireContext(), state.message, Toast.LENGTH_SHORT).show()
                     }
                     else -> {
@@ -302,6 +357,79 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
                 }
             }
         }
+
+        // Geofence state (for verification mode)
+        if (isVerificationMode) {
+            viewLifecycleOwner.lifecycleScope.launch {
+                viewModel.geofenceState.collectLatest { state ->
+                    handleGeofenceState(state)
+                }
+            }
+
+            // Can Verify (overrides canSubmitAll for verification mode)
+            viewLifecycleOwner.lifecycleScope.launch {
+                viewModel.canVerify.collectLatest { enabled ->
+                    binding.btnSubmitAll.isEnabled = enabled
+                    binding.btnSubmitAll.alpha = if (enabled) 1f else 0.6f
+                }
+            }
+
+            // Scanner enabled state
+            viewLifecycleOwner.lifecycleScope.launch {
+                viewModel.scannerEnabled.collectLatest { enabled ->
+                    binding.btnScanQr.isEnabled = enabled
+                    binding.btnScanQr.alpha = if (enabled) 1f else 0.6f
+                    binding.btnScanAgain.isEnabled = enabled
+                    binding.btnScanAgain.alpha = if (enabled) 1f else 0.6f
+                }
+            }
+        }
+    }
+
+    private fun handleGeofenceState(state: GeofenceState) {
+        when (state) {
+            is GeofenceState.NotChecked -> {
+                // Initial state, nothing to show
+            }
+            is GeofenceState.AcquiringGPS -> {
+                binding.tvGpsStatus.text = "GPS: Acquiring for verification..."
+                binding.gpsStatusDot.setBackgroundResource(R.drawable.bg_status_dot_yellow)
+            }
+            is GeofenceState.InsideGeofence -> {
+                binding.tvGpsStatus.text = "GPS: Inside facility"
+                binding.gpsStatusDot.setBackgroundResource(R.drawable.bg_status_dot_green)
+                binding.tvLocationCoords.text = "Accuracy: ${state.accuracy?.toInt() ?: "--"}m"
+                geofenceBlockingDialog?.dismiss()
+                geofenceBlockingDialog = null
+            }
+            is GeofenceState.OutsideGeofence -> {
+                binding.tvGpsStatus.text = "GPS: Outside facility"
+                binding.gpsStatusDot.setBackgroundResource(R.drawable.bg_status_dot_gray)
+                showGeofenceBlockingDialog(state.message)
+            }
+            is GeofenceState.GpsError -> {
+                binding.tvGpsStatus.text = "GPS: Error"
+                binding.gpsStatusDot.setBackgroundResource(R.drawable.bg_status_dot_gray)
+                showGeofenceBlockingDialog(state.message)
+            }
+        }
+    }
+
+    private fun showGeofenceBlockingDialog(message: String) {
+        geofenceBlockingDialog?.dismiss()
+        geofenceBlockingDialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Location Required")
+            .setMessage(message)
+            .setCancelable(false)
+            .setPositiveButton("Retry Location") { dialog, _ ->
+                dialog.dismiss()
+                viewModel.retryGpsForVerification()
+            }
+            .setNegativeButton("Go Back") { dialog, _ ->
+                dialog.dismiss()
+                findNavController().popBackStack()
+            }
+            .show()
     }
 
     private fun updateBluetoothStatus(state: ConnectionState) {
@@ -523,6 +651,8 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         super.onDestroyView()
         bluetoothDialog?.dismiss()
         bluetoothDialog = null
+        geofenceBlockingDialog?.dismiss()
+        geofenceBlockingDialog = null
         _binding = null
     }
 }

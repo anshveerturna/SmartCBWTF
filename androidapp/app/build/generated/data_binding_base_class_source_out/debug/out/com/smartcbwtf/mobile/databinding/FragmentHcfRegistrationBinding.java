@@ -9,11 +9,9 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.widget.NestedScrollView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
-import com.google.android.material.appbar.AppBarLayout;
-import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.checkbox.MaterialCheckBox;
@@ -27,10 +25,7 @@ import java.lang.String;
 
 public final class FragmentHcfRegistrationBinding implements ViewBinding {
   @NonNull
-  private final CoordinatorLayout rootView;
-
-  @NonNull
-  public final AppBarLayout appBarLayout;
+  private final NestedScrollView rootView;
 
   @NonNull
   public final MaterialButton btnCaptureGps;
@@ -132,9 +127,6 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
   public final TextInputLayout tilPhone;
 
   @NonNull
-  public final MaterialToolbar toolbar;
-
-  @NonNull
   public final TextView tvGpsCoordinates;
 
   @NonNull
@@ -143,28 +135,26 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
   @NonNull
   public final TextView tvTermsVersion;
 
-  private FragmentHcfRegistrationBinding(@NonNull CoordinatorLayout rootView,
-      @NonNull AppBarLayout appBarLayout, @NonNull MaterialButton btnCaptureGps,
-      @NonNull MaterialButton btnRegister, @NonNull MaterialCardView cardGps,
-      @NonNull MaterialCardView cardTerms, @NonNull MaterialCheckBox cbTermsAccepted,
-      @NonNull TextInputEditText etAadharNo, @NonNull TextInputEditText etAddress,
-      @NonNull TextInputEditText etBeds, @NonNull TextInputEditText etDoctorName,
-      @NonNull TextInputEditText etEmail, @NonNull TextInputEditText etGstNo,
-      @NonNull TextInputEditText etMonthlyCharges, @NonNull TextInputEditText etName,
-      @NonNull TextInputEditText etOtherNotes, @NonNull TextInputEditText etPanNo,
-      @NonNull TextInputEditText etPcbNo, @NonNull TextInputEditText etPhone,
-      @NonNull ImageView ivGpsStatus, @NonNull ProgressBar progressBar,
-      @NonNull ProgressBar progressTerms, @NonNull MaterialSwitch switchBedded,
-      @NonNull TextInputLayout tilAadharNo, @NonNull TextInputLayout tilAddress,
-      @NonNull TextInputLayout tilBeds, @NonNull TextInputLayout tilDoctorName,
-      @NonNull TextInputLayout tilEmail, @NonNull TextInputLayout tilGstNo,
-      @NonNull TextInputLayout tilMonthlyCharges, @NonNull TextInputLayout tilName,
-      @NonNull TextInputLayout tilOtherNotes, @NonNull TextInputLayout tilPanNo,
-      @NonNull TextInputLayout tilPcbNo, @NonNull TextInputLayout tilPhone,
-      @NonNull MaterialToolbar toolbar, @NonNull TextView tvGpsCoordinates,
+  private FragmentHcfRegistrationBinding(@NonNull NestedScrollView rootView,
+      @NonNull MaterialButton btnCaptureGps, @NonNull MaterialButton btnRegister,
+      @NonNull MaterialCardView cardGps, @NonNull MaterialCardView cardTerms,
+      @NonNull MaterialCheckBox cbTermsAccepted, @NonNull TextInputEditText etAadharNo,
+      @NonNull TextInputEditText etAddress, @NonNull TextInputEditText etBeds,
+      @NonNull TextInputEditText etDoctorName, @NonNull TextInputEditText etEmail,
+      @NonNull TextInputEditText etGstNo, @NonNull TextInputEditText etMonthlyCharges,
+      @NonNull TextInputEditText etName, @NonNull TextInputEditText etOtherNotes,
+      @NonNull TextInputEditText etPanNo, @NonNull TextInputEditText etPcbNo,
+      @NonNull TextInputEditText etPhone, @NonNull ImageView ivGpsStatus,
+      @NonNull ProgressBar progressBar, @NonNull ProgressBar progressTerms,
+      @NonNull MaterialSwitch switchBedded, @NonNull TextInputLayout tilAadharNo,
+      @NonNull TextInputLayout tilAddress, @NonNull TextInputLayout tilBeds,
+      @NonNull TextInputLayout tilDoctorName, @NonNull TextInputLayout tilEmail,
+      @NonNull TextInputLayout tilGstNo, @NonNull TextInputLayout tilMonthlyCharges,
+      @NonNull TextInputLayout tilName, @NonNull TextInputLayout tilOtherNotes,
+      @NonNull TextInputLayout tilPanNo, @NonNull TextInputLayout tilPcbNo,
+      @NonNull TextInputLayout tilPhone, @NonNull TextView tvGpsCoordinates,
       @NonNull TextView tvGpsStatus, @NonNull TextView tvTermsVersion) {
     this.rootView = rootView;
-    this.appBarLayout = appBarLayout;
     this.btnCaptureGps = btnCaptureGps;
     this.btnRegister = btnRegister;
     this.cardGps = cardGps;
@@ -198,7 +188,6 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
     this.tilPanNo = tilPanNo;
     this.tilPcbNo = tilPcbNo;
     this.tilPhone = tilPhone;
-    this.toolbar = toolbar;
     this.tvGpsCoordinates = tvGpsCoordinates;
     this.tvGpsStatus = tvGpsStatus;
     this.tvTermsVersion = tvTermsVersion;
@@ -206,7 +195,7 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
 
   @Override
   @NonNull
-  public CoordinatorLayout getRoot() {
+  public NestedScrollView getRoot() {
     return rootView;
   }
 
@@ -231,12 +220,6 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
-      id = R.id.appBarLayout;
-      AppBarLayout appBarLayout = ViewBindings.findChildViewById(rootView, id);
-      if (appBarLayout == null) {
-        break missingId;
-      }
-
       id = R.id.btnCaptureGps;
       MaterialButton btnCaptureGps = ViewBindings.findChildViewById(rootView, id);
       if (btnCaptureGps == null) {
@@ -435,12 +418,6 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.toolbar;
-      MaterialToolbar toolbar = ViewBindings.findChildViewById(rootView, id);
-      if (toolbar == null) {
-        break missingId;
-      }
-
       id = R.id.tvGpsCoordinates;
       TextView tvGpsCoordinates = ViewBindings.findChildViewById(rootView, id);
       if (tvGpsCoordinates == null) {
@@ -459,13 +436,12 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
-      return new FragmentHcfRegistrationBinding((CoordinatorLayout) rootView, appBarLayout,
-          btnCaptureGps, btnRegister, cardGps, cardTerms, cbTermsAccepted, etAadharNo, etAddress,
-          etBeds, etDoctorName, etEmail, etGstNo, etMonthlyCharges, etName, etOtherNotes, etPanNo,
-          etPcbNo, etPhone, ivGpsStatus, progressBar, progressTerms, switchBedded, tilAadharNo,
-          tilAddress, tilBeds, tilDoctorName, tilEmail, tilGstNo, tilMonthlyCharges, tilName,
-          tilOtherNotes, tilPanNo, tilPcbNo, tilPhone, toolbar, tvGpsCoordinates, tvGpsStatus,
-          tvTermsVersion);
+      return new FragmentHcfRegistrationBinding((NestedScrollView) rootView, btnCaptureGps,
+          btnRegister, cardGps, cardTerms, cbTermsAccepted, etAadharNo, etAddress, etBeds,
+          etDoctorName, etEmail, etGstNo, etMonthlyCharges, etName, etOtherNotes, etPanNo, etPcbNo,
+          etPhone, ivGpsStatus, progressBar, progressTerms, switchBedded, tilAadharNo, tilAddress,
+          tilBeds, tilDoctorName, tilEmail, tilGstNo, tilMonthlyCharges, tilName, tilOtherNotes,
+          tilPanNo, tilPcbNo, tilPhone, tvGpsCoordinates, tvGpsStatus, tvTermsVersion);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

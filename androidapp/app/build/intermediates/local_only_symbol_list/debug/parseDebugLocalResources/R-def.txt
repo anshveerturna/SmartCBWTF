@@ -109,7 +109,6 @@ id action_scanWeighFragment_to_qrScannerFragment
 id action_splashFragment_to_homeFragment
 id action_splashFragment_to_loginFragment
 id action_startPickupFragment_to_scanWeighFragment
-id appBarLayout
 id avatarView
 id bluetoothStatusBadge
 id bluetoothStatusDot

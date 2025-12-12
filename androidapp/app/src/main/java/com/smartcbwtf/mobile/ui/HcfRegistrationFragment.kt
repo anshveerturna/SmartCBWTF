@@ -38,18 +38,11 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentHcfRegistrationBinding.bind(view)
 
-        setupToolbar()
         setupFormFields()
         setupGpsCapture()
         setupTermsCard()
         setupRegisterButton()
         observeStates()
-    }
-    
-    private fun setupToolbar() {
-        binding.toolbar.setNavigationOnClickListener {
-            findNavController().popBackStack()
-        }
     }
     
     private fun setupFormFields() {

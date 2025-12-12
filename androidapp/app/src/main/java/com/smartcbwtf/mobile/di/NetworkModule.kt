@@ -7,6 +7,7 @@ import com.smartcbwtf.mobile.network.AuthInterceptor
 import com.smartcbwtf.mobile.network.api.AuthApi
 import com.smartcbwtf.mobile.network.api.BagEventApi
 import com.smartcbwtf.mobile.network.api.HcfApi
+import com.smartcbwtf.mobile.network.api.VerificationApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -58,4 +59,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideBagEventApi(retrofit: Retrofit): BagEventApi = retrofit.create(BagEventApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideVerificationApi(retrofit: Retrofit): VerificationApi = retrofit.create(VerificationApi::class.java)
 }

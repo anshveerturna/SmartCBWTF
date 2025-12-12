@@ -6,14 +6,12 @@ com/smartcbwtf/service/EmailService.class
 com/smartcbwtf/config/GlobalExceptionHandler.class
 com/smartcbwtf/dto/AnalyticsResponse.class
 com/smartcbwtf/repository/AgreementNumberSequenceRepository.class
-com/smartcbwtf/service/BagEventService.class
 com/smartcbwtf/controller/InvoiceController.class
 com/smartcbwtf/dto/BagEventSyncItem.class
 com/smartcbwtf/config/GlobalExceptionHandler$ApiError.class
 com/smartcbwtf/dto/TermsCreateRequest.class
 com/smartcbwtf/controller/TermsController.class
 com/smartcbwtf/service/AgreementService.class
-com/smartcbwtf/controller/BagEventController.class
 com/smartcbwtf/repository/AppUserRepository.class
 com/smartcbwtf/service/PdfService.class
 com/smartcbwtf/dto/AlertMissingBagDto.class
@@ -43,7 +41,6 @@ com/smartcbwtf/dto/TermsResponse.class
 com/smartcbwtf/repository/FacilityRepository.class
 com/smartcbwtf/domain/BagEvent.class
 com/smartcbwtf/config/JwtService.class
-com/smartcbwtf/service/BagEventService$MismatchResult.class
 com/smartcbwtf/domain/FacilityTerms.class
 com/smartcbwtf/controller/HealthController.class
 com/smartcbwtf/domain/Agreement.class

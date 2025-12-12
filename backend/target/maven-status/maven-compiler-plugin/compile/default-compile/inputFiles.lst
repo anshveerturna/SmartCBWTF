@@ -26,6 +26,7 @@
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/Application.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/LabelService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/AuditLog.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/BagVerifyResponse.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/TermsResponse.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/FacilityTemplate.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/AnalyticsController.java
@@ -45,6 +46,7 @@
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/TemplateListItem.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/AgreementNumberSequence.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/AgreementNumberGeneratorService.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/BagVerifyRequest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/Invoice.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/config/JwtService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/AuditLogRepository.java

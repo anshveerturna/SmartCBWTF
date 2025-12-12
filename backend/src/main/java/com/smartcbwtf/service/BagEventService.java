@@ -7,6 +7,8 @@ import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.dto.BagEventSyncItem;
 import com.smartcbwtf.dto.BagEventSyncRequest;
 import com.smartcbwtf.dto.BagEventSyncResponse;
+import com.smartcbwtf.dto.BagVerifyRequest;
+import com.smartcbwtf.dto.BagVerifyResponse;
 import com.smartcbwtf.repository.BagEventRepository;
 import com.smartcbwtf.repository.BagLabelRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -190,5 +192,97 @@ public class BagEventService {
 
         String getAnomaly() { return anomaly; }
         BigDecimal getDelta() { return delta; }
+    }
+
+    /**
+     * Dedicated verification endpoint for CBWTF facility.
+     * Returns geofence violation with 403, idempotency conflict with 409.
+     */
+    @Transactional
+    public VerifyResult verifyBag(BagVerifyRequest request) {
+        // Find bag label
+        BagLabel label = bagLabelRepository.findByQrCode(request.getQrCode())
+                .orElse(null);
+        if (label == null) {
+            return new VerifyResult(404, BagVerifyResponse.error("NOT_FOUND", "Bag label not found"));
+        }
+
+        // Check idempotency - already verified
+        if (bagEventRepository.existsByBagLabelIdAndEventType(label.getId(), "CBWTF_VERIFICATION")) {
+            return new VerifyResult(409, BagVerifyResponse.error("ALREADY_VERIFIED", "Bag has already been verified"));
+        }
+
+        Facility facility = label.getFacility();
+        if (facility == null) {
+            return new VerifyResult(400, BagVerifyResponse.error("NO_FACILITY", "Bag label not assigned to a facility"));
+        }
+
+        // Server-side geofence check (authoritative)
+        Double facLat = facility.getGpsLat();
+        Double facLon = facility.getGpsLon();
+        if (facLat != null && facLon != null && request.getGpsLat() != null && request.getGpsLon() != null) {
+            double radius = facility.getGeofenceRadiusM() != null ? facility.getGeofenceRadiusM() : facilityDefaultRadiusM;
+            double distance = haversineMeters(request.getGpsLat(), request.getGpsLon(), facLat, facLon);
+            if (distance > radius) {
+                return new VerifyResult(403, BagVerifyResponse.error("OUT_OF_GEOFENCE",
+                        String.format("Device is %.0fm from facility (max %.0fm)", distance, radius)));
+            }
+        }
+
+        // Create verification event
+        Instant verifiedAt = request.getEventTs() != null ? request.getEventTs() : Instant.now();
+
+        BagEvent event = new BagEvent();
+        event.setBagLabel(label);
+        event.setFacility(facility);
+        event.setHcf(label.getHcf());
+        event.setEventType("CBWTF_VERIFICATION");
+        event.setEventTs(verifiedAt);
+        event.setGpsLat(request.getGpsLat());
+        event.setGpsLon(request.getGpsLon());
+        event.setWeightKg(request.getWeightKg());
+        event.setCollectedByUserId(request.getVerifiedByUserId());
+        event.setAppDeviceId(request.getDeviceId());
+        event.setNotes(request.getNotes());
+
+        // Check for weight mismatch
+        MismatchResult mismatchResult = evaluateMismatch(label.getId(), request.getWeightKg(), "OK");
+
+        event.setAnomalyState(mismatchResult.getAnomaly());
+        bagEventRepository.save(event);
+
+        // Update label status
+        label.setStatus("USED");
+        label.setUsedAt(verifiedAt);
+        bagLabelRepository.save(label);
+
+        // Audit log
+        String dataJson = buildAuditDataJson(mismatchResult);
+        auditLogService.log("BAG_EVENT", event.getId(), "VERIFY", request.getVerifiedByUserId(), dataJson);
+
+        BagVerifyResponse response = BagVerifyResponse.success(
+                label.getId(),
+                verifiedAt,
+                mismatchResult.getAnomaly(),
+                mismatchResult.getDelta()
+        );
+
+        return new VerifyResult(200, response);
+    }
+
+    /**
+     * Result wrapper with HTTP status code
+     */
+    public static class VerifyResult {
+        private final int httpStatus;
+        private final BagVerifyResponse response;
+
+        public VerifyResult(int httpStatus, BagVerifyResponse response) {
+            this.httpStatus = httpStatus;
+            this.response = response;
+        }
+
+        public int getHttpStatus() { return httpStatus; }
+        public BagVerifyResponse getResponse() { return response; }
     }
 }
