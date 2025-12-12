@@ -40,3 +40,24 @@ app:
     mismatch-threshold-kg: 0.5
   alerts:
     missing-bag-hours: 24
+  
+  # Email configuration
+  email:
+    enabled: false  # Set to true in production
+    from: noreply@smartcbwtf.com
+  
+  # Agreement number format configuration
+  # Default format: <FACILITY_CODE>-HCF-<YYYY>-<5-digit-sequence>
+  # Example: GUT-HCF-2025-00023
+  agreement:
+    number:
+      prefix: HCF                    # Middle prefix (e.g., HCF, AGR, BMW)
+      separator: "-"                 # Separator character
+      sequence-digits: 5             # Number of digits for sequence (padded with zeros)
+      include-facility-code: true    # Whether to include facility code at start
+      include-year: true             # Whether to include year
+  
+  # PDF generation settings
+  pdf:
+    output-dir: files/agreements     # Base directory for generated PDFs
+    timezone: Asia/Kolkata           # Timezone for date formatting

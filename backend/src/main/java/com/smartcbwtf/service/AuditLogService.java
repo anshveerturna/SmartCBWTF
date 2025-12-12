@@ -24,4 +24,19 @@ public class AuditLogService {
         log.setDataJson(dataJson);
         auditLogRepository.save(log);
     }
+
+    /**
+     * Log with data hash for tamper-evident audit trail.
+     */
+    public void logWithData(String entityType, UUID entityId, String action, 
+                            UUID actorUserId, String dataJson, String dataHash) {
+        AuditLog log = new AuditLog();
+        log.setEntityType(entityType);
+        log.setEntityId(entityId);
+        log.setAction(action);
+        log.setActorUserId(actorUserId);
+        log.setDataJson(dataJson);
+        log.setDataHash(dataHash);
+        auditLogRepository.save(log);
+    }
 }

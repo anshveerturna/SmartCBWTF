@@ -1,6 +1,7 @@
 package com.smartcbwtf.mobile.viewmodel;
 
 import com.smartcbwtf.mobile.repository.HcfRepository;
+import com.smartcbwtf.mobile.storage.SessionManager;
 import com.smartcbwtf.mobile.utils.LocationHelper;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
@@ -28,25 +29,30 @@ public final class HcfRegistrationViewModel_Factory implements Factory<HcfRegist
 
   private final Provider<LocationHelper> locationHelperProvider;
 
+  private final Provider<SessionManager> sessionManagerProvider;
+
   public HcfRegistrationViewModel_Factory(Provider<HcfRepository> hcfRepositoryProvider,
-      Provider<LocationHelper> locationHelperProvider) {
+      Provider<LocationHelper> locationHelperProvider,
+      Provider<SessionManager> sessionManagerProvider) {
     this.hcfRepositoryProvider = hcfRepositoryProvider;
     this.locationHelperProvider = locationHelperProvider;
+    this.sessionManagerProvider = sessionManagerProvider;
   }
 
   @Override
   public HcfRegistrationViewModel get() {
-    return newInstance(hcfRepositoryProvider.get(), locationHelperProvider.get());
+    return newInstance(hcfRepositoryProvider.get(), locationHelperProvider.get(), sessionManagerProvider.get());
   }
 
   public static HcfRegistrationViewModel_Factory create(
       Provider<HcfRepository> hcfRepositoryProvider,
-      Provider<LocationHelper> locationHelperProvider) {
-    return new HcfRegistrationViewModel_Factory(hcfRepositoryProvider, locationHelperProvider);
+      Provider<LocationHelper> locationHelperProvider,
+      Provider<SessionManager> sessionManagerProvider) {
+    return new HcfRegistrationViewModel_Factory(hcfRepositoryProvider, locationHelperProvider, sessionManagerProvider);
   }
 
   public static HcfRegistrationViewModel newInstance(HcfRepository hcfRepository,
-      LocationHelper locationHelper) {
-    return new HcfRegistrationViewModel(hcfRepository, locationHelper);
+      LocationHelper locationHelper, SessionManager sessionManager) {
+    return new HcfRegistrationViewModel(hcfRepository, locationHelper, sessionManager);
   }
 }

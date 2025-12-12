@@ -196,12 +196,23 @@ README.md (this file)
 - Android: open in Android Studio; select dev flavor (MockScaleService default); run on emulator/physical device.
 
 ---
-## 14. Assumptions
+## 14. Additional Documentation
+
+- **[HCF Registration Configuration Guide](docs/HCF_REGISTRATION_CONFIGURATION.md)** - Detailed instructions for configuring:
+  - Agreement Number Generator (format, prefix, separator, sequence digits)
+  - Terms & Conditions management (creating, updating, activating versions)
+  - Facility templates for agreement PDFs
+  - Email and PDF storage settings
+
+---
+## 15. Assumptions
 - Single CBWTF facility initially; multi-facility supported via `facility` entity.
 - BLE scale sends ASCII weight strings like `ST,GS,+  5.0kg`; stabilization handled client-side.
 - Email sending can be stubbed in dev; prod uses SMTP credentials.
 - PDFs stored locally or to an object store; path kept in DB.
 
 ---
-## 15. Change Log
-- v0.1 (current): Initial architecture README and plan.
+## 16. Change Log
+- v0.2 (2025-12-12): Added HCF Registration flow with configurable agreement numbers, terms management, PDF generation
+- v0.1 (initial): Initial architecture README and plan.
+

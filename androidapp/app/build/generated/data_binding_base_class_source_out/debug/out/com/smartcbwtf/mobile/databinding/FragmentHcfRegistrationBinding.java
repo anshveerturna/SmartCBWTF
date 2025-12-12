@@ -4,13 +4,22 @@ package com.smartcbwtf.mobile.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.ScrollView;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.checkbox.MaterialCheckBox;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.smartcbwtf.mobile.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -18,10 +27,28 @@ import java.lang.String;
 
 public final class FragmentHcfRegistrationBinding implements ViewBinding {
   @NonNull
-  private final ScrollView rootView;
+  private final CoordinatorLayout rootView;
 
   @NonNull
-  public final Button btnRegister;
+  public final AppBarLayout appBarLayout;
+
+  @NonNull
+  public final MaterialButton btnCaptureGps;
+
+  @NonNull
+  public final MaterialButton btnRegister;
+
+  @NonNull
+  public final MaterialCardView cardGps;
+
+  @NonNull
+  public final MaterialCardView cardTerms;
+
+  @NonNull
+  public final MaterialCheckBox cbTermsAccepted;
+
+  @NonNull
+  public final TextInputEditText etAadharNo;
 
   @NonNull
   public final TextInputEditText etAddress;
@@ -30,43 +57,156 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
   public final TextInputEditText etBeds;
 
   @NonNull
-  public final TextInputEditText etCity;
+  public final TextInputEditText etDoctorName;
 
   @NonNull
   public final TextInputEditText etEmail;
 
   @NonNull
+  public final TextInputEditText etGstNo;
+
+  @NonNull
+  public final TextInputEditText etMonthlyCharges;
+
+  @NonNull
   public final TextInputEditText etName;
+
+  @NonNull
+  public final TextInputEditText etOtherNotes;
+
+  @NonNull
+  public final TextInputEditText etPanNo;
+
+  @NonNull
+  public final TextInputEditText etPcbNo;
 
   @NonNull
   public final TextInputEditText etPhone;
 
   @NonNull
-  public final TextInputEditText etPostal;
+  public final ImageView ivGpsStatus;
 
   @NonNull
-  public final TextInputEditText etState;
+  public final ProgressBar progressBar;
 
-  private FragmentHcfRegistrationBinding(@NonNull ScrollView rootView, @NonNull Button btnRegister,
-      @NonNull TextInputEditText etAddress, @NonNull TextInputEditText etBeds,
-      @NonNull TextInputEditText etCity, @NonNull TextInputEditText etEmail,
-      @NonNull TextInputEditText etName, @NonNull TextInputEditText etPhone,
-      @NonNull TextInputEditText etPostal, @NonNull TextInputEditText etState) {
+  @NonNull
+  public final ProgressBar progressTerms;
+
+  @NonNull
+  public final MaterialSwitch switchBedded;
+
+  @NonNull
+  public final TextInputLayout tilAadharNo;
+
+  @NonNull
+  public final TextInputLayout tilAddress;
+
+  @NonNull
+  public final TextInputLayout tilBeds;
+
+  @NonNull
+  public final TextInputLayout tilDoctorName;
+
+  @NonNull
+  public final TextInputLayout tilEmail;
+
+  @NonNull
+  public final TextInputLayout tilGstNo;
+
+  @NonNull
+  public final TextInputLayout tilMonthlyCharges;
+
+  @NonNull
+  public final TextInputLayout tilName;
+
+  @NonNull
+  public final TextInputLayout tilOtherNotes;
+
+  @NonNull
+  public final TextInputLayout tilPanNo;
+
+  @NonNull
+  public final TextInputLayout tilPcbNo;
+
+  @NonNull
+  public final TextInputLayout tilPhone;
+
+  @NonNull
+  public final MaterialToolbar toolbar;
+
+  @NonNull
+  public final TextView tvGpsCoordinates;
+
+  @NonNull
+  public final TextView tvGpsStatus;
+
+  @NonNull
+  public final TextView tvTermsVersion;
+
+  private FragmentHcfRegistrationBinding(@NonNull CoordinatorLayout rootView,
+      @NonNull AppBarLayout appBarLayout, @NonNull MaterialButton btnCaptureGps,
+      @NonNull MaterialButton btnRegister, @NonNull MaterialCardView cardGps,
+      @NonNull MaterialCardView cardTerms, @NonNull MaterialCheckBox cbTermsAccepted,
+      @NonNull TextInputEditText etAadharNo, @NonNull TextInputEditText etAddress,
+      @NonNull TextInputEditText etBeds, @NonNull TextInputEditText etDoctorName,
+      @NonNull TextInputEditText etEmail, @NonNull TextInputEditText etGstNo,
+      @NonNull TextInputEditText etMonthlyCharges, @NonNull TextInputEditText etName,
+      @NonNull TextInputEditText etOtherNotes, @NonNull TextInputEditText etPanNo,
+      @NonNull TextInputEditText etPcbNo, @NonNull TextInputEditText etPhone,
+      @NonNull ImageView ivGpsStatus, @NonNull ProgressBar progressBar,
+      @NonNull ProgressBar progressTerms, @NonNull MaterialSwitch switchBedded,
+      @NonNull TextInputLayout tilAadharNo, @NonNull TextInputLayout tilAddress,
+      @NonNull TextInputLayout tilBeds, @NonNull TextInputLayout tilDoctorName,
+      @NonNull TextInputLayout tilEmail, @NonNull TextInputLayout tilGstNo,
+      @NonNull TextInputLayout tilMonthlyCharges, @NonNull TextInputLayout tilName,
+      @NonNull TextInputLayout tilOtherNotes, @NonNull TextInputLayout tilPanNo,
+      @NonNull TextInputLayout tilPcbNo, @NonNull TextInputLayout tilPhone,
+      @NonNull MaterialToolbar toolbar, @NonNull TextView tvGpsCoordinates,
+      @NonNull TextView tvGpsStatus, @NonNull TextView tvTermsVersion) {
     this.rootView = rootView;
+    this.appBarLayout = appBarLayout;
+    this.btnCaptureGps = btnCaptureGps;
     this.btnRegister = btnRegister;
+    this.cardGps = cardGps;
+    this.cardTerms = cardTerms;
+    this.cbTermsAccepted = cbTermsAccepted;
+    this.etAadharNo = etAadharNo;
     this.etAddress = etAddress;
     this.etBeds = etBeds;
-    this.etCity = etCity;
+    this.etDoctorName = etDoctorName;
     this.etEmail = etEmail;
+    this.etGstNo = etGstNo;
+    this.etMonthlyCharges = etMonthlyCharges;
     this.etName = etName;
+    this.etOtherNotes = etOtherNotes;
+    this.etPanNo = etPanNo;
+    this.etPcbNo = etPcbNo;
     this.etPhone = etPhone;
-    this.etPostal = etPostal;
-    this.etState = etState;
+    this.ivGpsStatus = ivGpsStatus;
+    this.progressBar = progressBar;
+    this.progressTerms = progressTerms;
+    this.switchBedded = switchBedded;
+    this.tilAadharNo = tilAadharNo;
+    this.tilAddress = tilAddress;
+    this.tilBeds = tilBeds;
+    this.tilDoctorName = tilDoctorName;
+    this.tilEmail = tilEmail;
+    this.tilGstNo = tilGstNo;
+    this.tilMonthlyCharges = tilMonthlyCharges;
+    this.tilName = tilName;
+    this.tilOtherNotes = tilOtherNotes;
+    this.tilPanNo = tilPanNo;
+    this.tilPcbNo = tilPcbNo;
+    this.tilPhone = tilPhone;
+    this.toolbar = toolbar;
+    this.tvGpsCoordinates = tvGpsCoordinates;
+    this.tvGpsStatus = tvGpsStatus;
+    this.tvTermsVersion = tvTermsVersion;
   }
 
   @Override
   @NonNull
-  public ScrollView getRoot() {
+  public CoordinatorLayout getRoot() {
     return rootView;
   }
 
@@ -91,9 +231,45 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.appBarLayout;
+      AppBarLayout appBarLayout = ViewBindings.findChildViewById(rootView, id);
+      if (appBarLayout == null) {
+        break missingId;
+      }
+
+      id = R.id.btnCaptureGps;
+      MaterialButton btnCaptureGps = ViewBindings.findChildViewById(rootView, id);
+      if (btnCaptureGps == null) {
+        break missingId;
+      }
+
       id = R.id.btnRegister;
-      Button btnRegister = ViewBindings.findChildViewById(rootView, id);
+      MaterialButton btnRegister = ViewBindings.findChildViewById(rootView, id);
       if (btnRegister == null) {
+        break missingId;
+      }
+
+      id = R.id.cardGps;
+      MaterialCardView cardGps = ViewBindings.findChildViewById(rootView, id);
+      if (cardGps == null) {
+        break missingId;
+      }
+
+      id = R.id.cardTerms;
+      MaterialCardView cardTerms = ViewBindings.findChildViewById(rootView, id);
+      if (cardTerms == null) {
+        break missingId;
+      }
+
+      id = R.id.cbTermsAccepted;
+      MaterialCheckBox cbTermsAccepted = ViewBindings.findChildViewById(rootView, id);
+      if (cbTermsAccepted == null) {
+        break missingId;
+      }
+
+      id = R.id.etAadharNo;
+      TextInputEditText etAadharNo = ViewBindings.findChildViewById(rootView, id);
+      if (etAadharNo == null) {
         break missingId;
       }
 
@@ -109,9 +285,9 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.etCity;
-      TextInputEditText etCity = ViewBindings.findChildViewById(rootView, id);
-      if (etCity == null) {
+      id = R.id.etDoctorName;
+      TextInputEditText etDoctorName = ViewBindings.findChildViewById(rootView, id);
+      if (etDoctorName == null) {
         break missingId;
       }
 
@@ -121,9 +297,39 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.etGstNo;
+      TextInputEditText etGstNo = ViewBindings.findChildViewById(rootView, id);
+      if (etGstNo == null) {
+        break missingId;
+      }
+
+      id = R.id.etMonthlyCharges;
+      TextInputEditText etMonthlyCharges = ViewBindings.findChildViewById(rootView, id);
+      if (etMonthlyCharges == null) {
+        break missingId;
+      }
+
       id = R.id.etName;
       TextInputEditText etName = ViewBindings.findChildViewById(rootView, id);
       if (etName == null) {
+        break missingId;
+      }
+
+      id = R.id.etOtherNotes;
+      TextInputEditText etOtherNotes = ViewBindings.findChildViewById(rootView, id);
+      if (etOtherNotes == null) {
+        break missingId;
+      }
+
+      id = R.id.etPanNo;
+      TextInputEditText etPanNo = ViewBindings.findChildViewById(rootView, id);
+      if (etPanNo == null) {
+        break missingId;
+      }
+
+      id = R.id.etPcbNo;
+      TextInputEditText etPcbNo = ViewBindings.findChildViewById(rootView, id);
+      if (etPcbNo == null) {
         break missingId;
       }
 
@@ -133,20 +339,133 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.etPostal;
-      TextInputEditText etPostal = ViewBindings.findChildViewById(rootView, id);
-      if (etPostal == null) {
+      id = R.id.ivGpsStatus;
+      ImageView ivGpsStatus = ViewBindings.findChildViewById(rootView, id);
+      if (ivGpsStatus == null) {
         break missingId;
       }
 
-      id = R.id.etState;
-      TextInputEditText etState = ViewBindings.findChildViewById(rootView, id);
-      if (etState == null) {
+      id = R.id.progressBar;
+      ProgressBar progressBar = ViewBindings.findChildViewById(rootView, id);
+      if (progressBar == null) {
         break missingId;
       }
 
-      return new FragmentHcfRegistrationBinding((ScrollView) rootView, btnRegister, etAddress,
-          etBeds, etCity, etEmail, etName, etPhone, etPostal, etState);
+      id = R.id.progressTerms;
+      ProgressBar progressTerms = ViewBindings.findChildViewById(rootView, id);
+      if (progressTerms == null) {
+        break missingId;
+      }
+
+      id = R.id.switchBedded;
+      MaterialSwitch switchBedded = ViewBindings.findChildViewById(rootView, id);
+      if (switchBedded == null) {
+        break missingId;
+      }
+
+      id = R.id.tilAadharNo;
+      TextInputLayout tilAadharNo = ViewBindings.findChildViewById(rootView, id);
+      if (tilAadharNo == null) {
+        break missingId;
+      }
+
+      id = R.id.tilAddress;
+      TextInputLayout tilAddress = ViewBindings.findChildViewById(rootView, id);
+      if (tilAddress == null) {
+        break missingId;
+      }
+
+      id = R.id.tilBeds;
+      TextInputLayout tilBeds = ViewBindings.findChildViewById(rootView, id);
+      if (tilBeds == null) {
+        break missingId;
+      }
+
+      id = R.id.tilDoctorName;
+      TextInputLayout tilDoctorName = ViewBindings.findChildViewById(rootView, id);
+      if (tilDoctorName == null) {
+        break missingId;
+      }
+
+      id = R.id.tilEmail;
+      TextInputLayout tilEmail = ViewBindings.findChildViewById(rootView, id);
+      if (tilEmail == null) {
+        break missingId;
+      }
+
+      id = R.id.tilGstNo;
+      TextInputLayout tilGstNo = ViewBindings.findChildViewById(rootView, id);
+      if (tilGstNo == null) {
+        break missingId;
+      }
+
+      id = R.id.tilMonthlyCharges;
+      TextInputLayout tilMonthlyCharges = ViewBindings.findChildViewById(rootView, id);
+      if (tilMonthlyCharges == null) {
+        break missingId;
+      }
+
+      id = R.id.tilName;
+      TextInputLayout tilName = ViewBindings.findChildViewById(rootView, id);
+      if (tilName == null) {
+        break missingId;
+      }
+
+      id = R.id.tilOtherNotes;
+      TextInputLayout tilOtherNotes = ViewBindings.findChildViewById(rootView, id);
+      if (tilOtherNotes == null) {
+        break missingId;
+      }
+
+      id = R.id.tilPanNo;
+      TextInputLayout tilPanNo = ViewBindings.findChildViewById(rootView, id);
+      if (tilPanNo == null) {
+        break missingId;
+      }
+
+      id = R.id.tilPcbNo;
+      TextInputLayout tilPcbNo = ViewBindings.findChildViewById(rootView, id);
+      if (tilPcbNo == null) {
+        break missingId;
+      }
+
+      id = R.id.tilPhone;
+      TextInputLayout tilPhone = ViewBindings.findChildViewById(rootView, id);
+      if (tilPhone == null) {
+        break missingId;
+      }
+
+      id = R.id.toolbar;
+      MaterialToolbar toolbar = ViewBindings.findChildViewById(rootView, id);
+      if (toolbar == null) {
+        break missingId;
+      }
+
+      id = R.id.tvGpsCoordinates;
+      TextView tvGpsCoordinates = ViewBindings.findChildViewById(rootView, id);
+      if (tvGpsCoordinates == null) {
+        break missingId;
+      }
+
+      id = R.id.tvGpsStatus;
+      TextView tvGpsStatus = ViewBindings.findChildViewById(rootView, id);
+      if (tvGpsStatus == null) {
+        break missingId;
+      }
+
+      id = R.id.tvTermsVersion;
+      TextView tvTermsVersion = ViewBindings.findChildViewById(rootView, id);
+      if (tvTermsVersion == null) {
+        break missingId;
+      }
+
+      return new FragmentHcfRegistrationBinding((CoordinatorLayout) rootView, appBarLayout,
+          btnCaptureGps, btnRegister, cardGps, cardTerms, cbTermsAccepted, etAadharNo, etAddress,
+          etBeds, etDoctorName, etEmail, etGstNo, etMonthlyCharges, etName, etOtherNotes, etPanNo,
+          etPcbNo, etPhone, ivGpsStatus, progressBar, progressTerms, switchBedded, tilAadharNo,
+          tilAddress, tilBeds, tilDoctorName, tilEmail, tilGstNo, tilMonthlyCharges, tilName,
+          tilOtherNotes, tilPanNo, tilPcbNo, tilPhone, toolbar, tvGpsCoordinates, tvGpsStatus,
+          tvTermsVersion);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

@@ -4,6 +4,8 @@ import com.smartcbwtf.mobile.database.dao.HcfDao
 import com.smartcbwtf.mobile.database.entity.HcfEntity
 import com.smartcbwtf.mobile.network.api.HcfApi
 import com.smartcbwtf.mobile.network.model.HcfRegistrationRequest
+import com.smartcbwtf.mobile.network.model.HcfRegistrationResponse
+import com.smartcbwtf.mobile.network.model.TermsResponse
 import com.smartcbwtf.mobile.utils.NetworkMonitor
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -44,34 +46,19 @@ class DefaultHcfRepository @Inject constructor(
         dao.upsertAll(entities)
     }
 
-    override suspend fun register(
-        name: String,
-        address: String?,
-        city: String?,
-        state: String?,
-        postalCode: String?,
-        phone: String?,
-        email: String?,
-        beds: Int?,
-        latitude: Double?,
-        longitude: Double?
-    ) = withContext(ioDispatcher) {
-        if (!networkMonitor.isOnline()) {
-            throw Exception("No internet connection")
+    override suspend fun register(request: HcfRegistrationRequest): HcfRegistrationResponse = 
+        withContext(ioDispatcher) {
+            if (!networkMonitor.isOnline()) {
+                throw Exception("No internet connection")
+            }
+            api.register(request)
         }
-        api.register(
-            HcfRegistrationRequest(
-                name = name,
-                address = address,
-                city = city,
-                state = state,
-                postalCode = postalCode,
-                phone = phone,
-                email = email,
-                beds = beds,
-                latitude = latitude,
-                longitude = longitude
-            )
-        )
-    }
+    
+    override suspend fun getLatestTerms(facilityId: String?): TermsResponse = 
+        withContext(ioDispatcher) {
+            if (!networkMonitor.isOnline()) {
+                throw Exception("No internet connection")
+            }
+            api.getLatestTerms(facilityId)
+        }
 }

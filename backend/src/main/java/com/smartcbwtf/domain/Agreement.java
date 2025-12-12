@@ -36,6 +36,22 @@ public class Agreement {
     @Column(nullable = false)
     private String status; // DRAFT / ACTIVE / EXPIRED / CANCELLED
 
+    // Terms acceptance fields
+    private Boolean termsAccepted = false;
+    private String termsVersion;
+    private Instant termsAcceptedAt;
+    
+    @ManyToOne
+    @JoinColumn(name = "terms_accepted_by")
+    private AppUser termsAcceptedBy;
+
+    // Template tracking
+    @ManyToOne
+    @JoinColumn(name = "template_id")
+    private FacilityTemplate template;
+    
+    private String templateVersion;
+
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
 
@@ -64,4 +80,20 @@ public class Agreement {
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
+    // Terms acceptance
+    public Boolean getTermsAccepted() { return termsAccepted; }
+    public void setTermsAccepted(Boolean termsAccepted) { this.termsAccepted = termsAccepted; }
+    public String getTermsVersion() { return termsVersion; }
+    public void setTermsVersion(String termsVersion) { this.termsVersion = termsVersion; }
+    public Instant getTermsAcceptedAt() { return termsAcceptedAt; }
+    public void setTermsAcceptedAt(Instant termsAcceptedAt) { this.termsAcceptedAt = termsAcceptedAt; }
+    public AppUser getTermsAcceptedBy() { return termsAcceptedBy; }
+    public void setTermsAcceptedBy(AppUser termsAcceptedBy) { this.termsAcceptedBy = termsAcceptedBy; }
+
+    // Template
+    public FacilityTemplate getTemplate() { return template; }
+    public void setTemplate(FacilityTemplate template) { this.template = template; }
+    public String getTemplateVersion() { return templateVersion; }
+    public void setTemplateVersion(String templateVersion) { this.templateVersion = templateVersion; }
 }

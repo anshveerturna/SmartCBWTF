@@ -35,7 +35,15 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/api/auth/**", "/api/health", "/api/hcfs/register").permitAll()
+                    .requestMatchers(
+                        "/actuator/health", 
+                        "/v3/api-docs/**", 
+                        "/swagger-ui/**", 
+                        "/api/auth/**", 
+                        "/api/health", 
+                        "/api/hcfs/register",
+                        "/api/terms/latest"  // Public endpoint for mobile app to fetch T&C
+                    ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

@@ -1520,6 +1520,7 @@ color dim_foreground_disabled_material_light
 color dim_foreground_material_dark
 color dim_foreground_material_light
 color divider_color
+color error
 color errorAccent
 color error_color_material_dark
 color error_color_material_light
@@ -2207,6 +2208,7 @@ color secondary_text_default_material_dark
 color secondary_text_default_material_light
 color secondary_text_disabled_material_dark
 color secondary_text_disabled_material_light
+color success
 color successAccent
 color surface_color
 color switch_thumb_disabled_material_dark
@@ -2222,6 +2224,7 @@ color text_title
 color tooltip_background_dark
 color tooltip_background_light
 color verifyAccent
+color warning
 color warningAccent
 color zxing_custom_possible_result_points
 color zxing_custom_result_view
@@ -3194,12 +3197,14 @@ drawable ic_call_decline
 drawable ic_call_decline_low
 drawable ic_camera
 drawable ic_category
+drawable ic_check
 drawable ic_check_circle
 drawable ic_check_circle_filled
 drawable ic_chevron_right
 drawable ic_clear_black_24
 drawable ic_clock
 drawable ic_clock_black_24dp
+drawable ic_email
 drawable ic_error
 drawable ic_error_24
 drawable ic_flashlight_off
@@ -3208,6 +3213,8 @@ drawable ic_gps
 drawable ic_keyboard_black_24dp
 drawable ic_launcher_foreground
 drawable ic_location
+drawable ic_location_off
+drawable ic_location_on
 drawable ic_logo_smartcbwtf
 drawable ic_logo_smartcbwtf_green
 drawable ic_logout_menu
@@ -3219,6 +3226,7 @@ drawable ic_mtrl_chip_checked_black
 drawable ic_mtrl_chip_checked_circle
 drawable ic_mtrl_chip_close_circle
 drawable ic_pending
+drawable ic_phone
 drawable ic_pickup_outline
 drawable ic_pickup_waste
 drawable ic_profile_menu
@@ -3408,6 +3416,7 @@ id animateToEnd
 id animateToStart
 id antiClockwise
 id anticipate
+id appBarLayout
 id arc
 id asConfigured
 id async
@@ -3433,6 +3442,7 @@ id bounceEnd
 id bounceStart
 id btnAddBag
 id btnBack
+id btnCaptureGps
 id btnConnectScale
 id btnContinue
 id btnForgotPassword
@@ -3450,6 +3460,7 @@ id buttonPanel
 id cache_measures
 id callMeasure
 id cancel_button
+id cardGps
 id cardGreeting
 id cardLogin
 id cardPermissions
@@ -3459,9 +3470,11 @@ id cardRegister
 id cardScanSuccess
 id cardSessionSummary
 id cardStatus
+id cardTerms
 id cardVerify
 id cardWeight
 id carryVelocity
+id cbTermsAccepted
 id center
 id centerCrop
 id centerInside
@@ -3543,15 +3556,19 @@ id endToStart
 id enterAlways
 id enterAlwaysCollapsed
 id escape
+id etAadharNo
 id etAddress
 id etBeds
-id etCity
+id etDoctorName
 id etEmail
+id etGstNo
+id etMonthlyCharges
 id etName
+id etOtherNotes
+id etPanNo
 id etPassword
+id etPcbNo
 id etPhone
-id etPostal
-id etState
 id etUsername
 id exitUntilCollapsed
 id expand_activities_button
@@ -3621,6 +3638,7 @@ id invisible
 id inward
 id italic
 id item_touch_helper_previous_elevation
+id ivGpsStatus
 id ivLogo
 id ivSuccessCheck
 id jumpToEnd
@@ -3774,6 +3792,7 @@ id previewView
 id profileFragment
 id progressBar
 id progressSubmit
+id progressTerms
 id progress_circular
 id progress_horizontal
 id qrScanPrompt
@@ -3863,6 +3882,7 @@ id stretch
 id submenuarrow
 id submit_area
 id supportScrollUp
+id switchBedded
 id tabMode
 id tag_accessibility_actions
 id tag_accessibility_clickable_spans
@@ -3910,7 +3930,19 @@ id textinput_helper_text
 id textinput_placeholder
 id textinput_prefix_text
 id textinput_suffix_text
+id tilAadharNo
+id tilAddress
+id tilBeds
+id tilDoctorName
+id tilEmail
+id tilGstNo
+id tilMonthlyCharges
+id tilName
+id tilOtherNotes
+id tilPanNo
 id tilPassword
+id tilPcbNo
+id tilPhone
 id tilUsername
 id time
 id title
@@ -3940,6 +3972,7 @@ id tvBaseUrl
 id tvBluetoothStatus
 id tvCategory
 id tvGps
+id tvGpsCoordinates
 id tvGpsLabel
 id tvGpsStatus
 id tvGpsWaiting
@@ -3960,6 +3993,7 @@ id tvSessionTotalWeight
 id tvSkip
 id tvSubtitle
 id tvSuccessText
+id tvTermsVersion
 id tvTimestamp
 id tvTitle
 id tvUser
@@ -4249,6 +4283,7 @@ string androidx_startup
 string app_name
 string app_version
 string appbar_scrolling_view_behavior
+string base_url
 string bottom_sheet_behavior
 string bottomsheet_action_collapse
 string bottomsheet_action_expand

@@ -23,4 +23,9 @@
     <color name="warningAccent">#F59E0B</color>
     <color name="errorAccent">#EF4444</color>
     <color name="successAccent">#10B981</color>
+    
+    <!-- Semantic color aliases -->
+    <color name="success">#10B981</color>
+    <color name="error">#EF4444</color>
+    <color name="warning">#F59E0B</color>
 </resources>
