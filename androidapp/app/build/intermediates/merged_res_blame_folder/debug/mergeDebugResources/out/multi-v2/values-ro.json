@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.smartcbwtf.mobile.app-mergeDebugResources-58:/values-ro/values-ro.xml",
+            "outputFile": "com.smartcbwtf.mobile.app-mergeDebugResources-64:/values-ro/values-ro.xml",
             "map": [
                 {
                     "source": "/Users/anshveerturna/.gradle/caches/8.14.3/transforms/9e110b3e42d2c29aa0a385ef91c9c9dd/transformed/jetified-zxing-android-embedded-4.3.0/res/values-ro/values-ro.xml",

@@ -30,11 +30,13 @@ import hilt_aggregated_deps._com_smartcbwtf_mobile_di_ScaleModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_HcfRegistrationFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_HomeFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_LoginFragment_GeneratedInjector;
+import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_PermissionsFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_ScanWeighFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_SettingsFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_SplashFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_StartPickupFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_VerifyAtCbtwfFragment_GeneratedInjector;
+import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_scanner_QrScannerFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_AuthViewModel_HiltModules_BindsModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_AuthViewModel_HiltModules_KeyModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel_HiltModules_BindsModule;
@@ -103,11 +105,13 @@ import hilt_aggregated_deps._dagger_hilt_android_internal_modules_HiltWrapper_Ac
         _com_smartcbwtf_mobile_ui_HcfRegistrationFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_HomeFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_LoginFragment_GeneratedInjector.class,
+        _com_smartcbwtf_mobile_ui_PermissionsFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_ScanWeighFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_SettingsFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_SplashFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_StartPickupFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_VerifyAtCbtwfFragment_GeneratedInjector.class,
+        _com_smartcbwtf_mobile_ui_scanner_QrScannerFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_viewmodel_AuthViewModel_HiltModules_BindsModule.class,
         _com_smartcbwtf_mobile_viewmodel_AuthViewModel_HiltModules_KeyModule.class,
         _com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel_HiltModules_BindsModule.class,

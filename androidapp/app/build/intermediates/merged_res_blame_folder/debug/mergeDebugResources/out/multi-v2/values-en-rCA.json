@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.smartcbwtf.mobile.app-mergeDebugResources-58:/values-en-rCA/values-en-rCA.xml",
+            "outputFile": "com.smartcbwtf.mobile.app-mergeDebugResources-64:/values-en-rCA/values-en-rCA.xml",
             "map": [
                 {
                     "source": "/Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/res/values-en-rCA/values-en-rCA.xml",

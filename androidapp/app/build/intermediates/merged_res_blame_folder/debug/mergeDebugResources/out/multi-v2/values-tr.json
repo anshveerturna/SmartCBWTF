@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.smartcbwtf.mobile.app-mergeDebugResources-58:/values-tr/values-tr.xml",
+            "outputFile": "com.smartcbwtf.mobile.app-mergeDebugResources-64:/values-tr/values-tr.xml",
             "map": [
                 {
                     "source": "/Users/anshveerturna/.gradle/caches/8.14.3/transforms/64ffb3d9ee2237608e6d7a579ef9d269/transformed/jetified-play-services-basement-18.4.0/res/values-tr/values.xml",

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Scanner screen dimensions -->
+    <dimen name="scanner_top_padding">16dp</dimen>
+    <dimen name="scanner_bottom_padding">16dp</dimen>
+    <dimen name="scanner_horizontal_padding">16dp</dimen>
+    
+    <!-- Button sizes -->
+    <dimen name="scanner_button_size">48dp</dimen>
+    <dimen name="scanner_icon_size">24dp</dimen>
+    
+    <!-- Card dimensions -->
+    <dimen name="card_corner_radius">16dp</dimen>
+    <dimen name="card_elevation">8dp</dimen>
+</resources>

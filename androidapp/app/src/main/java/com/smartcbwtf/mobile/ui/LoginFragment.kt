@@ -1,5 +1,6 @@
 package com.smartcbwtf.mobile.ui
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -22,6 +23,7 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.Lifecycle
 import android.util.Log
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class LoginFragment : Fragment(R.layout.fragment_login) {
@@ -29,6 +31,9 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
     private val viewModel: AuthViewModel by activityViewModels()
     private var _binding: FragmentLoginBinding? = null
     private val binding get() = _binding!!
+
+    @Inject
+    lateinit var sharedPreferences: SharedPreferences
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -96,8 +101,18 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
                                     val navController = findNavController()
                                     Log.d("LoginFragment", "Current destination: ${navController.currentDestination?.label} (ID: ${navController.currentDestination?.id})")
                                     if (navController.currentDestination?.id == R.id.loginFragment) {
-                                        Log.d("LoginFragment", "Navigating to Home with action ID: ${R.id.action_loginFragment_to_homeFragment}")
-                                        navController.navigate(R.id.action_loginFragment_to_homeFragment)
+                                        // Check if onboarding is complete
+                                        val onboardingComplete = sharedPreferences.getBoolean(
+                                            PermissionsFragment.PREF_ONBOARDING_COMPLETE, false
+                                        )
+                                        
+                                        if (onboardingComplete) {
+                                            Log.d("LoginFragment", "Onboarding complete, navigating to Home")
+                                            navController.navigate(R.id.action_loginFragment_to_homeFragment)
+                                        } else {
+                                            Log.d("LoginFragment", "First login, navigating to Permissions")
+                                            navController.navigate(R.id.action_loginFragment_to_permissionsFragment)
+                                        }
                                         Log.d("LoginFragment", "Navigate called, new destination: ${navController.currentDestination?.label} (ID: ${navController.currentDestination?.id})")
                                     } else {
                                         Log.e("LoginFragment", "Cannot navigate: Current destination is not LoginFragment")

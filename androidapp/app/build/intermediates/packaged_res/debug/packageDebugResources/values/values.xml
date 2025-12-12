@@ -22,6 +22,13 @@
     <color name="text_title">#111827</color>
     <color name="verifyAccent">#00796B</color>
     <color name="warningAccent">#F59E0B</color>
+    <dimen name="card_corner_radius">16dp</dimen>
+    <dimen name="card_elevation">8dp</dimen>
+    <dimen name="scanner_bottom_padding">16dp</dimen>
+    <dimen name="scanner_button_size">48dp</dimen>
+    <dimen name="scanner_horizontal_padding">16dp</dimen>
+    <dimen name="scanner_icon_size">24dp</dimen>
+    <dimen name="scanner_top_padding">16dp</dimen>
     <string name="app_name">Smart CBWTF</string>
     <style name="PopupMenu.Premium" parent="Widget.Material3.PopupMenu">
         <item name="android:popupBackground">@drawable/bg_popup_menu</item>

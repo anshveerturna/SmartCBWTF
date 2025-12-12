@@ -15,14 +15,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
 import com.smartcbwtf.mobile.R
 import com.smartcbwtf.mobile.bluetooth.ConnectionState
 import com.smartcbwtf.mobile.databinding.FragmentScanWeighBinding
@@ -40,7 +38,8 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
 
-    private val viewModel: ScanWeighViewModel by viewModels()
+    // Use activityViewModels() so the ViewModel is shared with QrScannerFragment
+    private val viewModel: ScanWeighViewModel by activityViewModels()
     private val args: ScanWeighFragmentArgs by navArgs()
     private var _binding: FragmentScanWeighBinding? = null
     private val binding get() = _binding!!
@@ -70,15 +69,6 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
             Toast.makeText(requireContext(), "Permissions needed for scan/weight", Toast.LENGTH_LONG).show()
         } else {
             viewModel.refreshLocation()
-        }
-    }
-
-    private val qrScannerLauncher = registerForActivityResult(ScanContract()) { result ->
-        if (result.contents != null) {
-            viewModel.onQrScanned(result.contents)
-            lastScanTime = System.currentTimeMillis()
-        } else {
-            Toast.makeText(requireContext(), "QR scan cancelled", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -157,19 +147,8 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
     }
 
     private fun launchQrScanner() {
-        if (permissionHelper.hasCameraPermission()) {
-            val options = ScanOptions().apply {
-                setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                setPrompt("Scan Bag QR Code")
-                setBeepEnabled(true)
-                setCameraId(0)
-                setOrientationLocked(false)
-            }
-            qrScannerLauncher.launch(options)
-        } else {
-            Toast.makeText(requireContext(), "Camera permission required", Toast.LENGTH_SHORT).show()
-            requestPermissionLauncher.launch(permissionHelper.getRequiredPermissions().toTypedArray())
-        }
+        // Navigate to the new premium QR scanner fragment
+        findNavController().navigate(R.id.action_scanWeighFragment_to_qrScannerFragment)
     }
 
     private fun setupObservers() {

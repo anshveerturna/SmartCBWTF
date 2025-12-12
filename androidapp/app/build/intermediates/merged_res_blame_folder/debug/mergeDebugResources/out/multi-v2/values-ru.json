@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.smartcbwtf.mobile.app-mergeDebugResources-58:/values-ru/values-ru.xml",
+            "outputFile": "com.smartcbwtf.mobile.app-mergeDebugResources-64:/values-ru/values-ru.xml",
             "map": [
                 {
                     "source": "/Users/anshveerturna/.gradle/caches/8.14.3/transforms/2d31d29dd39e8c3433d3658dc2e26143/transformed/navigation-ui-2.7.7/res/values-ru/values-ru.xml",

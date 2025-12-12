@@ -34,8 +34,8 @@ abstract class ScaleModule {
             @RealScale real: ScaleService,
             @MockScale mock: ScaleService
         ): ScaleService {
-            val useMock = BuildConfig.DEBUG
-            return if (useMock) mock else real
+            // Always use real Bluetooth service - mock is only for unit tests
+            return real
         }
     }
 }

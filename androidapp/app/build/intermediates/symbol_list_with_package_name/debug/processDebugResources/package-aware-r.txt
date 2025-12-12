@@ -670,6 +670,7 @@ attr imagePanX
 attr imagePanY
 attr imageRotate
 attr imageZoom
+attr implementationMode
 attr indeterminateAnimationType
 attr indeterminateProgressStyle
 attr indicatorColor
@@ -824,6 +825,28 @@ attr logo
 attr logoAdjustViewBounds
 attr logoDescription
 attr logoScaleType
+attr lottieAnimationViewStyle
+attr lottie_asyncUpdates
+attr lottie_autoPlay
+attr lottie_cacheComposition
+attr lottie_clipTextToBoundingBox
+attr lottie_clipToCompositionBounds
+attr lottie_colorFilter
+attr lottie_defaultFontFileExtension
+attr lottie_enableMergePathsForKitKatAndAbove
+attr lottie_fallbackRes
+attr lottie_fileName
+attr lottie_ignoreDisabledSystemAnimations
+attr lottie_imageAssetsFolder
+attr lottie_loop
+attr lottie_progress
+attr lottie_rawRes
+attr lottie_renderMode
+attr lottie_repeatCount
+attr lottie_repeatMode
+attr lottie_speed
+attr lottie_url
+attr lottie_useCompositionFrameRate
 attr marginHorizontal
 attr marginLeftSystemWindowInsets
 attr marginRightSystemWindowInsets
@@ -1050,6 +1073,7 @@ attr roundPercent
 attr route
 attr saturation
 attr scaleFromTextSize
+attr scaleType
 attr scopeUris
 attr scrimAnimationDuration
 attr scrimBackground
@@ -2291,6 +2315,8 @@ dimen abc_text_size_subtitle_material_toolbar
 dimen abc_text_size_title_material
 dimen abc_text_size_title_material_toolbar
 dimen appcompat_dialog_background_inset
+dimen card_corner_radius
+dimen card_elevation
 dimen cardview_compat_inset_shadow
 dimen cardview_default_elevation
 dimen cardview_default_radius
@@ -3004,6 +3030,11 @@ dimen notification_small_icon_size_as_large
 dimen notification_subtext_size
 dimen notification_top_pad
 dimen notification_top_pad_large_text
+dimen scanner_bottom_padding
+dimen scanner_button_size
+dimen scanner_horizontal_padding
+dimen scanner_icon_size
+dimen scanner_top_padding
 dimen sliding_pane_detail_pane_width
 dimen tooltip_corner_radius
 dimen tooltip_horizontal_padding
@@ -3099,7 +3130,9 @@ drawable bg_avatar_placeholder
 drawable bg_avatar_teal
 drawable bg_badge_error
 drawable bg_badge_warning
+drawable bg_circle_button_dark
 drawable bg_gradient_pickup
+drawable bg_hint_pill
 drawable bg_icon_circle_neutral
 drawable bg_icon_circle_outline
 drawable bg_icon_circle_primary
@@ -3148,6 +3181,7 @@ drawable design_snackbar_background
 drawable googleg_disabled_color_18
 drawable googleg_standard_color_18
 drawable ic_add
+drawable ic_arrow_back
 drawable ic_arrow_back_black_24
 drawable ic_avatar_placeholder
 drawable ic_bluetooth
@@ -3158,14 +3192,22 @@ drawable ic_call_answer_video
 drawable ic_call_answer_video_low
 drawable ic_call_decline
 drawable ic_call_decline_low
+drawable ic_camera
+drawable ic_category
 drawable ic_check_circle
+drawable ic_check_circle_filled
 drawable ic_chevron_right
 drawable ic_clear_black_24
+drawable ic_clock
 drawable ic_clock_black_24dp
+drawable ic_error
 drawable ic_error_24
+drawable ic_flashlight_off
+drawable ic_flashlight_on
 drawable ic_gps
 drawable ic_keyboard_black_24dp
 drawable ic_launcher_foreground
+drawable ic_location
 drawable ic_logo_smartcbwtf
 drawable ic_logo_smartcbwtf_green
 drawable ic_logout_menu
@@ -3181,14 +3223,17 @@ drawable ic_pickup_outline
 drawable ic_pickup_waste
 drawable ic_profile_menu
 drawable ic_qr_scan
+drawable ic_refresh
 drawable ic_register_hcf
 drawable ic_register_outline
+drawable ic_scale
 drawable ic_scale_weight
 drawable ic_search_black_24
 drawable ic_settings
 drawable ic_sync_status
 drawable ic_verify_cbtwf
 drawable ic_verify_outline
+drawable ic_warning
 drawable indeterminate_static
 drawable m3_avd_hide_password
 drawable m3_avd_show_password
@@ -3336,11 +3381,14 @@ id action_homeFragment_to_startPickupFragment
 id action_homeFragment_to_verifyAtCbtwfFragment
 id action_image
 id action_loginFragment_to_homeFragment
+id action_loginFragment_to_permissionsFragment
 id action_menu_divider
 id action_menu_presenter
 id action_mode_bar
 id action_mode_bar_stub
 id action_mode_close_button
+id action_permissionsFragment_to_homeFragment
+id action_scanWeighFragment_to_qrScannerFragment
 id action_splashFragment_to_homeFragment
 id action_splashFragment_to_loginFragment
 id action_startPickupFragment_to_scanWeighFragment
@@ -3367,6 +3415,7 @@ id auto
 id autoComplete
 id autoCompleteToEnd
 id autoCompleteToStart
+id automatic
 id avatarView
 id barrier
 id baseline
@@ -3377,29 +3426,37 @@ id blocking
 id bluetoothStatusBadge
 id bluetoothStatusDot
 id bottom
+id bottomControls
 id bounce
 id bounceBoth
 id bounceEnd
 id bounceStart
 id btnAddBag
+id btnBack
 id btnConnectScale
+id btnContinue
 id btnForgotPassword
+id btnGrantPermissions
 id btnLogin
+id btnOpenSettings
 id btnRegister
 id btnScanAgain
 id btnScanQr
 id btnSettings
 id btnSubmit
 id btnSubmitAll
+id btnTorch
 id buttonPanel
 id cache_measures
 id callMeasure
 id cancel_button
 id cardGreeting
 id cardLogin
+id cardPermissions
 id cardPickup
 id cardQrScan
 id cardRegister
+id cardScanSuccess
 id cardSessionSummary
 id cardStatus
 id cardVerify
@@ -3423,6 +3480,7 @@ id clip_vertical
 id clockwise
 id closest
 id collapseActionView
+id compatible
 id compress
 id confirm_button
 id constraint
@@ -3459,6 +3517,7 @@ id disableHome
 id disableIntraAutoTransition
 id disablePostScroll
 id disableScroll
+id disabled
 id disjoint
 id dragAnticlockwise
 id dragClockwise
@@ -3478,6 +3537,7 @@ id edit_query
 id edit_text_id
 id elastic
 id embed
+id enabled
 id end
 id endToStart
 id enterAlways
@@ -3498,6 +3558,9 @@ id expand_activities_button
 id expanded_menu
 id fade
 id fill
+id fillCenter
+id fillEnd
+id fillStart
 id fill_horizontal
 id fill_vertical
 id filled
@@ -3524,6 +3587,7 @@ id graph_wrap
 id group_divider
 id grouping
 id groups
+id hardware
 id hcfRegistrationFragment
 id headerContainer
 id headerSection
@@ -3536,6 +3600,10 @@ id homeFragment
 id honorRequest
 id horizontal_only
 id icon
+id iconBluetoothStatus
+id iconCameraStatus
+id iconContainer
+id iconLocationStatus
 id iconPending
 id iconSync
 id icon_group
@@ -3554,11 +3622,17 @@ id inward
 id italic
 id item_touch_helper_previous_elevation
 id ivLogo
+id ivSuccessCheck
 id jumpToEnd
 id jumpToStart
 id labeled
 id layout
+id layoutCategory
 id layoutErrorBanner
+id layoutInitialState
+id layoutPermissionDenied
+id layoutScanResult
+id layoutWeightWarning
 id left
 id leftToRight
 id legacy
@@ -3570,6 +3644,7 @@ id listMode
 id list_item
 id locale
 id loginFragment
+id lottie_layer_name
 id ltr
 id m3_side_sheet
 id marquee
@@ -3686,10 +3761,16 @@ id path
 id pathRelative
 id peekHeight
 id percent
+id performance
+id permissionBluetooth
+id permissionCamera
+id permissionLocation
+id permissionsFragment
 id pin
 id position
 id postLayout
 id pressed
+id previewView
 id profileFragment
 id progressBar
 id progressSubmit
@@ -3697,10 +3778,13 @@ id progress_circular
 id progress_horizontal
 id qrScanPrompt
 id qrScannedInfo
+id qrScannerFragment
 id radio
 id ratio
 id rectangles
 id report_drawn
+id restart
+id reverse
 id reverseSawtooth
 id right
 id rightToLeft
@@ -3752,6 +3836,7 @@ id snackbar_action
 id snackbar_text
 id snap
 id snapMargins
+id software
 id south
 id spacer
 id special_effects_controller_view_tag
@@ -3834,6 +3919,7 @@ id title_template
 id toggle
 id toolbar
 id top
+id topBar
 id topPanel
 id touch_outside
 id transitionToEnd
@@ -3852,7 +3938,11 @@ id tvAppTitle
 id tvAppVersion
 id tvBaseUrl
 id tvBluetoothStatus
+id tvCategory
+id tvGps
+id tvGpsLabel
 id tvGpsStatus
+id tvGpsWaiting
 id tvLocationCoords
 id tvModeSubtitle
 id tvModeTitle
@@ -3863,10 +3953,18 @@ id tvQrCodeError
 id tvQrTimestamp
 id tvScaleService
 id tvScaleStatus
+id tvScanHint
+id tvScannedQr
 id tvSessionBagCount
 id tvSessionTotalWeight
+id tvSkip
+id tvSubtitle
+id tvSuccessText
+id tvTimestamp
+id tvTitle
 id tvUser
 id tvWeight
+id tvWeightLabel
 id unchecked
 id uniform
 id unlabeled
@@ -3880,6 +3978,7 @@ id view_tree_lifecycle_owner
 id view_tree_on_back_pressed_dispatcher_owner
 id view_tree_saved_state_registry_owner
 id view_tree_view_model_store_owner
+id viewfinderOverlay
 id visible
 id visible_removing_fragment_view_tag
 id west
@@ -4041,7 +4140,9 @@ layout design_text_input_start_icon
 layout fragment_hcf_registration
 layout fragment_home
 layout fragment_login
+layout fragment_permissions
 layout fragment_profile
+layout fragment_qr_scanner
 layout fragment_scan_weigh
 layout fragment_settings
 layout fragment_splash
@@ -5532,6 +5633,7 @@ styleable LinearLayoutCompat_Layout android_layout_gravity android_layout_width 
 styleable LinearProgressIndicator indeterminateAnimationType indicatorDirectionLinear trackStopIndicatorSize
 styleable ListPopupWindow android_dropDownHorizontalOffset android_dropDownVerticalOffset
 styleable LoadingImageView circleCrop imageAspectRatio imageAspectRatioAdjust
+styleable LottieAnimationView lottie_asyncUpdates lottie_autoPlay lottie_cacheComposition lottie_clipTextToBoundingBox lottie_clipToCompositionBounds lottie_colorFilter lottie_defaultFontFileExtension lottie_enableMergePathsForKitKatAndAbove lottie_fallbackRes lottie_fileName lottie_ignoreDisabledSystemAnimations lottie_imageAssetsFolder lottie_loop lottie_progress lottie_rawRes lottie_renderMode lottie_repeatCount lottie_repeatMode lottie_speed lottie_url lottie_useCompositionFrameRate
 styleable MaterialAlertDialog backgroundInsetBottom backgroundInsetEnd backgroundInsetStart backgroundInsetTop backgroundTint
 styleable MaterialAlertDialogTheme materialAlertDialogBodyTextStyle materialAlertDialogButtonSpacerVisibility materialAlertDialogTheme materialAlertDialogTitleIconStyle materialAlertDialogTitlePanelStyle materialAlertDialogTitleTextStyle
 styleable MaterialAutoCompleteTextView android_inputType android_popupElevation dropDownBackgroundTint simpleItemLayout simpleItemSelectedColor simpleItemSelectedRippleColor simpleItems
@@ -5577,6 +5679,7 @@ styleable OnClick clickAction targetId
 styleable OnSwipe autoCompleteMode dragDirection dragScale dragThreshold limitBoundsTo maxAcceleration maxVelocity moveWhenScrollAtTop nestedScrollFlags onTouchUp rotationCenterId springBoundary springDamping springMass springStiffness springStopThreshold touchAnchorId touchAnchorSide touchRegionId
 styleable PopupWindow android_popupBackground android_popupAnimationStyle overlapAnchor
 styleable PopupWindowBackgroundState state_above_anchor
+styleable PreviewView implementationMode scaleType
 styleable PropertySet android_visibility android_alpha layout_constraintTag motionProgress visibilityMode
 styleable RadialViewGroup materialCircleRadius
 styleable RangeSlider minSeparation values
