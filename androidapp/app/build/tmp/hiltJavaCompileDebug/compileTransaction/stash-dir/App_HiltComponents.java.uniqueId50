@@ -8,6 +8,7 @@ import com.smartcbwtf.mobile.di.DatabaseModule;
 import com.smartcbwtf.mobile.di.NetworkModule;
 import com.smartcbwtf.mobile.di.RepositoryModule;
 import com.smartcbwtf.mobile.di.ScaleModule;
+import com.smartcbwtf.mobile.ui.AttendanceFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.HcfRegistrationFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.HomeFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.LoginFragment_GeneratedInjector;
@@ -18,6 +19,7 @@ import com.smartcbwtf.mobile.ui.SplashFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.StartPickupFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.VerifyAtCbtwfFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.scanner.QrScannerFragment_GeneratedInjector;
+import com.smartcbwtf.mobile.viewmodel.AttendanceViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.AuthViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.HomeViewModel_HiltModules;
@@ -187,6 +189,7 @@ public final class App_HiltComponents {
       modules = {
           ActivityCBuilderModule.class,
           ViewModelCBuilderModule.class,
+          AttendanceViewModel_HiltModules.KeyModule.class,
           AuthViewModel_HiltModules.KeyModule.class,
           HcfRegistrationViewModel_HiltModules.KeyModule.class,
           HiltWrapper_ActivityRetainedComponentManager_LifecycleModule.class,
@@ -231,6 +234,7 @@ public final class App_HiltComponents {
 
   @Subcomponent(
       modules = {
+          AttendanceViewModel_HiltModules.BindsModule.class,
           AuthViewModel_HiltModules.BindsModule.class,
           HcfRegistrationViewModel_HiltModules.BindsModule.class,
           HiltWrapper_HiltViewModelFactory_ViewModelModule.class,
@@ -263,7 +267,8 @@ public final class App_HiltComponents {
       modules = ViewWithFragmentCBuilderModule.class
   )
   @FragmentScoped
-  public abstract static class FragmentC implements HcfRegistrationFragment_GeneratedInjector,
+  public abstract static class FragmentC implements AttendanceFragment_GeneratedInjector,
+      HcfRegistrationFragment_GeneratedInjector,
       HomeFragment_GeneratedInjector,
       LoginFragment_GeneratedInjector,
       PermissionsFragment_GeneratedInjector,

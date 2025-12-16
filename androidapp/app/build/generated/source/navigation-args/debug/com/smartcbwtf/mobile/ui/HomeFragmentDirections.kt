@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.navigation.ActionOnlyNavDirections
 import androidx.navigation.NavDirections
 import com.smartcbwtf.mobile.R
+import kotlin.Float
 import kotlin.Int
 import kotlin.String
 
@@ -38,6 +39,21 @@ public class HomeFragmentDirections private constructor() {
       }
   }
 
+  private data class ActionHomeFragmentToAttendanceFragment(
+    public val latitude: Float = 0.0F,
+    public val longitude: Float = 0.0F,
+  ) : NavDirections {
+    public override val actionId: Int = R.id.action_homeFragment_to_attendanceFragment
+
+    public override val arguments: Bundle
+      get() {
+        val result = Bundle()
+        result.putFloat("latitude", this.latitude)
+        result.putFloat("longitude", this.longitude)
+        return result
+      }
+  }
+
   public companion object {
     public fun actionHomeFragmentToStartPickupFragment(): NavDirections =
         ActionOnlyNavDirections(R.id.action_homeFragment_to_startPickupFragment)
@@ -60,5 +76,8 @@ public class HomeFragmentDirections private constructor() {
 
     public fun actionHomeFragmentToProfileFragment(): NavDirections =
         ActionOnlyNavDirections(R.id.action_homeFragment_to_profileFragment)
+
+    public fun actionHomeFragmentToAttendanceFragment(latitude: Float = 0.0F, longitude: Float =
+        0.0F): NavDirections = ActionHomeFragmentToAttendanceFragment(latitude, longitude)
   }
 }

@@ -34,6 +34,9 @@ public final class FragmentHomeBinding implements ViewBinding {
   public final MaterialButton btnSettings;
 
   @NonNull
+  public final MaterialCardView cardAttendance;
+
+  @NonNull
   public final MaterialCardView cardGreeting;
 
   @NonNull
@@ -67,6 +70,12 @@ public final class FragmentHomeBinding implements ViewBinding {
   public final TextView textAppSubtitle;
 
   @NonNull
+  public final TextView textAttendanceSubtitle;
+
+  @NonNull
+  public final TextView textAttendanceTitle;
+
+  @NonNull
   public final TextView textGreetingSubtitle;
 
   @NonNull
@@ -98,21 +107,23 @@ public final class FragmentHomeBinding implements ViewBinding {
 
   private FragmentHomeBinding(@NonNull NestedScrollView rootView,
       @NonNull LinearLayout actionCardsContainer, @NonNull ShapeableImageView avatarView,
-      @NonNull MaterialButton btnSettings, @NonNull MaterialCardView cardGreeting,
-      @NonNull MaterialCardView cardPickup, @NonNull MaterialCardView cardRegister,
-      @NonNull MaterialCardView cardStatus, @NonNull MaterialCardView cardVerify,
-      @NonNull LinearLayout headerContainer, @NonNull ImageView iconPending,
-      @NonNull ImageView iconSync, @NonNull ImageView imgLogo, @NonNull TextView textAppName,
-      @NonNull TextView textAppSubtitle, @NonNull TextView textGreetingSubtitle,
-      @NonNull TextView textGreetingTitle, @NonNull TextView textPendingValue,
-      @NonNull TextView textPickupSubtitle, @NonNull TextView textPickupTitle,
-      @NonNull TextView textRegisterSubtitle, @NonNull TextView textRegisterTitle,
-      @NonNull TextView textSyncValue, @NonNull TextView textVerifySubtitle,
-      @NonNull TextView textVerifyTitle) {
+      @NonNull MaterialButton btnSettings, @NonNull MaterialCardView cardAttendance,
+      @NonNull MaterialCardView cardGreeting, @NonNull MaterialCardView cardPickup,
+      @NonNull MaterialCardView cardRegister, @NonNull MaterialCardView cardStatus,
+      @NonNull MaterialCardView cardVerify, @NonNull LinearLayout headerContainer,
+      @NonNull ImageView iconPending, @NonNull ImageView iconSync, @NonNull ImageView imgLogo,
+      @NonNull TextView textAppName, @NonNull TextView textAppSubtitle,
+      @NonNull TextView textAttendanceSubtitle, @NonNull TextView textAttendanceTitle,
+      @NonNull TextView textGreetingSubtitle, @NonNull TextView textGreetingTitle,
+      @NonNull TextView textPendingValue, @NonNull TextView textPickupSubtitle,
+      @NonNull TextView textPickupTitle, @NonNull TextView textRegisterSubtitle,
+      @NonNull TextView textRegisterTitle, @NonNull TextView textSyncValue,
+      @NonNull TextView textVerifySubtitle, @NonNull TextView textVerifyTitle) {
     this.rootView = rootView;
     this.actionCardsContainer = actionCardsContainer;
     this.avatarView = avatarView;
     this.btnSettings = btnSettings;
+    this.cardAttendance = cardAttendance;
     this.cardGreeting = cardGreeting;
     this.cardPickup = cardPickup;
     this.cardRegister = cardRegister;
@@ -124,6 +135,8 @@ public final class FragmentHomeBinding implements ViewBinding {
     this.imgLogo = imgLogo;
     this.textAppName = textAppName;
     this.textAppSubtitle = textAppSubtitle;
+    this.textAttendanceSubtitle = textAttendanceSubtitle;
+    this.textAttendanceTitle = textAttendanceTitle;
     this.textGreetingSubtitle = textGreetingSubtitle;
     this.textGreetingTitle = textGreetingTitle;
     this.textPendingValue = textPendingValue;
@@ -178,6 +191,12 @@ public final class FragmentHomeBinding implements ViewBinding {
       id = R.id.btnSettings;
       MaterialButton btnSettings = ViewBindings.findChildViewById(rootView, id);
       if (btnSettings == null) {
+        break missingId;
+      }
+
+      id = R.id.cardAttendance;
+      MaterialCardView cardAttendance = ViewBindings.findChildViewById(rootView, id);
+      if (cardAttendance == null) {
         break missingId;
       }
 
@@ -247,6 +266,18 @@ public final class FragmentHomeBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.textAttendanceSubtitle;
+      TextView textAttendanceSubtitle = ViewBindings.findChildViewById(rootView, id);
+      if (textAttendanceSubtitle == null) {
+        break missingId;
+      }
+
+      id = R.id.textAttendanceTitle;
+      TextView textAttendanceTitle = ViewBindings.findChildViewById(rootView, id);
+      if (textAttendanceTitle == null) {
+        break missingId;
+      }
+
       id = R.id.textGreetingSubtitle;
       TextView textGreetingSubtitle = ViewBindings.findChildViewById(rootView, id);
       if (textGreetingSubtitle == null) {
@@ -308,11 +339,11 @@ public final class FragmentHomeBinding implements ViewBinding {
       }
 
       return new FragmentHomeBinding((NestedScrollView) rootView, actionCardsContainer, avatarView,
-          btnSettings, cardGreeting, cardPickup, cardRegister, cardStatus, cardVerify,
-          headerContainer, iconPending, iconSync, imgLogo, textAppName, textAppSubtitle,
-          textGreetingSubtitle, textGreetingTitle, textPendingValue, textPickupSubtitle,
-          textPickupTitle, textRegisterSubtitle, textRegisterTitle, textSyncValue,
-          textVerifySubtitle, textVerifyTitle);
+          btnSettings, cardAttendance, cardGreeting, cardPickup, cardRegister, cardStatus,
+          cardVerify, headerContainer, iconPending, iconSync, imgLogo, textAppName, textAppSubtitle,
+          textAttendanceSubtitle, textAttendanceTitle, textGreetingSubtitle, textGreetingTitle,
+          textPendingValue, textPickupSubtitle, textPickupTitle, textRegisterSubtitle,
+          textRegisterTitle, textSyncValue, textVerifySubtitle, textVerifyTitle);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

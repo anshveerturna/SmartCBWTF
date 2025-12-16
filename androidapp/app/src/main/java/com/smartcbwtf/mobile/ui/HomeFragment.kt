@@ -1,8 +1,13 @@
 package com.smartcbwtf.mobile.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
@@ -14,21 +19,39 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.navOptions
 import androidx.appcompat.widget.PopupMenu
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.smartcbwtf.mobile.R
 import com.smartcbwtf.mobile.databinding.FragmentHomeBinding
+import com.smartcbwtf.mobile.utils.LocationHelper
 import com.smartcbwtf.mobile.viewmodel.AuthState
 import com.smartcbwtf.mobile.viewmodel.AuthViewModel
 import com.smartcbwtf.mobile.viewmodel.HomeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class HomeFragment : Fragment(R.layout.fragment_home) {
+
+    @Inject lateinit var locationHelper: LocationHelper
 
     private val viewModel: AuthViewModel by activityViewModels()
     private val homeViewModel: HomeViewModel by viewModels()
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
+
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        
+        if (fineLocationGranted || coarseLocationGranted) {
+            captureLocationAndNavigate()
+        } else {
+            Toast.makeText(requireContext(), "Location permission is required to mark attendance", Toast.LENGTH_LONG).show()
+        }
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -49,7 +72,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     }
 
     private fun setupActions() {
-        val cards = listOf(binding.cardPickup, binding.cardVerify, binding.cardRegister)
+        val cards = listOf(binding.cardPickup, binding.cardVerify, binding.cardRegister, binding.cardAttendance)
         cards.forEach { card ->
             card.setOnTouchListener { v, event ->
                 when (event.action) {
@@ -76,8 +99,71 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             findNavController().navigate(R.id.action_homeFragment_to_hcfRegistrationFragment)
         }
 
+        binding.cardAttendance.setOnClickListener {
+            checkLocationPermissionAndMarkAttendance()
+        }
+
         binding.btnSettings.setOnClickListener {
             findNavController().navigate(R.id.action_homeFragment_to_settingsFragment)
+        }
+    }
+
+    private fun checkLocationPermissionAndMarkAttendance() {
+        when {
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                captureLocationAndNavigate()
+            }
+            shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION) -> {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Location Required")
+                    .setMessage("Location access is needed to verify you are at an HCF before marking attendance.")
+                    .setPositiveButton("Grant Permission") { _, _ ->
+                        locationPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+            else -> {
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
+            }
+        }
+    }
+
+    private fun captureLocationAndNavigate() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            binding.cardAttendance.isEnabled = false
+            
+            try {
+                // Get current location before navigating
+                val location = locationHelper.getCurrentLocation()
+                
+                // Navigate to attendance screen with location (or 0,0 if unavailable)
+                val lat = location?.latitude?.toFloat() ?: 0f
+                val lon = location?.longitude?.toFloat() ?: 0f
+                
+                val action = HomeFragmentDirections.actionHomeFragmentToAttendanceFragment(lat, lon)
+                findNavController().navigate(action)
+                
+            } catch (e: Exception) {
+                // Navigate anyway, let the attendance screen handle location refresh
+                val action = HomeFragmentDirections.actionHomeFragmentToAttendanceFragment(0f, 0f)
+                findNavController().navigate(action)
+            } finally {
+                binding.cardAttendance.isEnabled = true
+            }
         }
     }
 
@@ -161,7 +247,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     }
 
     private fun animateEntry() {
-        val fadeInViews = listOf(binding.cardGreeting, binding.cardPickup, binding.cardVerify, binding.cardRegister, binding.cardStatus)
+        val fadeInViews = listOf(binding.cardGreeting, binding.cardPickup, binding.cardVerify, binding.cardRegister, binding.cardAttendance, binding.cardStatus)
         fadeInViews.forEachIndexed { index, view ->
             view.alpha = 0f
             view.translationY = 20f
