@@ -5,7 +5,9 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.text.Html
+import android.view.MotionEvent
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -38,11 +40,29 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentHcfRegistrationBinding.bind(view)
 
+        // Hide keyboard when tapping outside inputs
+        setupHideKeyboardOnTouch(binding.root)
+
         setupFormFields()
         setupGpsCapture()
         setupTermsCard()
         setupRegisterButton()
         observeStates()
+    }
+
+    private fun setupHideKeyboardOnTouch(root: View) {
+        root.setOnTouchListener { v, event ->
+            if (event.action == MotionEvent.ACTION_DOWN) {
+                v.clearFocus()
+                hideKeyboard(v)
+            }
+            false
+        }
+    }
+
+    private fun hideKeyboard(view: View) {
+        val imm = ContextCompat.getSystemService(view.context, InputMethodManager::class.java)
+        imm?.hideSoftInputFromWindow(view.windowToken, 0)
     }
     
     private fun setupFormFields() {

@@ -2,9 +2,12 @@ package com.smartcbwtf.mobile.ui
 
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.view.MotionEvent
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -39,6 +42,9 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentLoginBinding.bind(view)
 
+        // Hide keyboard when tapping outside inputs
+        setupHideKeyboardOnTouch(binding.root)
+
         // Hide ActionBar
         (activity as? AppCompatActivity)?.supportActionBar?.hide()
 
@@ -54,6 +60,21 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
 
         setupListeners()
         observeViewModel()
+    }
+
+    private fun setupHideKeyboardOnTouch(root: View) {
+        root.setOnTouchListener { v, event ->
+            if (event.action == MotionEvent.ACTION_DOWN) {
+                v.clearFocus()
+                hideKeyboard(v)
+            }
+            false
+        }
+    }
+
+    private fun hideKeyboard(view: View) {
+        val imm = ContextCompat.getSystemService(view.context, InputMethodManager::class.java)
+        imm?.hideSoftInputFromWindow(view.windowToken, 0)
     }
 
     private fun setupListeners() {
