@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.text.Html
+import android.util.Patterns
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -80,7 +81,25 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         binding.etName.doAfterTextChanged { textWatcher() }
         binding.etAddress.doAfterTextChanged { textWatcher() }
         binding.etDoctorName.doAfterTextChanged { textWatcher() }
-        binding.etPhone.doAfterTextChanged { textWatcher() }
+        binding.etPhone.doAfterTextChanged { textWatcher(); validatePhoneField(showError = true) }
+        binding.etEmail.doAfterTextChanged { textWatcher(); validateEmailField(showError = true) }
+        binding.etAadharNo.doAfterTextChanged { textWatcher(); validateAadharField(showError = true) }
+
+        // PAN: uppercase and validate
+        binding.etPanNo.doAfterTextChanged {
+            val upper = it?.toString()?.uppercase(Locale.US).orEmpty()
+            if (upper != it?.toString()) binding.etPanNo.setText(upper)
+            binding.etPanNo.setSelection(binding.etPanNo.text?.length ?: 0)
+            textWatcher(); validatePanField(showError = true)
+        }
+
+        // GST: uppercase and validate
+        binding.etGstNo.doAfterTextChanged {
+            val upper = it?.toString()?.uppercase(Locale.US).orEmpty()
+            if (upper != it?.toString()) binding.etGstNo.setText(upper)
+            binding.etGstNo.setSelection(binding.etGstNo.text?.length ?: 0)
+            textWatcher(); validateGstField(showError = true)
+        }
     }
     
     private fun setupGpsCapture() {
@@ -122,8 +141,79 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
     
     private fun setupRegisterButton() {
         binding.btnRegister.setOnClickListener {
-            submitRegistration()
+            if (validateFields(showError = true)) {
+                submitRegistration()
+            }
         }
+    }
+
+    private fun isValidPhone(phone: String?): Boolean = phone?.matches(Regex("^[6-9]\\d{9}$")) == true
+    private fun isValidPan(pan: String?): Boolean = pan?.matches(Regex("^[A-Z]{5}[0-9]{4}[A-Z]$")) == true
+    private fun isValidGst(gst: String?): Boolean = gst?.matches(Regex("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$")) == true
+    private fun isValidAadhar(aadhar: String?): Boolean = aadhar?.matches(Regex("^\\d{12}$")) == true
+    private fun isValidEmail(email: String?): Boolean = !email.isNullOrBlank() && Patterns.EMAIL_ADDRESS.matcher(email).matches()
+
+    private fun validateFields(showError: Boolean): Boolean {
+        val ok = validateAllFields(showError)
+        if (!ok && showError) {
+            Snackbar.make(binding.root, "Please fix highlighted fields before submitting", Snackbar.LENGTH_LONG).show()
+        }
+        return ok
+    }
+
+    private fun validateAllFields(showError: Boolean): Boolean {
+        var ok = true
+        ok = validatePhoneField(showError) && ok
+        ok = validatePanField(showError) && ok
+        ok = validateGstField(showError) && ok
+        ok = validateAadharField(showError) && ok
+        ok = validateEmailField(showError) && ok
+        return ok
+    }
+
+    private fun validatePhoneField(showError: Boolean): Boolean {
+        val phoneVal = binding.etPhone.text?.toString().orEmpty()
+        val valid = isValidPhone(phoneVal)
+        if (showError) {
+            binding.tilPhone.error = if (valid) null else "Enter 10-digit phone starting with 6/7/8/9"
+        }
+        return valid
+    }
+
+    private fun validatePanField(showError: Boolean): Boolean {
+        val panVal = binding.etPanNo.text?.toString()?.uppercase(Locale.US).orEmpty()
+        val valid = panVal.isEmpty() || isValidPan(panVal)
+        if (showError) {
+            binding.tilPanNo.error = if (valid) null else "Invalid PAN format (ABCDE1234F)"
+        }
+        return valid
+    }
+
+    private fun validateGstField(showError: Boolean): Boolean {
+        val gstVal = binding.etGstNo.text?.toString()?.uppercase(Locale.US).orEmpty()
+        val valid = gstVal.isEmpty() || isValidGst(gstVal)
+        if (showError) {
+            binding.tilGstNo.error = if (valid) null else "Invalid GSTIN format"
+        }
+        return valid
+    }
+
+    private fun validateAadharField(showError: Boolean): Boolean {
+        val aadharVal = binding.etAadharNo.text?.toString().orEmpty()
+        val valid = aadharVal.isEmpty() || isValidAadhar(aadharVal)
+        if (showError) {
+            binding.tilAadharNo.error = if (valid) null else "Aadhaar must be 12 digits"
+        }
+        return valid
+    }
+
+    private fun validateEmailField(showError: Boolean): Boolean {
+        val emailVal = binding.etEmail.text?.toString().orEmpty()
+        val valid = emailVal.isEmpty() || isValidEmail(emailVal)
+        if (showError) {
+            binding.tilEmail.error = if (valid) null else "Enter a valid email"
+        }
+        return valid
     }
     
     private fun submitRegistration() {
@@ -150,13 +240,18 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         val hasName = binding.etName.text?.isNotBlank() == true
         val hasAddress = binding.etAddress.text?.isNotBlank() == true
         val hasDoctorName = binding.etDoctorName.text?.isNotBlank() == true
-        val hasPhone = binding.etPhone.text?.isNotBlank() == true
+        val hasPhone = binding.etPhone.text?.isNotBlank() == true && isValidPhone(binding.etPhone.text?.toString())
         val gpsOk = viewModel.gpsState.value is GpsState.Captured
         val termsAccepted = binding.cbTermsAccepted.isChecked
         val termsLoaded = viewModel.termsState.value is TermsState.Loaded
-        
-        binding.btnRegister.isEnabled = hasName && hasAddress && hasDoctorName && 
-                hasPhone && gpsOk && termsAccepted && termsLoaded
+
+        val panOk = binding.etPanNo.text.isNullOrBlank() || isValidPan(binding.etPanNo.text?.toString()?.uppercase(Locale.US))
+        val gstOk = binding.etGstNo.text.isNullOrBlank() || isValidGst(binding.etGstNo.text?.toString()?.uppercase(Locale.US))
+        val aadharOk = binding.etAadharNo.text.isNullOrBlank() || isValidAadhar(binding.etAadharNo.text?.toString())
+        val emailOk = binding.etEmail.text.isNullOrBlank() || isValidEmail(binding.etEmail.text?.toString())
+
+        binding.btnRegister.isEnabled = hasName && hasAddress && hasDoctorName && hasPhone &&
+            gpsOk && termsAccepted && termsLoaded && panOk && gstOk && aadharOk && emailOk
     }
 
     private fun observeStates() {
@@ -259,12 +354,17 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         val hasName = binding.etName.text?.isNotBlank() == true
         val hasAddress = binding.etAddress.text?.isNotBlank() == true
         val hasDoctorName = binding.etDoctorName.text?.isNotBlank() == true
-        val hasPhone = binding.etPhone.text?.isNotBlank() == true
+        val hasPhone = binding.etPhone.text?.isNotBlank() == true && isValidPhone(binding.etPhone.text?.toString())
         val gpsOk = viewModel.gpsState.value is GpsState.Captured
         val termsAccepted = binding.cbTermsAccepted.isChecked
         val termsLoaded = viewModel.termsState.value is TermsState.Loaded
-        
-        return hasName && hasAddress && hasDoctorName && hasPhone && gpsOk && termsAccepted && termsLoaded
+
+        val panOk = binding.etPanNo.text.isNullOrBlank() || isValidPan(binding.etPanNo.text?.toString()?.uppercase(Locale.US))
+        val gstOk = binding.etGstNo.text.isNullOrBlank() || isValidGst(binding.etGstNo.text?.toString()?.uppercase(Locale.US))
+        val aadharOk = binding.etAadharNo.text.isNullOrBlank() || isValidAadhar(binding.etAadharNo.text?.toString())
+        val emailOk = binding.etEmail.text.isNullOrBlank() || isValidEmail(binding.etEmail.text?.toString())
+
+        return hasName && hasAddress && hasDoctorName && hasPhone && gpsOk && termsAccepted && termsLoaded && panOk && gstOk && aadharOk && emailOk
     }
     
     private fun showSuccessDialog(agreementNumber: String?, pdfUrl: String?) {
