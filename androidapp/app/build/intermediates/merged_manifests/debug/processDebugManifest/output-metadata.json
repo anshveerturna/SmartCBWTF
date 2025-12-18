@@ -4,7 +4,7 @@
     "type": "MERGED_MANIFESTS",
     "kind": "Directory"
   },
-  "applicationId": "com.smartcbwtf.mobile.debug",
+  "applicationId": "com.smartcbwtf.mobile",
   "variantName": "debug",
   "elements": [
     {

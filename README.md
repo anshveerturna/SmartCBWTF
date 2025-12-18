@@ -1,218 +1,595 @@
-# Smart CBWTF – End-to-End Design & Implementation Plan
+# SmartCBWTF
 
-This document is the living blueprint for a production-grade system to manage biomedical waste collection, tracking, analytics, and billing for a Common Bio Medical Waste Treatment Facility (CBWTF). The system includes:
+**Enterprise Biomedical Waste Management System for Common Biomedical Waste Treatment Facilities**
 
-- **Backend**: Java 17, Spring Boot, PostgreSQL (optionally PostGIS), JWT auth, Flyway migrations, PDF generation, email stub, Docker-ready.
-- **Android App**: Kotlin, MVVM, Room offline cache, WorkManager sync, QR scan, Bluetooth scale abstraction (real + mock), GPS-only location capture, Retrofit networking.
-- **Admin UI**: React SPA with Material UI/Chakra UI, axios, Recharts/Chart.js for analytics, role-based features for CBWTF admins.
-
-If any detail is ambiguous, we choose secure, auditable, maintainable defaults (no manual GPS/weight entry, strict auth, auditable events).
+> **Version**: MVP 1.0  
+> **Status**: ✅ MVP Complete – Ready for Pilot Rollout  
+> **Last Updated**: December 17, 2025
 
 ---
-## 1. Business Goals & Constraints
-- Onboard HCFs with agreements; agreements drive billing.
-- Pre-issue QR labels (Model A) centrally printed and handed to HCFs.
-- Track each bag from HCF to CBWTF using **QR + GPS + Bluetooth weight**; no manual GPS/weight fields exist.
-- Prevent unauthorized pickup/theft via geofencing, anomaly flags, and audit logs.
-- Provide per-HCF and CBWTF-wide analytics and alerts (missing/mismatch).
-- Generate invoices (per-bed-per-day) with PDFs and status lifecycle.
 
-Hard constraints:
-- GPS auto-captured (registration, HCF collection, CBWTF verification); no manual coordinate entry.
-- Weight only from Bluetooth scale; UI omits manual weight inputs.
-- QR labels are pre-generated and centrally printed (Model A).
+## Table of Contents
 
----
-## 2. High-Level Architecture
-**Overview**
-- **Mobile (Android)** → REST APIs (JWT) → **Spring Boot backend** → **PostgreSQL**.
-- **Admin UI (React SPA)** → REST APIs (JWT) → backend.
-- **Storage**: PostgreSQL with optional PostGIS; blob storage (local/posix placeholder) for PDFs/label sheets.
-- **Security**: JWT auth, role-based access (CBWTF_ADMIN, HCF_ADMIN, DRIVER, PLANT_OPERATOR). Passwords hashed (bcrypt). Audit log for critical actions/events.
-
-**Deployability**
-- Backend packaged as Docker image; configurable via `application.yml` and env vars.
-- Admin UI as static SPA (can be containerized and served behind reverse proxy).
-- Android app ships with build flavors (dev uses MockScaleService by default; prod uses RealBluetoothScaleService).
+1. [Project Overview](#1-project-overview)
+2. [Core Design Principles](#2-core-design-principles)
+3. [High-Level Architecture](#3-high-level-architecture)
+4. [Implemented MVP Features](#4-implemented-mvp-features)
+5. [Backend Capabilities](#5-backend-capabilities)
+6. [Data Model Summary](#6-data-model-summary)
+7. [What Is NOT Implemented Yet](#7-what-is-not-implemented-yet)
+8. [Known Limitations](#8-known-limitations)
+9. [How to Run the Project](#9-how-to-run-the-project)
+10. [Project Status](#10-project-status)
+11. [Next Phases](#11-next-phases)
 
 ---
-## 3. Domain Model (Entities & Tables)
-- `facility` (CBWTF site metadata).
-- `hcf` (hospital/clinic) with GPS at registration, status lifecycle.
-- `agreement` (links HCF to facility; terms, rate, PDF).
-- `bag_label` (pre-issued QR labels; Model A issuance, status ISSUED/USED/VOID).
-- `bag_event` (HCF_COLLECTION, CBWTF_VERIFICATION) with GPS, weight, anomalies.
-- `app_user` (auth users with roles; optional facility/hcf scope).
-- `invoice` (per-bed-per-day billing; PDF, status DRAFT/SENT/PAID/CANCELLED).
-- `audit_log` (CREATE/UPDATE/DELETE/LOGIN/EVENT_PROCESS with data hash).
-- `export_job` (optional) for CSV/PDF batch exports.
 
-All IDs are UUID. Timestamps are zone-aware. Flyway migrations define schema.
+## 1. Project Overview
 
----
-## 4. Key Flows (E2E)
-**Flow 1: HCF Registration & Agreement**
-- Mobile/web captures GPS automatically; POST `/api/hcfs/register` (status=PENDING_APPROVAL).
-- Admin reviews PENDING; sets rate/dates; approve → generate agreement number (facility code + year + seq), create PDF, email stub.
-- Agreement number reused in invoices and login IDs for HCF admins if needed.
+### What is SmartCBWTF?
 
-**Flow 2: QR Label Batch Issuance (Model A)**
-- Admin issues labels: HCF + category + quantity → create `bag_label` records with encoded QR like `CBWTF|HCF123|YELLOW|00001234`.
-- Provide `/api/labels/export?batchId=...` to download PDF sheets for printing.
+SmartCBWTF is a comprehensive digital system for managing biomedical waste collection, tracking, and compliance at Common Biomedical Waste Treatment Facilities (CBWTFs). It provides end-to-end traceability from Healthcare Facilities (HCFs) to the treatment plant.
 
-**Flow 3: Collection at HCF (First weight + GPS)**
-- Driver login (JWT). App fetches nearest HCFs by GPS (`/api/hcfs/nearest`).
-- For each bag: scan QR, read GPS, read weight via Bluetooth scale (stabilized). Store locally in Room as `HCF_COLLECTION` pending sync.
-- WorkManager syncs via `/api/bags/events/sync` (idempotent). Backend validates label status/HCF match, sets label USED/COLLECTED, geofence check, anomaly flag.
+### The Problem It Solves
 
-**Flow 4: Verification at CBWTF (Second weight + GPS)**
-- At plant, GPS validated against facility geofence. App lists bags needing verification.
-- For each bag: scan QR, read stabilized Bluetooth weight, capture GPS, POST event `CBWTF_VERIFICATION`.
-- Backend compares HCF vs CBWTF weight; flag mismatches above threshold.
+| Problem | Impact | SmartCBWTF Solution |
+|---------|--------|---------------------|
+| Paper-based tracking | Error-prone, easily manipulated, hard to audit | Digital records with tamper-proof audit logs |
+| Theft & unauthorized pickup | Waste not reaching treatment facility | GPS geofencing + weight verification at both ends |
+| Compliance gaps | Failed regulatory inspections | Complete audit trail with timestamps and hashes |
+| Billing disputes | Inaccurate weight records | Bluetooth scale capture (no manual entry) |
+| Delayed alerts | Missing bags discovered too late | Real-time missing/mismatch detection |
 
-**Flow 5: Alerts & Analytics**
-- Missing bags: HCF_COLLECTION without CBWTF_VERIFICATION after threshold → `/api/alerts/missing_bags`.
-- Mismatch bags: large weight delta → `/api/alerts/mismatched_bags`.
-- Per-HCF analytics `/api/analytics/hcf/{id}`; facility-wide `/api/analytics/facility/{id}` (weights, counts, categories, top generators, anomalies).
+### Who Uses It
 
-**Flow 6: Billing & Invoices**
-- Generate invoice per HCF & period using per-bed-per-day rate; compute base/tax/total; PDF with waste summary by category.
-- Endpoints to list, download PDF, mark SENT/PAID, optional email dispatch.
+| Role | Responsibilities |
+|------|------------------|
+| **CBWTF Admin** | Facility management, HCF approvals, label issuance, invoicing, analytics |
+| **Driver** | Bag collection at HCFs, verification at CBWTF, attendance marking |
+| **Plant Operator** | Bag verification and weight re-measurement at CBWTF |
+| **HCF Admin** | View collection history, agreements, invoices *(future phase)* |
 
 ---
-## 5. Backend Design (Spring Boot)
-- **Modules/Layers**: controller → service → repository; DTOs for requests/responses; mappers; validation with Bean Validation.
-- **Security**: JWT filter, password hashing (bcrypt), method-level `@PreAuthorize` by role.
-- **Persistence**: Spring Data JPA; Flyway migrations; optional PostGIS column for geofence/nearest queries (fallback to haversine SQL).
-- **PDF**: OpenPDF/iText for agreements, invoices, label sheets.
-- **Email**: abstraction with SMTP impl + dev stub/no-op.
-- **Geo**: facility geofence radius stored per facility; nearest HCF query using SQL.
-- **Anomalies**: enum flags OUT_OF_GEOFENCE, MISMATCH.
-- **Idempotency**: sync endpoint deduplicates via client-generated UUID per event.
 
-Key endpoints (non-exhaustive):
-- Auth: `/api/auth/login`, `/api/auth/refresh`.
-- HCF: `/api/hcfs/register`, `/api/hcfs/pending`, `/api/hcfs/{id}/approve`, `/api/hcfs/nearest`.
-- Agreements: `/api/agreements/{id}/pdf`.
-- Labels: `/api/labels/issue`, `/api/labels/export`.
-- Events: `/api/bags/events/sync`, `/api/bags/pending-verification`, `/api/bags/{id}/verify`.
-- Alerts: `/api/alerts/missing_bags`, `/api/alerts/mismatched_bags`.
-- Analytics: `/api/analytics/hcf/{id}`, `/api/analytics/facility/{id}`.
-- Billing: `/api/invoices/generate`, `/api/invoices`, `/api/invoices/{id}/pdf`, `/api/invoices/{id}/status`.
+## 2. Core Design Principles
 
----
-## 6. Android App Design (Kotlin)
-- **Architecture**: MVVM + Repository; Coroutines + Flow; Hilt for DI.
-- **Storage**: Room DB for cached HCFs, bag labels (optional), unsynced events (with idempotency keys).
-- **Networking**: Retrofit + OkHttp interceptors (auth header, logging in debug).
-- **Config**: Base API URL is provided via `BuildConfig.BASE_URL`; override at build time with Gradle property `-PAPI_BASE_URL=https://your.endpoint/`.
-- **Auth**: login screen, stores JWT securely (EncryptedSharedPreferences/Datastore); token refresh support.
-- **Location**: Fused Location Provider; no UI for manual entry.
-- **QR Scan**: ZXing/ML Kit.
-- **Bluetooth Scale**: `ScaleService` interface with `RealBluetoothScaleService` (BLE, parses strings like `"ST,GS,+  5.0kg"`, stabilization) and `MockScaleService` (dev default; simulate weight after ~2s, random 1–10 kg, debug UI control). UI observes stable weight stream.
-- **Flows**:
-  - HCF registration screen (captures GPS automatically).
-  - Start Pickup: get GPS, call nearest HCF, select.
-  - Scan & Weigh: connect scale, scan QR, auto GPS, require stable weight before enabling submit.
-  - Verification at CBWTF: similar but with facility geofence validation.
-- **Offline/Sync**: WorkManager periodic/one-off jobs to sync unsent events; exponential backoff; marks synced rows by server ACK; retries idempotently.
+### 🔒 Offline-First Architecture
+- All field operations (collection, verification, attendance) work without network connectivity
+- Room database queues events locally; WorkManager syncs when online
+- Idempotent sync via client-generated UUIDs prevents duplicates
+
+### 📍 GPS & Bluetooth Enforced (No Manual Entry)
+- **GPS**: Auto-captured at HCF registration, bag collection, CBWTF verification, and attendance marking
+- **Weight**: Bluetooth scale only—UI has no manual weight input fields
+- **Rationale**: Eliminates data manipulation at the point of capture
+
+### 📋 Auditability & Tamper Resistance
+- Every critical operation logged to `audit_log` table with JSON payload and SHA-256 hash
+- Immutable event records; no update/delete on `bag_event` or `attendance`
+- Timestamps are zone-aware (UTC storage with local offset)
+
+### 🏗️ Separation of Concerns
+- **Android App**: Field operations (drivers, plant operators)
+- **Spring Boot Backend**: Business logic, validation, PDF generation, audit
+- **Admin Portal** *(planned)*: Approvals, analytics, billing management
 
 ---
-## 7. Admin UI (React SPA)
-- **Stack**: Vite + React + TypeScript, Material UI or Chakra UI, axios, React Query/SWR, Recharts/Chart.js.
-- **Auth**: JWT stored in memory + refresh; route guards per role.
-- **Pages**:
-  - Login.
-  - HCF approvals (list PENDING → approve/reject; set rate/dates; generate agreement PDF link).
-  - Label issuance (form) + download label sheet PDF.
-  - Alerts (missing/mismatched) tables.
-  - Analytics dashboards (per-HCF and facility-wide charts).
-  - Invoices list/detail with PDF download and status update.
 
----
-## 8. Data Model (Initial DDL Outline)
-We will codify in Flyway migrations (excerpt):
-- `app_user(id UUID PK, username UNIQUE, password_hash, full_name, email, role, facility_id FK, hcf_id FK, created_at)`
-- `facility(id UUID PK, code UNIQUE, name, address, contact_email, contact_phone, gps_lat, gps_lon, geofence_radius_m, created_at, updated_at)`
-- `hcf(id UUID PK, code UNIQUE, name, address, contact_email, contact_phone, number_of_beds, gps_lat, gps_lon, status, created_at, updated_at)`
-- `agreement(id UUID PK, agreement_number UNIQUE, hcf_id FK, facility_id FK, start_date, end_date, per_bed_per_day_rate, terms_text, pdf_url, status, created_at, updated_at)`
-- `bag_label(id UUID PK, hcf_id FK, facility_id FK, category, serial_no, qr_code UNIQUE, status, issued_at, used_at, void_reason)`
-- `bag_event(id UUID PK, bag_label_id FK, facility_id FK, hcf_id FK, event_type, event_ts, gps_lat, gps_lon, weight_kg, collected_by_user_id FK, app_device_id, anomaly_state, notes, created_at)`
-- `invoice(id UUID PK, invoice_number UNIQUE, hcf_id FK, facility_id FK, agreement_id FK, period_start, period_end, beds, per_bed_per_day_rate, base_amount, tax_amount, total_amount, pdf_url, status, created_at, updated_at)`
-- `audit_log(id UUID PK, entity_type, entity_id, action, actor_user_id, ts, data_json JSONB, data_hash)`
-- `export_job(id UUID PK, job_type, requested_by_user_id, status, started_at, completed_at, artifact_url, params_json)`
+## 3. High-Level Architecture
 
----
-## 9. Security & Compliance
-- JWT for API auth; short-lived access tokens, refresh endpoint.
-- Bcrypt for password hashing; minimum complexity enforced.
-- Role-based method security; deny-by-default for admin endpoints.
-- Audit logging for key actions and logins; data hash for tamper detection.
-- Input validation and size limits; rate limiting (future-ready via proxy/gateway).
-- No manual GPS/weight fields anywhere in UI; all captured via sensors/services.
-
----
-## 10. Observability & Reliability
-- Structured logging (request IDs, user IDs on context) for major flows.
-- Idempotent sync via client event UUIDs; backend de-duplicates.
-- Background sync retries with backoff on Android.
-- Health checks: `/actuator/health`, DB migration on startup.
-
----
-## 11. Project Structure (planned)
 ```
-backend/
-  pom.xml (or build.gradle)
-  src/main/java/... (controllers, services, repositories, security, dto, pdf, email, config)
-  src/main/resources/
-    application.yml
-    db/migration/V1__init.sql
-  Dockerfile
-frontend/
-  package.json
-  src/ (routes, pages, components, api client, auth guards)
-android-app/
-  build.gradle settings
-  app/src/main/java/... (ui, viewmodels, repositories, data, bluetooth, qr, di)
-  app/src/main/res/
-  README-android.md
-README.md (this file)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              FIELD LAYER                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   ┌─────────────────┐    ┌──────────────────┐    ┌───────────────────┐     │
+│   │  Android App    │    │  Bluetooth Scale │    │   QR Labels       │     │
+│   │  (Kotlin/MVVM)  │◄───│  (BLE Protocol)  │    │   (Pre-printed)   │     │
+│   │                 │    └──────────────────┘    └───────────────────┘     │
+│   │  • Room DB      │                                                       │
+│   │  • WorkManager  │                                                       │
+│   │  • GPS/Location │                                                       │
+│   └────────┬────────┘                                                       │
+│            │                                                                │
+│            │ REST/JWT (Sync when online)                                    │
+│            ▼                                                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                              API LAYER                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────┐       │
+│   │                    Spring Boot Backend                          │       │
+│   │  • JWT Authentication (bcrypt)                                  │       │
+│   │  • Role-based Authorization (DRIVER, CBWTF_ADMIN, etc.)         │       │
+│   │  • Geofence Validation                                          │       │
+│   │  • PDF Generation (OpenPDF)                                     │       │
+│   │  • Audit Logging (SHA-256 hash)                                 │       │
+│   └─────────────────────────────────────────────────────────────────┘       │
+│                                    │                                        │
+│                                    ▼                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                              DATA LAYER                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────┐       │
+│   │                     PostgreSQL                                  │       │
+│   │  • Flyway Migrations (V1–V5)                                    │       │
+│   │  • UUID Primary Keys                                            │       │
+│   │  • TIMESTAMPTZ for all timestamps                               │       │
+│   └─────────────────────────────────────────────────────────────────┘       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
----
-## 12. Implementation Plan & Next Steps
-1. **Scaffold backend**: Spring Boot project, Flyway baseline migration, core entities/DTOs, JWT security, controllers stubs, Dockerfile, sample config.
-2. **Scaffold Android app**: MVVM skeleton, auth flow, Room schema for events, Retrofit client, ScaleService interface + mock & real stubs, WorkManager sync setup.
-3. **Scaffold admin UI**: Vite + React + TS, auth guard, pages skeleton (HCF approvals, label issuance, alerts, analytics, invoices), axios client.
-4. **Add PDFs**: agreement, invoice, label sheet generators.
-5. **Add analytics & alerts queries**: SQL views/services; expose REST endpoints.
-6. **Testing**: unit tests for services/controllers; Android unit/UI tests; frontend component smoke tests.
-7. **Docs**: update runbooks, API docs (Springdoc OpenAPI), environment setup.
+### Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| Mobile App | Kotlin, MVVM, Hilt DI, Room, Retrofit, WorkManager, ZXing/ML Kit |
+| Backend | Java 17, Spring Boot 3.2, Spring Security, Spring Data JPA |
+| Database | PostgreSQL 14+ with Flyway migrations |
+| PDF Generation | OpenPDF (iText fork) |
+| Authentication | JWT (HMAC-SHA256), bcrypt password hashing |
 
 ---
-## 13. Running the Projects (to be completed as code is added)
-- Backend: `./mvnw spring-boot:run` or `./gradlew bootRun`; env vars for DB and JWT secret; `docker build` for container.
-- Frontend: `npm install && npm run dev`.
-- Android: open in Android Studio; select dev flavor (MockScaleService default); run on emulator/physical device.
+
+## 4. Implemented MVP Features
+
+### 4.1 Authentication & Session Management ✅
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| JWT-based login | ✅ Implemented | Access tokens (30 min TTL), refresh support |
+| Auto logout on expiry | ✅ Implemented | Token validation on each request |
+| Role-based access | ✅ Implemented | CBWTF_ADMIN, HCF_ADMIN, DRIVER, PLANT_OPERATOR |
+| Secure token storage | ✅ Implemented | EncryptedSharedPreferences on Android |
+
+### 4.2 Home Dashboard ✅
+
+The driver/operator home screen provides access to all field operations:
+
+| Dashboard Card | Status | Description |
+|----------------|--------|-------------|
+| Pickup Waste | ✅ Implemented | Navigate to HCF collection flow |
+| Verify at CBWTF | ✅ Implemented | Navigate to verification flow |
+| Register HCF | ✅ Implemented | New HCF onboarding form |
+| Mark Attendance | ✅ Implemented | GPS-verified HCF visit confirmation |
+| Sync Status | ✅ Implemented | Shows pending/synced event counts |
+| Profile Menu | ✅ Implemented | User info, logout, settings |
+
+### 4.3 Pickup Waste Flow (HCF Collection) ✅
+
+Complete offline-capable waste collection workflow:
+
+| Step | Implementation |
+|------|----------------|
+| 1. GPS Location Capture | Auto-captured via Fused Location Provider (no manual entry) |
+| 2. Nearest HCF Selection | Filtered by GPS proximity using Haversine formula |
+| 3. QR Scan | Camera-based barcode scanning (ZXing/ML Kit) |
+| 4. Bluetooth Weight Capture | BLE scale reading with stabilization logic |
+| 5. Multi-bag Session | "Add Bag" for additional bags, "Submit All" for batch |
+| 6. Offline Queue | Events stored in Room DB with client-generated UUIDs |
+| 7. Background Sync | WorkManager dispatches when connectivity restored |
+
+**Event Type**: `HCF_COLLECTION`
+
+### 4.4 Verify at CBWTF Flow ✅
+
+Separate verification mode for plant operators:
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| Location enforcement | ✅ Implemented | Must be within CBWTF geofence (200m default) |
+| QR scan | ✅ Implemented | Links to original collection event |
+| Weight re-verification | ✅ Implemented | Bluetooth scale required |
+| Mismatch detection | ✅ Implemented | Flags discrepancies > 0.5 kg threshold |
+| Timestamped verification | ✅ Implemented | Server-side timestamp for audit |
+
+**Event Type**: `CBWTF_VERIFICATION`
+
+### 4.5 QR Scanning ✅
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| Camera-based scanning | ✅ Implemented | ZXing/ML Kit integration |
+| Dedicated scanner UI | ✅ Implemented | Full-screen viewfinder with overlay |
+| QR format parsing | ✅ Implemented | Format: `CBWTF\|HCF123\|YELLOW\|00001234` |
+
+### 4.6 Bluetooth Weighing Scale ✅
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| BLE protocol support | ✅ Implemented | Parses `ST,GS,+  5.0kg` format strings |
+| Stabilization logic | ✅ Implemented | Waits for stable reading before enabling submit |
+| Mock scale service | ✅ Implemented | Dev/emulator testing (2s delay, 1–10 kg random) |
+| Real scale service | ✅ Implemented | Production BLE implementation |
+| No manual entry | ✅ Enforced | UI has no weight input field |
+
+**Architecture**: `ScaleService` interface with `MockScaleService` (dev) and `RealBluetoothScaleService` (prod) implementations.
+
+### 4.7 HCF Registration & Agreement Generation ✅
+
+Complete digital onboarding workflow:
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| Registration form | ✅ Implemented | Name, address, beds, contact, PAN, GST, Aadhaar |
+| GPS auto-capture | ✅ Implemented | Registration location recorded |
+| Phone/email validation | ✅ Implemented | Format validation with error messages |
+| Terms & Conditions | ✅ Implemented | Versioned T&C, must accept before submission |
+| Configurable templates | ✅ Implemented | Per-facility HTML/PDF templates |
+| Agreement number generation | ✅ Implemented | Format: `DEL-HCF-2025-00001` (configurable) |
+| PDF generation | ✅ Implemented | OpenPDF with facility branding |
+| PDF viewing/sharing | ✅ Implemented | In-app viewer, share intent, print support |
+
+**Configuration**: See [docs/HCF_REGISTRATION_CONFIGURATION.md](docs/HCF_REGISTRATION_CONFIGURATION.md) for agreement number format options.
+
+### 4.8 Attendance Marking ✅
+
+GPS-enforced driver attendance at HCF locations:
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| Dedicated attendance screen | ✅ Implemented | Full UI with location status, HCF list |
+| GPS requirement | ✅ Implemented | Must be within 50m of registered HCF |
+| Multi-HCF handling | ✅ Implemented | Selection list if multiple HCFs in range |
+| Cooldown enforcement | ✅ Implemented | 5 min between marks (server-authoritative) |
+| Offline queue | ✅ Implemented | Room entity + WorkManager sync |
+| Retry location | ✅ Implemented | Manual GPS re-fetch button |
+
+**API Endpoint**: `POST /api/attendance/sync` (batch sync, DRIVER role required)
 
 ---
-## 14. Additional Documentation
 
-- **[HCF Registration Configuration Guide](docs/HCF_REGISTRATION_CONFIGURATION.md)** - Detailed instructions for configuring:
-  - Agreement Number Generator (format, prefix, separator, sequence digits)
-  - Terms & Conditions management (creating, updating, activating versions)
-  - Facility templates for agreement PDFs
-  - Email and PDF storage settings
+## 5. Backend Capabilities
+
+### REST API Endpoints
+
+| Category | Endpoint | Method | Description |
+|----------|----------|--------|-------------|
+| **Auth** | `/api/auth/login` | POST | JWT login |
+| **Auth** | `/api/auth/refresh` | POST | Token refresh |
+| **HCF** | `/api/hcfs/register` | POST | New HCF registration |
+| **HCF** | `/api/hcfs/nearest` | GET | HCFs within GPS radius |
+| **HCF** | `/api/hcfs/pending` | GET | Pending approvals (admin) |
+| **HCF** | `/api/hcfs/{id}/approve` | POST | Approve HCF (admin) |
+| **Bags** | `/api/bags/events/sync` | POST | Batch event sync (idempotent) |
+| **Bags** | `/api/bags/pending-verification` | GET | Bags awaiting CBWTF verification |
+| **Attendance** | `/api/attendance/sync` | POST | Batch attendance sync |
+| **Labels** | `/api/labels/issue` | POST | Issue QR label batch |
+| **Labels** | `/api/labels/export` | GET | Download label sheet PDF |
+| **Agreements** | `/api/agreements/{id}/pdf` | GET | Download agreement PDF |
+| **Alerts** | `/api/alerts/missing_bags` | GET | Bags not verified after threshold |
+| **Alerts** | `/api/alerts/mismatched_bags` | GET | Weight discrepancy alerts |
+| **Analytics** | `/api/analytics/hcf/{id}` | GET | Per-HCF statistics |
+| **Analytics** | `/api/analytics/facility/{id}` | GET | Facility-wide statistics |
+| **Invoices** | `/api/invoices/generate` | POST | Generate invoice |
+| **Invoices** | `/api/invoices/{id}/pdf` | GET | Download invoice PDF |
+| **Terms** | `/api/terms/latest` | GET | Active T&C for facility |
+| **Health** | `/actuator/health` | GET | Health check |
+
+### Core Services
+
+| Service | Responsibility |
+|---------|----------------|
+| `AgreementNumberGeneratorService` | Atomic, configurable agreement number generation |
+| `AgreementService` | PDF generation, approval workflow |
+| `BagEventService` | Event validation, geofence check, mismatch detection |
+| `AttendanceService` | Geofence validation, cooldown enforcement |
+| `AuditLogService` | Tamper-resistant logging with SHA-256 hash |
+| `LabelService` | QR code generation, batch issuance |
+| `InvoiceService` | Per-bed-per-day billing, PDF generation |
+| `EmailService` | Notification dispatch (currently stubbed) |
+
+### Validation & Business Rules
+
+| Rule | Configuration | Default |
+|------|---------------|---------|
+| HCF Geofence | `app.geofence.hcf-radius-m` | 200m |
+| CBWTF Geofence | `app.geofence.facility-default-radius-m` | 200m |
+| Attendance Geofence | `app.attendance.geofence-radius-m` | 50m |
+| Weight Mismatch | `app.weight.mismatch-threshold-kg` | 0.5 kg |
+| Missing Bag Alert | `app.alerts.missing-bag-hours` | 24 hours |
+| Attendance Cooldown | `app.attendance.cooldown-minutes` | 5 min |
 
 ---
-## 15. Assumptions
-- Single CBWTF facility initially; multi-facility supported via `facility` entity.
-- BLE scale sends ASCII weight strings like `ST,GS,+  5.0kg`; stabilization handled client-side.
-- Email sending can be stubbed in dev; prod uses SMTP credentials.
-- PDFs stored locally or to an object store; path kept in DB.
+
+## 6. Data Model Summary
+
+### Core Entities
+
+| Entity | Purpose | Key Fields |
+|--------|---------|------------|
+| `Facility` | CBWTF site | code, name, address, GPS, geofence radius |
+| `Hcf` | Healthcare facility | code, name, beds, GPS, status, registration fields |
+| `Agreement` | HCF contract | agreement_number, rate, terms_version, PDF URL |
+| `BagLabel` | Pre-issued QR label | qr_code, category, status (ISSUED/USED/VOID) |
+| `BagEvent` | Collection/verification | event_type, GPS, weight, anomaly_state |
+| `Attendance` | Driver HCF visit | driver, HCF, GPS, distance, client_event_id |
+| `AppUser` | System user | username, role, facility/HCF scope |
+| `AuditLog` | Tamper-proof log | entity_type, action, data_json, data_hash |
+| `FacilityTerms` | Versioned T&C | version, text_html, active flag |
+| `FacilityTemplate` | Agreement PDF template | template_type, content_location, variables |
+| `Invoice` | Billing record | period, beds, rate, amounts, PDF URL, status |
+
+### Database Migrations
+
+| Migration | Purpose |
+|-----------|---------|
+| V1__init.sql | Base schema (facility, hcf, agreement, bag_label, bag_event, invoice, audit_log) |
+| V2__bag_event_dedupe.sql | Idempotency support for event sync |
+| V3__bag_event_performance_indexes.sql | Query optimization indexes |
+| V4__hcf_agreement_terms_templates.sql | Registration GPS, terms, templates |
+| V5__attendance.sql | Attendance entity with driver-HCF-ts indexes |
 
 ---
-## 16. Change Log
-- v0.2 (2025-12-12): Added HCF Registration flow with configurable agreement numbers, terms management, PDF generation
-- v0.1 (initial): Initial architecture README and plan.
 
+## 7. What Is NOT Implemented Yet
+
+### 🔜 Phase 2 – Admin Web Portal
+- React SPA for CBWTF administrators
+- HCF approval workflow UI
+- Label issuance interface
+- Analytics dashboards
+- Invoice management
+
+### 🔜 Phase 2 – Billing & Payment
+- Payment gateway integration
+- Online payment processing
+- Payment reconciliation
+- Invoice email dispatch (email currently stubbed)
+
+### 🔜 Phase 3 – Compliance & Exports
+- CPCB/PCB report generation
+- Carbon credit calculation
+- Regulatory compliance exports
+- Scheduled report automation
+- Export job processing (schema exists, not implemented)
+
+### 🔜 Phase 3 – Advanced Analytics
+- Real-time dashboards
+- Trend analysis
+- Predictive alerts
+- Collection route optimization
+
+### 🔜 Phase 4 – Integrations
+- CCTV verification integration
+- GPS fleet tracking
+- ERP/accounting system sync
+- Hardware certification flows
+
+### 🔜 Infrastructure
+- User provisioning API (currently seed-based)
+- Password reset flow
+- Multi-factor authentication
+- Per-HCF geofence/threshold overrides
+
+---
+
+## 8. Known Limitations
+
+### Android App
+
+| Limitation | Impact | Workaround |
+|------------|--------|------------|
+| Emulator camera | QR scanning requires physical device | Use mock data or real device |
+| BLE dependency | Weight capture requires paired scale | Mock scale service for dev |
+| Cold GPS start | Initial location fetch can be slow | Retry button provided |
+| Location permission | Core functionality blocked without | Clear permission rationale in UI |
+
+### Backend
+
+| Limitation | Impact | Workaround |
+|------------|--------|------------|
+| Email stubbed | No actual emails sent | Logs email content; real SMTP in Phase 2 |
+| QR artwork text-only | Label PDFs lack graphical QR | Future: image-based QR rendering |
+| Static thresholds | No per-HCF geofence/weight overrides | Future: configurable per entity |
+| Single-tenant | Assumes single CBWTF initially | Multi-facility supported in schema |
+
+### Operational
+
+| Limitation | Mitigation |
+|------------|------------|
+| Online required for HCF registration | Ensure connectivity for onboarding |
+| Manual user provisioning | Users created via SQL seed; admin UI in Phase 2 |
+
+---
+
+## 9. How to Run the Project
+
+### Prerequisites
+
+| Tool | Version |
+|------|---------|
+| Java | 17+ |
+| PostgreSQL | 14+ |
+| Android Studio | Arctic Fox+ |
+| Maven | 3.8+ |
+
+### Backend (Spring Boot)
+
+```bash
+# 1. Create PostgreSQL database
+psql -U postgres -c "CREATE DATABASE smart_cbwtf;"
+psql -U postgres -c "CREATE USER smart_cbwtf WITH PASSWORD 'change-me';"
+psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE smart_cbwtf TO smart_cbwtf;"
+
+# 2. Navigate to backend directory
+cd backend
+
+# 3. Configure application.yml (update DB credentials, JWT secret)
+# Edit src/main/resources/application.yml
+
+# 4. Run with Maven
+mvn -DskipTests spring-boot:run
+
+# Backend starts at http://localhost:8080
+# Health check: http://localhost:8080/actuator/health
+```
+
+**Docker Alternative:**
+```bash
+cd backend
+docker build -t smartcbwtf-backend .
+docker run -p 8080:8080 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/smart_cbwtf \
+  -e SPRING_DATASOURCE_USERNAME=smart_cbwtf \
+  -e SPRING_DATASOURCE_PASSWORD=change-me \
+  smartcbwtf-backend
+```
+
+### Android App
+
+```bash
+# 1. Open in Android Studio
+cd androidapp
+# File → Open → select androidapp folder
+
+# 2. Configure API base URL (for emulator → localhost)
+# In app/build.gradle.kts or via Gradle property:
+# -PAPI_BASE_URL="http://10.0.2.2:8080"
+# Note: 10.0.2.2 is emulator's host loopback
+
+# 3. Build debug APK
+./gradlew assembleDebug
+
+# 4. Install on device/emulator
+adb install app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Emulator vs Real Device
+
+| Feature | Emulator | Real Device |
+|---------|----------|-------------|
+| QR Scanning | ❌ Limited (no camera) | ✅ Full support |
+| Bluetooth Scale | ❌ Mock service only | ✅ Real BLE support |
+| GPS Location | ⚠️ Simulated location | ✅ Actual GPS |
+| Network Sync | ✅ Works | ✅ Works |
+| Offline Queue | ✅ Works | ✅ Works |
+
+**Recommendation**: Use real device for full feature testing.
+
+---
+
+## 10. Project Status
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│              ✅  MVP COMPLETE                               │
+│                                                             │
+│   Ready for pilot rollout and real-device testing           │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Completed Milestones
+
+| Milestone | Status |
+|-----------|--------|
+| Core collection workflow (HCF_COLLECTION) | ✅ Complete |
+| CBWTF verification workflow (CBWTF_VERIFICATION) | ✅ Complete |
+| HCF registration & agreement PDF generation | ✅ Complete |
+| Attendance tracking with geofence | ✅ Complete |
+| Offline-first architecture (Room + WorkManager) | ✅ Complete |
+| JWT authentication with role-based access | ✅ Complete |
+| Audit logging with tamper detection | ✅ Complete |
+| PDF generation (agreements, invoices, labels) | ✅ Complete |
+| Alerts (missing bags, weight mismatch) | ✅ Complete |
+| Analytics endpoints (per-HCF, facility-wide) | ✅ Complete |
+
+### Ready For
+
+| Activity | Status |
+|----------|--------|
+| Pilot Rollout | ✅ Ready – Deploy with select HCFs |
+| Real Device Testing | ✅ Ready – Full BLE + GPS + camera |
+| Management Demo | ✅ Ready – End-to-end workflow |
+| Security Review | ✅ Ready – JWT, roles, audit trails |
+| Compliance Audit | ✅ Ready – Audit logs with hashes |
+
+---
+
+## 11. Next Phases
+
+### Phase 2.4: Admin Portal
+- React SPA scaffolding (Vite + TypeScript)
+- HCF approval workflow UI
+- Label issuance interface
+- Basic analytics dashboards
+
+### Phase 2.5: Billing & Invoicing
+- Invoice generation UI
+- PDF dispatch via real email provider
+- Payment status tracking
+
+### Phase 3: Compliance & Integrations
+- CPCB/PCB report templates
+- Export job automation
+- Per-HCF threshold configuration
+- User provisioning API
+
+### Phase 4: Advanced Features
+- Real-time fleet tracking
+- Predictive analytics
+- Mobile push notifications
+- CCTV integration
+
+---
+
+## Documentation
+
+| Document | Location | Purpose |
+|----------|----------|---------|
+| HCF Registration Config | [docs/HCF_REGISTRATION_CONFIGURATION.md](docs/HCF_REGISTRATION_CONFIGURATION.md) | Agreement numbering, templates, terms |
+| Current Status | [currentstatusreadme.md](currentstatusreadme.md) | Detailed implementation status |
+| Phase 1 Gaps | [backend/PHASE1_GAPS.md](backend/PHASE1_GAPS.md) | Known gaps and improvements |
+
+---
+
+## Directory Structure
+
+```
+SmartCBWTF/
+├── androidapp/                    # Android mobile application
+│   ├── app/
+│   │   └── src/main/java/com/smartcbwtf/mobile/
+│   │       ├── bluetooth/         # BLE scale services
+│   │       ├── database/          # Room entities, DAOs
+│   │       ├── di/                # Hilt dependency injection
+│   │       ├── network/           # Retrofit API clients
+│   │       ├── repository/        # Data repositories
+│   │       ├── ui/                # Fragments, adapters
+│   │       ├── viewmodel/         # MVVM ViewModels
+│   │       └── work/              # WorkManager workers
+│   └── build.gradle.kts
+├── backend/                       # Spring Boot backend
+│   ├── src/main/java/com/smartcbwtf/
+│   │   ├── controller/            # REST endpoints
+│   │   ├── service/               # Business logic
+│   │   ├── repository/            # JPA repositories
+│   │   ├── domain/                # Entity classes
+│   │   ├── dto/                   # Request/response DTOs
+│   │   └── config/                # Security, JWT config
+│   ├── src/main/resources/
+│   │   ├── db/migration/          # Flyway migrations (V1-V5)
+│   │   └── application.yml        # Configuration
+│   ├── Dockerfile
+│   └── pom.xml
+├── docs/                          # Documentation
+│   └── HCF_REGISTRATION_CONFIGURATION.md
+├── README.md                      # This file
+└── currentstatusreadme.md         # Detailed status tracking
+```
+
+---
+
+## License
+
+Proprietary – Internal use only.
+
+---
+
+## Contact
+
+For questions, access requests, or onboarding support, contact the SmartCBWTF development team.

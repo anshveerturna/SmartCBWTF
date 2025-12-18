@@ -25,9 +25,9 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
-            // Point debug builds to local backend (emulator -> host). If running on device, swap to LAN IP.
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/api/\"")
+            val apiBaseUrl = project.findProperty("API_BASE_URL") as String?
+            ?: "http://192.168.1.131:8080/api/"
+            buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
         }
         release {
             isMinifyEnabled = false

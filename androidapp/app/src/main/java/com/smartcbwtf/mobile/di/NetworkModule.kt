@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.smartcbwtf.mobile.BuildConfig
 import com.smartcbwtf.mobile.network.AuthInterceptor
+import com.smartcbwtf.mobile.network.api.AttendanceApi
 import com.smartcbwtf.mobile.network.api.AuthApi
 import com.smartcbwtf.mobile.network.api.BagEventApi
 import com.smartcbwtf.mobile.network.api.HcfApi
@@ -63,4 +64,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideVerificationApi(retrofit: Retrofit): VerificationApi = retrofit.create(VerificationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAttendanceApi(retrofit: Retrofit): AttendanceApi = retrofit.create(AttendanceApi::class.java)
 }

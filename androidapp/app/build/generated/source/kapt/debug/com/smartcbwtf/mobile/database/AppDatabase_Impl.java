@@ -11,6 +11,8 @@ import androidx.room.util.DBUtil;
 import androidx.room.util.TableInfo;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteOpenHelper;
+import com.smartcbwtf.mobile.database.dao.AttendanceDao;
+import com.smartcbwtf.mobile.database.dao.AttendanceDao_Impl;
 import com.smartcbwtf.mobile.database.dao.BagEventDao;
 import com.smartcbwtf.mobile.database.dao.BagEventDao_Impl;
 import com.smartcbwtf.mobile.database.dao.HcfDao;
@@ -34,22 +36,26 @@ public final class AppDatabase_Impl extends AppDatabase {
 
   private volatile HcfDao _hcfDao;
 
+  private volatile AttendanceDao _attendanceDao;
+
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(2) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(3) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `bag_events` (`id` TEXT NOT NULL, `qrCode` TEXT NOT NULL, `eventType` TEXT NOT NULL, `eventTs` INTEGER NOT NULL, `gpsLat` REAL NOT NULL, `gpsLon` REAL NOT NULL, `weightKg` REAL NOT NULL, `hcfId` TEXT NOT NULL, `facilityId` TEXT, `synced` INTEGER NOT NULL, `deviceId` TEXT, `driverId` TEXT, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS `hcfs` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `address` TEXT, `city` TEXT, `state` TEXT, `postalCode` TEXT, `phone` TEXT, `latitude` REAL, `longitude` REAL, `approved` INTEGER NOT NULL, PRIMARY KEY(`id`))");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `attendance_events` (`id` TEXT NOT NULL, `hcfId` TEXT NOT NULL, `hcfName` TEXT NOT NULL, `eventTs` INTEGER NOT NULL, `gpsLat` REAL NOT NULL, `gpsLon` REAL NOT NULL, `gpsAccuracyM` REAL, `distanceFromHcfM` REAL NOT NULL, `deviceId` TEXT, `synced` INTEGER NOT NULL, `syncedAt` INTEGER, `syncError` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b84be3333c9c8db0d6e6b5a27f27b1ff')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fb6046caffa62865bd34c13d03363bf8')");
       }
 
       @Override
       public void dropAllTables(@NonNull final SupportSQLiteDatabase db) {
         db.execSQL("DROP TABLE IF EXISTS `bag_events`");
         db.execSQL("DROP TABLE IF EXISTS `hcfs`");
+        db.execSQL("DROP TABLE IF EXISTS `attendance_events`");
         final List<? extends RoomDatabase.Callback> _callbacks = mCallbacks;
         if (_callbacks != null) {
           for (RoomDatabase.Callback _callback : _callbacks) {
@@ -135,9 +141,32 @@ public final class AppDatabase_Impl extends AppDatabase {
                   + " Expected:\n" + _infoHcfs + "\n"
                   + " Found:\n" + _existingHcfs);
         }
+        final HashMap<String, TableInfo.Column> _columnsAttendanceEvents = new HashMap<String, TableInfo.Column>(13);
+        _columnsAttendanceEvents.put("id", new TableInfo.Column("id", "TEXT", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("hcfId", new TableInfo.Column("hcfId", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("hcfName", new TableInfo.Column("hcfName", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("eventTs", new TableInfo.Column("eventTs", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("gpsLat", new TableInfo.Column("gpsLat", "REAL", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("gpsLon", new TableInfo.Column("gpsLon", "REAL", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("gpsAccuracyM", new TableInfo.Column("gpsAccuracyM", "REAL", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("distanceFromHcfM", new TableInfo.Column("distanceFromHcfM", "REAL", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("deviceId", new TableInfo.Column("deviceId", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("synced", new TableInfo.Column("synced", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("syncedAt", new TableInfo.Column("syncedAt", "INTEGER", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("syncError", new TableInfo.Column("syncError", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsAttendanceEvents.put("createdAt", new TableInfo.Column("createdAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        final HashSet<TableInfo.ForeignKey> _foreignKeysAttendanceEvents = new HashSet<TableInfo.ForeignKey>(0);
+        final HashSet<TableInfo.Index> _indicesAttendanceEvents = new HashSet<TableInfo.Index>(0);
+        final TableInfo _infoAttendanceEvents = new TableInfo("attendance_events", _columnsAttendanceEvents, _foreignKeysAttendanceEvents, _indicesAttendanceEvents);
+        final TableInfo _existingAttendanceEvents = TableInfo.read(db, "attendance_events");
+        if (!_infoAttendanceEvents.equals(_existingAttendanceEvents)) {
+          return new RoomOpenHelper.ValidationResult(false, "attendance_events(com.smartcbwtf.mobile.database.entity.AttendanceEventEntity).\n"
+                  + " Expected:\n" + _infoAttendanceEvents + "\n"
+                  + " Found:\n" + _existingAttendanceEvents);
+        }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "b84be3333c9c8db0d6e6b5a27f27b1ff", "aed4666d7989130db5483337770f0c3c");
+    }, "fb6046caffa62865bd34c13d03363bf8", "9c08abdfca50bff5f8033fe518b1dae2");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;
@@ -148,7 +177,7 @@ public final class AppDatabase_Impl extends AppDatabase {
   protected InvalidationTracker createInvalidationTracker() {
     final HashMap<String, String> _shadowTablesMap = new HashMap<String, String>(0);
     final HashMap<String, Set<String>> _viewTables = new HashMap<String, Set<String>>(0);
-    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "bag_events","hcfs");
+    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "bag_events","hcfs","attendance_events");
   }
 
   @Override
@@ -159,6 +188,7 @@ public final class AppDatabase_Impl extends AppDatabase {
       super.beginTransaction();
       _db.execSQL("DELETE FROM `bag_events`");
       _db.execSQL("DELETE FROM `hcfs`");
+      _db.execSQL("DELETE FROM `attendance_events`");
       super.setTransactionSuccessful();
     } finally {
       super.endTransaction();
@@ -175,6 +205,7 @@ public final class AppDatabase_Impl extends AppDatabase {
     final HashMap<Class<?>, List<Class<?>>> _typeConvertersMap = new HashMap<Class<?>, List<Class<?>>>();
     _typeConvertersMap.put(BagEventDao.class, BagEventDao_Impl.getRequiredConverters());
     _typeConvertersMap.put(HcfDao.class, HcfDao_Impl.getRequiredConverters());
+    _typeConvertersMap.put(AttendanceDao.class, AttendanceDao_Impl.getRequiredConverters());
     return _typeConvertersMap;
   }
 
@@ -217,6 +248,20 @@ public final class AppDatabase_Impl extends AppDatabase {
           _hcfDao = new HcfDao_Impl(this);
         }
         return _hcfDao;
+      }
+    }
+  }
+
+  @Override
+  public AttendanceDao attendanceDao() {
+    if (_attendanceDao != null) {
+      return _attendanceDao;
+    } else {
+      synchronized(this) {
+        if(_attendanceDao == null) {
+          _attendanceDao = new AttendanceDao_Impl(this);
+        }
+        return _attendanceDao;
       }
     }
   }

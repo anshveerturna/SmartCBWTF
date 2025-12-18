@@ -20,14 +20,17 @@ import com.smartcbwtf.mobile.bluetooth.MockScaleService;
 import com.smartcbwtf.mobile.bluetooth.RealBluetoothScaleService;
 import com.smartcbwtf.mobile.bluetooth.ScaleService;
 import com.smartcbwtf.mobile.database.AppDatabase;
+import com.smartcbwtf.mobile.database.dao.AttendanceDao;
 import com.smartcbwtf.mobile.database.dao.BagEventDao;
 import com.smartcbwtf.mobile.database.dao.HcfDao;
 import com.smartcbwtf.mobile.di.AppModule_ProvideSharedPreferencesFactory;
 import com.smartcbwtf.mobile.di.AppModule_ProvideWorkManagerFactory;
 import com.smartcbwtf.mobile.di.CoroutineDispatchersModule_ProvideIoDispatcherFactory;
+import com.smartcbwtf.mobile.di.DatabaseModule_ProvideAttendanceDaoFactory;
 import com.smartcbwtf.mobile.di.DatabaseModule_ProvideBagEventDaoFactory;
 import com.smartcbwtf.mobile.di.DatabaseModule_ProvideDatabaseFactory;
 import com.smartcbwtf.mobile.di.DatabaseModule_ProvideHcfDaoFactory;
+import com.smartcbwtf.mobile.di.NetworkModule_ProvideAttendanceApiFactory;
 import com.smartcbwtf.mobile.di.NetworkModule_ProvideAuthApiFactory;
 import com.smartcbwtf.mobile.di.NetworkModule_ProvideBagEventApiFactory;
 import com.smartcbwtf.mobile.di.NetworkModule_ProvideGsonFactory;
@@ -37,10 +40,12 @@ import com.smartcbwtf.mobile.di.NetworkModule_ProvideRetrofitFactory;
 import com.smartcbwtf.mobile.di.NetworkModule_ProvideVerificationApiFactory;
 import com.smartcbwtf.mobile.di.ScaleModule_Companion_ProvideScaleServiceFactory;
 import com.smartcbwtf.mobile.network.AuthInterceptor;
+import com.smartcbwtf.mobile.network.api.AttendanceApi;
 import com.smartcbwtf.mobile.network.api.AuthApi;
 import com.smartcbwtf.mobile.network.api.BagEventApi;
 import com.smartcbwtf.mobile.network.api.HcfApi;
 import com.smartcbwtf.mobile.network.api.VerificationApi;
+import com.smartcbwtf.mobile.repository.DefaultAttendanceRepository;
 import com.smartcbwtf.mobile.repository.DefaultAuthRepository;
 import com.smartcbwtf.mobile.repository.DefaultBagEventRepository;
 import com.smartcbwtf.mobile.repository.DefaultHcfRepository;
@@ -80,6 +85,8 @@ import com.smartcbwtf.mobile.viewmodel.StartPickupViewModel;
 import com.smartcbwtf.mobile.viewmodel.StartPickupViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel;
 import com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel_HiltModules;
+import com.smartcbwtf.mobile.work.SyncAttendanceWorker;
+import com.smartcbwtf.mobile.work.SyncAttendanceWorker_AssistedFactory;
 import com.smartcbwtf.mobile.work.SyncBagEventsWorker;
 import com.smartcbwtf.mobile.work.SyncBagEventsWorker_AssistedFactory;
 import dagger.hilt.android.ActivityRetainedLifecycle;
@@ -538,21 +545,24 @@ public final class DaggerApp_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
+      static String com_smartcbwtf_mobile_viewmodel_AttendanceViewModel = "com.smartcbwtf.mobile.viewmodel.AttendanceViewModel";
+
       static String com_smartcbwtf_mobile_viewmodel_HomeViewModel = "com.smartcbwtf.mobile.viewmodel.HomeViewModel";
 
       static String com_smartcbwtf_mobile_viewmodel_SettingsViewModel = "com.smartcbwtf.mobile.viewmodel.SettingsViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel = "com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_AttendanceViewModel = "com.smartcbwtf.mobile.viewmodel.AttendanceViewModel";
 
       static String com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel = "com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel";
 
       static String com_smartcbwtf_mobile_viewmodel_StartPickupViewModel = "com.smartcbwtf.mobile.viewmodel.StartPickupViewModel";
 
-      static String com_smartcbwtf_mobile_viewmodel_AuthViewModel = "com.smartcbwtf.mobile.viewmodel.AuthViewModel";
+      static String com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel = "com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel";
 
       static String com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel = "com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_AuthViewModel = "com.smartcbwtf.mobile.viewmodel.AuthViewModel";
+
+      @KeepFieldType
+      AttendanceViewModel com_smartcbwtf_mobile_viewmodel_AttendanceViewModel2;
 
       @KeepFieldType
       HomeViewModel com_smartcbwtf_mobile_viewmodel_HomeViewModel2;
@@ -561,22 +571,19 @@ public final class DaggerApp_HiltComponents_SingletonC {
       SettingsViewModel com_smartcbwtf_mobile_viewmodel_SettingsViewModel2;
 
       @KeepFieldType
-      VerifyAtPlantViewModel com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel2;
-
-      @KeepFieldType
-      AttendanceViewModel com_smartcbwtf_mobile_viewmodel_AttendanceViewModel2;
-
-      @KeepFieldType
       ScanWeighViewModel com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel2;
 
       @KeepFieldType
       StartPickupViewModel com_smartcbwtf_mobile_viewmodel_StartPickupViewModel2;
 
       @KeepFieldType
-      AuthViewModel com_smartcbwtf_mobile_viewmodel_AuthViewModel2;
+      VerifyAtPlantViewModel com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel2;
 
       @KeepFieldType
       HcfRegistrationViewModel com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel2;
+
+      @KeepFieldType
+      AuthViewModel com_smartcbwtf_mobile_viewmodel_AuthViewModel2;
     }
   }
 
@@ -638,45 +645,45 @@ public final class DaggerApp_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
-      static String com_smartcbwtf_mobile_viewmodel_SettingsViewModel = "com.smartcbwtf.mobile.viewmodel.SettingsViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel = "com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel = "com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_StartPickupViewModel = "com.smartcbwtf.mobile.viewmodel.StartPickupViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel = "com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_HomeViewModel = "com.smartcbwtf.mobile.viewmodel.HomeViewModel";
-
       static String com_smartcbwtf_mobile_viewmodel_AuthViewModel = "com.smartcbwtf.mobile.viewmodel.AuthViewModel";
 
       static String com_smartcbwtf_mobile_viewmodel_AttendanceViewModel = "com.smartcbwtf.mobile.viewmodel.AttendanceViewModel";
 
-      @KeepFieldType
-      SettingsViewModel com_smartcbwtf_mobile_viewmodel_SettingsViewModel2;
+      static String com_smartcbwtf_mobile_viewmodel_StartPickupViewModel = "com.smartcbwtf.mobile.viewmodel.StartPickupViewModel";
 
-      @KeepFieldType
-      HcfRegistrationViewModel com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel2;
+      static String com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel = "com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel";
 
-      @KeepFieldType
-      VerifyAtPlantViewModel com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel2;
+      static String com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel = "com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel";
 
-      @KeepFieldType
-      StartPickupViewModel com_smartcbwtf_mobile_viewmodel_StartPickupViewModel2;
+      static String com_smartcbwtf_mobile_viewmodel_HomeViewModel = "com.smartcbwtf.mobile.viewmodel.HomeViewModel";
 
-      @KeepFieldType
-      ScanWeighViewModel com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel2;
+      static String com_smartcbwtf_mobile_viewmodel_SettingsViewModel = "com.smartcbwtf.mobile.viewmodel.SettingsViewModel";
 
-      @KeepFieldType
-      HomeViewModel com_smartcbwtf_mobile_viewmodel_HomeViewModel2;
+      static String com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel = "com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel";
 
       @KeepFieldType
       AuthViewModel com_smartcbwtf_mobile_viewmodel_AuthViewModel2;
 
       @KeepFieldType
       AttendanceViewModel com_smartcbwtf_mobile_viewmodel_AttendanceViewModel2;
+
+      @KeepFieldType
+      StartPickupViewModel com_smartcbwtf_mobile_viewmodel_StartPickupViewModel2;
+
+      @KeepFieldType
+      VerifyAtPlantViewModel com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel2;
+
+      @KeepFieldType
+      HcfRegistrationViewModel com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel2;
+
+      @KeepFieldType
+      HomeViewModel com_smartcbwtf_mobile_viewmodel_HomeViewModel2;
+
+      @KeepFieldType
+      SettingsViewModel com_smartcbwtf_mobile_viewmodel_SettingsViewModel2;
+
+      @KeepFieldType
+      ScanWeighViewModel com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel2;
     }
 
     private static final class SwitchingProvider<T> implements Provider<T> {
@@ -701,7 +708,7 @@ public final class DaggerApp_HiltComponents_SingletonC {
       public T get() {
         switch (id) {
           case 0: // com.smartcbwtf.mobile.viewmodel.AttendanceViewModel 
-          return (T) new AttendanceViewModel(singletonCImpl.locationHelperProvider.get(), singletonCImpl.defaultHcfRepositoryProvider.get());
+          return (T) new AttendanceViewModel(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.locationHelperProvider.get(), singletonCImpl.defaultHcfRepositoryProvider.get(), singletonCImpl.defaultAttendanceRepositoryProvider.get());
 
           case 1: // com.smartcbwtf.mobile.viewmodel.AuthViewModel 
           return (T) new AuthViewModel(singletonCImpl.defaultAuthRepositoryProvider.get());
@@ -818,9 +825,15 @@ public final class DaggerApp_HiltComponents_SingletonC {
 
     private Provider<Retrofit> provideRetrofitProvider;
 
-    private Provider<BagEventApi> provideBagEventApiProvider;
+    private Provider<AttendanceApi> provideAttendanceApiProvider;
 
     private Provider<CoroutineDispatcher> provideIoDispatcherProvider;
+
+    private Provider<DefaultAttendanceRepository> defaultAttendanceRepositoryProvider;
+
+    private Provider<SyncAttendanceWorker_AssistedFactory> syncAttendanceWorker_AssistedFactoryProvider;
+
+    private Provider<BagEventApi> provideBagEventApiProvider;
 
     private Provider<DefaultBagEventRepository> defaultBagEventRepositoryProvider;
 
@@ -858,13 +871,17 @@ public final class DaggerApp_HiltComponents_SingletonC {
 
     }
 
+    private AttendanceDao attendanceDao() {
+      return DatabaseModule_ProvideAttendanceDaoFactory.provideAttendanceDao(provideDatabaseProvider.get());
+    }
+
     private BagEventDao bagEventDao() {
       return DatabaseModule_ProvideBagEventDaoFactory.provideBagEventDao(provideDatabaseProvider.get());
     }
 
     private Map<String, javax.inject.Provider<WorkerAssistedFactory<? extends ListenableWorker>>> mapOfStringAndProviderOfWorkerAssistedFactoryOf(
         ) {
-      return Collections.<String, javax.inject.Provider<WorkerAssistedFactory<? extends ListenableWorker>>>singletonMap("com.smartcbwtf.mobile.work.SyncBagEventsWorker", ((Provider) syncBagEventsWorker_AssistedFactoryProvider));
+      return MapBuilder.<String, javax.inject.Provider<WorkerAssistedFactory<? extends ListenableWorker>>>newMapBuilder(2).put("com.smartcbwtf.mobile.work.SyncAttendanceWorker", ((Provider) syncAttendanceWorker_AssistedFactoryProvider)).put("com.smartcbwtf.mobile.work.SyncBagEventsWorker", ((Provider) syncBagEventsWorker_AssistedFactoryProvider)).build();
     }
 
     private HiltWorkerFactory hiltWorkerFactory() {
@@ -884,23 +901,26 @@ public final class DaggerApp_HiltComponents_SingletonC {
       this.provideOkHttpProvider = DoubleCheck.provider(new SwitchingProvider<OkHttpClient>(singletonCImpl, 5));
       this.provideGsonProvider = DoubleCheck.provider(new SwitchingProvider<Gson>(singletonCImpl, 9));
       this.provideRetrofitProvider = DoubleCheck.provider(new SwitchingProvider<Retrofit>(singletonCImpl, 4));
-      this.provideBagEventApiProvider = DoubleCheck.provider(new SwitchingProvider<BagEventApi>(singletonCImpl, 3));
+      this.provideAttendanceApiProvider = DoubleCheck.provider(new SwitchingProvider<AttendanceApi>(singletonCImpl, 3));
       this.provideIoDispatcherProvider = DoubleCheck.provider(new SwitchingProvider<CoroutineDispatcher>(singletonCImpl, 10));
-      this.defaultBagEventRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<DefaultBagEventRepository>(singletonCImpl, 1));
-      this.syncBagEventsWorker_AssistedFactoryProvider = SingleCheck.provider(new SwitchingProvider<SyncBagEventsWorker_AssistedFactory>(singletonCImpl, 0));
-      this.locationHelperProvider = DoubleCheck.provider(new SwitchingProvider<LocationHelper>(singletonCImpl, 11));
-      this.permissionHelperProvider = DoubleCheck.provider(new SwitchingProvider<PermissionHelper>(singletonCImpl, 12));
-      this.provideHcfApiProvider = DoubleCheck.provider(new SwitchingProvider<HcfApi>(singletonCImpl, 14));
-      this.networkMonitorProvider = DoubleCheck.provider(new SwitchingProvider<NetworkMonitor>(singletonCImpl, 15));
-      this.defaultHcfRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<DefaultHcfRepository>(singletonCImpl, 13));
-      this.provideAuthApiProvider = DoubleCheck.provider(new SwitchingProvider<AuthApi>(singletonCImpl, 17));
-      this.defaultAuthRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<DefaultAuthRepository>(singletonCImpl, 16));
-      this.sessionManagerProvider = DoubleCheck.provider(new SwitchingProvider<SessionManager>(singletonCImpl, 18));
-      this.provideWorkManagerProvider = DoubleCheck.provider(new SwitchingProvider<WorkManager>(singletonCImpl, 19));
-      this.realBluetoothScaleServiceProvider = DoubleCheck.provider(new SwitchingProvider<RealBluetoothScaleService>(singletonCImpl, 21));
-      this.mockScaleServiceProvider = DoubleCheck.provider(new SwitchingProvider<MockScaleService>(singletonCImpl, 22));
-      this.provideScaleServiceProvider = DoubleCheck.provider(new SwitchingProvider<ScaleService>(singletonCImpl, 20));
-      this.provideVerificationApiProvider = DoubleCheck.provider(new SwitchingProvider<VerificationApi>(singletonCImpl, 23));
+      this.defaultAttendanceRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<DefaultAttendanceRepository>(singletonCImpl, 1));
+      this.syncAttendanceWorker_AssistedFactoryProvider = SingleCheck.provider(new SwitchingProvider<SyncAttendanceWorker_AssistedFactory>(singletonCImpl, 0));
+      this.provideBagEventApiProvider = DoubleCheck.provider(new SwitchingProvider<BagEventApi>(singletonCImpl, 13));
+      this.defaultBagEventRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<DefaultBagEventRepository>(singletonCImpl, 12));
+      this.syncBagEventsWorker_AssistedFactoryProvider = SingleCheck.provider(new SwitchingProvider<SyncBagEventsWorker_AssistedFactory>(singletonCImpl, 11));
+      this.locationHelperProvider = DoubleCheck.provider(new SwitchingProvider<LocationHelper>(singletonCImpl, 14));
+      this.permissionHelperProvider = DoubleCheck.provider(new SwitchingProvider<PermissionHelper>(singletonCImpl, 15));
+      this.provideHcfApiProvider = DoubleCheck.provider(new SwitchingProvider<HcfApi>(singletonCImpl, 17));
+      this.networkMonitorProvider = DoubleCheck.provider(new SwitchingProvider<NetworkMonitor>(singletonCImpl, 18));
+      this.defaultHcfRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<DefaultHcfRepository>(singletonCImpl, 16));
+      this.provideAuthApiProvider = DoubleCheck.provider(new SwitchingProvider<AuthApi>(singletonCImpl, 20));
+      this.defaultAuthRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<DefaultAuthRepository>(singletonCImpl, 19));
+      this.sessionManagerProvider = DoubleCheck.provider(new SwitchingProvider<SessionManager>(singletonCImpl, 21));
+      this.provideWorkManagerProvider = DoubleCheck.provider(new SwitchingProvider<WorkManager>(singletonCImpl, 22));
+      this.realBluetoothScaleServiceProvider = DoubleCheck.provider(new SwitchingProvider<RealBluetoothScaleService>(singletonCImpl, 24));
+      this.mockScaleServiceProvider = DoubleCheck.provider(new SwitchingProvider<MockScaleService>(singletonCImpl, 25));
+      this.provideScaleServiceProvider = DoubleCheck.provider(new SwitchingProvider<ScaleService>(singletonCImpl, 23));
+      this.provideVerificationApiProvider = DoubleCheck.provider(new SwitchingProvider<VerificationApi>(singletonCImpl, 26));
     }
 
     @Override
@@ -943,22 +963,22 @@ public final class DaggerApp_HiltComponents_SingletonC {
       @Override
       public T get() {
         switch (id) {
-          case 0: // com.smartcbwtf.mobile.work.SyncBagEventsWorker_AssistedFactory 
-          return (T) new SyncBagEventsWorker_AssistedFactory() {
+          case 0: // com.smartcbwtf.mobile.work.SyncAttendanceWorker_AssistedFactory 
+          return (T) new SyncAttendanceWorker_AssistedFactory() {
             @Override
-            public SyncBagEventsWorker create(Context appContext, WorkerParameters params) {
-              return new SyncBagEventsWorker(appContext, params, singletonCImpl.defaultBagEventRepositoryProvider.get());
+            public SyncAttendanceWorker create(Context appContext, WorkerParameters params) {
+              return new SyncAttendanceWorker(appContext, params, singletonCImpl.defaultAttendanceRepositoryProvider.get());
             }
           };
 
-          case 1: // com.smartcbwtf.mobile.repository.DefaultBagEventRepository 
-          return (T) new DefaultBagEventRepository(singletonCImpl.bagEventDao(), singletonCImpl.provideBagEventApiProvider.get(), singletonCImpl.provideIoDispatcherProvider.get());
+          case 1: // com.smartcbwtf.mobile.repository.DefaultAttendanceRepository 
+          return (T) new DefaultAttendanceRepository(singletonCImpl.attendanceDao(), singletonCImpl.provideAttendanceApiProvider.get(), singletonCImpl.provideIoDispatcherProvider.get());
 
           case 2: // com.smartcbwtf.mobile.database.AppDatabase 
           return (T) DatabaseModule_ProvideDatabaseFactory.provideDatabase(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 3: // com.smartcbwtf.mobile.network.api.BagEventApi 
-          return (T) NetworkModule_ProvideBagEventApiFactory.provideBagEventApi(singletonCImpl.provideRetrofitProvider.get());
+          case 3: // com.smartcbwtf.mobile.network.api.AttendanceApi 
+          return (T) NetworkModule_ProvideAttendanceApiFactory.provideAttendanceApi(singletonCImpl.provideRetrofitProvider.get());
 
           case 4: // retrofit2.Retrofit 
           return (T) NetworkModule_ProvideRetrofitFactory.provideRetrofit(singletonCImpl.provideOkHttpProvider.get(), singletonCImpl.provideGsonProvider.get());
@@ -981,43 +1001,57 @@ public final class DaggerApp_HiltComponents_SingletonC {
           case 10: // kotlinx.coroutines.CoroutineDispatcher 
           return (T) CoroutineDispatchersModule_ProvideIoDispatcherFactory.provideIoDispatcher();
 
-          case 11: // com.smartcbwtf.mobile.utils.LocationHelper 
+          case 11: // com.smartcbwtf.mobile.work.SyncBagEventsWorker_AssistedFactory 
+          return (T) new SyncBagEventsWorker_AssistedFactory() {
+            @Override
+            public SyncBagEventsWorker create(Context appContext2, WorkerParameters params2) {
+              return new SyncBagEventsWorker(appContext2, params2, singletonCImpl.defaultBagEventRepositoryProvider.get());
+            }
+          };
+
+          case 12: // com.smartcbwtf.mobile.repository.DefaultBagEventRepository 
+          return (T) new DefaultBagEventRepository(singletonCImpl.bagEventDao(), singletonCImpl.provideBagEventApiProvider.get(), singletonCImpl.provideIoDispatcherProvider.get());
+
+          case 13: // com.smartcbwtf.mobile.network.api.BagEventApi 
+          return (T) NetworkModule_ProvideBagEventApiFactory.provideBagEventApi(singletonCImpl.provideRetrofitProvider.get());
+
+          case 14: // com.smartcbwtf.mobile.utils.LocationHelper 
           return (T) new LocationHelper(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 12: // com.smartcbwtf.mobile.utils.PermissionHelper 
+          case 15: // com.smartcbwtf.mobile.utils.PermissionHelper 
           return (T) new PermissionHelper(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 13: // com.smartcbwtf.mobile.repository.DefaultHcfRepository 
+          case 16: // com.smartcbwtf.mobile.repository.DefaultHcfRepository 
           return (T) new DefaultHcfRepository(singletonCImpl.hcfDao(), singletonCImpl.provideHcfApiProvider.get(), singletonCImpl.networkMonitorProvider.get(), singletonCImpl.provideIoDispatcherProvider.get());
 
-          case 14: // com.smartcbwtf.mobile.network.api.HcfApi 
+          case 17: // com.smartcbwtf.mobile.network.api.HcfApi 
           return (T) NetworkModule_ProvideHcfApiFactory.provideHcfApi(singletonCImpl.provideRetrofitProvider.get());
 
-          case 15: // com.smartcbwtf.mobile.utils.NetworkMonitor 
+          case 18: // com.smartcbwtf.mobile.utils.NetworkMonitor 
           return (T) new NetworkMonitor(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 16: // com.smartcbwtf.mobile.repository.DefaultAuthRepository 
+          case 19: // com.smartcbwtf.mobile.repository.DefaultAuthRepository 
           return (T) new DefaultAuthRepository(singletonCImpl.provideAuthApiProvider.get(), singletonCImpl.defaultAuthTokenStoreProvider.get(), singletonCImpl.networkMonitorProvider.get(), singletonCImpl.provideIoDispatcherProvider.get());
 
-          case 17: // com.smartcbwtf.mobile.network.api.AuthApi 
+          case 20: // com.smartcbwtf.mobile.network.api.AuthApi 
           return (T) NetworkModule_ProvideAuthApiFactory.provideAuthApi(singletonCImpl.provideRetrofitProvider.get());
 
-          case 18: // com.smartcbwtf.mobile.storage.SessionManager 
+          case 21: // com.smartcbwtf.mobile.storage.SessionManager 
           return (T) new SessionManager(singletonCImpl.provideSharedPreferencesProvider.get());
 
-          case 19: // androidx.work.WorkManager 
+          case 22: // androidx.work.WorkManager 
           return (T) AppModule_ProvideWorkManagerFactory.provideWorkManager(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 20: // com.smartcbwtf.mobile.bluetooth.ScaleService 
+          case 23: // com.smartcbwtf.mobile.bluetooth.ScaleService 
           return (T) ScaleModule_Companion_ProvideScaleServiceFactory.provideScaleService(singletonCImpl.realBluetoothScaleServiceProvider.get(), singletonCImpl.mockScaleServiceProvider.get());
 
-          case 21: // com.smartcbwtf.mobile.bluetooth.RealBluetoothScaleService 
+          case 24: // com.smartcbwtf.mobile.bluetooth.RealBluetoothScaleService 
           return (T) new RealBluetoothScaleService(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.permissionHelperProvider.get());
 
-          case 22: // com.smartcbwtf.mobile.bluetooth.MockScaleService 
+          case 25: // com.smartcbwtf.mobile.bluetooth.MockScaleService 
           return (T) new MockScaleService();
 
-          case 23: // com.smartcbwtf.mobile.network.api.VerificationApi 
+          case 26: // com.smartcbwtf.mobile.network.api.VerificationApi 
           return (T) NetworkModule_ProvideVerificationApiFactory.provideVerificationApi(singletonCImpl.provideRetrofitProvider.get());
 
           default: throw new AssertionError(id);

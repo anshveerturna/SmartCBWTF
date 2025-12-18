@@ -3,6 +3,7 @@ package com.smartcbwtf.mobile.di
 import android.content.Context
 import androidx.room.Room
 import com.smartcbwtf.mobile.database.AppDatabase
+import com.smartcbwtf.mobile.database.dao.AttendanceDao
 import com.smartcbwtf.mobile.database.dao.BagEventDao
 import com.smartcbwtf.mobile.database.dao.HcfDao
 import dagger.Module
@@ -29,4 +30,7 @@ object DatabaseModule {
 
     @Provides
     fun provideHcfDao(db: AppDatabase): HcfDao = db.hcfDao()
+
+    @Provides
+    fun provideAttendanceDao(db: AppDatabase): AttendanceDao = db.attendanceDao()
 }

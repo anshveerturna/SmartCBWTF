@@ -1,7 +1,9 @@
 package com.smartcbwtf.mobile.di
 
+import com.smartcbwtf.mobile.repository.AttendanceRepository
 import com.smartcbwtf.mobile.repository.AuthRepository
 import com.smartcbwtf.mobile.repository.BagEventRepository
+import com.smartcbwtf.mobile.repository.DefaultAttendanceRepository
 import com.smartcbwtf.mobile.repository.DefaultAuthRepository
 import com.smartcbwtf.mobile.repository.DefaultBagEventRepository
 import com.smartcbwtf.mobile.repository.DefaultHcfRepository
@@ -27,4 +29,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindBagEventRepository(repo: DefaultBagEventRepository): BagEventRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAttendanceRepository(repo: DefaultAttendanceRepository): AttendanceRepository
 }

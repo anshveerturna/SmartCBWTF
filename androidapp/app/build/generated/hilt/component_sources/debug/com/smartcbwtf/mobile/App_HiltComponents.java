@@ -27,6 +27,7 @@ import com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.SettingsViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.StartPickupViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel_HiltModules;
+import com.smartcbwtf.mobile.work.SyncAttendanceWorker_HiltModule;
 import com.smartcbwtf.mobile.work.SyncBagEventsWorker_HiltModule;
 import dagger.Binds;
 import dagger.Component;
@@ -164,6 +165,7 @@ public final class App_HiltComponents {
           NetworkModule.class,
           RepositoryModule.class,
           ScaleModule.class,
+          SyncAttendanceWorker_HiltModule.class,
           SyncBagEventsWorker_HiltModule.class
       }
   )

@@ -783,7 +783,7 @@ ADDED from [androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.
 		ADDED from [androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:24:9-44
 	android:name
 		ADDED from [androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:23:9-81
-permission#com.smartcbwtf.mobile.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+permission#com.smartcbwtf.mobile.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:22:5-24:47
 	android:protectionLevel
 		ADDED from [androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:24:9-44
@@ -793,7 +793,7 @@ uses-permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:26:5-97
 	android:name
 		ADDED from [androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
-uses-permission#com.smartcbwtf.mobile.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission#com.smartcbwtf.mobile.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:26:5-97
 	android:name
 		ADDED from [androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:26:22-94

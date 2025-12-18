@@ -1,6 +1,6 @@
 1<?xml version="1.0" encoding="utf-8"?>
 2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-3    package="com.smartcbwtf.mobile.debug"
+3    package="com.smartcbwtf.mobile"
 4    android:versionCode="1"
 5    android:versionName="1.0" >
 6
@@ -47,12 +47,12 @@
 23
 24    <permission
 24-->[androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:22:5-24:47
-25        android:name="com.smartcbwtf.mobile.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+25        android:name="com.smartcbwtf.mobile.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
 25-->[androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:23:9-81
 26        android:protectionLevel="signature" />
 26-->[androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:24:9-44
 27
-28    <uses-permission android:name="com.smartcbwtf.mobile.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" /> <!-- Don't require camera, as this requires a rear camera. This allows it to work on the Nexus 7 -->
+28    <uses-permission android:name="com.smartcbwtf.mobile.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" /> <!-- Don't require camera, as this requires a rear camera. This allows it to work on the Nexus 7 -->
 28-->[androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:26:5-97
 28-->[androidx.core:core:1.13.1] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/5e96a40f9e67885fad7bc1274fbe664c/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
 29    <uses-feature
@@ -137,7 +137,7 @@
 72        <provider
 73            android:name="androidx.startup.InitializationProvider"
 73-->/Users/anshveerturna/Documents/SmartCBWTF/androidapp/app/src/main/AndroidManifest.xml:32:13-67
-74            android:authorities="com.smartcbwtf.mobile.debug.startup"
+74            android:authorities="com.smartcbwtf.mobile.startup"
 74-->/Users/anshveerturna/Documents/SmartCBWTF/androidapp/app/src/main/AndroidManifest.xml:33:13-59
 75            android:exported="false" >
 75-->/Users/anshveerturna/Documents/SmartCBWTF/androidapp/app/src/main/AndroidManifest.xml:34:13-37
@@ -208,7 +208,7 @@
 110-->[com.google.mlkit:common:18.11.0] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/640c2789bb87d0a37ddfc056ceba83f3/transformed/jetified-common-18.11.0/AndroidManifest.xml:9:9-13:38
 111            android:name="com.google.mlkit.common.internal.MlKitInitProvider"
 111-->[com.google.mlkit:common:18.11.0] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/640c2789bb87d0a37ddfc056ceba83f3/transformed/jetified-common-18.11.0/AndroidManifest.xml:10:13-78
-112            android:authorities="com.smartcbwtf.mobile.debug.mlkitinitprovider"
+112            android:authorities="com.smartcbwtf.mobile.mlkitinitprovider"
 112-->[com.google.mlkit:common:18.11.0] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/640c2789bb87d0a37ddfc056ceba83f3/transformed/jetified-common-18.11.0/AndroidManifest.xml:11:13-69
 113            android:exported="false"
 113-->[com.google.mlkit:common:18.11.0] /Users/anshveerturna/.gradle/caches/8.14.3/transforms/640c2789bb87d0a37ddfc056ceba83f3/transformed/jetified-common-18.11.0/AndroidManifest.xml:12:13-37

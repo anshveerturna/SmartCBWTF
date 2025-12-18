@@ -1,17 +1,29 @@
 package com.smartcbwtf.mobile.viewmodel
 
+import android.content.Context
 import android.location.Location
+import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.smartcbwtf.mobile.database.entity.AttendanceEventEntity
 import com.smartcbwtf.mobile.database.entity.HcfEntity
+import com.smartcbwtf.mobile.repository.AttendanceRepository
 import com.smartcbwtf.mobile.repository.HcfRepository
 import com.smartcbwtf.mobile.utils.GeoUtils
 import com.smartcbwtf.mobile.utils.LocationHelper
+import com.smartcbwtf.mobile.work.SyncAttendanceWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 data class NearbyHcf(
@@ -42,8 +54,10 @@ sealed class AttendanceResult {
 
 @HiltViewModel
 class AttendanceViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val locationHelper: LocationHelper,
-    private val hcfRepository: HcfRepository
+    private val hcfRepository: HcfRepository,
+    private val attendanceRepository: AttendanceRepository
 ) : ViewModel() {
 
     companion object {
@@ -70,6 +84,18 @@ class AttendanceViewModel @Inject constructor(
     
     private var cooldownJob: Job? = null
     private var currentLocation: Location? = null
+
+    init {
+        // Check for existing cooldown on init (persisted via Room)
+        viewModelScope.launch {
+            val remainingMs = attendanceRepository.getCooldownRemainingMs(COOLDOWN_DURATION_MS)
+            if (remainingMs > 0) {
+                val latest = attendanceRepository.getLatest()
+                _lastMarkedHcfId.value = latest?.hcfId
+                startCooldownTimer(remainingMs)
+            }
+        }
+    }
 
     // Called when fragment is created with location passed from HomeFragment
     fun initWithLocation(latitude: Double, longitude: Double) {
@@ -170,25 +196,35 @@ class AttendanceViewModel @Inject constructor(
 
     fun markAttendance() {
         val selected = _selectedHcf.value ?: return
-        currentLocation ?: return  // Ensure location is available
+        val location = currentLocation ?: return
         
         viewModelScope.launch {
             _attendanceResult.value = AttendanceResult.Loading
             
             try {
-                // TODO: Call backend API to submit attendance
-                // val result = attendanceRepository.markAttendance(
-                //     hcfId = selected.hcf.id,
-                //     latitude = currentLocation!!.latitude,
-                //     longitude = currentLocation!!.longitude
-                // )
+                // Create attendance event entity (offline-first)
+                val event = AttendanceEventEntity(
+                    id = UUID.randomUUID(),
+                    hcfId = selected.hcf.id,
+                    hcfName = selected.hcf.name,
+                    eventTs = System.currentTimeMillis(),
+                    gpsLat = location.latitude,
+                    gpsLon = location.longitude,
+                    gpsAccuracyM = location.accuracy,
+                    distanceFromHcfM = selected.distanceMeters,
+                    deviceId = getDeviceId(),
+                    synced = false
+                )
                 
-                // Simulate API call
-                delay(1000)
+                // Save to local database
+                attendanceRepository.record(event)
+                
+                // Schedule sync via WorkManager
+                scheduleSyncWork()
                 
                 // Start cooldown timer
                 _lastMarkedHcfId.value = selected.hcf.id
-                startCooldownTimer()
+                startCooldownTimer(COOLDOWN_DURATION_MS)
                 
                 _attendanceResult.value = AttendanceResult.Success(selected.hcf.name)
             } catch (e: Exception) {
@@ -197,10 +233,27 @@ class AttendanceViewModel @Inject constructor(
         }
     }
 
-    private fun startCooldownTimer() {
+    private fun scheduleSyncWork() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val syncRequest = OneTimeWorkRequestBuilder<SyncAttendanceWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(appContext)
+            .enqueueUniqueWork(
+                SyncAttendanceWorker.WORK_NAME,
+                ExistingWorkPolicy.REPLACE,
+                syncRequest
+            )
+    }
+
+    private fun startCooldownTimer(durationMs: Long = COOLDOWN_DURATION_MS) {
         cooldownJob?.cancel()
         cooldownJob = viewModelScope.launch {
-            _cooldownRemainingMs.value = COOLDOWN_DURATION_MS
+            _cooldownRemainingMs.value = durationMs
             while (_cooldownRemainingMs.value > 0) {
                 delay(1000)
                 _cooldownRemainingMs.value = (_cooldownRemainingMs.value - 1000).coerceAtLeast(0)
@@ -217,5 +270,10 @@ class AttendanceViewModel @Inject constructor(
         val minutes = (ms / 1000) / 60
         val seconds = (ms / 1000) % 60
         return String.format("%d:%02d", minutes, seconds)
+    }
+
+    @Suppress("HardwareIds")
+    private fun getDeviceId(): String {
+        return Settings.Secure.getString(appContext.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown"
     }
 }

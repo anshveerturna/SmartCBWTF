@@ -45,6 +45,11 @@ app:
   alerts:
     missing-bag-hours: 24
   
+  # Attendance configuration
+  attendance:
+    geofence-radius-m: 50           # Max distance from HCF for attendance marking
+    cooldown-minutes: 5             # Cooldown period between attendance marks
+  
   # Email configuration
   email:
     enabled: false  # Set to true in production
