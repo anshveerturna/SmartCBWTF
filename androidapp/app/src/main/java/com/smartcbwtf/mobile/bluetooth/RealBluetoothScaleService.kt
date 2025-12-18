@@ -32,6 +32,10 @@ class RealBluetoothScaleService @Inject constructor(
     private val permissionHelper: PermissionHelper
 ) : ScaleService {
 
+    companion object {
+        private const val TAG = "RealBTScaleService"
+    }
+
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val bluetoothAdapter = bluetoothManager.adapter
 
@@ -57,7 +61,27 @@ class RealBluetoothScaleService @Inject constructor(
 
     @SuppressLint("MissingPermission")
     override suspend fun startScan() {
-        if (!permissionHelper.hasBluetoothPermissions() || bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
+        Log.d(TAG, "startScan() called")
+        
+        if (!permissionHelper.hasBluetoothPermissions()) {
+            Log.e(TAG, "Missing Bluetooth permissions")
+            _connectionState.value = ConnectionState.ERROR
+            return
+        }
+        if (bluetoothAdapter == null) {
+            Log.e(TAG, "BluetoothAdapter is null - device may not support Bluetooth")
+            _connectionState.value = ConnectionState.ERROR
+            return
+        }
+        if (!bluetoothAdapter.isEnabled) {
+            Log.e(TAG, "Bluetooth is not enabled")
+            _connectionState.value = ConnectionState.ERROR
+            return
+        }
+        
+        val scanner = bluetoothAdapter.bluetoothLeScanner
+        if (scanner == null) {
+            Log.e(TAG, "BluetoothLeScanner is null - BLE not available or Bluetooth turning off")
             _connectionState.value = ConnectionState.ERROR
             return
         }
@@ -66,30 +90,46 @@ class RealBluetoothScaleService @Inject constructor(
         discoveredDeviceSet.clear()
         _discoveredDevices.value = emptyList()
         _connectionState.value = ConnectionState.SCANNING
+        Log.d(TAG, "Starting BLE scan...")
         
         scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val device = result.device
-                val deviceAddress = device.address
-                val deviceName = device.name
-                
-                // Add device if it has a name and hasn't been discovered yet
-                if (deviceName != null && deviceAddress !in discoveredDeviceSet) {
+                val deviceAddress = device.address ?: return
+                val deviceName = device.name ?: "Unknown"
+
+                // Add device once by address (some scales advertise without a name)
+                if (deviceAddress !in discoveredDeviceSet) {
                     discoveredDeviceSet.add(deviceAddress)
                     val currentList = _discoveredDevices.value.toMutableList()
                     currentList.add(device)
                     _discoveredDevices.value = currentList
-                    Log.d("RealBluetoothScaleService", "Discovered device: $deviceName ($deviceAddress)")
+                    Log.d(TAG, "Discovered device: $deviceName ($deviceAddress)")
                 }
             }
 
             override fun onScanFailed(errorCode: Int) {
-                Log.e("RealBluetoothScaleService", "Scan failed with error code: $errorCode")
+                val reason = when (errorCode) {
+                    SCAN_FAILED_ALREADY_STARTED -> "Scan already started"
+                    SCAN_FAILED_APPLICATION_REGISTRATION_FAILED -> "App registration failed"
+                    SCAN_FAILED_INTERNAL_ERROR -> "Internal error"
+                    SCAN_FAILED_FEATURE_UNSUPPORTED -> "Feature unsupported"
+                    5 -> "Out of hardware resources"
+                    6 -> "Scanning too frequently"
+                    else -> "Unknown error"
+                }
+                Log.e(TAG, "Scan failed: $reason (code $errorCode)")
                 _connectionState.value = ConnectionState.ERROR
             }
         }
 
-        bluetoothAdapter.bluetoothLeScanner.startScan(scanCallback)
+        try {
+            scanner.startScan(scanCallback)
+            Log.d(TAG, "BLE scan started successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception starting scan", e)
+            _connectionState.value = ConnectionState.ERROR
+        }
         
         // Timeout scan after 15 seconds
         scope.launch {
