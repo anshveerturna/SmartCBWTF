@@ -77,6 +77,8 @@ com/smartcbwtf/dto/AuthLoginResponse.class
 com/smartcbwtf/repository/AgreementRepository.class
 com/smartcbwtf/dto/LabelIssueResponse.class
 com/smartcbwtf/controller/AlertsController.class
+com/smartcbwtf/dto/UserProfileResponse.class
+com/smartcbwtf/controller/UserController.class
 com/smartcbwtf/dto/AttendanceSyncResponse.class
 com/smartcbwtf/domain/BagLabel.class
 com/smartcbwtf/dto/HcfRegistrationRequest.class

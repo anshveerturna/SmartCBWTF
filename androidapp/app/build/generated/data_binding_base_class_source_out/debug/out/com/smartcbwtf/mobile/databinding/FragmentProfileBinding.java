@@ -4,12 +4,16 @@ package com.smartcbwtf.mobile.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.button.MaterialButton;
 import com.smartcbwtf.mobile.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -17,37 +21,77 @@ import java.lang.String;
 
 public final class FragmentProfileBinding implements ViewBinding {
   @NonNull
-  private final LinearLayout rootView;
+  private final ScrollView rootView;
 
   @NonNull
-  public final TextView textProfileEmail;
+  public final MaterialButton btnRetry;
 
   @NonNull
-  public final TextView textProfileFacility;
+  public final ImageView imgProfilePhoto;
 
   @NonNull
-  public final TextView textProfileName;
+  public final LinearLayout layoutContent;
 
   @NonNull
-  public final TextView textProfileRole;
+  public final LinearLayout layoutError;
 
   @NonNull
-  public final TextView textProfileTitle;
+  public final ProgressBar progressBar;
 
-  private FragmentProfileBinding(@NonNull LinearLayout rootView, @NonNull TextView textProfileEmail,
-      @NonNull TextView textProfileFacility, @NonNull TextView textProfileName,
-      @NonNull TextView textProfileRole, @NonNull TextView textProfileTitle) {
+  @NonNull
+  public final ItemProfileFieldBinding rowDob;
+
+  @NonNull
+  public final ItemProfileFieldBinding rowEmail;
+
+  @NonNull
+  public final ItemProfileFieldBinding rowGender;
+
+  @NonNull
+  public final ItemProfileFieldBinding rowPhone;
+
+  @NonNull
+  public final ItemProfileFieldBinding rowUsername;
+
+  @NonNull
+  public final TextView textError;
+
+  @NonNull
+  public final TextView textFacility;
+
+  @NonNull
+  public final TextView textFullName;
+
+  @NonNull
+  public final TextView textRole;
+
+  private FragmentProfileBinding(@NonNull ScrollView rootView, @NonNull MaterialButton btnRetry,
+      @NonNull ImageView imgProfilePhoto, @NonNull LinearLayout layoutContent,
+      @NonNull LinearLayout layoutError, @NonNull ProgressBar progressBar,
+      @NonNull ItemProfileFieldBinding rowDob, @NonNull ItemProfileFieldBinding rowEmail,
+      @NonNull ItemProfileFieldBinding rowGender, @NonNull ItemProfileFieldBinding rowPhone,
+      @NonNull ItemProfileFieldBinding rowUsername, @NonNull TextView textError,
+      @NonNull TextView textFacility, @NonNull TextView textFullName, @NonNull TextView textRole) {
     this.rootView = rootView;
-    this.textProfileEmail = textProfileEmail;
-    this.textProfileFacility = textProfileFacility;
-    this.textProfileName = textProfileName;
-    this.textProfileRole = textProfileRole;
-    this.textProfileTitle = textProfileTitle;
+    this.btnRetry = btnRetry;
+    this.imgProfilePhoto = imgProfilePhoto;
+    this.layoutContent = layoutContent;
+    this.layoutError = layoutError;
+    this.progressBar = progressBar;
+    this.rowDob = rowDob;
+    this.rowEmail = rowEmail;
+    this.rowGender = rowGender;
+    this.rowPhone = rowPhone;
+    this.rowUsername = rowUsername;
+    this.textError = textError;
+    this.textFacility = textFacility;
+    this.textFullName = textFullName;
+    this.textRole = textRole;
   }
 
   @Override
   @NonNull
-  public LinearLayout getRoot() {
+  public ScrollView getRoot() {
     return rootView;
   }
 
@@ -72,38 +116,99 @@ public final class FragmentProfileBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
-      id = R.id.textProfileEmail;
-      TextView textProfileEmail = ViewBindings.findChildViewById(rootView, id);
-      if (textProfileEmail == null) {
+      id = R.id.btnRetry;
+      MaterialButton btnRetry = ViewBindings.findChildViewById(rootView, id);
+      if (btnRetry == null) {
         break missingId;
       }
 
-      id = R.id.textProfileFacility;
-      TextView textProfileFacility = ViewBindings.findChildViewById(rootView, id);
-      if (textProfileFacility == null) {
+      id = R.id.imgProfilePhoto;
+      ImageView imgProfilePhoto = ViewBindings.findChildViewById(rootView, id);
+      if (imgProfilePhoto == null) {
         break missingId;
       }
 
-      id = R.id.textProfileName;
-      TextView textProfileName = ViewBindings.findChildViewById(rootView, id);
-      if (textProfileName == null) {
+      id = R.id.layoutContent;
+      LinearLayout layoutContent = ViewBindings.findChildViewById(rootView, id);
+      if (layoutContent == null) {
         break missingId;
       }
 
-      id = R.id.textProfileRole;
-      TextView textProfileRole = ViewBindings.findChildViewById(rootView, id);
-      if (textProfileRole == null) {
+      id = R.id.layoutError;
+      LinearLayout layoutError = ViewBindings.findChildViewById(rootView, id);
+      if (layoutError == null) {
         break missingId;
       }
 
-      id = R.id.textProfileTitle;
-      TextView textProfileTitle = ViewBindings.findChildViewById(rootView, id);
-      if (textProfileTitle == null) {
+      id = R.id.progressBar;
+      ProgressBar progressBar = ViewBindings.findChildViewById(rootView, id);
+      if (progressBar == null) {
         break missingId;
       }
 
-      return new FragmentProfileBinding((LinearLayout) rootView, textProfileEmail,
-          textProfileFacility, textProfileName, textProfileRole, textProfileTitle);
+      id = R.id.rowDob;
+      View rowDob = ViewBindings.findChildViewById(rootView, id);
+      if (rowDob == null) {
+        break missingId;
+      }
+      ItemProfileFieldBinding binding_rowDob = ItemProfileFieldBinding.bind(rowDob);
+
+      id = R.id.rowEmail;
+      View rowEmail = ViewBindings.findChildViewById(rootView, id);
+      if (rowEmail == null) {
+        break missingId;
+      }
+      ItemProfileFieldBinding binding_rowEmail = ItemProfileFieldBinding.bind(rowEmail);
+
+      id = R.id.rowGender;
+      View rowGender = ViewBindings.findChildViewById(rootView, id);
+      if (rowGender == null) {
+        break missingId;
+      }
+      ItemProfileFieldBinding binding_rowGender = ItemProfileFieldBinding.bind(rowGender);
+
+      id = R.id.rowPhone;
+      View rowPhone = ViewBindings.findChildViewById(rootView, id);
+      if (rowPhone == null) {
+        break missingId;
+      }
+      ItemProfileFieldBinding binding_rowPhone = ItemProfileFieldBinding.bind(rowPhone);
+
+      id = R.id.rowUsername;
+      View rowUsername = ViewBindings.findChildViewById(rootView, id);
+      if (rowUsername == null) {
+        break missingId;
+      }
+      ItemProfileFieldBinding binding_rowUsername = ItemProfileFieldBinding.bind(rowUsername);
+
+      id = R.id.textError;
+      TextView textError = ViewBindings.findChildViewById(rootView, id);
+      if (textError == null) {
+        break missingId;
+      }
+
+      id = R.id.textFacility;
+      TextView textFacility = ViewBindings.findChildViewById(rootView, id);
+      if (textFacility == null) {
+        break missingId;
+      }
+
+      id = R.id.textFullName;
+      TextView textFullName = ViewBindings.findChildViewById(rootView, id);
+      if (textFullName == null) {
+        break missingId;
+      }
+
+      id = R.id.textRole;
+      TextView textRole = ViewBindings.findChildViewById(rootView, id);
+      if (textRole == null) {
+        break missingId;
+      }
+
+      return new FragmentProfileBinding((ScrollView) rootView, btnRetry, imgProfilePhoto,
+          layoutContent, layoutError, progressBar, binding_rowDob, binding_rowEmail,
+          binding_rowGender, binding_rowPhone, binding_rowUsername, textError, textFacility,
+          textFullName, textRole);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

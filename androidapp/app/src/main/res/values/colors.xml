@@ -28,4 +28,12 @@
     <color name="success">#10B981</color>
     <color name="error">#EF4444</color>
     <color name="warning">#F59E0B</color>
+    
+    <!-- Profile screen colors -->
+    <color name="background">#F5F7FA</color>
+    <color name="cardBackground">#FFFFFF</color>
+    <color name="divider">#E5E7EB</color>
+    <color name="primaryGreen">#00695C</color>
+    <color name="text_hint">#9CA3AF</color>
 </resources>
+

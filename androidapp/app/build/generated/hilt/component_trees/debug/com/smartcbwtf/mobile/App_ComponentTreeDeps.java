@@ -32,6 +32,7 @@ import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_HcfRegistrationFragment_Ge
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_HomeFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_LoginFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_PermissionsFragment_GeneratedInjector;
+import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_ProfileFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_ScanWeighFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_SettingsFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_SplashFragment_GeneratedInjector;
@@ -46,6 +47,8 @@ import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_HcfRegistrationView
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel_HiltModules_KeyModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_HomeViewModel_HiltModules_BindsModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_HomeViewModel_HiltModules_KeyModule;
+import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_ProfileViewModel_HiltModules_BindsModule;
+import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_ProfileViewModel_HiltModules_KeyModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel_HiltModules_BindsModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel_HiltModules_KeyModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_SettingsViewModel_HiltModules_BindsModule;
@@ -111,6 +114,7 @@ import hilt_aggregated_deps._dagger_hilt_android_internal_modules_HiltWrapper_Ac
         _com_smartcbwtf_mobile_ui_HomeFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_LoginFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_PermissionsFragment_GeneratedInjector.class,
+        _com_smartcbwtf_mobile_ui_ProfileFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_ScanWeighFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_SettingsFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_SplashFragment_GeneratedInjector.class,
@@ -125,6 +129,8 @@ import hilt_aggregated_deps._dagger_hilt_android_internal_modules_HiltWrapper_Ac
         _com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel_HiltModules_KeyModule.class,
         _com_smartcbwtf_mobile_viewmodel_HomeViewModel_HiltModules_BindsModule.class,
         _com_smartcbwtf_mobile_viewmodel_HomeViewModel_HiltModules_KeyModule.class,
+        _com_smartcbwtf_mobile_viewmodel_ProfileViewModel_HiltModules_BindsModule.class,
+        _com_smartcbwtf_mobile_viewmodel_ProfileViewModel_HiltModules_KeyModule.class,
         _com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel_HiltModules_BindsModule.class,
         _com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel_HiltModules_KeyModule.class,
         _com_smartcbwtf_mobile_viewmodel_SettingsViewModel_HiltModules_BindsModule.class,

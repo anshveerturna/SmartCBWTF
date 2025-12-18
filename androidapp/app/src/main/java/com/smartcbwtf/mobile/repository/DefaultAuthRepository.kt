@@ -24,7 +24,7 @@ class DefaultAuthRepository @Inject constructor(
             throw Exception("No internet connection")
         }
         val response = api.login(AuthRequest(username, password))
-        tokenStore.setToken(response.token)
+        tokenStore.setToken(response.accessToken)
         true
     }
 

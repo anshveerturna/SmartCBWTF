@@ -1,7 +1,10 @@
 R_DEF: Internal format may change without notice
 local
 color accent_color
+color background
 color background_color
+color cardBackground
+color divider
 color divider_color
 color error
 color errorAccent
@@ -11,6 +14,7 @@ color mint_glow
 color neutralBg
 color pickupCardGradientEnd
 color pickupCardGradientStart
+color primaryGreen
 color primary_color
 color primary_color_dark
 color primary_color_variant
@@ -18,6 +22,7 @@ color secondary_color
 color success
 color successAccent
 color surface_color
+color text_hint
 color text_primary
 color text_secondary
 color text_subtitle
@@ -32,6 +37,7 @@ dimen scanner_button_size
 dimen scanner_horizontal_padding
 dimen scanner_icon_size
 dimen scanner_top_padding
+drawable badge_background
 drawable bg_avatar_circle
 drawable bg_avatar_placeholder
 drawable bg_avatar_teal
@@ -75,6 +81,7 @@ drawable ic_flashlight_off
 drawable ic_flashlight_on
 drawable ic_gps
 drawable ic_hospital
+drawable ic_info
 drawable ic_launcher_foreground
 drawable ic_location
 drawable ic_location_off
@@ -83,6 +90,7 @@ drawable ic_logo_smartcbwtf
 drawable ic_logo_smartcbwtf_green
 drawable ic_logout_menu
 drawable ic_pending
+drawable ic_person
 drawable ic_phone
 drawable ic_pickup_outline
 drawable ic_pickup_waste
@@ -131,6 +139,7 @@ id btnLogin
 id btnMarkAttendance
 id btnOpenSettings
 id btnRegister
+id btnRetry
 id btnRetryLocation
 id btnScanAgain
 id btnScanQr
@@ -187,10 +196,13 @@ id iconLocationStatus
 id iconPending
 id iconSync
 id imgLogo
+id imgProfilePhoto
 id ivGpsStatus
 id ivLogo
 id ivSuccessCheck
 id layoutCategory
+id layoutContent
+id layoutError
 id layoutErrorBanner
 id layoutHcfLoading
 id layoutInitialState
@@ -220,6 +232,11 @@ id qrScanPrompt
 id qrScannedInfo
 id qrScannerFragment
 id radioHcfSelect
+id rowDob
+id rowEmail
+id rowGender
+id rowPhone
+id rowUsername
 id rvHcfList
 id rvHcfs
 id scanWeighFragment
@@ -233,19 +250,20 @@ id textAppName
 id textAppSubtitle
 id textAttendanceSubtitle
 id textAttendanceTitle
+id textError
+id textFacility
+id textFullName
 id textGreetingSubtitle
 id textGreetingTitle
+id textLabel
 id textPendingValue
 id textPickupSubtitle
 id textPickupTitle
-id textProfileEmail
-id textProfileFacility
-id textProfileName
-id textProfileRole
-id textProfileTitle
 id textRegisterSubtitle
 id textRegisterTitle
+id textRole
 id textSyncValue
+id textValue
 id textVerifySubtitle
 id textVerifyTitle
 id tilAadharNo
@@ -322,6 +340,7 @@ layout fragment_settings
 layout fragment_splash
 layout fragment_start_pickup
 layout item_hcf_selection
+layout item_profile_field
 menu menu_profile
 mipmap ic_launcher
 mipmap ic_launcher_round

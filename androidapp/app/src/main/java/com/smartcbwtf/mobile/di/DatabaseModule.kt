@@ -6,6 +6,7 @@ import com.smartcbwtf.mobile.database.AppDatabase
 import com.smartcbwtf.mobile.database.dao.AttendanceDao
 import com.smartcbwtf.mobile.database.dao.BagEventDao
 import com.smartcbwtf.mobile.database.dao.HcfDao
+import com.smartcbwtf.mobile.database.dao.UserProfileDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -33,4 +34,7 @@ object DatabaseModule {
 
     @Provides
     fun provideAttendanceDao(db: AppDatabase): AttendanceDao = db.attendanceDao()
+
+    @Provides
+    fun provideUserProfileDao(db: AppDatabase): UserProfileDao = db.userProfileDao()
 }

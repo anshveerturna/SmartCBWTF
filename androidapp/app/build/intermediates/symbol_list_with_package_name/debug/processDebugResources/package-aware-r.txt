@@ -1447,6 +1447,7 @@ color accent_material_dark
 color accent_material_light
 color androidx_core_ripple_material_light
 color androidx_core_secondary_text_default_material_light
+color background
 color background_color
 color background_floating_material_dark
 color background_floating_material_light
@@ -1462,6 +1463,7 @@ color button_material_dark
 color button_material_light
 color call_notification_answer_color
 color call_notification_decline_color
+color cardBackground
 color cardview_dark_background
 color cardview_light_background
 color cardview_shadow_end_color
@@ -1519,6 +1521,7 @@ color dim_foreground_disabled_material_dark
 color dim_foreground_disabled_material_light
 color dim_foreground_material_dark
 color dim_foreground_material_light
+color divider
 color divider_color
 color error
 color errorAccent
@@ -2190,6 +2193,7 @@ color notification_action_color_filter
 color notification_icon_bg_color
 color pickupCardGradientEnd
 color pickupCardGradientStart
+color primaryGreen
 color primary_color
 color primary_color_dark
 color primary_color_variant
@@ -2217,6 +2221,7 @@ color switch_thumb_material_dark
 color switch_thumb_material_light
 color switch_thumb_normal_material_dark
 color switch_thumb_normal_material_light
+color text_hint
 color text_primary
 color text_secondary
 color text_subtitle
@@ -3128,6 +3133,7 @@ drawable abc_textfield_search_material
 drawable abc_vector_test
 drawable avd_hide_password
 drawable avd_show_password
+drawable badge_background
 drawable bg_avatar_circle
 drawable bg_avatar_placeholder
 drawable bg_avatar_teal
@@ -3214,6 +3220,7 @@ drawable ic_flashlight_off
 drawable ic_flashlight_on
 drawable ic_gps
 drawable ic_hospital
+drawable ic_info
 drawable ic_keyboard_black_24dp
 drawable ic_launcher_foreground
 drawable ic_location
@@ -3230,6 +3237,7 @@ drawable ic_mtrl_chip_checked_black
 drawable ic_mtrl_chip_checked_circle
 drawable ic_mtrl_chip_close_circle
 drawable ic_pending
+drawable ic_person
 drawable ic_phone
 drawable ic_pickup_outline
 drawable ic_pickup_waste
@@ -3457,6 +3465,7 @@ id btnLogin
 id btnMarkAttendance
 id btnOpenSettings
 id btnRegister
+id btnRetry
 id btnRetryLocation
 id btnScanAgain
 id btnScanQr
@@ -3645,6 +3654,7 @@ id ignore
 id ignoreRequest
 id image
 id imgLogo
+id imgProfilePhoto
 id immediateStop
 id included
 id indeterminate
@@ -3661,6 +3671,8 @@ id jumpToStart
 id labeled
 id layout
 id layoutCategory
+id layoutContent
+id layoutError
 id layoutErrorBanner
 id layoutHcfLoading
 id layoutInitialState
@@ -3832,6 +3844,11 @@ id rightToLeft
 id right_icon
 id right_side
 id rounded
+id rowDob
+id rowEmail
+id rowGender
+id rowPhone
+id rowUsername
 id row_index_key
 id rtl
 id rvHcfList
@@ -3927,23 +3944,24 @@ id textAppSubtitle
 id textAttendanceSubtitle
 id textAttendanceTitle
 id textEnd
+id textError
+id textFacility
+id textFullName
 id textGreetingSubtitle
 id textGreetingTitle
+id textLabel
 id textPendingValue
 id textPickupSubtitle
 id textPickupTitle
-id textProfileEmail
-id textProfileFacility
-id textProfileName
-id textProfileRole
-id textProfileTitle
 id textRegisterSubtitle
 id textRegisterTitle
+id textRole
 id textSpacerNoButtons
 id textSpacerNoTitle
 id textStart
 id textSyncValue
 id textTop
+id textValue
 id textVerifySubtitle
 id textVerifyTitle
 id text_input_end_icon
@@ -4219,6 +4237,7 @@ layout fragment_start_pickup
 layout ime_base_split_test_activity
 layout ime_secondary_split_test_activity
 layout item_hcf_selection
+layout item_profile_field
 layout m3_alert_dialog
 layout m3_alert_dialog_actions
 layout m3_alert_dialog_title

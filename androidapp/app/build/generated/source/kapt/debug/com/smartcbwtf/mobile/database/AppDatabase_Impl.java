@@ -17,6 +17,8 @@ import com.smartcbwtf.mobile.database.dao.BagEventDao;
 import com.smartcbwtf.mobile.database.dao.BagEventDao_Impl;
 import com.smartcbwtf.mobile.database.dao.HcfDao;
 import com.smartcbwtf.mobile.database.dao.HcfDao_Impl;
+import com.smartcbwtf.mobile.database.dao.UserProfileDao;
+import com.smartcbwtf.mobile.database.dao.UserProfileDao_Impl;
 import java.lang.Class;
 import java.lang.Override;
 import java.lang.String;
@@ -38,17 +40,20 @@ public final class AppDatabase_Impl extends AppDatabase {
 
   private volatile AttendanceDao _attendanceDao;
 
+  private volatile UserProfileDao _userProfileDao;
+
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(3) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(4) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `bag_events` (`id` TEXT NOT NULL, `qrCode` TEXT NOT NULL, `eventType` TEXT NOT NULL, `eventTs` INTEGER NOT NULL, `gpsLat` REAL NOT NULL, `gpsLon` REAL NOT NULL, `weightKg` REAL NOT NULL, `hcfId` TEXT NOT NULL, `facilityId` TEXT, `synced` INTEGER NOT NULL, `deviceId` TEXT, `driverId` TEXT, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS `hcfs` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `address` TEXT, `city` TEXT, `state` TEXT, `postalCode` TEXT, `phone` TEXT, `latitude` REAL, `longitude` REAL, `approved` INTEGER NOT NULL, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS `attendance_events` (`id` TEXT NOT NULL, `hcfId` TEXT NOT NULL, `hcfName` TEXT NOT NULL, `eventTs` INTEGER NOT NULL, `gpsLat` REAL NOT NULL, `gpsLon` REAL NOT NULL, `gpsAccuracyM` REAL, `distanceFromHcfM` REAL NOT NULL, `deviceId` TEXT, `synced` INTEGER NOT NULL, `syncedAt` INTEGER, `syncError` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `user_profile` (`id` TEXT NOT NULL, `username` TEXT NOT NULL, `fullName` TEXT, `email` TEXT, `phone` TEXT, `gender` TEXT, `dob` TEXT, `role` TEXT NOT NULL, `facilityId` TEXT, `facilityName` TEXT, `profilePhotoUrl` TEXT, `cachedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fb6046caffa62865bd34c13d03363bf8')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '95c040077c166579948618f08970e5be')");
       }
 
       @Override
@@ -56,6 +61,7 @@ public final class AppDatabase_Impl extends AppDatabase {
         db.execSQL("DROP TABLE IF EXISTS `bag_events`");
         db.execSQL("DROP TABLE IF EXISTS `hcfs`");
         db.execSQL("DROP TABLE IF EXISTS `attendance_events`");
+        db.execSQL("DROP TABLE IF EXISTS `user_profile`");
         final List<? extends RoomDatabase.Callback> _callbacks = mCallbacks;
         if (_callbacks != null) {
           for (RoomDatabase.Callback _callback : _callbacks) {
@@ -164,9 +170,31 @@ public final class AppDatabase_Impl extends AppDatabase {
                   + " Expected:\n" + _infoAttendanceEvents + "\n"
                   + " Found:\n" + _existingAttendanceEvents);
         }
+        final HashMap<String, TableInfo.Column> _columnsUserProfile = new HashMap<String, TableInfo.Column>(12);
+        _columnsUserProfile.put("id", new TableInfo.Column("id", "TEXT", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsUserProfile.put("username", new TableInfo.Column("username", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsUserProfile.put("fullName", new TableInfo.Column("fullName", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsUserProfile.put("email", new TableInfo.Column("email", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsUserProfile.put("phone", new TableInfo.Column("phone", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsUserProfile.put("gender", new TableInfo.Column("gender", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsUserProfile.put("dob", new TableInfo.Column("dob", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsUserProfile.put("role", new TableInfo.Column("role", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsUserProfile.put("facilityId", new TableInfo.Column("facilityId", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsUserProfile.put("facilityName", new TableInfo.Column("facilityName", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsUserProfile.put("profilePhotoUrl", new TableInfo.Column("profilePhotoUrl", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsUserProfile.put("cachedAt", new TableInfo.Column("cachedAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        final HashSet<TableInfo.ForeignKey> _foreignKeysUserProfile = new HashSet<TableInfo.ForeignKey>(0);
+        final HashSet<TableInfo.Index> _indicesUserProfile = new HashSet<TableInfo.Index>(0);
+        final TableInfo _infoUserProfile = new TableInfo("user_profile", _columnsUserProfile, _foreignKeysUserProfile, _indicesUserProfile);
+        final TableInfo _existingUserProfile = TableInfo.read(db, "user_profile");
+        if (!_infoUserProfile.equals(_existingUserProfile)) {
+          return new RoomOpenHelper.ValidationResult(false, "user_profile(com.smartcbwtf.mobile.database.entity.UserProfileEntity).\n"
+                  + " Expected:\n" + _infoUserProfile + "\n"
+                  + " Found:\n" + _existingUserProfile);
+        }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "fb6046caffa62865bd34c13d03363bf8", "9c08abdfca50bff5f8033fe518b1dae2");
+    }, "95c040077c166579948618f08970e5be", "0c4d810007136997ef3fcc28e5f8797c");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;
@@ -177,7 +205,7 @@ public final class AppDatabase_Impl extends AppDatabase {
   protected InvalidationTracker createInvalidationTracker() {
     final HashMap<String, String> _shadowTablesMap = new HashMap<String, String>(0);
     final HashMap<String, Set<String>> _viewTables = new HashMap<String, Set<String>>(0);
-    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "bag_events","hcfs","attendance_events");
+    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "bag_events","hcfs","attendance_events","user_profile");
   }
 
   @Override
@@ -189,6 +217,7 @@ public final class AppDatabase_Impl extends AppDatabase {
       _db.execSQL("DELETE FROM `bag_events`");
       _db.execSQL("DELETE FROM `hcfs`");
       _db.execSQL("DELETE FROM `attendance_events`");
+      _db.execSQL("DELETE FROM `user_profile`");
       super.setTransactionSuccessful();
     } finally {
       super.endTransaction();
@@ -206,6 +235,7 @@ public final class AppDatabase_Impl extends AppDatabase {
     _typeConvertersMap.put(BagEventDao.class, BagEventDao_Impl.getRequiredConverters());
     _typeConvertersMap.put(HcfDao.class, HcfDao_Impl.getRequiredConverters());
     _typeConvertersMap.put(AttendanceDao.class, AttendanceDao_Impl.getRequiredConverters());
+    _typeConvertersMap.put(UserProfileDao.class, UserProfileDao_Impl.getRequiredConverters());
     return _typeConvertersMap;
   }
 
@@ -262,6 +292,20 @@ public final class AppDatabase_Impl extends AppDatabase {
           _attendanceDao = new AttendanceDao_Impl(this);
         }
         return _attendanceDao;
+      }
+    }
+  }
+
+  @Override
+  public UserProfileDao userProfileDao() {
+    if (_userProfileDao != null) {
+      return _userProfileDao;
+    } else {
+      synchronized(this) {
+        if(_userProfileDao == null) {
+          _userProfileDao = new UserProfileDao_Impl(this);
+        }
+        return _userProfileDao;
       }
     }
   }
