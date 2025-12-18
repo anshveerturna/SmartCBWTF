@@ -545,45 +545,45 @@ public final class DaggerApp_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
-      static String com_smartcbwtf_mobile_viewmodel_StartPickupViewModel = "com.smartcbwtf.mobile.viewmodel.StartPickupViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel = "com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel";
-
       static String com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel = "com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel";
 
-      static String com_smartcbwtf_mobile_viewmodel_HomeViewModel = "com.smartcbwtf.mobile.viewmodel.HomeViewModel";
+      static String com_smartcbwtf_mobile_viewmodel_StartPickupViewModel = "com.smartcbwtf.mobile.viewmodel.StartPickupViewModel";
 
       static String com_smartcbwtf_mobile_viewmodel_AuthViewModel = "com.smartcbwtf.mobile.viewmodel.AuthViewModel";
 
-      static String com_smartcbwtf_mobile_viewmodel_SettingsViewModel = "com.smartcbwtf.mobile.viewmodel.SettingsViewModel";
+      static String com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel = "com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel";
 
       static String com_smartcbwtf_mobile_viewmodel_AttendanceViewModel = "com.smartcbwtf.mobile.viewmodel.AttendanceViewModel";
 
-      static String com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel = "com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel";
+      static String com_smartcbwtf_mobile_viewmodel_HomeViewModel = "com.smartcbwtf.mobile.viewmodel.HomeViewModel";
 
-      @KeepFieldType
-      StartPickupViewModel com_smartcbwtf_mobile_viewmodel_StartPickupViewModel2;
+      static String com_smartcbwtf_mobile_viewmodel_SettingsViewModel = "com.smartcbwtf.mobile.viewmodel.SettingsViewModel";
 
-      @KeepFieldType
-      VerifyAtPlantViewModel com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel2;
+      static String com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel = "com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel";
 
       @KeepFieldType
       ScanWeighViewModel com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel2;
 
       @KeepFieldType
-      HomeViewModel com_smartcbwtf_mobile_viewmodel_HomeViewModel2;
+      StartPickupViewModel com_smartcbwtf_mobile_viewmodel_StartPickupViewModel2;
 
       @KeepFieldType
       AuthViewModel com_smartcbwtf_mobile_viewmodel_AuthViewModel2;
 
       @KeepFieldType
-      SettingsViewModel com_smartcbwtf_mobile_viewmodel_SettingsViewModel2;
+      HcfRegistrationViewModel com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel2;
 
       @KeepFieldType
       AttendanceViewModel com_smartcbwtf_mobile_viewmodel_AttendanceViewModel2;
 
       @KeepFieldType
-      HcfRegistrationViewModel com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel2;
+      HomeViewModel com_smartcbwtf_mobile_viewmodel_HomeViewModel2;
+
+      @KeepFieldType
+      SettingsViewModel com_smartcbwtf_mobile_viewmodel_SettingsViewModel2;
+
+      @KeepFieldType
+      VerifyAtPlantViewModel com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel2;
     }
   }
 
@@ -645,21 +645,30 @@ public final class DaggerApp_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
+      static String com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel = "com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_AuthViewModel = "com.smartcbwtf.mobile.viewmodel.AuthViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_StartPickupViewModel = "com.smartcbwtf.mobile.viewmodel.StartPickupViewModel";
+
       static String com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel = "com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel";
 
       static String com_smartcbwtf_mobile_viewmodel_AttendanceViewModel = "com.smartcbwtf.mobile.viewmodel.AttendanceViewModel";
 
-      static String com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel = "com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel";
+      static String com_smartcbwtf_mobile_viewmodel_SettingsViewModel = "com.smartcbwtf.mobile.viewmodel.SettingsViewModel";
 
       static String com_smartcbwtf_mobile_viewmodel_HomeViewModel = "com.smartcbwtf.mobile.viewmodel.HomeViewModel";
 
-      static String com_smartcbwtf_mobile_viewmodel_SettingsViewModel = "com.smartcbwtf.mobile.viewmodel.SettingsViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_StartPickupViewModel = "com.smartcbwtf.mobile.viewmodel.StartPickupViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_AuthViewModel = "com.smartcbwtf.mobile.viewmodel.AuthViewModel";
-
       static String com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel = "com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel";
+
+      @KeepFieldType
+      HcfRegistrationViewModel com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel2;
+
+      @KeepFieldType
+      AuthViewModel com_smartcbwtf_mobile_viewmodel_AuthViewModel2;
+
+      @KeepFieldType
+      StartPickupViewModel com_smartcbwtf_mobile_viewmodel_StartPickupViewModel2;
 
       @KeepFieldType
       ScanWeighViewModel com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel2;
@@ -668,19 +677,10 @@ public final class DaggerApp_HiltComponents_SingletonC {
       AttendanceViewModel com_smartcbwtf_mobile_viewmodel_AttendanceViewModel2;
 
       @KeepFieldType
-      HcfRegistrationViewModel com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel2;
-
-      @KeepFieldType
-      HomeViewModel com_smartcbwtf_mobile_viewmodel_HomeViewModel2;
-
-      @KeepFieldType
       SettingsViewModel com_smartcbwtf_mobile_viewmodel_SettingsViewModel2;
 
       @KeepFieldType
-      StartPickupViewModel com_smartcbwtf_mobile_viewmodel_StartPickupViewModel2;
-
-      @KeepFieldType
-      AuthViewModel com_smartcbwtf_mobile_viewmodel_AuthViewModel2;
+      HomeViewModel com_smartcbwtf_mobile_viewmodel_HomeViewModel2;
 
       @KeepFieldType
       VerifyAtPlantViewModel com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel2;

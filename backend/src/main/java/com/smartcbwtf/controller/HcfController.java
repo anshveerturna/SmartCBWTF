@@ -29,6 +29,7 @@ public class HcfController {
     }
 
     @PostMapping("/register")
+    @PreAuthorize("hasAnyRole('DRIVER', 'CBWTF_ADMIN')")
     public ResponseEntity<HcfRegistrationResponse> register(@Valid @RequestBody HcfRegistrationRequest request) {
         HcfRegistrationResponse response = hcfService.register(request);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);

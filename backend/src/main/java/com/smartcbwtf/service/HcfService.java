@@ -154,9 +154,27 @@ public class HcfService {
         }
 
         // Bedded validation
-        if (Boolean.TRUE.equals(request.getBedded()) && 
-            (request.getNumberOfBeds() == null || request.getNumberOfBeds() <= 0)) {
+        if (Boolean.TRUE.equals(request.getBedded()) &&
+                (request.getNumberOfBeds() == null || request.getNumberOfBeds() <= 0)) {
             throw new IllegalArgumentException("Number of beds is required for bedded facilities");
+        }
+
+        // Duplicate detection
+        if (request.getPanNo() != null && !request.getPanNo().isBlank() &&
+                hcfRepository.findByPanNo(request.getPanNo()).isPresent()) {
+            throw new IllegalArgumentException("An HCF with this PAN number already exists");
+        }
+        if (request.getGstNo() != null && !request.getGstNo().isBlank() &&
+                hcfRepository.findByGstNo(request.getGstNo()).isPresent()) {
+            throw new IllegalArgumentException("An HCF with this GST number already exists");
+        }
+        if (request.getAadharNo() != null && !request.getAadharNo().isBlank() &&
+                hcfRepository.findByAadharNo(request.getAadharNo()).isPresent()) {
+            throw new IllegalArgumentException("An HCF with this Aadhar number already exists");
+        }
+        if (request.getContactPhone() != null && !request.getContactPhone().isBlank() &&
+                hcfRepository.findByContactPhone(request.getContactPhone()).isPresent()) {
+            throw new IllegalArgumentException("An HCF with this phone number already exists");
         }
     }
 
@@ -186,51 +204,51 @@ public class HcfService {
         hcf.setBedded(request.getBedded());
         hcf.setPcbAuthorizationNo(request.getPcbAuthorizationNo());
         hcf.setOtherNotes(request.getOtherNotes());
-        
+
         // Use registration GPS as main GPS coordinates
         hcf.setGpsLat(request.getRegistrationGpsLat());
         hcf.setGpsLon(request.getRegistrationGpsLon());
         hcf.setRegistrationGpsLat(request.getRegistrationGpsLat());
         hcf.setRegistrationGpsLon(request.getRegistrationGpsLon());
         hcf.setRegistrationGpsAccuracy(request.getRegistrationGpsAccuracy());
-        
+
         hcf.setRegisteredByUser(registeredBy);
         hcf.setStatus("PENDING_APPROVAL");
         hcf.setCreatedAt(Instant.now());
         hcf.setUpdatedAt(Instant.now());
-        
+
         return hcf;
     }
 
     private Agreement createAgreement(HcfRegistrationRequest request, Hcf hcf, Facility facility,
-                                       String agreementNumber, String termsVersion, AppUser acceptedBy) {
+            String agreementNumber, String termsVersion, AppUser acceptedBy) {
         Agreement agreement = new Agreement();
         agreement.setAgreementNumber(agreementNumber);
         agreement.setHcf(hcf);
         agreement.setFacility(facility);
-        
+
         // Set dates
-        LocalDate startDate = request.getAgreementStartDate() != null ? 
-                request.getAgreementStartDate() : LocalDate.now();
-        LocalDate endDate = request.getAgreementEndDate() != null ? 
-                request.getAgreementEndDate() : startDate.plusYears(1);
-        
+        LocalDate startDate = request.getAgreementStartDate() != null ? request.getAgreementStartDate()
+                : LocalDate.now();
+        LocalDate endDate = request.getAgreementEndDate() != null ? request.getAgreementEndDate()
+                : startDate.plusYears(1);
+
         agreement.setStartDate(startDate);
         agreement.setEndDate(endDate);
-        
+
         // Default rate (could be made configurable)
         agreement.setPerBedPerDayRate(BigDecimal.valueOf(150));
-        
+
         // Terms acceptance
         agreement.setTermsAccepted(true);
         agreement.setTermsVersion(termsVersion);
         agreement.setTermsAcceptedAt(Instant.now());
         agreement.setTermsAcceptedBy(acceptedBy);
-        
+
         agreement.setStatus("ACTIVE");
         agreement.setCreatedAt(Instant.now());
         agreement.setUpdatedAt(Instant.now());
-        
+
         return agreement;
     }
 
@@ -251,7 +269,7 @@ public class HcfService {
             String jsonData = objectMapper.writeValueAsString(auditData);
             String dataHash = sha256(jsonData);
 
-            auditLogService.logWithData("HCF", hcf.getId(), "HCF_REGISTER", 
+            auditLogService.logWithData("HCF", hcf.getId(), "HCF_REGISTER",
                     request.getRegisteredByUserId(), jsonData, dataHash);
         } catch (Exception e) {
             // Log error but don't fail registration
@@ -264,12 +282,12 @@ public class HcfService {
             // Body for facility admin notification
             String body = String.format(
                     "Dear Admin,\n\n" +
-                    "A new Health Care Facility has been registered.\n\n" +
-                    "Agreement Number: %s\n" +
-                    "HCF Name: %s\n" +
-                    "Address: %s\n\n" +
-                    "Please find the attached agreement document.\n\n" +
-                    "Regards,\nSmartCBWTF System",
+                            "A new Health Care Facility has been registered.\n\n" +
+                            "Agreement Number: %s\n" +
+                            "HCF Name: %s\n" +
+                            "Address: %s\n\n" +
+                            "Please find the attached agreement document.\n\n" +
+                            "Regards,\nSmartCBWTF System",
                     agreement.getAgreementNumber(),
                     hcf.getName(),
                     hcf.getAddress());
@@ -287,8 +305,8 @@ public class HcfService {
             // Also notify facility admin
             if (facility.getContactEmail() != null && !facility.getContactEmail().isEmpty()) {
                 emailService.sendEmailWithAttachment(
-                        facility.getContactEmail(), 
-                        "New HCF Registration - " + hcf.getName(), 
+                        facility.getContactEmail(),
+                        "New HCF Registration - " + hcf.getName(),
                         body,
                         agreement.getPdfUrl());
             }
@@ -305,7 +323,8 @@ public class HcfService {
             StringBuilder hexString = new StringBuilder();
             for (byte b : hash) {
                 String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
+                if (hex.length() == 1)
+                    hexString.append('0');
                 hexString.append(hex);
             }
             return hexString.toString();

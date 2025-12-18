@@ -217,3 +217,8 @@ README.md (this file)
 - v0.1 (initial): Initial architecture README and plan.
 
 mvn -DskipTests spring-boot:run
+
+./gradlew :app:assembleDebug -PAPI_BASE_URL="http://192.168.1.131:8080/api/"
+
+./gradlew :app:assembleDebug
+

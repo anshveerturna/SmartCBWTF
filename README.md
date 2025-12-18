@@ -583,7 +583,35 @@ SmartCBWTF/
 ```
 
 ---
+##Future changes i want
 
+The One Thing I’d Flag (not a bug, a decision)
+⚠️ Agreement status logic
+
+Right now:
+
+HCF = PENDING_APPROVAL
+
+Agreement = ACTIVE
+
+This is not wrong, but it is a policy decision.
+
+Two acceptable models:
+
+Model A (current, acceptable):
+
+Agreement becomes ACTIVE on registration
+
+CBWTF approval is operational, not legal
+
+Model B (stricter):
+
+Agreement = DRAFT
+
+Moves to ACTIVE only after approval
+
+👉 For pilot, Model A is fine
+👉 Just document this assumption clearly
 ## License
 
 Proprietary – Internal use only.

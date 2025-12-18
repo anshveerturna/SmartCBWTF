@@ -8,4 +8,13 @@ import java.util.UUID;
 
 public interface HcfRepository extends JpaRepository<Hcf, UUID> {
     Optional<Hcf> findByCode(String code);
+
+    // Duplicate detection queries
+    Optional<Hcf> findByPanNo(String panNo);
+
+    Optional<Hcf> findByGstNo(String gstNo);
+
+    Optional<Hcf> findByAadharNo(String aadharNo);
+
+    Optional<Hcf> findByContactPhone(String contactPhone);
 }
