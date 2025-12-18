@@ -9,7 +9,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
-import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -57,8 +56,6 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentHomeBinding.bind(view)
 
-        (activity as? AppCompatActivity)?.supportActionBar?.hide()
-
         setupActions()
         setupProfileMenu()
         bindStatus()
@@ -67,7 +64,6 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        (activity as? AppCompatActivity)?.supportActionBar?.show()
         _binding = null
     }
 
@@ -190,11 +186,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                         true
                     }
                     R.id.menu_logout -> {
+                        // Just logout - the authState observer will handle navigation
                         viewModel.logout()
-                        val options = navOptions {
-                            popUpTo(R.id.homeFragment) { inclusive = true }
-                        }
-                        findNavController().navigate(R.id.action_homeFragment_to_loginFragment, null, options)
                         true
                     }
                     else -> false
@@ -211,11 +204,18 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.authState.collect { state ->
-                        if (state is AuthState.Unauthenticated && isAdded) {
-                            val options = navOptions {
-                                popUpTo(R.id.homeFragment) { inclusive = true }
-                            }
-                            findNavController().navigate(R.id.action_homeFragment_to_loginFragment, null, options)
+                        // Only navigate if we're still on homeFragment
+                        val currentDestId = findNavController().currentDestination?.id
+                        if (state is AuthState.Unauthenticated && 
+                            isAdded && 
+                            currentDestId == R.id.homeFragment) {
+                            findNavController().navigate(
+                                R.id.action_homeFragment_to_loginFragment,
+                                null,
+                                navOptions {
+                                    popUpTo(R.id.homeFragment) { inclusive = true }
+                                }
+                            )
                         }
                     }
                 }

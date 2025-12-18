@@ -6,7 +6,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -44,9 +43,6 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
 
         // Hide keyboard when tapping outside inputs
         setupHideKeyboardOnTouch(binding.root)
-
-        // Hide ActionBar
-        (activity as? AppCompatActivity)?.supportActionBar?.hide()
 
         // Entry Animation
         binding.cardLogin.alpha = 0f
@@ -205,10 +201,7 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        (activity as? AppCompatActivity)?.supportActionBar?.show()
-    }
+
 
     override fun onDestroyView() {
         super.onDestroyView()
