@@ -27,7 +27,8 @@ public class AuthController {
     private final AppUserRepository appUserRepository;
     private final AuditLogService auditLogService;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtService jwtService, AppUserRepository appUserRepository, AuditLogService auditLogService) {
+    public AuthController(AuthenticationManager authenticationManager, JwtService jwtService,
+            AppUserRepository appUserRepository, AuditLogService auditLogService) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.appUserRepository = appUserRepository;
@@ -37,10 +38,16 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthLoginResponse> login(@Valid @RequestBody AuthLoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         AppUser user = appUserRepository.findByUsername(authentication.getName()).orElseThrow();
-        String token = jwtService.generateToken(user.getUsername(), Map.of("role", user.getRole()));
+
+        // Build claims with tenant_id (facility_id) and hcf_id for multi-tenant support
+        java.util.HashMap<String, Object> claims = new java.util.HashMap<>();
+        claims.put("role", user.getRole());
+        claims.put("tenant_id", user.getFacility() != null ? user.getFacility().getId().toString() : null);
+        claims.put("hcf_id", user.getHcf() != null ? user.getHcf().getId().toString() : null);
+
+        String token = jwtService.generateToken(user.getUsername(), claims);
         auditLogService.log("APP_USER", user.getId(), "LOGIN", user.getId(), null);
         return ResponseEntity.ok(new AuthLoginResponse(token));
     }

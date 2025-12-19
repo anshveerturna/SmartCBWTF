@@ -1,0 +1,241 @@
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import {
+  Box,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Typography,
+  Alert,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
+  alpha,
+} from '@mui/material';
+import {
+  Visibility,
+  VisibilityOff,
+  Email as EmailIcon,
+  Lock as LockIcon,
+} from '@mui/icons-material';
+import { useAuth } from '../auth';
+import type { UserRole } from '../types/api';
+
+// Form validation schema
+const loginSchema = z.object({
+  username: z.string().min(1, 'Username is required'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
+// Role to redirect path mapping
+const getRoleRedirectPath = (role: UserRole): string => {
+  switch (role) {
+    case 'SUPER_ADMIN':
+      return '/admin/dashboard';
+    case 'CBWTF_ADMIN':
+      return '/cbwtf/dashboard';
+    case 'HCF_ADMIN':
+      return '/hcf/dashboard';
+    default:
+      return '/';
+  }
+};
+
+const Login: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isLoading } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      username: '',
+      password: '',
+    },
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
+    setError(null);
+    try {
+      await login(data);
+      // Redirect based on role or intended destination
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
+      if (from) {
+        navigate(from, { replace: true });
+      } else {
+        // Parse role from new token and redirect
+        const token = localStorage.getItem('smartcbwtf_token');
+        if (token) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          navigate(getRoleRedirectPath(payload.role), { replace: true });
+        }
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Login failed. Please try again.';
+      setError(message);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        bgcolor: 'background.default',
+        p: 2,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Background decoration */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: -100,
+          right: -100,
+          width: 400,
+          height: 400,
+          borderRadius: '50%',
+          background: (theme) =>
+            `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.2)} 0%, transparent 70%)`,
+        }}
+      />
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: -150,
+          left: -150,
+          width: 500,
+          height: 500,
+          borderRadius: '50%',
+          background: (theme) =>
+            `radial-gradient(circle, ${alpha(theme.palette.secondary.main, 0.15)} 0%, transparent 70%)`,
+        }}
+      />
+
+      <Card
+        sx={{
+          maxWidth: 420,
+          width: '100%',
+          zIndex: 1,
+        }}
+      >
+        <CardContent sx={{ p: 4 }}>
+          {/* Logo */}
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: 3,
+                background: 'linear-gradient(135deg, #6366F1 0%, #10B981 100%)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2,
+              }}
+            >
+              <Typography variant="h4" sx={{ color: 'white', fontWeight: 700 }}>
+                S
+              </Typography>
+            </Box>
+            <Typography variant="h4" sx={{ fontWeight: 700 }}>
+              SmartCBWTF
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Enterprise Biomedical Waste Management
+            </Typography>
+          </Box>
+
+          {/* Error Alert */}
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
+
+          {/* Login Form */}
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <TextField
+              {...register('username')}
+              label="Username"
+              fullWidth
+              margin="normal"
+              error={!!errors.username}
+              helperText={errors.username?.message}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EmailIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+              autoComplete="username"
+              autoFocus
+            />
+
+            <TextField
+              {...register('password')}
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              fullWidth
+              margin="normal"
+              error={!!errors.password}
+              helperText={errors.password?.message}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              autoComplete="current-password"
+            />
+
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              size="large"
+              disabled={isLoading}
+              sx={{ mt: 3, mb: 2 }}
+            >
+              {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
+            </Button>
+          </form>
+
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>
+            Contact your administrator for access credentials
+          </Typography>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+};
+
+export default Login;
