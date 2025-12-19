@@ -48,11 +48,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         // Populate TenantContext for query scoping
                         String tenantIdStr = claims.get("tenant_id", String.class);
                         String hcfIdStr = claims.get("hcf_id", String.class);
+                        String userIdStr = claims.get("user_id", String.class);
 
                         java.util.UUID tenantId = tenantIdStr != null ? java.util.UUID.fromString(tenantIdStr) : null;
                         java.util.UUID hcfId = hcfIdStr != null ? java.util.UUID.fromString(hcfIdStr) : null;
+                        java.util.UUID userId = userIdStr != null ? java.util.UUID.fromString(userIdStr) : null;
 
-                        TenantContext.set(new TenantContext.TenantInfo(tenantId, hcfId, role, username));
+                        TenantContext.set(new TenantContext.TenantInfo(userId, tenantId, hcfId, role, username));
                     }
                 } catch (Exception ignored) {
                     // On parse failure, fall through to reject by security chain

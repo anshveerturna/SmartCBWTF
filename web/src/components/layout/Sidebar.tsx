@@ -43,10 +43,10 @@ interface SidebarProps {
 // Navigation items configuration
 const getNavItems = (role: UserRole | undefined): NavItem[] => {
   const superAdminItems: NavItem[] = [
-    { path: '/admin/dashboard', label: 'Platform Dashboard', icon: <DashboardIcon />, roles: ['SUPER_ADMIN'] },
-    { path: '/admin/tenants', label: 'Tenant Management', icon: <TenantsIcon />, roles: ['SUPER_ADMIN'] },
-    { path: '/admin/analytics', label: 'Platform Analytics', icon: <AnalyticsIcon />, roles: ['SUPER_ADMIN'] },
-    { path: '/admin/settings', label: 'System Settings', icon: <SettingsIcon />, roles: ['SUPER_ADMIN'] },
+    { path: '/superadmin/dashboard', label: 'Platform Dashboard', icon: <DashboardIcon />, roles: ['SUPER_ADMIN'] },
+    { path: '/superadmin/tenants', label: 'Tenant Management', icon: <TenantsIcon />, roles: ['SUPER_ADMIN'] },
+    { path: '/superadmin/analytics', label: 'Platform Analytics', icon: <AnalyticsIcon />, roles: ['SUPER_ADMIN'] },
+    { path: '/superadmin/settings', label: 'System Settings', icon: <SettingsIcon />, roles: ['SUPER_ADMIN'] },
   ];
 
   const cbwtfAdminItems: NavItem[] = [

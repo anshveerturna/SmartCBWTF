@@ -37,7 +37,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 const getRoleRedirectPath = (role: UserRole): string => {
   switch (role) {
     case 'SUPER_ADMIN':
-      return '/admin/dashboard';
+      return '/superadmin/dashboard';
     case 'CBWTF_ADMIN':
       return '/cbwtf/dashboard';
     case 'HCF_ADMIN':

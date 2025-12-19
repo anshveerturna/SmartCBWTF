@@ -5,7 +5,19 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
+@Table(name = "facility")
 public class Facility {
+
+    // Subscription plan enum
+    public enum Plan {
+        BASIC, PRO, ENTERPRISE, TRIAL
+    }
+
+    // Subscription status enum
+    public enum Status {
+        ACTIVE, TRIAL, EXPIRED, SUSPENDED, CANCELLED
+    }
+
     @Id
     @GeneratedValue
     private UUID id;
@@ -23,32 +35,192 @@ public class Facility {
     private String contactPhone;
     private Double gpsLat;
     private Double gpsLon;
+
     @Column(name = "geofence_radius_m")
     private Integer geofenceRadiusM;
+
+    // Subscription fields (V8 migration)
+    @Column(name = "subscription_plan")
+    private String subscriptionPlan;
+
+    @Column(name = "subscription_status")
+    private String subscriptionStatus;
+
+    @Column(name = "subscription_expires_at")
+    private Instant subscriptionExpiresAt;
+
+    @Column(name = "onboarded_at")
+    private Instant onboardedAt;
+
+    @Column(name = "onboarded_by")
+    private UUID onboardedBy;
+
+    @Column(name = "created_at")
     private Instant createdAt = Instant.now();
+
+    @Column(name = "updated_at")
     private Instant updatedAt = Instant.now();
 
-    // getters and setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getAddress() { return address; }
-    public void setAddress(String address) { this.address = address; }
-    public String getContactEmail() { return contactEmail; }
-    public void setContactEmail(String contactEmail) { this.contactEmail = contactEmail; }
-    public String getContactPhone() { return contactPhone; }
-    public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
-    public Double getGpsLat() { return gpsLat; }
-    public void setGpsLat(Double gpsLat) { this.gpsLat = gpsLat; }
-    public Double getGpsLon() { return gpsLon; }
-    public void setGpsLon(Double gpsLon) { this.gpsLon = gpsLon; }
-    public Integer getGeofenceRadiusM() { return geofenceRadiusM; }
-    public void setGeofenceRadiusM(Integer geofenceRadiusM) { this.geofenceRadiusM = geofenceRadiusM; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    // Basic getters and setters
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getContactEmail() {
+        return contactEmail;
+    }
+
+    public void setContactEmail(String contactEmail) {
+        this.contactEmail = contactEmail;
+    }
+
+    public String getContactPhone() {
+        return contactPhone;
+    }
+
+    public void setContactPhone(String contactPhone) {
+        this.contactPhone = contactPhone;
+    }
+
+    public Double getGpsLat() {
+        return gpsLat;
+    }
+
+    public void setGpsLat(Double gpsLat) {
+        this.gpsLat = gpsLat;
+    }
+
+    public Double getGpsLon() {
+        return gpsLon;
+    }
+
+    public void setGpsLon(Double gpsLon) {
+        this.gpsLon = gpsLon;
+    }
+
+    public Integer getGeofenceRadiusM() {
+        return geofenceRadiusM;
+    }
+
+    public void setGeofenceRadiusM(Integer geofenceRadiusM) {
+        this.geofenceRadiusM = geofenceRadiusM;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    // Subscription getters/setters with enum support
+    public String getSubscriptionPlan() {
+        return subscriptionPlan;
+    }
+
+    public void setSubscriptionPlan(String subscriptionPlan) {
+        this.subscriptionPlan = subscriptionPlan;
+    }
+
+    public Plan getSubscriptionPlanEnum() {
+        return subscriptionPlan != null ? Plan.valueOf(subscriptionPlan) : null;
+    }
+
+    public void setSubscriptionPlanEnum(Plan plan) {
+        this.subscriptionPlan = plan != null ? plan.name() : null;
+    }
+
+    public String getSubscriptionStatus() {
+        return subscriptionStatus;
+    }
+
+    public void setSubscriptionStatus(String subscriptionStatus) {
+        this.subscriptionStatus = subscriptionStatus;
+    }
+
+    public Status getSubscriptionStatusEnum() {
+        return subscriptionStatus != null ? Status.valueOf(subscriptionStatus) : null;
+    }
+
+    public void setSubscriptionStatusEnum(Status status) {
+        this.subscriptionStatus = status != null ? status.name() : null;
+    }
+
+    public Instant getSubscriptionExpiresAt() {
+        return subscriptionExpiresAt;
+    }
+
+    public void setSubscriptionExpiresAt(Instant subscriptionExpiresAt) {
+        this.subscriptionExpiresAt = subscriptionExpiresAt;
+    }
+
+    public Instant getOnboardedAt() {
+        return onboardedAt;
+    }
+
+    public void setOnboardedAt(Instant onboardedAt) {
+        this.onboardedAt = onboardedAt;
+    }
+
+    public UUID getOnboardedBy() {
+        return onboardedBy;
+    }
+
+    public void setOnboardedBy(UUID onboardedBy) {
+        this.onboardedBy = onboardedBy;
+    }
+
+    // Helper methods
+    public boolean isSubscriptionActive() {
+        if (subscriptionStatus == null)
+            return false;
+        Status status = Status.valueOf(subscriptionStatus);
+        return status == Status.ACTIVE || status == Status.TRIAL;
+    }
+
+    public boolean isExpired() {
+        return subscriptionExpiresAt != null && Instant.now().isAfter(subscriptionExpiresAt);
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

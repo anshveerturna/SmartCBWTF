@@ -9,6 +9,9 @@ import { DashboardShell } from './components/layout';
 // Lazy-loaded pages
 const Login = lazy(() => import('./pages/Login'));
 const SuperAdminDashboard = lazy(() => import('./pages/superadmin/Dashboard'));
+const TenantManagement = lazy(() => import('./pages/superadmin/TenantManagement'));
+const TenantOnboarding = lazy(() => import('./pages/superadmin/TenantOnboarding'));
+const TenantDetail = lazy(() => import('./pages/superadmin/TenantDetail'));
 const CbwtfDashboard = lazy(() => import('./pages/cbwtf/Dashboard'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 
@@ -52,7 +55,7 @@ const App: React.FC = () => {
 
                 {/* SuperAdmin Routes */}
                 <Route
-                  path="/admin"
+                  path="/superadmin"
                   element={
                     <ProtectedRoute>
                       <RoleGuard allowedRoles={SUPER_ADMIN_ONLY}>
@@ -63,7 +66,9 @@ const App: React.FC = () => {
                 >
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<SuperAdminDashboard />} />
-                  <Route path="tenants" element={<div>Tenant Management (Coming Soon)</div>} />
+                  <Route path="tenants" element={<TenantManagement />} />
+                  <Route path="tenants/new" element={<TenantOnboarding />} />
+                  <Route path="tenants/:id" element={<TenantDetail />} />
                   <Route path="analytics" element={<div>Platform Analytics (Coming Soon)</div>} />
                   <Route path="settings" element={<div>System Settings (Coming Soon)</div>} />
                 </Route>

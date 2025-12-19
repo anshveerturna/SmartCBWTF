@@ -1,0 +1,331 @@
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  TextField,
+  InputAdornment,
+  Button,
+  Chip,
+  IconButton,
+  Menu,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  Stack,
+  Skeleton,
+  Alert,
+} from '@mui/material';
+import {
+  Search as SearchIcon,
+  Add as AddIcon,
+  MoreVert as MoreVertIcon,
+  Business as BusinessIcon,
+  Refresh as RefreshIcon,
+} from '@mui/icons-material';
+import { DataGrid } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import { adminApi } from '../../api/admin';
+import type { TenantDTO } from '../../api/admin';
+
+const statusColors: Record<string, 'success' | 'warning' | 'error' | 'info' | 'default'> = {
+  ACTIVE: 'success',
+  TRIAL: 'info',
+  EXPIRED: 'error',
+  SUSPENDED: 'warning',
+  CANCELLED: 'default',
+};
+
+const planColors: Record<string, string> = {
+  BASIC: '#64748b',
+  PRO: '#3b82f6',
+  ENTERPRISE: '#8b5cf6',
+  TRIAL: '#f59e0b',
+};
+
+export default function TenantManagement() {
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedTenant, setSelectedTenant] = useState<TenantDTO | null>(null);
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['tenants', search, statusFilter, page, pageSize],
+    queryFn: () => adminApi.listTenants({
+      search: search || undefined,
+      status: statusFilter || undefined,
+      page,
+      size: pageSize,
+    }),
+  });
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, tenant: TenantDTO) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedTenant(tenant);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedTenant(null);
+  };
+
+  const columns: GridColDef[] = useMemo(() => [
+    {
+      field: 'code',
+      headerName: 'Code',
+      width: 130,
+      renderCell: (params: GridRenderCellParams<TenantDTO>) => (
+        <Typography fontWeight={600} fontFamily="monospace">
+          {params.value}
+        </Typography>
+      ),
+    },
+    {
+      field: 'name',
+      headerName: 'Facility Name',
+      flex: 1,
+      minWidth: 200,
+    },
+    {
+      field: 'subscriptionPlan',
+      headerName: 'Plan',
+      width: 120,
+      renderCell: (params: GridRenderCellParams<TenantDTO>) => (
+        <Chip
+          label={params.value}
+          size="small"
+          sx={{
+            bgcolor: planColors[params.value as string] || '#64748b',
+            color: '#fff',
+            fontWeight: 600,
+          }}
+        />
+      ),
+    },
+    {
+      field: 'subscriptionStatus',
+      headerName: 'Status',
+      width: 120,
+      renderCell: (params: GridRenderCellParams<TenantDTO>) => (
+        <Chip
+          label={params.value}
+          color={statusColors[params.value as string] || 'default'}
+          size="small"
+          variant="outlined"
+        />
+      ),
+    },
+    {
+      field: 'hcfCount',
+      headerName: 'HCFs',
+      width: 80,
+      align: 'center',
+      headerAlign: 'center',
+    },
+    {
+      field: 'activeUserCount',
+      headerName: 'Users',
+      width: 80,
+      align: 'center',
+      headerAlign: 'center',
+    },
+    {
+      field: 'subscriptionExpiresAt',
+      headerName: 'Expires',
+      width: 120,
+      renderCell: (params: GridRenderCellParams<TenantDTO>) => {
+        if (!params.value) return '-';
+        const date = new Date(params.value as string);
+        const isExpiringSoon = date.getTime() - Date.now() < 30 * 24 * 60 * 60 * 1000;
+        return (
+          <Typography
+            variant="body2"
+            color={isExpiringSoon ? 'error.main' : 'text.secondary'}
+          >
+            {date.toLocaleDateString()}
+          </Typography>
+        );
+      },
+    },
+    {
+      field: 'actions',
+      headerName: '',
+      width: 50,
+      sortable: false,
+      renderCell: (params: GridRenderCellParams<TenantDTO>) => (
+        <IconButton
+          size="small"
+          onClick={(e) => handleMenuClick(e, params.row)}
+        >
+          <MoreVertIcon />
+        </IconButton>
+      ),
+    },
+  ], []);
+
+  return (
+    <Box>
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h4" fontWeight={700}>
+            Tenant Management
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage CBWTF facilities and subscriptions
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => navigate('/superadmin/tenants/new')}
+          sx={{ borderRadius: 2 }}
+        >
+          Onboard Tenant
+        </Button>
+      </Box>
+
+      {/* Filters */}
+      <Card sx={{ mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
+        <CardContent>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <TextField
+              placeholder="Search by name or code..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              size="small"
+              sx={{ minWidth: 300 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={statusFilter}
+                label="Status"
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="ACTIVE">Active</MenuItem>
+                <MenuItem value="TRIAL">Trial</MenuItem>
+                <MenuItem value="EXPIRED">Expired</MenuItem>
+                <MenuItem value="SUSPENDED">Suspended</MenuItem>
+              </Select>
+            </FormControl>
+            <IconButton onClick={() => refetch()}>
+              <RefreshIcon />
+            </IconButton>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      {/* Error State */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Failed to load tenants. Please try again.
+        </Alert>
+      )}
+
+      {/* Data Grid */}
+      <Card sx={{ borderRadius: 2 }}>
+        <CardContent sx={{ p: 0 }}>
+          {isLoading ? (
+            <Box sx={{ p: 3 }}>
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} height={52} />
+              ))}
+            </Box>
+          ) : (
+            <DataGrid
+              rows={data?.content || []}
+              columns={columns}
+              rowCount={data?.totalElements || 0}
+              paginationMode="server"
+              paginationModel={{ page, pageSize }}
+              onPaginationModelChange={(model) => {
+                setPage(model.page);
+                setPageSize(model.pageSize);
+              }}
+              pageSizeOptions={[10, 25, 50]}
+              disableRowSelectionOnClick
+              autoHeight
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-cell': {
+                  borderColor: 'divider',
+                },
+                '& .MuiDataGrid-columnHeaders': {
+                  bgcolor: 'action.hover',
+                },
+                '& .MuiDataGrid-row:hover': {
+                  bgcolor: 'action.hover',
+                },
+              }}
+              onRowClick={(params) => navigate(`/superadmin/tenants/${params.id}`)}
+              slots={{
+                noRowsOverlay: () => (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%',
+                      py: 4,
+                    }}
+                  >
+                    <BusinessIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                    <Typography color="text.secondary">No tenants found</Typography>
+                  </Box>
+                ),
+              }}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Actions Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={() => {
+          if (selectedTenant) navigate(`/superadmin/tenants/${selectedTenant.id}`);
+          handleMenuClose();
+        }}>
+          View Details
+        </MenuItem>
+        <MenuItem onClick={() => {
+          if (selectedTenant) navigate(`/superadmin/tenants/${selectedTenant.id}/edit`);
+          handleMenuClose();
+        }}>
+          Edit Subscription
+        </MenuItem>
+        {selectedTenant?.subscriptionStatus === 'ACTIVE' && (
+          <MenuItem onClick={handleMenuClose} sx={{ color: 'warning.main' }}>
+            Suspend Tenant
+          </MenuItem>
+        )}
+        {(selectedTenant?.subscriptionStatus === 'SUSPENDED' || 
+          selectedTenant?.subscriptionStatus === 'EXPIRED') && (
+          <MenuItem onClick={handleMenuClose} sx={{ color: 'success.main' }}>
+            Reactivate Tenant
+          </MenuItem>
+        )}
+      </Menu>
+    </Box>
+  );
+}

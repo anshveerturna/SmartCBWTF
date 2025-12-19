@@ -16,8 +16,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -41,8 +39,10 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         AppUser user = appUserRepository.findByUsername(authentication.getName()).orElseThrow();
 
-        // Build claims with tenant_id (facility_id) and hcf_id for multi-tenant support
+        // Build claims with user_id, tenant_id (facility_id) and hcf_id for
+        // multi-tenant support
         java.util.HashMap<String, Object> claims = new java.util.HashMap<>();
+        claims.put("user_id", user.getId().toString());
         claims.put("role", user.getRole());
         claims.put("tenant_id", user.getFacility() != null ? user.getFacility().getId().toString() : null);
         claims.put("hcf_id", user.getHcf() != null ? user.getHcf().getId().toString() : null);

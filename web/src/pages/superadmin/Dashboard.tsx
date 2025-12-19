@@ -1,20 +1,35 @@
 import React from 'react';
-import { Box, Typography, Card, CardContent, Grid, Chip, alpha, Button } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Chip,
+  alpha,
+  Button,
+  Skeleton,
+  Alert,
+} from '@mui/material';
+import Grid from '@mui/material/Grid';
 import {
   TrendingUp,
   LocalShipping,
   Business,
-  AttachMoney,
+  People,
   Add as AddIcon,
 } from '@mui/icons-material';
+import { adminApi } from '../../api/admin';
 
-// Metric Card (can be extracted to shared component)
+// Metric Card
 interface MetricCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
   icon: React.ReactNode;
   color?: string;
+  loading?: boolean;
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({
@@ -23,6 +38,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   subtitle,
   icon,
   color = '#6366F1',
+  loading = false,
 }) => (
   <Card>
     <CardContent sx={{ p: 3 }}>
@@ -31,9 +47,13 @@ const MetricCard: React.FC<MetricCardProps> = ({
           <Typography variant="body2" color="text.secondary" gutterBottom>
             {title}
           </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-            {value}
-          </Typography>
+          {loading ? (
+            <Skeleton width={80} height={40} />
+          ) : (
+            <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {value}
+            </Typography>
+          )}
           {subtitle && (
             <Typography variant="caption" color="text.secondary">
               {subtitle}
@@ -60,6 +80,13 @@ const MetricCard: React.FC<MetricCardProps> = ({
 );
 
 const SuperAdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
+
+  const { data: stats, isLoading, error } = useQuery({
+    queryKey: ['platform-stats'],
+    queryFn: adminApi.getPlatformStats,
+  });
+
   return (
     <Box>
       {/* Header */}
@@ -72,47 +99,61 @@ const SuperAdminDashboard: React.FC = () => {
             Enterprise-wide metrics and tenant management
           </Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => navigate('/superadmin/tenants/new')}
+        >
           Onboard Tenant
         </Button>
       </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Failed to load platform statistics. Using cached data.
+        </Alert>
+      )}
 
       {/* Platform Metrics */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
             title="Active Tenants"
-            value="24"
+            value={stats?.activeTenants ?? 0}
             subtitle="CBWTFs onboarded"
             icon={<Business />}
             color="#6366F1"
+            loading={isLoading}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
             title="Total HCFs"
-            value="1,248"
+            value={stats?.totalHcfs.toLocaleString() ?? '0'}
             subtitle="Across all tenants"
             icon={<LocalShipping />}
             color="#10B981"
+            loading={isLoading}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
-            title="Monthly Waste"
-            value="45.2T"
-            subtitle="December 2025"
-            icon={<TrendingUp />}
+            title="Total Users"
+            value={stats?.totalUsers.toLocaleString() ?? '0'}
+            subtitle="Platform-wide"
+            icon={<People />}
             color="#F59E0B"
+            loading={isLoading}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
-            title="Platform Revenue"
-            value="₹12.5L"
-            subtitle="This month"
-            icon={<AttachMoney />}
+            title="Total Tenants"
+            value={stats?.totalTenants ?? 0}
+            subtitle="All statuses"
+            icon={<TrendingUp />}
             color="#EF4444"
+            loading={isLoading}
           />
         </Grid>
       </Grid>
@@ -121,10 +162,15 @@ const SuperAdminDashboard: React.FC = () => {
       <Card>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 3 }}>
-            Tenant Status
+            Tenant Status Breakdown
           </Typography>
           <Grid container spacing={2}>
-            {['Active', 'Trial', 'Expired', 'Suspended'].map((status, index) => (
+            {[
+              { status: 'Active', count: stats?.activeTenants ?? 0, color: 'success' as const },
+              { status: 'Trial', count: stats?.trialTenants ?? 0, color: 'info' as const },
+              { status: 'Expired', count: stats?.expiredTenants ?? 0, color: 'warning' as const },
+              { status: 'Suspended', count: stats?.suspendedTenants ?? 0, color: 'error' as const },
+            ].map(({ status, count, color }) => (
               <Grid key={status} size={{ xs: 6, md: 3 }}>
                 <Box
                   sx={{
@@ -132,29 +178,51 @@ const SuperAdminDashboard: React.FC = () => {
                     borderRadius: 2,
                     bgcolor: 'background.default',
                     textAlign: 'center',
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: 'action.hover' },
                   }}
+                  onClick={() => navigate(`/superadmin/tenants?status=${status.toUpperCase()}`)}
                 >
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {[18, 4, 1, 1][index]}
+                  {isLoading ? (
+                    <Skeleton width={40} height={32} sx={{ mx: 'auto' }} />
+                  ) : (
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                      {count}
                   </Typography>
+                  )}
                   <Chip
                     label={status}
                     size="small"
-                    color={
-                      status === 'Active'
-                        ? 'success'
-                        : status === 'Trial'
-                        ? 'primary'
-                        : status === 'Expired'
-                        ? 'warning'
-                        : 'error'
-                    }
+                    color={color}
                     sx={{ mt: 1 }}
                   />
                 </Box>
               </Grid>
             ))}
           </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Quick Actions
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/superadmin/tenants')}
+            >
+              Manage Tenants
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/superadmin/tenants/new')}
+            >
+              Onboard New Tenant
+            </Button>
+          </Box>
         </CardContent>
       </Card>
     </Box>

@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
+@Table(name = "app_user")
 public class AppUser {
     @Id
     @GeneratedValue
@@ -25,15 +26,24 @@ public class AppUser {
     private String profilePhotoUrl;
 
     @Column(nullable = false)
-    private String role; // CBWTF_ADMIN / HCF_ADMIN / DRIVER / PLANT_OPERATOR
+    private String role; // SUPER_ADMIN / CBWTF_ADMIN / HCF_ADMIN / DRIVER / PLANT_OPERATOR
 
     @ManyToOne
+    @JoinColumn(name = "facility_id")
     private Facility facility;
 
     @ManyToOne
+    @JoinColumn(name = "hcf_id")
     private Hcf hcf;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
+    @Column(name = "force_password_change")
+    private boolean forcePasswordChange = false;
+
     private Instant createdAt = Instant.now();
+    private Instant updatedAt = Instant.now();
 
     // getters and setters
     public UUID getId() {
@@ -132,11 +142,49 @@ public class AppUser {
         this.hcf = hcf;
     }
 
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public boolean isForcePasswordChange() {
+        return forcePasswordChange;
+    }
+
+    public void setForcePasswordChange(boolean forcePasswordChange) {
+        this.forcePasswordChange = forcePasswordChange;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    // Aliases for convenience
+    public String getName() {
+        return fullName;
+    }
+
+    public void setName(String name) {
+        this.fullName = name;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
     }
 }

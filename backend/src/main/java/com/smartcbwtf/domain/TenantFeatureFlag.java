@@ -37,10 +37,14 @@ public class TenantFeatureFlag {
 
     // Well-known feature keys
     public static final String ADVANCED_ANALYTICS = "ADVANCED_ANALYTICS";
-    public static final String MULTI_VEHICLE = "MULTI_VEHICLE";
-    public static final String INVOICE_AUTO_SEND = "INVOICE_AUTO_SEND";
-    public static final String CPCB_REPORTING = "CPCB_REPORTING";
     public static final String ROUTE_OPTIMIZATION = "ROUTE_OPTIMIZATION";
+    public static final String CPCB_REPORTING = "CPCB_REPORTING";
+    public static final String INVOICE_AUTO_SEND = "INVOICE_AUTO_SEND";
+    public static final String PAYMENT_GATEWAY = "PAYMENT_GATEWAY";
+    public static final String ATTENDANCE_ENFORCEMENT = "ATTENDANCE_ENFORCEMENT";
+    public static final String VEHICLE_TRACKING = "VEHICLE_TRACKING";
+    public static final String AI_INSIGHTS = "AI_INSIGHTS";
+    public static final String MULTI_VEHICLE = "MULTI_VEHICLE";
     public static final String HCF_SELF_SERVICE = "HCF_SELF_SERVICE";
 
     // Getters and Setters
@@ -69,6 +73,11 @@ public class TenantFeatureFlag {
     }
 
     public boolean isEnabled() {
+        return enabled;
+    }
+
+    // Alias for use with method references
+    public Boolean getEnabled() {
         return enabled;
     }
 

@@ -33,9 +33,19 @@ public class TenantContext {
         return info != null ? info.hcfId() : null;
     }
 
+    public static UUID getUserId() {
+        TenantInfo info = CONTEXT.get();
+        return info != null ? info.userId() : null;
+    }
+
     public static String getRole() {
         TenantInfo info = CONTEXT.get();
         return info != null ? info.role() : null;
+    }
+
+    public static String getUsername() {
+        TenantInfo info = CONTEXT.get();
+        return info != null ? info.username() : null;
     }
 
     public static boolean isSuperAdmin() {
@@ -54,6 +64,7 @@ public class TenantContext {
      * Tenant information extracted from JWT.
      */
     public record TenantInfo(
+            UUID userId, // user ID from JWT
             UUID tenantId, // facility_id for CBWTF
             UUID hcfId, // hcf_id for HCF users
             String role, // user role
