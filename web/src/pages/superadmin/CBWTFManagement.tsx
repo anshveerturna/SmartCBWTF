@@ -30,7 +30,7 @@ import {
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { adminApi } from '../../api/admin';
-import type { TenantDTO } from '../../api/admin';
+import type { CBWTFDTO } from '../../api/admin';
 
 const statusColors: Record<string, 'success' | 'warning' | 'error' | 'info' | 'default'> = {
   ACTIVE: 'success',
@@ -47,18 +47,18 @@ const planColors: Record<string, string> = {
   TRIAL: '#f59e0b',
 };
 
-export default function TenantManagement() {
+export default function CBWTFManagement() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedTenant, setSelectedTenant] = useState<TenantDTO | null>(null);
+  const [selectedCBWTF, setSelectedCBWTF] = useState<CBWTFDTO | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['tenants', search, statusFilter, page, pageSize],
-    queryFn: () => adminApi.listTenants({
+    queryKey: ['cbwtfs', search, statusFilter, page, pageSize],
+    queryFn: () => adminApi.listCBWTFs({
       search: search || undefined,
       status: statusFilter || undefined,
       page,
@@ -66,14 +66,14 @@ export default function TenantManagement() {
     }),
   });
 
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, tenant: TenantDTO) => {
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, cbwtf: CBWTFDTO) => {
     setAnchorEl(event.currentTarget);
-    setSelectedTenant(tenant);
+    setSelectedCBWTF(cbwtf);
   };
 
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setSelectedTenant(null);
+    setSelectedCBWTF(null);
   };
 
   const columns: GridColDef[] = useMemo(() => [
@@ -81,7 +81,9 @@ export default function TenantManagement() {
       field: 'code',
       headerName: 'Code',
       width: 130,
-      renderCell: (params: GridRenderCellParams<TenantDTO>) => (
+      headerAlign: 'left',
+      align: 'left',
+      renderCell: (params: GridRenderCellParams<CBWTFDTO>) => (
         <Typography fontWeight={600} fontFamily="monospace">
           {params.value}
         </Typography>
@@ -89,15 +91,19 @@ export default function TenantManagement() {
     },
     {
       field: 'name',
-      headerName: 'Facility Name',
+      headerName: 'CBWTF Name',
       flex: 1,
-      minWidth: 200,
+      minWidth: 180,
+      headerAlign: 'left',
+      align: 'left',
     },
     {
       field: 'subscriptionPlan',
       headerName: 'Plan',
-      width: 120,
-      renderCell: (params: GridRenderCellParams<TenantDTO>) => (
+      width: 110,
+      headerAlign: 'left',
+      align: 'left',
+      renderCell: (params: GridRenderCellParams<CBWTFDTO>) => (
         <Chip
           label={params.value}
           size="small"
@@ -112,8 +118,10 @@ export default function TenantManagement() {
     {
       field: 'subscriptionStatus',
       headerName: 'Status',
-      width: 120,
-      renderCell: (params: GridRenderCellParams<TenantDTO>) => (
+      width: 110,
+      headerAlign: 'center',
+      align: 'center',
+      renderCell: (params: GridRenderCellParams<CBWTFDTO>) => (
         <Chip
           label={params.value}
           color={statusColors[params.value as string] || 'default'}
@@ -125,22 +133,24 @@ export default function TenantManagement() {
     {
       field: 'hcfCount',
       headerName: 'HCFs',
-      width: 80,
-      align: 'center',
-      headerAlign: 'center',
+      width: 70,
+      headerAlign: 'right',
+      align: 'right',
     },
     {
       field: 'activeUserCount',
       headerName: 'Users',
-      width: 80,
-      align: 'center',
-      headerAlign: 'center',
+      width: 70,
+      headerAlign: 'right',
+      align: 'right',
     },
     {
       field: 'subscriptionExpiresAt',
       headerName: 'Expires',
-      width: 120,
-      renderCell: (params: GridRenderCellParams<TenantDTO>) => {
+      width: 110,
+      headerAlign: 'left',
+      align: 'left',
+      renderCell: (params: GridRenderCellParams<CBWTFDTO>) => {
         if (!params.value) return '-';
         const date = new Date(params.value as string);
         const isExpiringSoon = date.getTime() - Date.now() < 30 * 24 * 60 * 60 * 1000;
@@ -158,8 +168,10 @@ export default function TenantManagement() {
       field: 'actions',
       headerName: '',
       width: 50,
+      headerAlign: 'center',
+      align: 'center',
       sortable: false,
-      renderCell: (params: GridRenderCellParams<TenantDTO>) => (
+      renderCell: (params: GridRenderCellParams<CBWTFDTO>) => (
         <IconButton
           size="small"
           onClick={(e) => handleMenuClick(e, params.row)}
@@ -176,19 +188,19 @@ export default function TenantManagement() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
           <Typography variant="h4" fontWeight={700}>
-            Tenant Management
+            CBWTF Management
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Manage CBWTF facilities and subscriptions
+            Manage all CBWTF facilities and subscriptions
           </Typography>
         </Box>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => navigate('/superadmin/tenants/new')}
+          onClick={() => navigate('/superadmin/cbwtfs/new')}
           sx={{ borderRadius: 2 }}
         >
-          Onboard Tenant
+          Onboard CBWTF
         </Button>
       </Box>
 
@@ -234,7 +246,7 @@ export default function TenantManagement() {
       {/* Error State */}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          Failed to load tenants. Please try again.
+          Failed to load CBWTFs. Please try again.
         </Alert>
       )}
 
@@ -273,7 +285,7 @@ export default function TenantManagement() {
                   bgcolor: 'action.hover',
                 },
               }}
-              onRowClick={(params) => navigate(`/superadmin/tenants/${params.id}`)}
+              onRowClick={(params) => navigate(`/superadmin/cbwtfs/${params.id}`)}
               slots={{
                 noRowsOverlay: () => (
                   <Box
@@ -287,7 +299,7 @@ export default function TenantManagement() {
                     }}
                   >
                     <BusinessIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-                    <Typography color="text.secondary">No tenants found</Typography>
+                    <Typography color="text.secondary">No CBWTFs found</Typography>
                   </Box>
                 ),
               }}
@@ -303,26 +315,26 @@ export default function TenantManagement() {
         onClose={handleMenuClose}
       >
         <MenuItem onClick={() => {
-          if (selectedTenant) navigate(`/superadmin/tenants/${selectedTenant.id}`);
+          if (selectedCBWTF) navigate(`/superadmin/cbwtfs/${selectedCBWTF.id}`);
           handleMenuClose();
         }}>
           View Details
         </MenuItem>
         <MenuItem onClick={() => {
-          if (selectedTenant) navigate(`/superadmin/tenants/${selectedTenant.id}/edit`);
+          if (selectedCBWTF) navigate(`/superadmin/cbwtfs/${selectedCBWTF.id}/edit`);
           handleMenuClose();
         }}>
           Edit Subscription
         </MenuItem>
-        {selectedTenant?.subscriptionStatus === 'ACTIVE' && (
+        {selectedCBWTF?.subscriptionStatus === 'ACTIVE' && (
           <MenuItem onClick={handleMenuClose} sx={{ color: 'warning.main' }}>
-            Suspend Tenant
+            Suspend CBWTF
           </MenuItem>
         )}
-        {(selectedTenant?.subscriptionStatus === 'SUSPENDED' || 
-          selectedTenant?.subscriptionStatus === 'EXPIRED') && (
+        {(selectedCBWTF?.subscriptionStatus === 'SUSPENDED' || 
+          selectedCBWTF?.subscriptionStatus === 'EXPIRED') && (
           <MenuItem onClick={handleMenuClose} sx={{ color: 'success.main' }}>
-            Reactivate Tenant
+            Reactivate CBWTF
           </MenuItem>
         )}
       </Menu>

@@ -1,6 +1,8 @@
 package com.smartcbwtf.repository;
 
 import com.smartcbwtf.domain.Attendance;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,7 +14,10 @@ import java.util.UUID;
 
 public interface AttendanceRepository extends JpaRepository<Attendance, UUID> {
 
-    /** Check if attendance with this client-generated ID already exists (idempotency). */
+    /**
+     * Check if attendance with this client-generated ID already exists
+     * (idempotency).
+     */
     boolean existsByClientEventId(UUID clientEventId);
 
     Optional<Attendance> findByClientEventId(UUID clientEventId);
@@ -29,7 +34,8 @@ public interface AttendanceRepository extends JpaRepository<Attendance, UUID> {
      * Returns true if driver is still in cooldown period.
      */
     @Query("SELECT COUNT(a) > 0 FROM Attendance a WHERE a.driver.id = :driverId AND a.eventTs > :cooldownStart")
-    boolean existsByDriverIdAndEventTsAfter(@Param("driverId") UUID driverId, @Param("cooldownStart") Instant cooldownStart);
+    boolean existsByDriverIdAndEventTsAfter(@Param("driverId") UUID driverId,
+            @Param("cooldownStart") Instant cooldownStart);
 
     /** Get attendance history for a specific driver. */
     List<Attendance> findByDriverIdOrderByEventTsDesc(UUID driverId);
@@ -40,8 +46,10 @@ public interface AttendanceRepository extends JpaRepository<Attendance, UUID> {
     /** Get attendance records within a date range for reporting. */
     @Query("SELECT a FROM Attendance a WHERE a.hcf.id = :hcfId AND a.eventTs BETWEEN :start AND :end ORDER BY a.eventTs DESC")
     List<Attendance> findByHcfIdAndEventTsBetween(
-        @Param("hcfId") UUID hcfId,
-        @Param("start") Instant start,
-        @Param("end") Instant end
-    );
+            @Param("hcfId") UUID hcfId,
+            @Param("start") Instant start,
+            @Param("end") Instant end);
+
+    // Master Data queries for SuperAdmin
+    Page<Attendance> findByEventTsBetween(Instant start, Instant end, Pageable pageable);
 }

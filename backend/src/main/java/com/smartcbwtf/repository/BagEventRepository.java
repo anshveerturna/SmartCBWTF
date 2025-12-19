@@ -1,6 +1,8 @@
 package com.smartcbwtf.repository;
 
 import com.smartcbwtf.domain.BagEvent;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,4 +28,11 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 	boolean existsByBagLabelIdAndEventTypeAndEventTs(UUID bagLabelId, String eventType, Instant eventTs);
 
 	boolean existsByBagLabelIdAndEventType(UUID bagLabelId, String eventType);
+
+	// Master Data queries for SuperAdmin
+	Page<BagEvent> findByFacilityId(UUID facilityId, Pageable pageable);
+
+	Page<BagEvent> findByEventType(String eventType, Pageable pageable);
+
+	Page<BagEvent> findByEventTsBetween(Instant start, Instant end, Pageable pageable);
 }

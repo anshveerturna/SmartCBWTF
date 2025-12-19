@@ -26,6 +26,11 @@ public class SubscriptionAudit {
         TEMP_ACCESS_GRANTED, // Temporary access granted
         FEATURE_CHANGED, // Feature flag toggled
         USER_CREATED, // Admin user created for tenant
+        USER_UPDATED, // User details updated
+        USER_DISABLED, // User disabled
+        USER_ENABLED, // User enabled
+        PASSWORD_RESET_FORCED, // Password reset required
+        ACCESS_REVOKED, // All access revoked immediately
         STATUS_CHANGED // General status change
     }
 

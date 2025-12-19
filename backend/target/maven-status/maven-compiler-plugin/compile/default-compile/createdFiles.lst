@@ -67,6 +67,7 @@ com/smartcbwtf/dto/TermsListItem.class
 com/smartcbwtf/domain/AgreementNumberSequence.class
 com/smartcbwtf/dto/LabelIssueRequest.class
 com/smartcbwtf/dto/HcfApprovalResponse.class
+com/smartcbwtf/controller/AdminMasterDataController.class
 com/smartcbwtf/service/AttendanceService.class
 com/smartcbwtf/repository/FacilityRepository.class
 com/smartcbwtf/config/JwtService.class

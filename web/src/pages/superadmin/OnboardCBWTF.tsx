@@ -26,11 +26,12 @@ import {
   ArrowForward as ArrowForwardIcon,
   Check as CheckIcon,
 } from '@mui/icons-material';
-import { adminApi, type OnboardTenantRequest } from '../../api/admin';
+import { adminApi } from '../../api/admin';
+import type { OnboardCBWTFRequest } from '../../api/admin';
 
 const steps = ['Basic Info', 'Contact', 'Location', 'Subscription', 'Review'];
 
-const defaultFormData: OnboardTenantRequest = {
+const defaultFormData: OnboardCBWTFRequest = {
   code: '',
   name: '',
   address: '',
@@ -45,22 +46,22 @@ const defaultFormData: OnboardTenantRequest = {
   adminName: '',
 };
 
-export default function TenantOnboarding() {
+export default function OnboardCBWTF() {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
-  const [formData, setFormData] = useState<OnboardTenantRequest>(defaultFormData);
+  const [formData, setFormData] = useState<OnboardCBWTFRequest>(defaultFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
-    mutationFn: adminApi.onboardTenant,
-    onSuccess: (tenant) => {
-      navigate(`/superadmin/tenants/${tenant.id}`, {
+    mutationFn: adminApi.onboardCBWTF,
+    onSuccess: (cbwtf) => {
+      navigate(`/superadmin/cbwtfs/${cbwtf.id}`, {
         state: { newlyCreated: true },
       });
     },
   });
 
-  const updateField = (field: keyof OnboardTenantRequest, value: unknown) => {
+  const updateField = (field: keyof OnboardCBWTFRequest, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -123,7 +124,7 @@ export default function TenantOnboarding() {
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 4 }}>
               <TextField
-                label="Facility Code"
+                label="CBWTF Code"
                 value={formData.code}
                 onChange={(e) => updateField('code', e.target.value.toUpperCase())}
                 error={!!errors.code}
@@ -134,7 +135,7 @@ export default function TenantOnboarding() {
             </Grid>
             <Grid size={{ xs: 12, md: 8 }}>
               <TextField
-                label="Facility Name"
+                label="CBWTF Name"
                 value={formData.name}
                 onChange={(e) => updateField('name', e.target.value)}
                 error={!!errors.name}
@@ -253,7 +254,7 @@ export default function TenantOnboarding() {
               />
             </Grid>
             <Grid size={12}>
-              <Divider sx={{ my: 2 }}>Initial Admin User</Divider>
+              <Divider sx={{ my: 2 }}>Initial CBWTF Admin User</Divider>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
@@ -285,18 +286,18 @@ export default function TenantOnboarding() {
         return (
           <Box>
             <Typography variant="h6" gutterBottom>
-              Review Tenant Details
+              Review CBWTF Details
             </Typography>
             <Stack spacing={2}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Facility Code
+                  CBWTF Code
                 </Typography>
                 <Typography fontFamily="monospace">{formData.code}</Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Facility Name
+                  CBWTF Name
                 </Typography>
                 <Typography>{formData.name}</Typography>
               </Box>
@@ -324,19 +325,19 @@ export default function TenantOnboarding() {
               <Divider />
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Admin Email (Login)
+                  CBWTF Admin Email (Login)
                 </Typography>
                 <Typography>{formData.adminEmail}</Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Admin Name
+                  CBWTF Admin Name
                 </Typography>
                 <Typography>{formData.adminName}</Typography>
               </Box>
             </Stack>
             <Alert severity="info" sx={{ mt: 3 }}>
-              A temporary password will be generated for the admin user. They will be required to change it on first login.
+              A temporary password will be generated for the CBWTF admin user. They will be required to change it on first login.
             </Alert>
           </Box>
         );
@@ -352,16 +353,16 @@ export default function TenantOnboarding() {
       <Box sx={{ mb: 4 }}>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/superadmin/tenants')}
+          onClick={() => navigate('/superadmin/cbwtfs')}
           sx={{ mb: 2 }}
         >
-          Back to Tenants
+          Back to CBWTFs
         </Button>
         <Typography variant="h4" fontWeight={700}>
-          Onboard New Tenant
+          Onboard New CBWTF
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Register a new CBWTF facility on the platform
+          Register a new Common Biomedical Waste Treatment Facility on the platform
         </Typography>
       </Box>
 
@@ -381,7 +382,7 @@ export default function TenantOnboarding() {
       {/* Error */}
       {mutation.isError && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          Failed to onboard tenant. Please check the details and try again.
+          Failed to onboard CBWTF. Please check the details and try again.
         </Alert>
       )}
 
@@ -408,7 +409,7 @@ export default function TenantOnboarding() {
               {mutation.isPending
                 ? 'Creating...'
                 : activeStep === steps.length - 1
-                ? 'Create Tenant'
+                ? 'Create CBWTF'
                 : 'Next'}
             </Button>
           </Box>

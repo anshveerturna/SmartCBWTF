@@ -9,9 +9,22 @@ import { DashboardShell } from './components/layout';
 // Lazy-loaded pages
 const Login = lazy(() => import('./pages/Login'));
 const SuperAdminDashboard = lazy(() => import('./pages/superadmin/Dashboard'));
-const TenantManagement = lazy(() => import('./pages/superadmin/TenantManagement'));
-const TenantOnboarding = lazy(() => import('./pages/superadmin/TenantOnboarding'));
-const TenantDetail = lazy(() => import('./pages/superadmin/TenantDetail'));
+const CBWTFManagement = lazy(() => import('./pages/superadmin/CBWTFManagement'));
+const OnboardCBWTF = lazy(() => import('./pages/superadmin/OnboardCBWTF'));
+const CBWTFDetail = lazy(() => import('./pages/superadmin/CBWTFDetail'));
+const AllUsers = lazy(() => import('./pages/superadmin/users/AllUsers'));
+const CreateUser = lazy(() => import('./pages/superadmin/users/CreateUser'));
+const UserDetail = lazy(() => import('./pages/superadmin/users/UserDetail'));
+// Master Data pages
+const MasterHcfs = lazy(() => import('./pages/superadmin/master/MasterHcfs'));
+const MasterPickups = lazy(() => import('./pages/superadmin/master/MasterPickups'));
+const MasterBags = lazy(() => import('./pages/superadmin/master/MasterBags'));
+const MasterQrLabels = lazy(() => import('./pages/superadmin/master/MasterQrLabels'));
+const MasterAttendance = lazy(() => import('./pages/superadmin/master/MasterAttendance'));
+const MasterVehicles = lazy(() => import('./pages/superadmin/master/MasterVehicles'));
+const MasterInvoices = lazy(() => import('./pages/superadmin/master/MasterInvoices'));
+const MasterPayments = lazy(() => import('./pages/superadmin/master/MasterPayments'));
+const MasterAuditLogs = lazy(() => import('./pages/superadmin/master/MasterAuditLogs'));
 const CbwtfDashboard = lazy(() => import('./pages/cbwtf/Dashboard'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 
@@ -66,9 +79,25 @@ const App: React.FC = () => {
                 >
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<SuperAdminDashboard />} />
-                  <Route path="tenants" element={<TenantManagement />} />
-                  <Route path="tenants/new" element={<TenantOnboarding />} />
-                  <Route path="tenants/:id" element={<TenantDetail />} />
+                  {/* CBWTF Management */}
+                  <Route path="cbwtfs" element={<CBWTFManagement />} />
+                  <Route path="cbwtfs/new" element={<OnboardCBWTF />} />
+                  <Route path="cbwtfs/:id" element={<CBWTFDetail />} />
+                  {/* User Management */}
+                  <Route path="users" element={<AllUsers />} />
+                  <Route path="users/new" element={<CreateUser />} />
+                  <Route path="users/:id" element={<UserDetail />} />
+                  {/* Master Data */}
+                  <Route path="master/hcfs" element={<MasterHcfs />} />
+                  <Route path="master/pickups" element={<MasterPickups />} />
+                  <Route path="master/bags" element={<MasterBags />} />
+                  <Route path="master/qr-labels" element={<MasterQrLabels />} />
+                  <Route path="master/attendance" element={<MasterAttendance />} />
+                  <Route path="master/vehicles" element={<MasterVehicles />} />
+                  <Route path="master/invoices" element={<MasterInvoices />} />
+                  <Route path="master/payments" element={<MasterPayments />} />
+                  <Route path="master/audit-logs" element={<MasterAuditLogs />} />
+                  {/* Analytics & Settings */}
                   <Route path="analytics" element={<div>Platform Analytics (Coming Soon)</div>} />
                   <Route path="settings" element={<div>System Settings (Coming Soon)</div>} />
                 </Route>

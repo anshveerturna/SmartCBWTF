@@ -23,7 +23,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /**
- * Admin API for SuperAdmin tenant management.
+ * Admin API for SuperAdmin CBWTF management.
  * All endpoints require SUPER_ADMIN role.
  */
 @RestController
@@ -55,9 +55,9 @@ public class AdminController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // ========== TENANT LISTING ==========
+    // ========== CBWTF LISTING ==========
 
-    @GetMapping("/tenants")
+    @GetMapping("/cbwtfs")
     public ResponseEntity<Page<TenantDTO>> listTenants(
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "search", required = false) String search,
@@ -85,7 +85,7 @@ public class AdminController {
         return ResponseEntity.ok(result);
     }
 
-    @GetMapping("/tenants/{id}")
+    @GetMapping("/cbwtfs/{id}")
     public ResponseEntity<TenantDTO> getTenant(@PathVariable UUID id) {
         return facilityRepository.findById(id)
                 .map(f -> TenantDTO.from(
@@ -97,9 +97,103 @@ public class AdminController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // ========== TENANT ONBOARDING ==========
+    // ========== CBWTF UPDATE ==========
 
-    @PostMapping("/tenants")
+    @PutMapping("/cbwtfs/{id}")
+    @Transactional
+    public ResponseEntity<TenantDTO> updateCBWTF(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateCBWTFRequest request) {
+
+        return facilityRepository.findById(id)
+                .map(facility -> {
+                    String oldName = facility.getName();
+
+                    facility.setName(request.name());
+                    facility.setAddress(request.address());
+                    facility.setOwnerName(request.ownerName());
+                    facility.setContactEmail(request.contactEmail());
+                    facility.setContactPhone(request.contactPhone());
+                    if (request.gpsLat() != null)
+                        facility.setGpsLat(request.gpsLat());
+                    if (request.gpsLon() != null)
+                        facility.setGpsLon(request.gpsLon());
+                    if (request.geofenceRadiusM() != null)
+                        facility.setGeofenceRadiusM(request.geofenceRadiusM());
+
+                    facility = facilityRepository.save(facility);
+
+                    // Audit
+                    auditRepository.save(SubscriptionAudit.forFacility(
+                            facility.getId(),
+                            SubscriptionAudit.Action.STATUS_CHANGED,
+                            oldName,
+                            request.name(),
+                            getCurrentUserId(),
+                            getCurrentUsername(),
+                            "SUPER_ADMIN",
+                            "CBWTF details updated"));
+
+                    log.info("Updated CBWTF {} details", facility.getCode());
+
+                    return ResponseEntity.ok(TenantDTO.from(
+                            facility,
+                            countHcfsForFacility(id),
+                            countActiveUsersForFacility(id),
+                            subscriptionService.getEnabledFeatures(id)));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/cbwtfs/{id}/change-credentials")
+    @Transactional
+    public ResponseEntity<Map<String, String>> changeCBWTFCredentials(
+            @PathVariable UUID id,
+            @Valid @RequestBody ChangeCBWTFCredentialsRequest request) {
+
+        // Find the CBWTF_ADMIN user for this facility
+        return facilityRepository.findById(id)
+                .map(facility -> {
+                    AppUser admin = userRepository.findByFacilityIdAndRole(id, "CBWTF_ADMIN")
+                            .stream()
+                            .findFirst()
+                            .orElse(null);
+
+                    if (admin == null) {
+                        return ResponseEntity.badRequest()
+                                .<Map<String, String>>body(Map.of("error", "No CBWTF_ADMIN found for this facility"));
+                    }
+
+                    String oldUsername = admin.getUsername();
+                    admin.setUsername(request.newUsername());
+                    admin.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+                    admin.setForcePasswordChange(true);
+                    userRepository.save(admin);
+
+                    // Audit
+                    auditRepository.save(SubscriptionAudit.forFacility(
+                            id,
+                            SubscriptionAudit.Action.USER_UPDATED,
+                            oldUsername,
+                            request.newUsername(),
+                            getCurrentUserId(),
+                            getCurrentUsername(),
+                            "SUPER_ADMIN",
+                            "CBWTF admin credentials changed, password reset required"));
+
+                    log.info("Changed credentials for CBWTF {} admin", facility.getCode());
+
+                    return ResponseEntity.ok(Map.of(
+                            "message", "Credentials updated",
+                            "username", request.newUsername(),
+                            "forcePasswordChange", "true"));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ========== CBWTF ONBOARDING ==========
+
+    @PostMapping("/cbwtfs")
     @Transactional
     public ResponseEntity<TenantDTO> onboardTenant(@Valid @RequestBody OnboardTenantRequest request) {
         // Validate code uniqueness
@@ -160,7 +254,7 @@ public class AdminController {
                 performerId,
                 performerUsername,
                 "SUPER_ADMIN",
-                "Tenant onboarded with " + facility.getSubscriptionStatus() + " status"));
+                "CBWTF onboarded with " + facility.getSubscriptionStatus() + " status"));
 
         auditRepository.save(SubscriptionAudit.forFacility(
                 facility.getId(),
@@ -172,7 +266,7 @@ public class AdminController {
                 "SUPER_ADMIN",
                 "Initial CBWTF_ADMIN user created"));
 
-        log.info("Onboarded tenant {} with admin user {}", facility.getCode(), request.adminEmail());
+        log.info("Onboarded CBWTF {} with admin user {}", facility.getCode(), request.adminEmail());
 
         // TODO: Send email with temp password to admin
         // For now, log it (remove in production!)
@@ -187,7 +281,7 @@ public class AdminController {
 
     // ========== SUBSCRIPTION MANAGEMENT ==========
 
-    @PutMapping("/tenants/{id}/subscription")
+    @PutMapping("/cbwtfs/{id}/subscription")
     public ResponseEntity<TenantDTO> updateSubscription(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateSubscriptionRequest request) {
@@ -210,8 +304,8 @@ public class AdminController {
                 subscriptionService.getEnabledFeatures(id)));
     }
 
-    @PostMapping("/tenants/{id}/suspend")
-    public ResponseEntity<TenantDTO> suspendTenant(
+    @PostMapping("/cbwtfs/{id}/suspend")
+    public ResponseEntity<TenantDTO> suspendCBWTF(
             @PathVariable UUID id,
             @RequestBody Map<String, String> body) {
 
@@ -230,8 +324,8 @@ public class AdminController {
                 subscriptionService.getEnabledFeatures(id)));
     }
 
-    @PostMapping("/tenants/{id}/reactivate")
-    public ResponseEntity<TenantDTO> reactivateTenant(
+    @PostMapping("/cbwtfs/{id}/reactivate")
+    public ResponseEntity<TenantDTO> reactivateCBWTF(
             @PathVariable UUID id,
             @RequestBody Map<String, Object> body) {
 
@@ -253,7 +347,7 @@ public class AdminController {
                 subscriptionService.getEnabledFeatures(id)));
     }
 
-    @PostMapping("/tenants/{id}/temporary-access")
+    @PostMapping("/cbwtfs/{id}/temporary-access")
     public ResponseEntity<TenantDTO> grantTemporaryAccess(
             @PathVariable UUID id,
             @RequestBody Map<String, Object> body) {
@@ -277,7 +371,7 @@ public class AdminController {
 
     // ========== FEATURE FLAGS ==========
 
-    @GetMapping("/tenants/{id}/features")
+    @GetMapping("/cbwtfs/{id}/features")
     public ResponseEntity<Map<String, Boolean>> getFeatures(@PathVariable UUID id) {
         if (!facilityRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
@@ -285,7 +379,7 @@ public class AdminController {
         return ResponseEntity.ok(subscriptionService.getEnabledFeatures(id));
     }
 
-    @PutMapping("/tenants/{id}/features")
+    @PutMapping("/cbwtfs/{id}/features")
     public ResponseEntity<Map<String, Boolean>> updateFeatures(
             @PathVariable UUID id,
             @RequestBody Map<String, Boolean> features) {
@@ -308,7 +402,7 @@ public class AdminController {
 
     // ========== AUDIT HISTORY ==========
 
-    @GetMapping("/tenants/{id}/audit")
+    @GetMapping("/cbwtfs/{id}/audit")
     public ResponseEntity<Page<TenantAuditDTO>> getAuditHistory(
             @PathVariable UUID id,
             @RequestParam(name = "page", defaultValue = "0") int page,

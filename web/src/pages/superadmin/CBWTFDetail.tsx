@@ -41,7 +41,7 @@ const statusColors: Record<string, 'success' | 'warning' | 'error' | 'info' | 'd
   CANCELLED: 'default',
 };
 
-export default function TenantDetail() {
+export default function CBWTFDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,30 +53,30 @@ export default function TenantDetail() {
   const [tempAccessDialogOpen, setTempAccessDialogOpen] = useState(false);
   const [tempAccessDays, setTempAccessDays] = useState(7);
 
-  const { data: tenant, isLoading, error } = useQuery({
-    queryKey: ['tenant', id],
-    queryFn: () => adminApi.getTenant(id!),
+  const { data: cbwtf, isLoading, error } = useQuery({
+    queryKey: ['cbwtf', id],
+    queryFn: () => adminApi.getCBWTF(id!),
     enabled: !!id,
   });
 
   const { data: auditHistory } = useQuery({
-    queryKey: ['tenant-audit', id],
+    queryKey: ['cbwtf-audit', id],
     queryFn: () => adminApi.getAuditHistory(id!, { page: 0, size: 10 }),
     enabled: !!id,
   });
 
   const suspendMutation = useMutation({
-    mutationFn: ({ reason }: { reason: string }) => adminApi.suspendTenant(id!, reason),
+    mutationFn: ({ reason }: { reason: string }) => adminApi.suspendCBWTF(id!, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tenant', id] });
+      queryClient.invalidateQueries({ queryKey: ['cbwtf', id] });
       setSuspendDialogOpen(false);
     },
   });
 
   const reactivateMutation = useMutation({
-    mutationFn: () => adminApi.reactivateTenant(id!, 365, 'Reactivated by admin'),
+    mutationFn: () => adminApi.reactivateCBWTF(id!, 365, 'Reactivated by admin'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tenant', id] });
+      queryClient.invalidateQueries({ queryKey: ['cbwtf', id] });
     },
   });
 
@@ -84,7 +84,7 @@ export default function TenantDetail() {
     mutationFn: ({ days }: { days: number }) => 
       adminApi.grantTemporaryAccess(id!, days, 'Temporary access granted'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tenant', id] });
+      queryClient.invalidateQueries({ queryKey: ['cbwtf', id] });
       setTempAccessDialogOpen(false);
     },
   });
@@ -93,7 +93,7 @@ export default function TenantDetail() {
     mutationFn: ({ feature, enabled }: { feature: string; enabled: boolean }) =>
       adminApi.updateFeatures(id!, { [feature]: enabled }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tenant', id] });
+      queryClient.invalidateQueries({ queryKey: ['cbwtf', id] });
     },
   });
 
@@ -106,11 +106,11 @@ export default function TenantDetail() {
     );
   }
 
-  if (error || !tenant) {
+  if (error || !cbwtf) {
     return (
       <Alert severity="error">
-        Tenant not found or failed to load.
-        <Button onClick={() => navigate('/superadmin/tenants')}>Back to Tenants</Button>
+        CBWTF not found or failed to load.
+        <Button onClick={() => navigate('/superadmin/cbwtfs')}>Back to CBWTFs</Button>
       </Alert>
     );
   }
@@ -121,30 +121,30 @@ export default function TenantDetail() {
       <Box sx={{ mb: 4 }}>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/superadmin/tenants')}
+          onClick={() => navigate('/superadmin/cbwtfs')}
           sx={{ mb: 2 }}
         >
-          Back to Tenants
+          Back to CBWTFs
         </Button>
         
         {isNewlyCreated && (
           <Alert severity="success" sx={{ mb: 2 }}>
-            Tenant created successfully! A temporary password has been sent to the admin.
+            CBWTF created successfully! A temporary password has been sent to the admin.
           </Alert>
         )}
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box>
             <Typography variant="h4" fontWeight={700}>
-              {tenant.name}
+              {cbwtf.name}
             </Typography>
             <Typography variant="body2" color="text.secondary" fontFamily="monospace">
-              {tenant.code}
+              {cbwtf.code}
             </Typography>
           </Box>
           <Chip
-            label={tenant.subscriptionStatus}
-            color={statusColors[tenant.subscriptionStatus]}
+            label={cbwtf.subscriptionStatus}
+            color={statusColors[cbwtf.subscriptionStatus]}
             sx={{ fontWeight: 600 }}
           />
         </Box>
@@ -163,15 +163,15 @@ export default function TenantDetail() {
                   <Typography variant="subtitle2" color="text.secondary">
                     Plan
                   </Typography>
-                  <Typography fontWeight={600}>{tenant.subscriptionPlan}</Typography>
+                  <Typography fontWeight={600}>{cbwtf.subscriptionPlan}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary">
                     Status
                   </Typography>
                   <Chip
-                    label={tenant.subscriptionStatus}
-                    color={statusColors[tenant.subscriptionStatus]}
+                    label={cbwtf.subscriptionStatus}
+                    color={statusColors[cbwtf.subscriptionStatus]}
                     size="small"
                   />
                 </Box>
@@ -180,8 +180,8 @@ export default function TenantDetail() {
                     Expires
                   </Typography>
                   <Typography>
-                    {tenant.subscriptionExpiresAt
-                      ? new Date(tenant.subscriptionExpiresAt).toLocaleDateString()
+                    {cbwtf.subscriptionExpiresAt
+                      ? new Date(cbwtf.subscriptionExpiresAt).toLocaleDateString()
                       : '-'}
                   </Typography>
                 </Box>
@@ -190,8 +190,8 @@ export default function TenantDetail() {
                     Onboarded
                   </Typography>
                   <Typography>
-                    {tenant.onboardedAt
-                      ? new Date(tenant.onboardedAt).toLocaleDateString()
+                    {cbwtf.onboardedAt
+                      ? new Date(cbwtf.onboardedAt).toLocaleDateString()
                       : '-'}
                   </Typography>
                 </Box>
@@ -203,11 +203,11 @@ export default function TenantDetail() {
                 <Button
                   variant="outlined"
                   startIcon={<EditIcon />}
-                  onClick={() => navigate(`/superadmin/tenants/${id}/edit`)}
+                  onClick={() => navigate(`/superadmin/cbwtfs/${id}/edit`)}
                 >
                   Edit Subscription
                 </Button>
-                {tenant.subscriptionStatus === 'ACTIVE' ? (
+                {cbwtf.subscriptionStatus === 'ACTIVE' ? (
                   <Button
                     variant="outlined"
                     color="warning"
@@ -227,7 +227,7 @@ export default function TenantDetail() {
                     Reactivate
                   </Button>
                 )}
-                {(tenant.subscriptionStatus === 'EXPIRED' || tenant.subscriptionStatus === 'SUSPENDED') && (
+                {(cbwtf.subscriptionStatus === 'EXPIRED' || cbwtf.subscriptionStatus === 'SUSPENDED') && (
                   <Button
                     variant="outlined"
                     startIcon={<AccessTimeIcon />}
@@ -252,7 +252,7 @@ export default function TenantDetail() {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={tenant.features[key] ?? false}
+                          checked={cbwtf.features[key] ?? false}
                           onChange={(e) =>
                             featureMutation.mutate({ feature: key, enabled: e.target.checked })
                           }
@@ -279,7 +279,7 @@ export default function TenantDetail() {
               <Stack direction="row" spacing={4}>
                 <Box>
                   <Typography variant="h4" fontWeight={700}>
-                    {tenant.hcfCount}
+                    {cbwtf.hcfCount}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     HCFs
@@ -287,7 +287,7 @@ export default function TenantDetail() {
                 </Box>
                 <Box>
                   <Typography variant="h4" fontWeight={700}>
-                    {tenant.activeUserCount}
+                    {cbwtf.activeUserCount}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Users
@@ -308,19 +308,19 @@ export default function TenantDetail() {
                   <Typography variant="body2" color="text.secondary">
                     Email
                   </Typography>
-                  <Typography>{tenant.contactEmail || '-'}</Typography>
+                  <Typography>{cbwtf.contactEmail || '-'}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
                     Phone
                   </Typography>
-                  <Typography>{tenant.contactPhone || '-'}</Typography>
+                  <Typography>{cbwtf.contactPhone || '-'}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
                     Address
                   </Typography>
-                  <Typography>{tenant.address}</Typography>
+                  <Typography>{cbwtf.address}</Typography>
                 </Box>
               </Stack>
             </CardContent>
@@ -356,10 +356,10 @@ export default function TenantDetail() {
 
       {/* Suspend Dialog */}
       <Dialog open={suspendDialogOpen} onClose={() => setSuspendDialogOpen(false)}>
-        <DialogTitle>Suspend Tenant</DialogTitle>
+        <DialogTitle>Suspend CBWTF</DialogTitle>
         <DialogContent>
           <Typography gutterBottom>
-            This will prevent all users from accessing the tenant's data.
+            This will prevent all users from accessing this CBWTF's data.
           </Typography>
           <TextField
             label="Reason"
@@ -389,7 +389,7 @@ export default function TenantDetail() {
         <DialogTitle>Grant Temporary Access</DialogTitle>
         <DialogContent>
           <Typography gutterBottom>
-            Grant time-limited access to an expired or suspended tenant.
+            Grant time-limited access to an expired or suspended CBWTF.
           </Typography>
           <TextField
             label="Days"

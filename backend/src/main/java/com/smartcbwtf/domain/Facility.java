@@ -33,6 +33,7 @@ public class Facility {
 
     private String contactEmail;
     private String contactPhone;
+    private String ownerName;
     private Double gpsLat;
     private Double gpsLon;
 
@@ -108,6 +109,14 @@ public class Facility {
 
     public void setContactPhone(String contactPhone) {
         this.contactPhone = contactPhone;
+    }
+
+    public String getOwnerName() {
+        return ownerName;
+    }
+
+    public void setOwnerName(String ownerName) {
+        this.ownerName = ownerName;
     }
 
     public Double getGpsLat() {

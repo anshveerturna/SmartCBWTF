@@ -13,6 +13,8 @@
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/InvoiceService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/HealthController.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/LabelIssueResponse.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/admin/UpdateUserRequest.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/UserLocationRepository.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/BagEventController.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/FacilityTemplateRepository.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/AlertMismatchedBagDto.java
@@ -22,14 +24,17 @@
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/AuditLog.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/FacilityTemplate.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/InvoiceController.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/UserLocation.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/AlertsController.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/EmailService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/TenantFeatureFlag.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/admin/UpdateSubscriptionRequest.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/admin/ChangeCBWTFCredentialsRequest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/LabelIssueRequest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/AuthLoginRequest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/FacilityTermsService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/BagLabel.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/admin/UpdateCBWTFRequest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/UserProfileResponse.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/ConfigController.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/admin/PlatformStatsDTO.java
@@ -46,7 +51,9 @@
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/AttendanceService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/AgreementService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/Agreement.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/admin/CreateUserRequest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/BagLabelRepository.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/UserManagementController.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/AppUserDetailsService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/LabelController.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/config/GlobalExceptionHandler.java
@@ -63,6 +70,7 @@
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/AgreementRepository.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/HcfRepository.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/FacilityRepository.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/LocationController.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/HcfService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/HcfController.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/HcfRegistrationResponse.java
@@ -102,5 +110,7 @@
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/FacilityTermsRepository.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/BagEventSyncRequest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/FacilityTemplateService.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/admin/UserManagementDTO.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/DashboardMetricsDTO.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/SubscriptionService.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/AdminMasterDataController.java

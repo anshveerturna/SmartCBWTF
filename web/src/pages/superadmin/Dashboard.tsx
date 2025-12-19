@@ -102,9 +102,9 @@ const SuperAdminDashboard: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => navigate('/superadmin/tenants/new')}
+          onClick={() => navigate('/superadmin/cbwtfs/new')}
         >
-          Onboard Tenant
+          Onboard CBWTF
         </Button>
       </Box>
 
@@ -118,8 +118,8 @@ const SuperAdminDashboard: React.FC = () => {
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
-            title="Active Tenants"
-            value={stats?.activeTenants ?? 0}
+            title="Active CBWTFs"
+            value={stats?.activeCBWTFs ?? 0}
             subtitle="CBWTFs onboarded"
             icon={<Business />}
             color="#6366F1"
@@ -130,7 +130,7 @@ const SuperAdminDashboard: React.FC = () => {
           <MetricCard
             title="Total HCFs"
             value={stats?.totalHcfs.toLocaleString() ?? '0'}
-            subtitle="Across all tenants"
+            subtitle="Across all CBWTFs"
             icon={<LocalShipping />}
             color="#10B981"
             loading={isLoading}
@@ -148,8 +148,8 @@ const SuperAdminDashboard: React.FC = () => {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
-            title="Total Tenants"
-            value={stats?.totalTenants ?? 0}
+            title="Total CBWTFs"
+            value={stats?.totalCBWTFs ?? 0}
             subtitle="All statuses"
             icon={<TrendingUp />}
             color="#EF4444"
@@ -162,14 +162,14 @@ const SuperAdminDashboard: React.FC = () => {
       <Card>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 3 }}>
-            Tenant Status Breakdown
+            CBWTF Status Breakdown
           </Typography>
           <Grid container spacing={2}>
             {[
-              { status: 'Active', count: stats?.activeTenants ?? 0, color: 'success' as const },
-              { status: 'Trial', count: stats?.trialTenants ?? 0, color: 'info' as const },
-              { status: 'Expired', count: stats?.expiredTenants ?? 0, color: 'warning' as const },
-              { status: 'Suspended', count: stats?.suspendedTenants ?? 0, color: 'error' as const },
+              { status: 'Active', count: stats?.activeCBWTFs ?? 0, color: 'success' as const },
+              { status: 'Trial', count: stats?.trialCBWTFs ?? 0, color: 'info' as const },
+              { status: 'Expired', count: stats?.expiredCBWTFs ?? 0, color: 'warning' as const },
+              { status: 'Suspended', count: stats?.suspendedCBWTFs ?? 0, color: 'error' as const },
             ].map(({ status, count, color }) => (
               <Grid key={status} size={{ xs: 6, md: 3 }}>
                 <Box
@@ -181,7 +181,7 @@ const SuperAdminDashboard: React.FC = () => {
                     cursor: 'pointer',
                     '&:hover': { bgcolor: 'action.hover' },
                   }}
-                  onClick={() => navigate(`/superadmin/tenants?status=${status.toUpperCase()}`)}
+                  onClick={() => navigate(`/superadmin/cbwtfs?status=${status.toUpperCase()}`)}
                 >
                   {isLoading ? (
                     <Skeleton width={40} height={32} sx={{ mx: 'auto' }} />
@@ -212,15 +212,15 @@ const SuperAdminDashboard: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Button
               variant="outlined"
-              onClick={() => navigate('/superadmin/tenants')}
+              onClick={() => navigate('/superadmin/cbwtfs')}
             >
-              Manage Tenants
+              Manage CBWTFs
             </Button>
             <Button
               variant="outlined"
-              onClick={() => navigate('/superadmin/tenants/new')}
+              onClick={() => navigate('/superadmin/cbwtfs/new')}
             >
-              Onboard New Tenant
+              Onboard New CBWTF
             </Button>
           </Box>
         </CardContent>
