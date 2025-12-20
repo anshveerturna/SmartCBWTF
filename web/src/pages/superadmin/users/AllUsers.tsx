@@ -79,6 +79,7 @@ export default function AllUsers() {
   });
 
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>, user: UserDTO) => {
+    event.stopPropagation();
     setAnchorEl(event.currentTarget);
     setSelectedUser(user);
   };
@@ -102,15 +103,13 @@ export default function AllUsers() {
     handleMenuClose();
   };
 
-  const columns: GridColDef[] = useMemo(() => [
+  const columns: GridColDef<UserDTO>[] = useMemo(() => [
     {
       field: 'username',
       headerName: 'Username',
-      width: 150,
-      headerAlign: 'left',
-      align: 'left',
+      width: 140,
       renderCell: (params: GridRenderCellParams<UserDTO>) => (
-        <Typography fontWeight={600}>
+        <Typography fontWeight={600} fontSize="0.875rem">
           {params.value}
         </Typography>
       ),
@@ -119,16 +118,12 @@ export default function AllUsers() {
       field: 'fullName',
       headerName: 'Name',
       flex: 1,
-      minWidth: 160,
-      headerAlign: 'left',
-      align: 'left',
+      minWidth: 150,
     },
     {
       field: 'role',
       headerName: 'Role',
-      width: 140,
-      headerAlign: 'left',
-      align: 'left',
+      width: 130,
       renderCell: (params: GridRenderCellParams<UserDTO>) => (
         <Chip
           label={params.value?.replace('_', ' ')}
@@ -145,11 +140,9 @@ export default function AllUsers() {
     {
       field: 'cbwtfName',
       headerName: 'CBWTF',
-      width: 160,
-      headerAlign: 'left',
-      align: 'left',
+      width: 150,
       renderCell: (params: GridRenderCellParams<UserDTO>) => (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" fontSize="0.85rem">
           {params.value || '-'}
         </Typography>
       ),
@@ -157,38 +150,40 @@ export default function AllUsers() {
     {
       field: 'active',
       headerName: 'Status',
-      width: 100,
-      headerAlign: 'center',
-      align: 'center',
+      width: 90,
       renderCell: (params: GridRenderCellParams<UserDTO>) => (
         <Chip
           label={params.value ? 'Active' : 'Disabled'}
           color={params.value ? 'success' : 'error'}
           size="small"
           variant="outlined"
+          sx={{ fontSize: '0.7rem' }}
         />
       ),
     },
     {
       field: 'email',
       headerName: 'Email',
-      width: 180,
-      headerAlign: 'left',
-      align: 'left',
+      flex: 1,
+      minWidth: 180,
+      renderCell: (params: GridRenderCellParams<UserDTO>) => (
+        <Typography variant="body2" color="text.secondary" fontSize="0.85rem" noWrap>
+          {params.value || '-'}
+        </Typography>
+      ),
     },
     {
       field: 'actions',
       headerName: '',
       width: 50,
-      headerAlign: 'center',
-      align: 'center',
       sortable: false,
+      disableColumnMenu: true,
       renderCell: (params: GridRenderCellParams<UserDTO>) => (
         <IconButton
           size="small"
           onClick={(e) => handleMenuClick(e, params.row)}
         >
-          <MoreVertIcon />
+          <MoreVertIcon fontSize="small" />
         </IconButton>
       ),
     },
@@ -225,7 +220,7 @@ export default function AllUsers() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               size="small"
-              sx={{ minWidth: 300 }}
+              sx={{ minWidth: 280 }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -234,7 +229,7 @@ export default function AllUsers() {
                 ),
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 140 }}>
+            <FormControl size="small" sx={{ minWidth: 130 }}>
               <InputLabel>Role</InputLabel>
               <Select
                 value={roleFilter}
@@ -250,7 +245,7 @@ export default function AllUsers() {
                 <MenuItem value="ACCOUNTANT">Accountant</MenuItem>
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+            <FormControl size="small" sx={{ minWidth: 110 }}>
               <InputLabel>Status</InputLabel>
               <Select
                 value={statusFilter}
@@ -299,16 +294,25 @@ export default function AllUsers() {
               pageSizeOptions={[10, 25, 50]}
               disableRowSelectionOnClick
               autoHeight
+              rowHeight={52}
+              columnHeaderHeight={48}
               sx={{
                 border: 'none',
-                '& .MuiDataGrid-cell': {
-                  borderColor: 'divider',
-                },
                 '& .MuiDataGrid-columnHeaders': {
                   bgcolor: 'action.hover',
+                  borderBottom: 1,
+                  borderColor: 'divider',
                 },
-                '& .MuiDataGrid-row:hover': {
-                  bgcolor: 'action.hover',
+                '& .MuiDataGrid-cell': {
+                  borderColor: 'divider',
+                  display: 'flex',
+                  alignItems: 'center',
+                },
+                '& .MuiDataGrid-row': {
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
                 },
               }}
               onRowClick={(params) => navigate(`/superadmin/users/${params.id}`)}

@@ -1,6 +1,8 @@
 package com.smartcbwtf.domain;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -26,6 +28,7 @@ public class TenantFeatureFlag {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = false;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "config", columnDefinition = "jsonb")
     private String config; // JSON configuration for the feature
 

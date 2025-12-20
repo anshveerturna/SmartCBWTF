@@ -100,7 +100,7 @@ public class UserManagementController {
     // ========== GET SINGLE USER ==========
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserManagementDTO> getUser(@PathVariable UUID id) {
+    public ResponseEntity<UserManagementDTO> getUser(@PathVariable("id") UUID id) {
         return userRepository.findById(id)
                 .map(UserManagementDTO::from)
                 .map(ResponseEntity::ok)
@@ -175,7 +175,7 @@ public class UserManagementController {
     @PutMapping("/{id}")
     @Transactional
     public ResponseEntity<UserManagementDTO> updateUser(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody UpdateUserRequest request) {
 
         return userRepository.findById(id)
@@ -229,7 +229,7 @@ public class UserManagementController {
     @PostMapping("/{id}/disable")
     @Transactional
     public ResponseEntity<UserManagementDTO> disableUser(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody Map<String, String> body) {
 
         String reason = body.getOrDefault("reason", "Disabled by admin");
@@ -259,7 +259,7 @@ public class UserManagementController {
 
     @PostMapping("/{id}/enable")
     @Transactional
-    public ResponseEntity<UserManagementDTO> enableUser(@PathVariable UUID id) {
+    public ResponseEntity<UserManagementDTO> enableUser(@PathVariable("id") UUID id) {
         return userRepository.findById(id)
                 .map(user -> {
                     user.setActive(true);
@@ -285,7 +285,7 @@ public class UserManagementController {
 
     @PostMapping("/{id}/force-password-reset")
     @Transactional
-    public ResponseEntity<UserManagementDTO> forcePasswordReset(@PathVariable UUID id) {
+    public ResponseEntity<UserManagementDTO> forcePasswordReset(@PathVariable("id") UUID id) {
         return userRepository.findById(id)
                 .map(user -> {
                     user.setForcePasswordChange(true);
@@ -311,7 +311,7 @@ public class UserManagementController {
 
     @DeleteMapping("/{id}/revoke")
     @Transactional
-    public ResponseEntity<Void> revokeAccess(@PathVariable UUID id) {
+    public ResponseEntity<Void> revokeAccess(@PathVariable("id") UUID id) {
         return userRepository.findById(id)
                 .map(user -> {
                     user.setActive(false);

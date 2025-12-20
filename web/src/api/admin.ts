@@ -6,10 +6,14 @@ export interface CBWTFDTO {
   code: string;
   name: string;
   address: string;
+  ownerName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
   gpsLat: number | null;
   gpsLon: number | null;
+  panNumber: string | null;
+  gstNumber: string | null;
+  aadharNumber: string | null;
   subscriptionPlan: 'BASIC' | 'PRO' | 'ENTERPRISE' | 'TRIAL';
   subscriptionStatus: 'ACTIVE' | 'TRIAL' | 'EXPIRED' | 'SUSPENDED' | 'CANCELLED';
   subscriptionExpiresAt: string | null;
@@ -274,6 +278,9 @@ export const adminApi = {
     gpsLat?: number;
     gpsLon?: number;
     geofenceRadiusM?: number;
+    panNumber?: string;
+    gstNumber?: string;
+    aadharNumber?: string;
   }): Promise<CBWTFDTO> => {
     const response = await apiClient.put(`/api/admin/cbwtfs/${id}`, data);
     return response.data;

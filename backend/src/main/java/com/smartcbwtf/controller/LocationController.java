@@ -105,7 +105,7 @@ public class LocationController {
     @GetMapping("/admin/users/{userId}/location-history")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Page<Map<String, Object>>> getLocationHistory(
-            @PathVariable UUID userId,
+            @PathVariable("userId") UUID userId,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "50") int size) {
 
@@ -134,7 +134,7 @@ public class LocationController {
      */
     @GetMapping("/admin/users/{userId}/location")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Map<String, Object>> getUserLocation(@PathVariable UUID userId) {
+    public ResponseEntity<Map<String, Object>> getUserLocation(@PathVariable("userId") UUID userId) {
         if (!userRepository.existsById(userId)) {
             return ResponseEntity.notFound().build();
         }

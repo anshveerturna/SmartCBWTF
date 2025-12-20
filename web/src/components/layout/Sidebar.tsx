@@ -104,9 +104,16 @@ const getCbwtfAdminItems = (): NavItem[] => [
   { path: '/cbwtf/hcfs', label: 'HCF Management', icon: <HcfIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/labels', label: 'QR Labels', icon: <QrCodeIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/operations', label: 'Waste Operations', icon: <OperationsIcon />, roles: ['CBWTF_ADMIN'] },
-  { path: '/cbwtf/billing', label: 'Billing & Invoicing', icon: <BillingIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/alerts', label: 'Alerts', icon: <AlertsIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/settings', label: 'Settings', icon: <SettingsIcon />, roles: ['CBWTF_ADMIN'] },
+];
+
+// Finance sub-navigation for CBWTF Admin
+const getCbwtfFinanceItems = (): NavItem[] => [
+  { path: '/cbwtf/finance/bank-accounts', label: 'Bank Accounts', icon: <PaymentIcon />, roles: ['CBWTF_ADMIN'] },
+  { path: '/cbwtf/finance/invoices', label: 'Invoices', icon: <BillingIcon />, roles: ['CBWTF_ADMIN'] },
+  { path: '/cbwtf/finance/bills', label: 'Bills & Payments', icon: <StorageIcon />, roles: ['CBWTF_ADMIN'] },
+  { path: '/cbwtf/finance/revenue', label: 'Revenue', icon: <AnalyticsIcon />, roles: ['CBWTF_ADMIN'] },
 ];
 
 const getHcfAdminItems = (): NavItem[] => [
@@ -266,7 +273,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
       {/* Navigation Links */}
       <Box sx={{ flex: 1, overflowY: 'auto', py: 1 }}>
         {user?.role === 'SUPER_ADMIN' && renderSuperAdminNav()}
-        {user?.role === 'CBWTF_ADMIN' && renderFlatNav(getCbwtfAdminItems())}
+        {user?.role === 'CBWTF_ADMIN' && (
+          <>
+            {renderFlatNav(getCbwtfAdminItems())}
+            <Divider sx={{ mx: 2, my: 1 }} />
+            <Typography variant="overline" sx={{ px: 3, py: 0.5, display: 'block', color: 'text.secondary', fontSize: '0.65rem' }}>
+              Finance
+            </Typography>
+            {renderFlatNav(getCbwtfFinanceItems())}
+          </>
+        )}
         {user?.role === 'HCF_ADMIN' && renderFlatNav(getHcfAdminItems())}
       </Box>
 

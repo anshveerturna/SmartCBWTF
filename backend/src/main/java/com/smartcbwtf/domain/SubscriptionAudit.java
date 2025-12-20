@@ -44,6 +44,11 @@ public class SubscriptionAudit {
     @Column(name = "entity_id", nullable = false)
     private UUID entityId;
 
+    // Legacy column for V8 migration compatibility - must be set for FACILITY
+    // entities
+    @Column(name = "facility_id")
+    private UUID facilityId;
+
     @Column(nullable = false, length = 30)
     private String action;
 
@@ -104,8 +109,11 @@ public class SubscriptionAudit {
             String performedByUsername,
             String performedByRole,
             String notes) {
-        return create("FACILITY", facilityId, action, oldValue, newValue,
+        SubscriptionAudit audit = create("FACILITY", facilityId, action, oldValue, newValue,
                 performedBy, performedByUsername, performedByRole, notes);
+        // Also set facilityId for V8 migration schema compatibility
+        audit.facilityId = facilityId;
+        return audit;
     }
 
     // Getters and setters

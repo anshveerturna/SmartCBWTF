@@ -52,6 +52,13 @@ export default function CBWTFDetail() {
   const [suspendReason, setSuspendReason] = useState('');
   const [tempAccessDialogOpen, setTempAccessDialogOpen] = useState(false);
   const [tempAccessDays, setTempAccessDays] = useState(7);
+  
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '', address: '', ownerName: '', contactEmail: '', contactPhone: '',
+    panNumber: '', gstNumber: '', aadharNumber: '', gpsLat: '', gpsLon: '',
+  });
 
   const { data: cbwtf, isLoading, error } = useQuery({
     queryKey: ['cbwtf', id],
@@ -92,10 +99,65 @@ export default function CBWTFDetail() {
   const featureMutation = useMutation({
     mutationFn: ({ feature, enabled }: { feature: string; enabled: boolean }) =>
       adminApi.updateFeatures(id!, { [feature]: enabled }),
-    onSuccess: () => {
+    // Optimistic update to prevent UI flashing
+    onMutate: async ({ feature, enabled }) => {
+      await queryClient.cancelQueries({ queryKey: ['cbwtf', id] });
+      const previousData = queryClient.getQueryData(['cbwtf', id]);
+      queryClient.setQueryData(['cbwtf', id], (old: typeof cbwtf) => old ? {
+        ...old,
+        features: { ...old.features, [feature]: enabled }
+      } : old);
+      return { previousData };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['cbwtf', id], context.previousData);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['cbwtf', id] });
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: typeof editForm) => adminApi.updateCBWTF(id!, {
+      name: data.name,
+      address: data.address,
+      ownerName: data.ownerName || undefined,
+      contactEmail: data.contactEmail || undefined,
+      contactPhone: data.contactPhone || undefined,
+      panNumber: data.panNumber || undefined,
+      gstNumber: data.gstNumber || undefined,
+      aadharNumber: data.aadharNumber || undefined,
+      gpsLat: data.gpsLat ? parseFloat(data.gpsLat) : undefined,
+      gpsLon: data.gpsLon ? parseFloat(data.gpsLon) : undefined,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cbwtf', id] });
+      setIsEditing(false);
+    },
+  });
+
+  const startEditing = () => {
+    if (cbwtf) {
+      setEditForm({
+        name: cbwtf.name || '',
+        address: cbwtf.address || '',
+        ownerName: cbwtf.ownerName || '',
+        contactEmail: cbwtf.contactEmail || '',
+        contactPhone: cbwtf.contactPhone || '',
+        panNumber: cbwtf.panNumber || '',
+        gstNumber: cbwtf.gstNumber || '',
+        aadharNumber: cbwtf.aadharNumber || '',
+        gpsLat: cbwtf.gpsLat?.toString() || '',
+        gpsLon: cbwtf.gpsLon?.toString() || '',
+      });
+      setIsEditing(true);
+    }
+  };
+
+  const cancelEditing = () => setIsEditing(false);
+  const saveChanges = () => updateMutation.mutate(editForm);
 
   if (isLoading) {
     return (
@@ -264,6 +326,66 @@ export default function CBWTFDetail() {
                   </Grid>
                 ))}
               </Grid>
+            </CardContent>
+          </Card>
+
+          {/* Business Details - Editable */}
+          <Card sx={{ borderRadius: 2, mt: 3 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">Business Details</Typography>
+                {!isEditing ? (
+                  <Button variant="outlined" size="small" onClick={startEditing}>Edit</Button>
+                ) : (
+                  <Stack direction="row" spacing={1}>
+                    <Button variant="outlined" size="small" onClick={cancelEditing}>Cancel</Button>
+                    <Button variant="contained" size="small" onClick={saveChanges} disabled={updateMutation.isPending}>Save</Button>
+                  </Stack>
+                )}
+              </Box>
+              {isEditing ? (
+                <Stack spacing={2}>
+                  <TextField label="Name" fullWidth size="small" value={editForm.name} 
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                  <TextField label="Address" fullWidth size="small" multiline rows={2} value={editForm.address}
+                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
+                  <TextField label="Owner Name" fullWidth size="small" value={editForm.ownerName}
+                    onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })} />
+                  <Stack direction="row" spacing={2}>
+                    <TextField label="Email" fullWidth size="small" value={editForm.contactEmail}
+                      onChange={(e) => setEditForm({ ...editForm, contactEmail: e.target.value })} />
+                    <TextField label="Phone" fullWidth size="small" value={editForm.contactPhone}
+                      onChange={(e) => setEditForm({ ...editForm, contactPhone: e.target.value })} />
+                  </Stack>
+                  <Divider />
+                  <Stack direction="row" spacing={2}>
+                    <TextField label="PAN Number" fullWidth size="small" value={editForm.panNumber}
+                      onChange={(e) => setEditForm({ ...editForm, panNumber: e.target.value.toUpperCase() })} />
+                    <TextField label="GST Number" fullWidth size="small" value={editForm.gstNumber}
+                      onChange={(e) => setEditForm({ ...editForm, gstNumber: e.target.value.toUpperCase() })} />
+                  </Stack>
+                  <TextField label="Aadhar Number" fullWidth size="small" value={editForm.aadharNumber}
+                    onChange={(e) => setEditForm({ ...editForm, aadharNumber: e.target.value })} />
+                  <Stack direction="row" spacing={2}>
+                    <TextField label="GPS Latitude" fullWidth size="small" type="number" value={editForm.gpsLat}
+                      onChange={(e) => setEditForm({ ...editForm, gpsLat: e.target.value })} />
+                    <TextField label="GPS Longitude" fullWidth size="small" type="number" value={editForm.gpsLon}
+                      onChange={(e) => setEditForm({ ...editForm, gpsLon: e.target.value })} />
+                  </Stack>
+                </Stack>
+              ) : (
+                <Stack spacing={1}>
+                  <Box><Typography variant="body2" color="text.secondary">Name</Typography><Typography>{cbwtf.name}</Typography></Box>
+                  <Box><Typography variant="body2" color="text.secondary">Address</Typography><Typography>{cbwtf.address}</Typography></Box>
+                  <Box><Typography variant="body2" color="text.secondary">Owner</Typography><Typography>{cbwtf.ownerName || '-'}</Typography></Box>
+                  <Divider sx={{ my: 1 }} />
+                  <Stack direction="row" spacing={4}>
+                    <Box><Typography variant="body2" color="text.secondary">PAN</Typography><Typography fontFamily="monospace">{cbwtf.panNumber || '-'}</Typography></Box>
+                    <Box><Typography variant="body2" color="text.secondary">GST</Typography><Typography fontFamily="monospace">{cbwtf.gstNumber || '-'}</Typography></Box>
+                    <Box><Typography variant="body2" color="text.secondary">Aadhar</Typography><Typography fontFamily="monospace">{cbwtf.aadharNumber || '-'}</Typography></Box>
+                  </Stack>
+                </Stack>
+              )}
             </CardContent>
           </Card>
         </Grid>

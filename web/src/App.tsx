@@ -27,6 +27,11 @@ const MasterPayments = lazy(() => import('./pages/superadmin/master/MasterPaymen
 const MasterAuditLogs = lazy(() => import('./pages/superadmin/master/MasterAuditLogs'));
 const CbwtfDashboard = lazy(() => import('./pages/cbwtf/Dashboard'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
+// CBWTF Finance pages
+const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
+const FinanceInvoices = lazy(() => import('./pages/cbwtf/finance/Invoices'));
+const FinanceBills = lazy(() => import('./pages/cbwtf/finance/Bills'));
+const FinanceRevenue = lazy(() => import('./pages/cbwtf/finance/Revenue'));
 
 // Loading fallback
 const PageLoader: React.FC = () => (
@@ -118,7 +123,11 @@ const App: React.FC = () => {
                   <Route path="hcfs" element={<div>HCF Management (Coming Soon)</div>} />
                   <Route path="labels" element={<div>QR Labels (Coming Soon)</div>} />
                   <Route path="operations" element={<div>Waste Operations (Coming Soon)</div>} />
-                  <Route path="billing" element={<div>Billing & Invoicing (Coming Soon)</div>} />
+                  {/* Finance Section */}
+                  <Route path="finance/bank-accounts" element={<FinanceBankAccounts />} />
+                  <Route path="finance/invoices" element={<FinanceInvoices />} />
+                  <Route path="finance/bills" element={<FinanceBills />} />
+                  <Route path="finance/revenue" element={<FinanceRevenue />} />
                   <Route path="alerts" element={<div>Alerts (Coming Soon)</div>} />
                   <Route path="settings" element={<div>Settings (Coming Soon)</div>} />
                 </Route>

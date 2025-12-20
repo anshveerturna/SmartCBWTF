@@ -86,7 +86,7 @@ public class AdminController {
     }
 
     @GetMapping("/cbwtfs/{id}")
-    public ResponseEntity<TenantDTO> getTenant(@PathVariable UUID id) {
+    public ResponseEntity<TenantDTO> getTenant(@PathVariable("id") UUID id) {
         return facilityRepository.findById(id)
                 .map(f -> TenantDTO.from(
                         f,
@@ -102,7 +102,7 @@ public class AdminController {
     @PutMapping("/cbwtfs/{id}")
     @Transactional
     public ResponseEntity<TenantDTO> updateCBWTF(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody UpdateCBWTFRequest request) {
 
         return facilityRepository.findById(id)
@@ -120,6 +120,12 @@ public class AdminController {
                         facility.setGpsLon(request.gpsLon());
                     if (request.geofenceRadiusM() != null)
                         facility.setGeofenceRadiusM(request.geofenceRadiusM());
+                    if (request.panNumber() != null)
+                        facility.setPanNumber(request.panNumber());
+                    if (request.gstNumber() != null)
+                        facility.setGstNumber(request.gstNumber());
+                    if (request.aadharNumber() != null)
+                        facility.setAadharNumber(request.aadharNumber());
 
                     facility = facilityRepository.save(facility);
 
@@ -148,7 +154,7 @@ public class AdminController {
     @PostMapping("/cbwtfs/{id}/change-credentials")
     @Transactional
     public ResponseEntity<Map<String, String>> changeCBWTFCredentials(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody ChangeCBWTFCredentialsRequest request) {
 
         // Find the CBWTF_ADMIN user for this facility
@@ -245,6 +251,9 @@ public class AdminController {
         adminUser.setForcePasswordChange(true);
         userRepository.save(adminUser);
 
+        // Enable all feature flags by default
+        enableAllDefaultFeatures(facility);
+
         // Audit logs
         auditRepository.save(SubscriptionAudit.forFacility(
                 facility.getId(),
@@ -283,7 +292,7 @@ public class AdminController {
 
     @PutMapping("/cbwtfs/{id}/subscription")
     public ResponseEntity<TenantDTO> updateSubscription(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody UpdateSubscriptionRequest request) {
 
         Facility.Plan plan = Facility.Plan.valueOf(request.plan());
@@ -306,7 +315,7 @@ public class AdminController {
 
     @PostMapping("/cbwtfs/{id}/suspend")
     public ResponseEntity<TenantDTO> suspendCBWTF(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody Map<String, String> body) {
 
         String reason = body.getOrDefault("reason", "Suspended by admin");
@@ -326,7 +335,7 @@ public class AdminController {
 
     @PostMapping("/cbwtfs/{id}/reactivate")
     public ResponseEntity<TenantDTO> reactivateCBWTF(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody Map<String, Object> body) {
 
         int days = (Integer) body.getOrDefault("days", 365);
@@ -349,7 +358,7 @@ public class AdminController {
 
     @PostMapping("/cbwtfs/{id}/temporary-access")
     public ResponseEntity<TenantDTO> grantTemporaryAccess(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody Map<String, Object> body) {
 
         int days = (Integer) body.getOrDefault("days", 7);
@@ -372,7 +381,7 @@ public class AdminController {
     // ========== FEATURE FLAGS ==========
 
     @GetMapping("/cbwtfs/{id}/features")
-    public ResponseEntity<Map<String, Boolean>> getFeatures(@PathVariable UUID id) {
+    public ResponseEntity<Map<String, Boolean>> getFeatures(@PathVariable("id") UUID id) {
         if (!facilityRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
@@ -381,7 +390,7 @@ public class AdminController {
 
     @PutMapping("/cbwtfs/{id}/features")
     public ResponseEntity<Map<String, Boolean>> updateFeatures(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody Map<String, Boolean> features) {
 
         if (!facilityRepository.existsById(id)) {
@@ -404,7 +413,7 @@ public class AdminController {
 
     @GetMapping("/cbwtfs/{id}/audit")
     public ResponseEntity<Page<TenantAuditDTO>> getAuditHistory(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
@@ -469,5 +478,30 @@ public class AdminController {
             sb.append(chars.charAt(random.nextInt(chars.length())));
         }
         return sb.toString();
+    }
+
+    private void enableAllDefaultFeatures(Facility facility) {
+        // All feature flags to enable by default
+        String[] defaultFeatures = {
+                TenantFeatureFlag.ADVANCED_ANALYTICS,
+                TenantFeatureFlag.ROUTE_OPTIMIZATION,
+                TenantFeatureFlag.CPCB_REPORTING,
+                TenantFeatureFlag.INVOICE_AUTO_SEND,
+                TenantFeatureFlag.PAYMENT_GATEWAY,
+                TenantFeatureFlag.ATTENDANCE_ENFORCEMENT,
+                TenantFeatureFlag.VEHICLE_TRACKING,
+                TenantFeatureFlag.AI_INSIGHTS,
+                TenantFeatureFlag.MULTI_VEHICLE,
+                TenantFeatureFlag.HCF_SELF_SERVICE
+        };
+
+        for (String featureKey : defaultFeatures) {
+            subscriptionService.setFeatureEnabled(
+                    facility.getId(),
+                    featureKey,
+                    true,
+                    getCurrentUserId(),
+                    getCurrentUsername());
+        }
     }
 }

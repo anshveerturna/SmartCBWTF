@@ -40,6 +40,16 @@ public class Facility {
     @Column(name = "geofence_radius_m")
     private Integer geofenceRadiusM;
 
+    // Business registration fields (V13 migration)
+    @Column(name = "pan_number", length = 20)
+    private String panNumber;
+
+    @Column(name = "gst_number", length = 20)
+    private String gstNumber;
+
+    @Column(name = "aadhar_number", length = 20)
+    private String aadharNumber;
+
     // Subscription fields (V8 migration)
     @Column(name = "subscription_plan")
     private String subscriptionPlan;
@@ -214,6 +224,31 @@ public class Facility {
 
     public void setOnboardedBy(UUID onboardedBy) {
         this.onboardedBy = onboardedBy;
+    }
+
+    // Business registration getters/setters
+    public String getPanNumber() {
+        return panNumber;
+    }
+
+    public void setPanNumber(String panNumber) {
+        this.panNumber = panNumber;
+    }
+
+    public String getGstNumber() {
+        return gstNumber;
+    }
+
+    public void setGstNumber(String gstNumber) {
+        this.gstNumber = gstNumber;
+    }
+
+    public String getAadharNumber() {
+        return aadharNumber;
+    }
+
+    public void setAadharNumber(String aadharNumber) {
+        this.aadharNumber = aadharNumber;
     }
 
     // Helper methods

@@ -40,13 +40,6 @@ const statusColors: Record<string, 'success' | 'warning' | 'error' | 'info' | 'd
   CANCELLED: 'default',
 };
 
-const planColors: Record<string, string> = {
-  BASIC: '#64748b',
-  PRO: '#3b82f6',
-  ENTERPRISE: '#8b5cf6',
-  TRIAL: '#f59e0b',
-};
-
 export default function CBWTFManagement() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -67,6 +60,7 @@ export default function CBWTFManagement() {
   });
 
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>, cbwtf: CBWTFDTO) => {
+    event.stopPropagation();
     setAnchorEl(event.currentTarget);
     setSelectedCBWTF(cbwtf);
   };
@@ -76,15 +70,13 @@ export default function CBWTFManagement() {
     setSelectedCBWTF(null);
   };
 
-  const columns: GridColDef[] = useMemo(() => [
+  const columns: GridColDef<CBWTFDTO>[] = useMemo(() => [
     {
       field: 'code',
       headerName: 'Code',
-      width: 130,
-      headerAlign: 'left',
-      align: 'left',
+      width: 140,
       renderCell: (params: GridRenderCellParams<CBWTFDTO>) => (
-        <Typography fontWeight={600} fontFamily="monospace">
+        <Typography fontWeight={600} fontFamily="monospace" fontSize="0.85rem">
           {params.value}
         </Typography>
       ),
@@ -93,63 +85,38 @@ export default function CBWTFManagement() {
       field: 'name',
       headerName: 'CBWTF Name',
       flex: 1,
-      minWidth: 180,
-      headerAlign: 'left',
-      align: 'left',
-    },
-    {
-      field: 'subscriptionPlan',
-      headerName: 'Plan',
-      width: 110,
-      headerAlign: 'left',
-      align: 'left',
-      renderCell: (params: GridRenderCellParams<CBWTFDTO>) => (
-        <Chip
-          label={params.value}
-          size="small"
-          sx={{
-            bgcolor: planColors[params.value as string] || '#64748b',
-            color: '#fff',
-            fontWeight: 600,
-          }}
-        />
-      ),
+      minWidth: 200,
     },
     {
       field: 'subscriptionStatus',
       headerName: 'Status',
       width: 110,
-      headerAlign: 'center',
-      align: 'center',
       renderCell: (params: GridRenderCellParams<CBWTFDTO>) => (
         <Chip
           label={params.value}
           color={statusColors[params.value as string] || 'default'}
           size="small"
           variant="outlined"
+          sx={{ fontSize: '0.75rem' }}
         />
       ),
     },
     {
       field: 'hcfCount',
       headerName: 'HCFs',
-      width: 70,
-      headerAlign: 'right',
-      align: 'right',
+      width: 80,
+      type: 'number',
     },
     {
       field: 'activeUserCount',
       headerName: 'Users',
-      width: 70,
-      headerAlign: 'right',
-      align: 'right',
+      width: 80,
+      type: 'number',
     },
     {
       field: 'subscriptionExpiresAt',
       headerName: 'Expires',
       width: 110,
-      headerAlign: 'left',
-      align: 'left',
       renderCell: (params: GridRenderCellParams<CBWTFDTO>) => {
         if (!params.value) return '-';
         const date = new Date(params.value as string);
@@ -158,6 +125,7 @@ export default function CBWTFManagement() {
           <Typography
             variant="body2"
             color={isExpiringSoon ? 'error.main' : 'text.secondary'}
+            fontSize="0.85rem"
           >
             {date.toLocaleDateString()}
           </Typography>
@@ -168,15 +136,14 @@ export default function CBWTFManagement() {
       field: 'actions',
       headerName: '',
       width: 50,
-      headerAlign: 'center',
-      align: 'center',
       sortable: false,
+      disableColumnMenu: true,
       renderCell: (params: GridRenderCellParams<CBWTFDTO>) => (
         <IconButton
           size="small"
           onClick={(e) => handleMenuClick(e, params.row)}
         >
-          <MoreVertIcon />
+          <MoreVertIcon fontSize="small" />
         </IconButton>
       ),
     },
@@ -213,7 +180,7 @@ export default function CBWTFManagement() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               size="small"
-              sx={{ minWidth: 300 }}
+              sx={{ minWidth: 280 }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -222,7 +189,7 @@ export default function CBWTFManagement() {
                 ),
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 150 }}>
+            <FormControl size="small" sx={{ minWidth: 130 }}>
               <InputLabel>Status</InputLabel>
               <Select
                 value={statusFilter}
@@ -273,16 +240,25 @@ export default function CBWTFManagement() {
               pageSizeOptions={[10, 25, 50]}
               disableRowSelectionOnClick
               autoHeight
+              rowHeight={52}
+              columnHeaderHeight={48}
               sx={{
                 border: 'none',
-                '& .MuiDataGrid-cell': {
-                  borderColor: 'divider',
-                },
                 '& .MuiDataGrid-columnHeaders': {
                   bgcolor: 'action.hover',
+                  borderBottom: 1,
+                  borderColor: 'divider',
                 },
-                '& .MuiDataGrid-row:hover': {
-                  bgcolor: 'action.hover',
+                '& .MuiDataGrid-cell': {
+                  borderColor: 'divider',
+                  display: 'flex',
+                  alignItems: 'center',
+                },
+                '& .MuiDataGrid-row': {
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
                 },
               }}
               onRowClick={(params) => navigate(`/superadmin/cbwtfs/${params.id}`)}
