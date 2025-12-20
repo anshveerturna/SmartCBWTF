@@ -6,4 +6,8 @@ interface AuthTokenStore {
     suspend fun getToken(): String?
     suspend fun setToken(token: String?)
     fun getTokenFlow(): Flow<String?>
+    
+    // Security enforcement: password change required flag
+    fun getMustChangePassword(): Boolean
+    fun setMustChangePassword(required: Boolean)
 }

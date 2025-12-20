@@ -25,14 +25,61 @@ public class SubscriptionService {
     private final FacilityRepository facilityRepository;
     private final SubscriptionAuditRepository auditRepository;
     private final TenantFeatureFlagRepository featureFlagRepository;
+    private final SystemConfigService systemConfigService;
 
     public SubscriptionService(
             FacilityRepository facilityRepository,
             SubscriptionAuditRepository auditRepository,
-            TenantFeatureFlagRepository featureFlagRepository) {
+            TenantFeatureFlagRepository featureFlagRepository,
+            SystemConfigService systemConfigService) {
         this.facilityRepository = facilityRepository;
         this.auditRepository = auditRepository;
         this.featureFlagRepository = featureFlagRepository;
+        this.systemConfigService = systemConfigService;
+    }
+
+    // ========== CONFIG-BASED DEFAULTS ==========
+
+    /**
+     * Get default subscription duration in months from system config.
+     */
+    public int getDefaultDurationMonths() {
+        return systemConfigService.getInt("subscription.default_duration_months", 12);
+    }
+
+    /**
+     * Check if trial is enabled from system config.
+     */
+    public boolean isTrialEnabled() {
+        return systemConfigService.getBoolean("subscription.trial_enabled", true);
+    }
+
+    /**
+     * Get trial duration in days from system config.
+     */
+    public int getTrialDurationDays() {
+        return systemConfigService.getInt("subscription.trial_duration_days", 14);
+    }
+
+    /**
+     * Get maximum temporary access days from system config.
+     */
+    public int getMaxTempAccessDays() {
+        return systemConfigService.getInt("subscription.temp_access_max_days", 30);
+    }
+
+    /**
+     * Get invoice due days from system config.
+     */
+    public int getInvoiceDueDays() {
+        return systemConfigService.getInt("subscription.invoice_due_days", 15);
+    }
+
+    /**
+     * Check if auto-expire unpaid is enabled.
+     */
+    public boolean isAutoExpireUnpaidEnabled() {
+        return systemConfigService.getBoolean("subscription.auto_expire_unpaid", true);
     }
 
     // ========== QUERIES (Read-only) ==========

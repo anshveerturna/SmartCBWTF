@@ -42,6 +42,25 @@ public class AppUser {
     @Column(name = "force_password_change")
     private boolean forcePasswordChange = false;
 
+    // Login security tracking
+    @Column(name = "failed_login_attempts")
+    private int failedLoginAttempts = 0;
+
+    @Column(name = "last_failed_login_at")
+    private Instant lastFailedLoginAt;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
+    @Column(name = "must_change_password")
+    private boolean mustChangePassword = false;
+
+    @Column(name = "password_changed_at")
+    private Instant passwordChangedAt;
+
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
+
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
 
@@ -181,6 +200,84 @@ public class AppUser {
 
     public void setName(String name) {
         this.fullName = name;
+    }
+
+    // Login security getters/setters
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public void setFailedLoginAttempts(int failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
+    }
+
+    public Instant getLastFailedLoginAt() {
+        return lastFailedLoginAt;
+    }
+
+    public void setLastFailedLoginAt(Instant lastFailedLoginAt) {
+        this.lastFailedLoginAt = lastFailedLoginAt;
+    }
+
+    public Instant getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public void setLockedUntil(Instant lockedUntil) {
+        this.lockedUntil = lockedUntil;
+    }
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
+    }
+
+    public Instant getPasswordChangedAt() {
+        return passwordChangedAt;
+    }
+
+    public void setPasswordChangedAt(Instant passwordChangedAt) {
+        this.passwordChangedAt = passwordChangedAt;
+    }
+
+    public Instant getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(Instant lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
+    }
+
+    // Helper methods for login security
+    public boolean isLocked() {
+        return lockedUntil != null && lockedUntil.isAfter(Instant.now());
+    }
+
+    public void incrementFailedAttempts() {
+        this.failedLoginAttempts++;
+        this.lastFailedLoginAt = Instant.now();
+    }
+
+    public void resetFailedAttempts() {
+        this.failedLoginAttempts = 0;
+        this.lastFailedLoginAt = null;
+    }
+
+    public void lockAccount(int lockoutMinutes) {
+        this.lockedUntil = Instant.now().plusSeconds(lockoutMinutes * 60L);
+    }
+
+    public void unlockAccount() {
+        this.lockedUntil = null;
+        this.failedLoginAttempts = 0;
+    }
+
+    public void recordSuccessfulLogin() {
+        this.lastLoginAt = Instant.now();
+        resetFailedAttempts();
     }
 
     @PreUpdate

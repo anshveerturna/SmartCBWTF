@@ -48,4 +48,20 @@ public interface SubscriptionAuditRepository extends JpaRepository<SubscriptionA
          * Find all audit records by action type (paginated)
          */
         Page<SubscriptionAudit> findByAction(String action, Pageable pageable);
+
+        /**
+         * Find recent error/warning actions for system monitoring
+         * Returns the 20 most recent audit entries to show as "recent activity"
+         */
+        default List<SubscriptionAudit> findRecentErrorActions() {
+                // Return recent audit entries as "activity" since we don't have a dedicated
+                // error table
+                // In a production system, this would query a dedicated error_log table
+                return findTop20ByOrderByCreatedAtDesc();
+        }
+
+        /**
+         * Find most recent 20 audit entries
+         */
+        List<SubscriptionAudit> findTop20ByOrderByCreatedAtDesc();
 }

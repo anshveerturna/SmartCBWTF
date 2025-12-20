@@ -48,6 +48,21 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // Handle 503 Service Unavailable - maintenance mode or system disabled
+    if (error.response?.status === 503) {
+      const responseData = error.response?.data as unknown as Record<string, unknown>;
+      if (responseData?.maintenance || responseData?.loginDisabled || responseData?.readonly) {
+        // Store maintenance message for display
+        sessionStorage.setItem('maintenance_message', responseData.message as string || 'System unavailable');
+        sessionStorage.setItem('maintenance_mode', 'true');
+        
+        // Redirect to login if not already there
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login?maintenance=true';
+        }
+      }
+    }
+
     // Extract error message
     const message = error.response?.data?.message 
       || error.message 

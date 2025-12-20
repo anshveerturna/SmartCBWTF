@@ -93,7 +93,7 @@ const getSuperAdminSections = (): NavSection[] => [
   {
     title: 'System',
     items: [
-      { path: '/superadmin/analytics', label: 'Platform Analytics', icon: <AnalyticsIcon />, roles: ['SUPER_ADMIN'] },
+      { path: '/superadmin/payment-gateway', label: 'Payment Gateway', icon: <AnalyticsIcon />, roles: ['SUPER_ADMIN'] },
       { path: '/superadmin/settings', label: 'Configuration', icon: <SettingsIcon />, roles: ['SUPER_ADMIN'] },
     ],
   },

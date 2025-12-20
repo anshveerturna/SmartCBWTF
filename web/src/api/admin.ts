@@ -64,7 +64,76 @@ export interface PlatformStatsDTO {
   totalHcfs: number;
   totalUsers: number;
   totalBagsProcessed: number;
+  totalRevenue: number;
+  pendingErrors: number;
+  recentErrors: SystemErrorDTO[];
   lastUpdated: string;
+}
+
+export interface SystemErrorDTO {
+  id: string;
+  timestamp: string;
+  severity: 'CRITICAL' | 'ERROR' | 'WARNING' | 'INFO';
+  component: string;
+  message: string;
+  cbwtfCode: string;
+  resolved: boolean;
+}
+
+// Detailed error for management page
+export interface SystemErrorDetailDTO {
+  id: string;
+  errorCode: string | null;
+  severity: 'CRITICAL' | 'ERROR' | 'WARNING' | 'INFO';
+  source: 'USER_REPORTED' | 'AUTO_DETECTED' | 'API_ERROR' | 'MOBILE_APP';
+  component: string | null;
+  cbwtfCode: string | null;
+  hcfCode: string | null;
+  reportedBy: string | null;
+  title: string;
+  description: string | null;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'IGNORED';
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  resolutionNotes: string | null;
+  createdAt: string;
+}
+
+export interface ErrorStatsDTO {
+  open: number;
+  inProgress: number;
+  critical: number;
+  errors: number;
+  warnings: number;
+}
+
+// System Configuration Types
+export interface SystemConfigDTO {
+  id: string;
+  key: string;
+  value: string;
+  valueType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'JSON';
+  category: string;
+  displayName: string;
+  description: string | null;
+  isSensitive: boolean;
+  requiresConfirmation: boolean;
+  isReadonly: boolean;
+  validationRules: { min?: number; max?: number } | null;
+  version: number;
+  updatedBy: string | null;
+  updatedAt: string | null;
+}
+
+export interface ConfigAuditDTO {
+  id: string;
+  key: string;
+  oldValue: string | null;
+  newValue: string;
+  changedBy: string | null;
+  changedAt: string;
+  reason: string | null;
+  ipAddress: string | null;
 }
 
 export interface PagedResponse<T> {
@@ -399,6 +468,88 @@ export const adminApi = {
     size?: number;
   }): Promise<PagedResponse<Record<string, unknown>>> => {
     const response = await apiClient.get('/api/admin/master-data/audit-logs', { params });
+    return response.data;
+  },
+
+  // ==================== System Errors ====================
+
+  // List all system errors
+  listSystemErrors: async (params?: {
+    status?: string;
+    severity?: string;
+    search?: string;
+    page?: number;
+    size?: number;
+  }): Promise<PagedResponse<SystemErrorDetailDTO>> => {
+    const response = await apiClient.get('/api/admin/errors', { params });
+    return response.data;
+  },
+
+  // Get error stats for dashboard
+  getErrorStats: async (): Promise<ErrorStatsDTO> => {
+    const response = await apiClient.get('/api/admin/errors/stats');
+    return response.data;
+  },
+
+  // Resolve an error
+  resolveError: async (id: string, notes?: string): Promise<SystemErrorDetailDTO> => {
+    const response = await apiClient.put(`/api/admin/errors/${id}/resolve`, { notes });
+    return response.data;
+  },
+
+  // Update error status
+  updateErrorStatus: async (id: string, status: string): Promise<SystemErrorDetailDTO> => {
+    const response = await apiClient.put(`/api/admin/errors/${id}/status`, { status });
+    return response.data;
+  },
+
+  // Report an error (any user)
+  reportError: async (data: { title: string; description?: string; component?: string; severity?: string }): Promise<{ id: string; message: string }> => {
+    const response = await apiClient.post('/api/errors/report', data);
+    return response.data;
+  },
+
+  // ==================== System Configuration ====================
+
+  // Get all configs grouped by category
+  getAllSystemConfigs: async (): Promise<Record<string, SystemConfigDTO[]>> => {
+    const response = await apiClient.get('/api/admin/system-config');
+    return response.data;
+  },
+
+  // Get configs for a specific category
+  getSystemConfigsByCategory: async (category: string): Promise<SystemConfigDTO[]> => {
+    const response = await apiClient.get(`/api/admin/system-config/category/${category}`);
+    return response.data;
+  },
+
+  // Update a single config
+  updateSystemConfig: async (key: string, value: string, reason?: string): Promise<SystemConfigDTO> => {
+    const response = await apiClient.put(`/api/admin/system-config/key/${key}`, { value, reason });
+    return response.data;
+  },
+
+  // Bulk update configs for a category
+  bulkUpdateSystemConfig: async (category: string, updates: Record<string, string>, reason?: string): Promise<{ updatedCount: number; message: string }> => {
+    const response = await apiClient.put(`/api/admin/system-config/category/${category}`, { updates, reason });
+    return response.data;
+  },
+
+  // Get audit history for a config key
+  getConfigAuditHistory: async (key: string): Promise<ConfigAuditDTO[]> => {
+    const response = await apiClient.get(`/api/admin/system-config/key/${key}/audit`);
+    return response.data;
+  },
+
+  // Get recent config changes
+  getRecentConfigChanges: async (): Promise<ConfigAuditDTO[]> => {
+    const response = await apiClient.get('/api/admin/system-config/audit/recent');
+    return response.data;
+  },
+
+  // Refresh config cache
+  refreshConfigCache: async (): Promise<{ message: string }> => {
+    const response = await apiClient.post('/api/admin/system-config/refresh-cache');
     return response.data;
   },
 };

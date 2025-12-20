@@ -25,6 +25,8 @@ const MasterVehicles = lazy(() => import('./pages/superadmin/master/MasterVehicl
 const MasterInvoices = lazy(() => import('./pages/superadmin/master/MasterInvoices'));
 const MasterPayments = lazy(() => import('./pages/superadmin/master/MasterPayments'));
 const MasterAuditLogs = lazy(() => import('./pages/superadmin/master/MasterAuditLogs'));
+const PaymentGateway = lazy(() => import('./pages/superadmin/PaymentGateway'));
+const SystemConfig = lazy(() => import('./pages/superadmin/SystemConfig'));
 const CbwtfDashboard = lazy(() => import('./pages/cbwtf/Dashboard'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 // CBWTF Finance pages
@@ -102,9 +104,9 @@ const App: React.FC = () => {
                   <Route path="master/invoices" element={<MasterInvoices />} />
                   <Route path="master/payments" element={<MasterPayments />} />
                   <Route path="master/audit-logs" element={<MasterAuditLogs />} />
-                  {/* Analytics & Settings */}
-                  <Route path="analytics" element={<div>Platform Analytics (Coming Soon)</div>} />
-                  <Route path="settings" element={<div>System Settings (Coming Soon)</div>} />
+                  {/* Payment Gateway & Settings */}
+                  <Route path="payment-gateway" element={<PaymentGateway />} />
+                  <Route path="settings" element={<SystemConfig />} />
                 </Route>
 
                 {/* CBWTF Admin Routes */}

@@ -2,6 +2,7 @@ package com.smartcbwtf.mobile.repository
 
 import com.smartcbwtf.mobile.network.api.AuthApi
 import com.smartcbwtf.mobile.network.model.AuthRequest
+import com.smartcbwtf.mobile.network.model.AuthResponse
 import com.smartcbwtf.mobile.storage.AuthTokenStore
 import com.smartcbwtf.mobile.utils.NetworkMonitor
 import kotlinx.coroutines.CoroutineDispatcher
@@ -19,17 +20,24 @@ class DefaultAuthRepository @Inject constructor(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : AuthRepository {
 
-    override suspend fun login(username: String, password: String): Boolean = withContext(ioDispatcher) {
+    override suspend fun login(username: String, password: String): AuthResponse = withContext(ioDispatcher) {
         if (!networkMonitor.isOnline()) {
             throw Exception("No internet connection")
         }
         val response = api.login(AuthRequest(username, password))
         tokenStore.setToken(response.accessToken)
-        true
+        
+        // Store mustChangePassword flag for security enforcement
+        if (response.mustChangePassword) {
+            tokenStore.setMustChangePassword(true)
+        }
+        
+        response
     }
 
     override suspend fun logout() = withContext(ioDispatcher) {
         tokenStore.setToken(null)
+        tokenStore.setMustChangePassword(false)
     }
 
     override suspend fun currentToken(): String? = withContext(ioDispatcher) {
@@ -37,4 +45,6 @@ class DefaultAuthRepository @Inject constructor(
     }
 
     override fun getAuthStateFlow(): Flow<String?> = tokenStore.getTokenFlow()
+    
+    override fun mustChangePassword(): Boolean = tokenStore.getMustChangePassword()
 }

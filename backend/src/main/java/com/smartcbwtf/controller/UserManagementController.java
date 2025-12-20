@@ -18,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import com.smartcbwtf.service.PasswordPolicyValidator;
 
 /**
  * Global User Management API for SuperAdmin.
@@ -38,18 +40,21 @@ public class UserManagementController {
     private final HcfRepository hcfRepository;
     private final SubscriptionAuditRepository auditRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicyValidator passwordPolicyValidator;
 
     public UserManagementController(
             AppUserRepository userRepository,
             FacilityRepository facilityRepository,
             HcfRepository hcfRepository,
             SubscriptionAuditRepository auditRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            PasswordPolicyValidator passwordPolicyValidator) {
         this.userRepository = userRepository;
         this.facilityRepository = facilityRepository;
         this.hcfRepository = hcfRepository;
         this.auditRepository = auditRepository;
         this.passwordEncoder = passwordEncoder;
+        this.passwordPolicyValidator = passwordPolicyValidator;
     }
 
     // ========== LIST ALL USERS ==========
@@ -330,6 +335,55 @@ public class UserManagementController {
 
                     log.warn("All access revoked for user {} by SuperAdmin", user.getUsername());
                     return ResponseEntity.noContent().<Void>build();
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ========== CHANGE PASSWORD (with policy validation) ==========
+
+    @PostMapping("/{id}/change-password")
+    @Transactional
+    public ResponseEntity<?> changePassword(
+            @PathVariable("id") UUID id,
+            @RequestBody Map<String, String> body) {
+
+        String newPassword = body.get("newPassword");
+        if (newPassword == null || newPassword.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "MISSING_PASSWORD",
+                    "message", "New password is required"));
+        }
+
+        // Validate password against policy
+        PasswordPolicyValidator.ValidationResult validation = passwordPolicyValidator.validate(newPassword);
+        if (!validation.isValid()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "PASSWORD_POLICY_VIOLATION",
+                    "message", "Password does not meet security requirements",
+                    "violations", validation.getViolations(),
+                    "policy", passwordPolicyValidator.getPolicyDescription()));
+        }
+
+        return userRepository.findById(id)
+                .map(user -> {
+                    user.setPasswordHash(passwordEncoder.encode(newPassword));
+                    user.setForcePasswordChange(false);
+                    user.setMustChangePassword(false);
+                    user.setPasswordChangedAt(Instant.now());
+                    user = userRepository.save(user);
+
+                    auditRepository.save(SubscriptionAudit.forFacility(
+                            user.getFacility() != null ? user.getFacility().getId() : null,
+                            SubscriptionAudit.Action.PASSWORD_CHANGED,
+                            null,
+                            null,
+                            getCurrentUserId(),
+                            getCurrentUsername(),
+                            "SUPER_ADMIN",
+                            "Password changed by SuperAdmin"));
+
+                    log.info("Password changed for user {} by SuperAdmin", user.getUsername());
+                    return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }

@@ -24,6 +24,7 @@ com/smartcbwtf/repository/AttendanceRepository.class
 com/smartcbwtf/service/HcfService.class
 com/smartcbwtf/domain/AuditLog.class
 com/smartcbwtf/service/AnalyticsService.class
+com/smartcbwtf/service/PasswordPolicyValidator.class
 com/smartcbwtf/dto/TermsResponse.class
 com/smartcbwtf/domain/Attendance.class
 com/smartcbwtf/domain/BagEvent.class
@@ -31,6 +32,8 @@ com/smartcbwtf/service/BagEventService$MismatchResult.class
 com/smartcbwtf/domain/FacilityTerms.class
 com/smartcbwtf/domain/AppUser.class
 com/smartcbwtf/dto/BagEventSyncResponse$Ack.class
+com/smartcbwtf/domain/SystemError.class
+com/smartcbwtf/domain/SystemError$Status.class
 com/smartcbwtf/dto/InvoiceResponse.class
 com/smartcbwtf/service/AgreementNumberGeneratorService.class
 com/smartcbwtf/dto/AuthLoginRequest.class
@@ -55,11 +58,13 @@ com/smartcbwtf/controller/InvoiceController.class
 com/smartcbwtf/dto/BagEventSyncItem.class
 com/smartcbwtf/config/GlobalExceptionHandler$ApiError.class
 com/smartcbwtf/repository/AppUserRepository.class
+com/smartcbwtf/service/SystemConfigService$1.class
 com/smartcbwtf/service/AlertsService.class
 com/smartcbwtf/controller/HcfController.class
 com/smartcbwtf/service/InvoiceService.class
 com/smartcbwtf/config/RequestLoggingFilter.class
 com/smartcbwtf/dto/HcfApprovalRequest.class
+com/smartcbwtf/service/PasswordPolicyValidator$ValidationResult.class
 com/smartcbwtf/dto/AlertMismatchedBagDto.class
 com/smartcbwtf/controller/LabelController.class
 com/smartcbwtf/repository/FacilityTermsRepository.class
@@ -74,6 +79,7 @@ com/smartcbwtf/config/JwtService.class
 com/smartcbwtf/controller/HealthController.class
 com/smartcbwtf/domain/Agreement.class
 com/smartcbwtf/domain/Invoice.class
+com/smartcbwtf/domain/SystemError$Severity.class
 com/smartcbwtf/dto/HcfRegistrationResponse$TemplateInfo.class
 com/smartcbwtf/dto/AttendanceSyncRequest.class
 com/smartcbwtf/dto/HcfRegistrationResponse.class
@@ -83,6 +89,7 @@ com/smartcbwtf/domain/Hcf.class
 com/smartcbwtf/dto/BagEventSyncResponse.class
 com/smartcbwtf/controller/TemplateController.class
 com/smartcbwtf/dto/LabelIssueResponse.class
+com/smartcbwtf/domain/SystemError$Source.class
 com/smartcbwtf/controller/UserController.class
 com/smartcbwtf/dto/AttendanceSyncResponse.class
 com/smartcbwtf/domain/BagLabel.class

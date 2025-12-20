@@ -30,8 +30,12 @@ public class SubscriptionAudit {
         USER_DISABLED, // User disabled
         USER_ENABLED, // User enabled
         PASSWORD_RESET_FORCED, // Password reset required
+        PASSWORD_CHANGED, // Password change completed
         ACCESS_REVOKED, // All access revoked immediately
-        STATUS_CHANGED // General status change
+        STATUS_CHANGED, // General status change
+        ACCOUNT_LOCKED, // Account locked due to failed login attempts
+        ACCOUNT_UNLOCKED, // Account unlocked by admin
+        FEATURE_DEFAULTS_APPLIED // Default feature flags applied on creation
     }
 
     @Id

@@ -5,6 +5,7 @@ import com.smartcbwtf.domain.*;
 import com.smartcbwtf.dto.admin.*;
 import com.smartcbwtf.repository.*;
 import com.smartcbwtf.service.SubscriptionService;
+import com.smartcbwtf.service.SystemConfigService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +39,10 @@ public class AdminController {
     private final HcfRepository hcfRepository;
     private final SubscriptionService subscriptionService;
     private final SubscriptionAuditRepository auditRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final SystemErrorRepository systemErrorRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SystemConfigService systemConfigService;
 
     public AdminController(
             FacilityRepository facilityRepository,
@@ -46,13 +50,19 @@ public class AdminController {
             HcfRepository hcfRepository,
             SubscriptionService subscriptionService,
             SubscriptionAuditRepository auditRepository,
-            PasswordEncoder passwordEncoder) {
+            InvoiceRepository invoiceRepository,
+            SystemErrorRepository systemErrorRepository,
+            PasswordEncoder passwordEncoder,
+            SystemConfigService systemConfigService) {
         this.facilityRepository = facilityRepository;
         this.userRepository = userRepository;
         this.hcfRepository = hcfRepository;
         this.subscriptionService = subscriptionService;
         this.auditRepository = auditRepository;
+        this.invoiceRepository = invoiceRepository;
+        this.systemErrorRepository = systemErrorRepository;
         this.passwordEncoder = passwordEncoder;
+        this.systemConfigService = systemConfigService;
     }
 
     // ========== CBWTF LISTING ==========
@@ -428,24 +438,50 @@ public class AdminController {
 
     @GetMapping("/platform/stats")
     public ResponseEntity<PlatformStatsDTO> getPlatformStats() {
-        int totalTenants = (int) facilityRepository.count();
-        int activeTenants = (int) facilityRepository.countBySubscriptionStatus("ACTIVE");
-        int trialTenants = (int) facilityRepository.countBySubscriptionStatus("TRIAL");
-        int expiredTenants = (int) facilityRepository.countBySubscriptionStatus("EXPIRED");
-        int suspendedTenants = (int) facilityRepository.countBySubscriptionStatus("SUSPENDED");
+        int totalCBWTFs = (int) facilityRepository.count();
+        int activeCBWTFs = (int) facilityRepository.countBySubscriptionStatus("ACTIVE");
+        int trialCBWTFs = (int) facilityRepository.countBySubscriptionStatus("TRIAL");
+        int expiredCBWTFs = (int) facilityRepository.countBySubscriptionStatus("EXPIRED");
+        int suspendedCBWTFs = (int) facilityRepository.countBySubscriptionStatus("SUSPENDED");
         int totalHcfs = (int) hcfRepository.count();
         int totalUsers = (int) userRepository.count();
 
+        // Calculate total revenue from invoices
+        java.math.BigDecimal totalRevenue = invoiceRepository.sumPaidAmount()
+                .orElse(java.math.BigDecimal.ZERO);
+
+        // Get recent system errors (from audit log with ERROR action)
+        List<PlatformStatsDTO.SystemErrorDTO> recentErrors = getRecentSystemErrors();
+        int pendingErrors = (int) recentErrors.stream().filter(e -> !e.resolved()).count();
+
         return ResponseEntity.ok(new PlatformStatsDTO(
-                totalTenants,
-                activeTenants,
-                trialTenants,
-                expiredTenants,
-                suspendedTenants,
+                totalCBWTFs,
+                activeCBWTFs,
+                trialCBWTFs,
+                expiredCBWTFs,
+                suspendedCBWTFs,
                 totalHcfs,
                 totalUsers,
-                0, // TODO: Add bags processed count
+                0L, // TODO: Add bags processed count
+                totalRevenue,
+                pendingErrors,
+                recentErrors,
                 LocalDate.now()));
+    }
+
+    private List<PlatformStatsDTO.SystemErrorDTO> getRecentSystemErrors() {
+        // Get real system errors from the error table
+        return systemErrorRepository.findTop10OpenOrderedBySeverity()
+                .stream()
+                .map(error -> new PlatformStatsDTO.SystemErrorDTO(
+                        error.getId().toString(),
+                        error.getCreatedAt().toString(),
+                        error.getSeverity(),
+                        error.getComponent(),
+                        error.getTitle(),
+                        error.getFacility() != null ? error.getFacility().getCode() : "N/A",
+                        "RESOLVED".equals(error.getStatus())))
+                .toList();
     }
 
     // ========== HELPER METHODS ==========
@@ -481,27 +517,39 @@ public class AdminController {
     }
 
     private void enableAllDefaultFeatures(Facility facility) {
-        // All feature flags to enable by default
-        String[] defaultFeatures = {
-                TenantFeatureFlag.ADVANCED_ANALYTICS,
-                TenantFeatureFlag.ROUTE_OPTIMIZATION,
-                TenantFeatureFlag.CPCB_REPORTING,
-                TenantFeatureFlag.INVOICE_AUTO_SEND,
-                TenantFeatureFlag.PAYMENT_GATEWAY,
-                TenantFeatureFlag.ATTENDANCE_ENFORCEMENT,
-                TenantFeatureFlag.VEHICLE_TRACKING,
-                TenantFeatureFlag.AI_INSIGHTS,
-                TenantFeatureFlag.MULTI_VEHICLE,
-                TenantFeatureFlag.HCF_SELF_SERVICE
-        };
+        // Feature flags to check from system config
+        Map<String, String> featureConfigMap = Map.of(
+                TenantFeatureFlag.ADVANCED_ANALYTICS, "feature.default_advanced_analytics",
+                TenantFeatureFlag.ROUTE_OPTIMIZATION, "feature.default_route_optimization",
+                TenantFeatureFlag.CPCB_REPORTING, "feature.default_cpcb_reporting",
+                TenantFeatureFlag.INVOICE_AUTO_SEND, "feature.default_invoice_auto_send",
+                TenantFeatureFlag.PAYMENT_GATEWAY, "feature.default_payment_gateway",
+                TenantFeatureFlag.ATTENDANCE_ENFORCEMENT, "feature.default_attendance_enforcement",
+                TenantFeatureFlag.VEHICLE_TRACKING, "feature.default_vehicle_tracking",
+                TenantFeatureFlag.AI_INSIGHTS, "feature.default_ai_insights",
+                TenantFeatureFlag.MULTI_VEHICLE, "feature.default_multi_vehicle",
+                TenantFeatureFlag.HCF_SELF_SERVICE, "feature.default_hcf_self_service");
 
-        for (String featureKey : defaultFeatures) {
+        StringBuilder enabledFeatures = new StringBuilder();
+        for (Map.Entry<String, String> entry : featureConfigMap.entrySet()) {
+            String featureKey = entry.getKey();
+            String configKey = entry.getValue();
+            boolean enabled = systemConfigService.getBoolean(configKey, true); // Default true for backward compat
+
             subscriptionService.setFeatureEnabled(
                     facility.getId(),
                     featureKey,
-                    true,
+                    enabled,
                     getCurrentUserId(),
                     getCurrentUsername());
+
+            if (enabled) {
+                if (enabledFeatures.length() > 0)
+                    enabledFeatures.append(", ");
+                enabledFeatures.append(featureKey);
+            }
         }
+
+        log.info("Feature defaults applied for CBWTF {}: [{}]", facility.getCode(), enabledFeatures);
     }
 }

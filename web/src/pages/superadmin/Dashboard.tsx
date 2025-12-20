@@ -11,6 +11,12 @@ import {
   Button,
   Skeleton,
   Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Stack,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -19,6 +25,9 @@ import {
   Business,
   People,
   Add as AddIcon,
+  AttachMoney,
+  Warning as WarningIcon,
+  CheckCircle as ResolvedIcon,
 } from '@mui/icons-material';
 import { adminApi } from '../../api/admin';
 
@@ -85,7 +94,17 @@ const SuperAdminDashboard: React.FC = () => {
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['platform-stats'],
     queryFn: adminApi.getPlatformStats,
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
   return (
     <Box>
@@ -114,13 +133,13 @@ const SuperAdminDashboard: React.FC = () => {
         </Alert>
       )}
 
-      {/* Platform Metrics */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      {/* Platform Metrics - Row 1 */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
             title="Active CBWTFs"
             value={stats?.activeCBWTFs ?? 0}
-            subtitle="CBWTFs onboarded"
+            subtitle="Currently operating"
             icon={<Business />}
             color="#6366F1"
             loading={isLoading}
@@ -129,7 +148,7 @@ const SuperAdminDashboard: React.FC = () => {
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
             title="Total HCFs"
-            value={stats?.totalHcfs.toLocaleString() ?? '0'}
+            value={stats?.totalHcfs?.toLocaleString() ?? '0'}
             subtitle="Across all CBWTFs"
             icon={<LocalShipping />}
             color="#10B981"
@@ -139,7 +158,7 @@ const SuperAdminDashboard: React.FC = () => {
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
             title="Total Users"
-            value={stats?.totalUsers.toLocaleString() ?? '0'}
+            value={stats?.totalUsers?.toLocaleString() ?? '0'}
             subtitle="Platform-wide"
             icon={<People />}
             color="#F59E0B"
@@ -148,63 +167,147 @@ const SuperAdminDashboard: React.FC = () => {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
-            title="Total CBWTFs"
-            value={stats?.totalCBWTFs ?? 0}
-            subtitle="All statuses"
-            icon={<TrendingUp />}
-            color="#EF4444"
+            title="Total Revenue"
+            value={formatCurrency(stats?.totalRevenue ?? 0)}
+            subtitle="From paid invoices"
+            icon={<AttachMoney />}
+            color="#10B981"
             loading={isLoading}
           />
         </Grid>
       </Grid>
 
-      {/* Tenant Status */}
-      <Card>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 3 }}>
-            CBWTF Status Breakdown
-          </Typography>
-          <Grid container spacing={2}>
-            {[
-              { status: 'Active', count: stats?.activeCBWTFs ?? 0, color: 'success' as const },
-              { status: 'Trial', count: stats?.trialCBWTFs ?? 0, color: 'info' as const },
-              { status: 'Expired', count: stats?.expiredCBWTFs ?? 0, color: 'warning' as const },
-              { status: 'Suspended', count: stats?.suspendedCBWTFs ?? 0, color: 'error' as const },
-            ].map(({ status, count, color }) => (
-              <Grid key={status} size={{ xs: 6, md: 3 }}>
-                <Box
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    bgcolor: 'background.default',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    '&:hover': { bgcolor: 'action.hover' },
-                  }}
-                  onClick={() => navigate(`/superadmin/cbwtfs?status=${status.toUpperCase()}`)}
-                >
-                  {isLoading ? (
-                    <Skeleton width={40} height={32} sx={{ mx: 'auto' }} />
-                  ) : (
-                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                      {count}
-                  </Typography>
-                  )}
-                  <Chip
-                    label={status}
-                    size="small"
-                    color={color}
-                    sx={{ mt: 1 }}
-                  />
-                </Box>
+      {/* Row 2 - Status + Errors */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        {/* CBWTF Status Breakdown */}
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 3 }}>
+                CBWTF Status Breakdown
+              </Typography>
+              <Grid container spacing={2}>
+                {[
+                  { status: 'Active', count: stats?.activeCBWTFs ?? 0, color: 'success' as const },
+                  { status: 'Trial', count: stats?.trialCBWTFs ?? 0, color: 'info' as const },
+                  { status: 'Expired', count: stats?.expiredCBWTFs ?? 0, color: 'warning' as const },
+                  { status: 'Suspended', count: stats?.suspendedCBWTFs ?? 0, color: 'error' as const },
+                ].map(({ status, count, color }) => (
+                  <Grid key={status} size={{ xs: 6, md: 3 }}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        bgcolor: 'background.default',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        '&:hover': { bgcolor: 'action.hover' },
+                      }}
+                      onClick={() => navigate(`/superadmin/cbwtfs?status=${status.toUpperCase()}`)}
+                    >
+                      {isLoading ? (
+                        <Skeleton width={40} height={32} sx={{ mx: 'auto' }} />
+                      ) : (
+                        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                          {count}
+                      </Typography>
+                      )}
+                      <Chip
+                        label={status}
+                        size="small"
+                        color={color}
+                        sx={{ mt: 1 }}
+                      />
+                    </Box>
+                  </Grid>
+                ))}
               </Grid>
-            ))}
-          </Grid>
-        </CardContent>
-      </Card>
+              <Box sx={{ mt: 2, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Total: {stats?.totalCBWTFs ?? 0} CBWTFs
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* System Errors */}
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="h6">
+                    System Errors
+                  </Typography>
+                  <Button 
+                    size="small" 
+                    onClick={() => navigate('/superadmin/errors')}
+                  >
+                    View All
+                  </Button>
+                </Box>
+                {(stats?.pendingErrors ?? 0) > 0 && (
+                  <Chip
+                    icon={<WarningIcon />}
+                    label={`${stats?.pendingErrors} open`}
+                    color="error"
+                    size="small"
+                  />
+                )}
+              </Box>
+              {isLoading ? (
+                <Stack spacing={1}>
+                  {[1, 2, 3].map(i => <Skeleton key={i} height={40} />)}
+                </Stack>
+              ) : (stats?.recentErrors?.length ?? 0) > 0 ? (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Component</TableCell>
+                      <TableCell>Message</TableCell>
+                      <TableCell align="center">Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {stats?.recentErrors?.slice(0, 5).map((err) => (
+                      <TableRow key={err.id} hover>
+                        <TableCell>
+                          <Typography variant="body2" fontFamily="monospace" fontSize="0.75rem">
+                            {err.component}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
+                            {err.message}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          {err.resolved ? (
+                            <ResolvedIcon color="success" fontSize="small" />
+                          ) : (
+                            <WarningIcon color="warning" fontSize="small" />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <ResolvedIcon sx={{ fontSize: 48, color: 'success.main', mb: 1 }} />
+                  <Typography color="text.secondary">
+                    No pending issues
+                  </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Quick Actions */}
-      <Card sx={{ mt: 3 }}>
+      <Card>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Quick Actions
@@ -212,15 +315,31 @@ const SuperAdminDashboard: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Button
               variant="outlined"
+              startIcon={<Business />}
               onClick={() => navigate('/superadmin/cbwtfs')}
             >
               Manage CBWTFs
             </Button>
             <Button
               variant="outlined"
+              startIcon={<AddIcon />}
               onClick={() => navigate('/superadmin/cbwtfs/new')}
             >
               Onboard New CBWTF
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<People />}
+              onClick={() => navigate('/superadmin/users')}
+            >
+              Manage Users
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<TrendingUp />}
+              onClick={() => navigate('/superadmin/master/audit-logs')}
+            >
+              View Audit Logs
             </Button>
           </Box>
         </CardContent>
