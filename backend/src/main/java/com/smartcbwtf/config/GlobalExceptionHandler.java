@@ -31,7 +31,7 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "Access denied", request, null);
     }
 
-    @ExceptionHandler({NoSuchElementException.class, UsernameNotFoundException.class})
+    @ExceptionHandler({ NoSuchElementException.class, UsernameNotFoundException.class })
     public ResponseEntity<ApiError> handleNotFound(RuntimeException ex, HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
     }
@@ -44,7 +44,8 @@ public class GlobalExceptionHandler {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
-    public ResponseEntity<ApiError> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiError> handleAuthenticationException(
+            org.springframework.security.core.AuthenticationException ex, HttpServletRequest request) {
         return build(HttpStatus.UNAUTHORIZED, "Authentication failed", request, null);
     }
 
@@ -54,14 +55,14 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", request, null);
     }
 
-    private ResponseEntity<ApiError> build(HttpStatus status, String message, HttpServletRequest request, Map<String, Object> details) {
+    private ResponseEntity<ApiError> build(HttpStatus status, String message, HttpServletRequest request,
+            Map<String, Object> details) {
         ApiError apiError = new ApiError(
                 status.value(),
                 message,
                 OffsetDateTime.now(),
                 request.getRequestURI(),
-                details
-        );
+                details);
         return ResponseEntity.status(status).body(apiError);
     }
 
@@ -84,10 +85,24 @@ public class GlobalExceptionHandler {
             this.details = details;
         }
 
-        public int getCode() { return code; }
-        public String getMessage() { return message; }
-        public OffsetDateTime getTimestamp() { return timestamp; }
-        public String getPath() { return path; }
-        public Map<String, Object> getDetails() { return details; }
+        public int getCode() {
+            return code;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public OffsetDateTime getTimestamp() {
+            return timestamp;
+        }
+
+        public String getPath() {
+            return path;
+        }
+
+        public Map<String, Object> getDetails() {
+            return details;
+        }
     }
 }

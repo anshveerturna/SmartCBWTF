@@ -507,7 +507,7 @@ export const adminApi = {
 
   // Resolve an error
   resolveError: async (id: string, notes?: string): Promise<SystemErrorDetailDTO> => {
-    const response = await apiClient.put(`/api/admin/errors/${id}/resolve`, { notes });
+    const response = await apiClient.put(`/api/admin/errors/${id}/resolve`, { notes: notes || null });
     return response.data;
   },
 

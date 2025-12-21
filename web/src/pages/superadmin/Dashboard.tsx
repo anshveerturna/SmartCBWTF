@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -17,6 +17,8 @@ import {
   TableHead,
   TableRow,
   Stack,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -28,6 +30,7 @@ import {
   AttachMoney,
   Warning as WarningIcon,
   CheckCircle as ResolvedIcon,
+  Check as CheckIcon,
 } from '@mui/icons-material';
 import { adminApi } from '../../api/admin';
 
@@ -90,11 +93,20 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['platform-stats'],
     queryFn: adminApi.getPlatformStats,
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Mutation for resolving errors
+  const resolveMutation = useMutation({
+    mutationFn: (id: string) => adminApi.resolveError(id, 'Manually resolved from dashboard'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+    },
   });
 
   const formatCurrency = (amount: number) => {
@@ -267,6 +279,7 @@ const SuperAdminDashboard: React.FC = () => {
                       <TableCell>Component</TableCell>
                       <TableCell>Message</TableCell>
                       <TableCell align="center">Status</TableCell>
+                      <TableCell align="center">Action</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -287,6 +300,20 @@ const SuperAdminDashboard: React.FC = () => {
                             <ResolvedIcon color="success" fontSize="small" />
                           ) : (
                             <WarningIcon color="warning" fontSize="small" />
+                          )}
+                        </TableCell>
+                        <TableCell align="center">
+                          {!err.resolved && (
+                            <Tooltip title="Resolve this error">
+                              <IconButton
+                                size="small"
+                                color="success"
+                                onClick={() => resolveMutation.mutate(err.id)}
+                                disabled={resolveMutation.isPending}
+                              >
+                                <CheckIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                           )}
                         </TableCell>
                       </TableRow>

@@ -191,4 +191,61 @@ public class SystemErrorService {
         errorRepository.save(error);
         log.info("Auto-detected error created: {}", title);
     }
+
+    // ========== Auto-Resolution (Scheduled Job) ==========
+
+    /**
+     * Runs every 5 minutes to check if auto-detected errors are still valid.
+     * If the underlying condition is fixed, the error is auto-resolved.
+     */
+    @Scheduled(fixedRate = 5 * 60 * 1000, initialDelay = 120000) // 5 min, 2 min delay
+    @Transactional
+    public void autoResolveErrors() {
+        log.info("Running auto-resolution check for system errors...");
+
+        List<SystemError> openAutoErrors = errorRepository.findOpenAutoDetectedErrors();
+        int resolved = 0;
+
+        for (SystemError error : openAutoErrors) {
+            if (shouldAutoResolve(error)) {
+                error.setStatusEnum(SystemError.Status.RESOLVED);
+                error.setResolvedAt(Instant.now());
+                error.setResolutionNotes("Auto-resolved: condition no longer detected");
+                errorRepository.save(error);
+                log.info("Auto-resolved error: {} [{}]", error.getTitle(), error.getId());
+                resolved++;
+            }
+        }
+
+        log.info("Auto-resolution completed: {} errors resolved", resolved);
+    }
+
+    /**
+     * Determine if an auto-detected error should be auto-resolved.
+     */
+    private boolean shouldAutoResolve(SystemError error) {
+        String title = error.getTitle();
+
+        // Check expired subscriptions
+        if ("Expired subscription detected".equals(title)) {
+            long expiredCount = facilityRepository.countBySubscriptionStatus("EXPIRED");
+            return expiredCount == 0;
+        }
+
+        // Check suspended CBWTFs
+        if ("Suspended CBWTF detected".equals(title)) {
+            long suspendedCount = facilityRepository.countBySubscriptionStatus("SUSPENDED");
+            return suspendedCount == 0;
+        }
+
+        // Check inactive HCFs
+        if ("HCFs with no recent activity".equals(title)) {
+            // This would need actual activity tracking to resolve
+            // For now, we don't auto-resolve this type
+            return false;
+        }
+
+        // Default: don't auto-resolve unknown error types
+        return false;
+    }
 }

@@ -140,13 +140,18 @@ public class SystemErrorController {
     @PutMapping("/admin/errors/{id}/resolve")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<SystemErrorDTO> resolveError(
-            @PathVariable UUID id,
-            @RequestBody ResolveErrorRequest request) {
+            @PathVariable("id") UUID id,
+            @RequestBody(required = false) ResolveErrorRequest request) {
         TenantContext.TenantInfo info = TenantContext.get();
         UUID resolvedById = info != null ? info.userId() : null;
+        String notes = request != null ? request.notes() : null;
 
-        SystemError error = errorService.resolveError(id, resolvedById, request.notes());
-        return ResponseEntity.ok(toDTO(error));
+        try {
+            SystemError error = errorService.resolveError(id, resolvedById, notes);
+            return ResponseEntity.ok(toDTO(error));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     /**

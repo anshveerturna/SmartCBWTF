@@ -71,6 +71,10 @@ public interface SystemErrorRepository extends JpaRepository<SystemError, UUID> 
         return existsByTitleAndSourceAndStatusIn(title, "AUTO_DETECTED", List.of("OPEN", "IN_PROGRESS"));
     }
 
+    // Find all open auto-detected errors (for auto-resolution check)
+    @Query("SELECT e FROM SystemError e WHERE e.source = 'AUTO_DETECTED' AND e.status = 'OPEN'")
+    List<SystemError> findOpenAutoDetectedErrors();
+
     // Search errors
     @Query("SELECT e FROM SystemError e WHERE " +
             "(LOWER(e.title) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
