@@ -30,6 +30,7 @@ import {
   Block as BlockIcon,
   PlayArrow as PlayArrowIcon,
   AccessTime as AccessTimeIcon,
+  Key as KeyIcon,
 } from '@mui/icons-material';
 import { adminApi, FEATURE_FLAGS } from '../../api/admin';
 
@@ -53,6 +54,13 @@ export default function CBWTFDetail() {
   const [tempAccessDialogOpen, setTempAccessDialogOpen] = useState(false);
   const [tempAccessDays, setTempAccessDays] = useState(7);
   
+  // Admin credentials state
+  const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
+  const [credentialsForm, setCredentialsForm] = useState({ username: '', password: '' });
+  const [credentialsSaving, setCredentialsSaving] = useState(false);
+  const [credentialsSuccess, setCredentialsSuccess] = useState<string | null>(null);
+  const [credentialsError, setCredentialsError] = useState<string | null>(null);
+  
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -71,6 +79,46 @@ export default function CBWTFDetail() {
     queryFn: () => adminApi.getAuditHistory(id!, { page: 0, size: 10 }),
     enabled: !!id,
   });
+
+  // Fetch CBWTF admin info
+  const { data: adminInfo, refetch: refetchAdmin } = useQuery({
+    queryKey: ['cbwtf-admin', id],
+    queryFn: () => adminApi.getCBWTFAdmin(id!),
+    enabled: !!id,
+  });
+
+  // Password validation rules
+  const validatePassword = (password: string) => {
+    const rules = [
+      { test: (p: string) => p.length >= 8, message: 'At least 8 characters' },
+      { test: (p: string) => p.length <= 12, message: 'At most 12 characters' },
+      { test: (p: string) => /[A-Z]/.test(p), message: 'One uppercase letter' },
+      { test: (p: string) => /[a-z]/.test(p), message: 'One lowercase letter' },
+      { test: (p: string) => /[0-9]/.test(p), message: 'One number' },
+      { test: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p), message: 'One special character' },
+    ];
+    return rules.map(rule => ({ ...rule, valid: rule.test(password) }));
+  };
+
+  const isPasswordValid = (password: string) => validatePassword(password).every(r => r.valid);
+
+  const handleSaveCredentials = async () => {
+    if (!credentialsForm.username || !isPasswordValid(credentialsForm.password)) return;
+    try {
+      setCredentialsSaving(true);
+      setCredentialsError(null);
+      await adminApi.changeCBWTFCredentials(id!, credentialsForm.username, credentialsForm.password);
+      // Wait for the refetch to complete BEFORE closing dialog
+      await refetchAdmin();
+      setCredentialsSuccess('Credentials updated successfully!');
+      setCredentialsDialogOpen(false);
+      setCredentialsForm({ username: '', password: '' });
+    } catch {
+      setCredentialsError('Failed to update credentials');
+    } finally {
+      setCredentialsSaving(false);
+    }
+  };
 
   const suspendMutation = useMutation({
     mutationFn: ({ reason }: { reason: string }) => adminApi.suspendCBWTF(id!, reason),
@@ -448,6 +496,78 @@ export default function CBWTFDetail() {
             </CardContent>
           </Card>
 
+          {/* Admin Credentials */}
+          <Card sx={{ borderRadius: 2, mb: 3 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">
+                  <KeyIcon sx={{ mr: 1, verticalAlign: 'middle', fontSize: 20 }} />
+                  Admin Credentials
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    setCredentialsForm({ 
+                      username: adminInfo?.username || '', 
+                      password: '' 
+                    });
+                    setCredentialsDialogOpen(true);
+                  }}
+                >
+                  Update Credentials
+                </Button>
+              </Box>
+              {adminInfo?.hasAdmin ? (
+                <Stack spacing={1}>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Username
+                    </Typography>
+                    <Typography fontFamily="monospace" fontWeight={600}>
+                      {adminInfo.username}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Password
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                      ••••••• (hashed, cannot be displayed)
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Status
+                    </Typography>
+                    <Chip 
+                      label={adminInfo.active ? 'Active' : 'Disabled'} 
+                      color={adminInfo.active ? 'success' : 'error'} 
+                      size="small" 
+                    />
+                  </Box>
+                  {adminInfo.lastLoginAt && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Last Login
+                      </Typography>
+                      <Typography variant="body2">
+                        {new Date(adminInfo.lastLoginAt).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  )}
+                </Stack>
+              ) : (
+                <Alert severity="warning">No admin user found for this CBWTF</Alert>
+              )}
+              {credentialsSuccess && (
+                <Alert severity="success" sx={{ mt: 2 }} onClose={() => setCredentialsSuccess(null)}>
+                  {credentialsSuccess}
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Audit History */}
           <Card sx={{ borderRadius: 2 }}>
             <CardContent>
@@ -530,6 +650,68 @@ export default function CBWTFDetail() {
             disabled={tempAccessMutation.isPending}
           >
             Grant Access
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Credentials Dialog */}
+      <Dialog open={credentialsDialogOpen} onClose={() => setCredentialsDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Update Admin Credentials</DialogTitle>
+        <DialogContent>
+
+          <TextField
+            fullWidth
+            label="Username"
+            value={credentialsForm.username}
+            onChange={(e) => setCredentialsForm({ ...credentialsForm, username: e.target.value })}
+            sx={{ mt: 1, mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            type="password"
+            label="New Password"
+            value={credentialsForm.password}
+            onChange={(e) => setCredentialsForm({ ...credentialsForm, password: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          
+          {/* Password Requirements Checklist */}
+          <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Password Requirements:</Typography>
+            {validatePassword(credentialsForm.password).map((rule, idx) => (
+              <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: rule.valid ? 'success.main' : 'error.main',
+                  }}
+                />
+                <Typography
+                  variant="caption"
+                  sx={{ color: rule.valid ? 'success.main' : 'text.secondary' }}
+                >
+                  {rule.message}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+          
+          {credentialsError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {credentialsError}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCredentialsDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleSaveCredentials}
+            disabled={credentialsSaving || !credentialsForm.username || !isPasswordValid(credentialsForm.password)}
+          >
+            Save Credentials
           </Button>
         </DialogActions>
       </Dialog>

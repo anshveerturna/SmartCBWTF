@@ -59,7 +59,8 @@ const SuperAdminUsers: React.FC = () => {
 
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [passwordUser, setPasswordUser] = useState<SuperAdminUser | null>(null);
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -131,16 +132,35 @@ const SuperAdminUsers: React.FC = () => {
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!passwordUser) return;
+  // Password validation rules
+  const validatePassword = (password: string) => {
+    const rules = [
+      { test: (p: string) => p.length >= 8, message: 'At least 8 characters' },
+      { test: (p: string) => p.length <= 12, message: 'At most 12 characters' },
+      { test: (p: string) => /[A-Z]/.test(p), message: 'One uppercase letter' },
+      { test: (p: string) => /[a-z]/.test(p), message: 'One lowercase letter' },
+      { test: (p: string) => /[0-9]/.test(p), message: 'One number' },
+      { test: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p), message: 'One special character' },
+    ];
+    return rules.map(rule => ({ ...rule, valid: rule.test(password) }));
+  };
+
+  const isPasswordValid = (password: string) => validatePassword(password).every(r => r.valid);
+
+  const handleSetPassword = async () => {
+    if (!passwordUser || !isPasswordValid(newPassword)) return;
     try {
-      const result = await resetSuperAdminPassword(passwordUser.id);
-      setTempPassword(result.temporaryPassword);
-      setSuccess('Password reset successfully');
+      setPasswordSaving(true);
+      await resetSuperAdminPassword(passwordUser.id, newPassword);
+      setSuccess('Password updated successfully');
+      setPasswordDialogOpen(false);
+      setNewPassword('');
       loadUsers();
     } catch (err: unknown) {
       const errObj = err as { response?: { data?: { message?: string } } };
-      setError(errObj.response?.data?.message || 'Failed to reset password');
+      setError(errObj.response?.data?.message || 'Failed to set password');
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -152,7 +172,7 @@ const SuperAdminUsers: React.FC = () => {
 
   const openPasswordDialog = (user: SuperAdminUser) => {
     setPasswordUser(user);
-    setTempPassword(null);
+    setNewPassword('');
     setPasswordDialogOpen(true);
   };
 
@@ -330,28 +350,54 @@ const SuperAdminUsers: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Password Reset Dialog */}
-      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)}>
-        <DialogTitle>Reset Password for {passwordUser?.username}</DialogTitle>
+      {/* Set Password Dialog */}
+      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Set Password for {passwordUser?.username}</DialogTitle>
         <DialogContent>
-          {tempPassword ? (
-            <Alert severity="success" sx={{ mt: 2 }}>
-              Temporary password: <strong>{tempPassword}</strong>
-              <br />User must change this on next login.
-            </Alert>
-          ) : (
-            <Typography sx={{ mt: 2 }}>
-              This will generate a temporary password. The user will be required to change it on their next login.
-            </Typography>
-          )}
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Enter a new password for this user. They will be required to change it on next login.
+          </Typography>
+          <TextField
+            fullWidth
+            type="password"
+            label="New Password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          
+          {/* Password Requirements Checklist */}
+          <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Password Requirements:</Typography>
+            {validatePassword(newPassword).map((rule, idx) => (
+              <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: rule.valid ? 'success.main' : 'error.main',
+                  }}
+                />
+                <Typography
+                  variant="caption"
+                  sx={{ color: rule.valid ? 'success.main' : 'text.secondary' }}
+                >
+                  {rule.message}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPasswordDialogOpen(false)}>Close</Button>
-          {!tempPassword && (
-            <Button variant="contained" color="warning" onClick={handleResetPassword}>
-              Reset Password
-            </Button>
-          )}
+          <Button onClick={() => setPasswordDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleSetPassword}
+            disabled={passwordSaving || !isPasswordValid(newPassword)}
+          >
+            Set Password
+          </Button>
         </DialogActions>
       </Dialog>
 

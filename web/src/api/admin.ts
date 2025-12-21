@@ -355,6 +355,20 @@ export const adminApi = {
     return response.data;
   },
 
+  // Get CBWTF admin user info
+  getCBWTFAdmin: async (id: string): Promise<{ 
+    hasAdmin: boolean; 
+    id?: string;
+    username?: string; 
+    email?: string;
+    fullName?: string;
+    active?: boolean;
+    lastLoginAt?: string;
+  }> => {
+    const response = await apiClient.get(`/api/admin/cbwtfs/${id}/admin`);
+    return response.data;
+  },
+
   // Change CBWTF admin credentials
   changeCBWTFCredentials: async (id: string, newUsername: string, newPassword: string): Promise<{ message: string; username: string }> => {
     const response = await apiClient.post(`/api/admin/cbwtfs/${id}/change-credentials`, { newUsername, newPassword });

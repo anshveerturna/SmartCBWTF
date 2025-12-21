@@ -107,6 +107,37 @@ public class AdminController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * Get CBWTF admin user info.
+     * Note: Password cannot be returned as it's hashed.
+     */
+    @GetMapping("/cbwtfs/{id}/admin")
+    public ResponseEntity<Map<String, Object>> getCBWTFAdmin(@PathVariable("id") UUID id) {
+        return facilityRepository.findById(id)
+                .map(facility -> {
+                    AppUser admin = userRepository.findByFacilityIdAndRole(id, "CBWTF_ADMIN")
+                            .stream()
+                            .findFirst()
+                            .orElse(null);
+
+                    if (admin == null) {
+                        return ResponseEntity.<Map<String, Object>>ok(Map.of(
+                                "hasAdmin", false,
+                                "message", "No CBWTF_ADMIN found for this facility"));
+                    }
+
+                    return ResponseEntity.ok(Map.<String, Object>of(
+                            "hasAdmin", true,
+                            "id", admin.getId().toString(),
+                            "username", admin.getUsername(),
+                            "email", admin.getEmail() != null ? admin.getEmail() : "",
+                            "fullName", admin.getFullName() != null ? admin.getFullName() : "",
+                            "active", admin.isActive(),
+                            "lastLoginAt", admin.getLastLoginAt() != null ? admin.getLastLoginAt().toString() : ""));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     // ========== CBWTF UPDATE ==========
 
     @PutMapping("/cbwtfs/{id}")

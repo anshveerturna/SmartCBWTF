@@ -362,7 +362,7 @@ public class SuperAdminUserController {
      */
     @PostMapping("/{id}/reset-password")
     @Transactional
-    public ResponseEntity<?> forcePasswordReset(@PathVariable UUID id,
+    public ResponseEntity<?> forcePasswordReset(@PathVariable("id") UUID id,
             @RequestBody(required = false) PasswordResetRequest request) {
 
         AppUser currentUser = getCurrentUser();
