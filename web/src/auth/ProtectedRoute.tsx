@@ -7,11 +7,15 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
+// Routes allowed when password change is required
+const PASSWORD_CHANGE_ALLOWED_ROUTES = ['/change-password', '/logout'];
+
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, mustChangePassword } = useAuth();
   const location = useLocation();
 
-  // Show loading spinner while checking auth
+  // FLASH FIX: Block ALL rendering while auth is loading
+  // This prevents sidebar/content from briefly appearing
   if (isLoading) {
     return (
       <Box
@@ -33,5 +37,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // STRICT LOCK: Force password change if required
+  // Only /change-password and /logout are allowed
+  if (mustChangePassword) {
+    const isAllowedRoute = PASSWORD_CHANGE_ALLOWED_ROUTES.some(
+      route => location.pathname.includes(route)
+    );
+    if (!isAllowedRoute) {
+      return <Navigate to="/change-password" replace />;
+    }
+  }
+
   return <>{children}</>;
 };
+

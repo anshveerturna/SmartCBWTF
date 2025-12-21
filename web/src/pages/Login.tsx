@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { TOKEN_KEY } from '../api/client';
 import { z } from 'zod';
 import {
   Box,
@@ -71,7 +72,7 @@ const Login: React.FC = () => {
       await login(data);
       // Always redirect based on role from token
       // Don't use 'from' location as it may be for a different role
-      const token = localStorage.getItem('smartcbwtf_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       if (token) {
         const payload = JSON.parse(atob(token.split('.')[1]));
         const redirectPath = getRoleRedirectPath(payload.role);

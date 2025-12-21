@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { JwtPayload, UserRole, LoginRequest } from '../types/api';
 import { authApi } from '../api/auth';
-import { tokenStorage } from '../api/client';
+import { tokenStorage, TOKEN_KEY } from '../api/client';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -16,10 +17,18 @@ interface AuthContextValue extends AuthState {
   hasRole: (role: UserRole | UserRole[]) => boolean;
   tenantId: string | null;
   hcfId: string | null;
+  mustChangePassword: boolean;
   updateUserProfile: (updates: Partial<Pick<JwtPayload, 'full_name' | 'profile_photo_url'>>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+const initialState: AuthState = {
+  isAuthenticated: false,
+  isLoading: true,
+  user: null,
+  error: null,
+};
 
 // Parse JWT token without library
 function parseJwt(token: string): JwtPayload | null {
@@ -45,12 +54,8 @@ function isTokenExpired(payload: JwtPayload): boolean {
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<AuthState>({
-    isAuthenticated: false,
-    isLoading: true,
-    user: null,
-    error: null,
-  });
+  const [state, setState] = useState<AuthState>(initialState);
+  const queryClient = useQueryClient();
 
   // Initialize auth state from stored token
   useEffect(() => {
@@ -77,6 +82,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setState((prev) => ({ ...prev, isLoading: false }));
     }
   }, []);
+
+  // Multi-tab logout sync: listen for token removal in other tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === TOKEN_KEY && e.newValue === null) {
+        // Token removed in another tab → force logout this tab
+        queryClient.clear(); // Clear all React Query cache
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          user: null,
+          error: null,
+        });
+        // Hard redirect guarantees termination of privileged state
+        window.location.href = '/login';
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [queryClient]);
 
   // Login handler
   const login = useCallback(async (credentials: LoginRequest) => {
@@ -107,16 +132,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Logout handler
+  // Logout handler - clears everything
   const logout = useCallback(() => {
     tokenStorage.remove();
+    queryClient.clear(); // Clear ALL React Query cached data
     setState({
       isAuthenticated: false,
       isLoading: false,
       user: null,
       error: null,
     });
-  }, []);
+  }, [queryClient]);
 
   // Update user profile without re-login (for photo and name changes)
   const updateUserProfile = useCallback((updates: Partial<Pick<JwtPayload, 'full_name' | 'profile_photo_url'>>) => {
@@ -148,6 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       hasRole,
       tenantId: state.user?.tenant_id ?? null,
       hcfId: state.user?.hcf_id ?? null,
+      mustChangePassword: state.user?.must_change_password ?? false,
       updateUserProfile,
     }),
     [state, login, logout, hasRole, updateUserProfile]
@@ -164,3 +191,4 @@ export const useAuth = (): AuthContextValue => {
   }
   return context;
 };
+

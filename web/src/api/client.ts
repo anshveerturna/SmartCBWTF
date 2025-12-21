@@ -14,7 +14,7 @@ const apiClient = axios.create({
 });
 
 // Token storage keys
-const TOKEN_KEY = 'smartcbwtf_token';
+export const TOKEN_KEY = 'smartcbwtf_token';
 
 // Token management
 export const tokenStorage = {
@@ -39,21 +39,65 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiError>) => {
-    // Handle 401 Unauthorized - redirect to login
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const data = error.response?.data as Record<string, unknown> | undefined;
+    const details = data?.details as Record<string, unknown> | undefined;
+    
+    // Handle 401 Unauthorized - clear token and redirect to login
+    if (status === 401) {
       tokenStorage.remove();
       // Only redirect if not already on login page
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
+      return Promise.reject({
+        message: 'Session expired. Please login again.',
+        code: 'UNAUTHORIZED',
+        status: 401,
+      });
+    }
+
+    // Handle 403 Forbidden - differentiate by error type
+    if (status === 403) {
+      const errorType = details?.error as string | undefined;
+      
+      // FEATURE_DISABLED: Let component handle with toast/message
+      // DO NOT logout, DO NOT redirect
+      if (errorType === 'FEATURE_DISABLED') {
+        return Promise.reject({
+          message: data?.message || 'This feature is not enabled',
+          code: 'FEATURE_DISABLED',
+          feature: details?.feature,
+          status: 403,
+        });
+      }
+      
+      // SUBSCRIPTION_INACTIVE: Hard block - redirect to blocked page
+      if (errorType === 'SUBSCRIPTION_INACTIVE' || errorType === 'SUBSCRIPTION_EXPIRED') {
+        tokenStorage.remove();
+        sessionStorage.setItem('blocked_reason', data?.message as string || 'Subscription inactive');
+        window.location.href = '/blocked';
+        return Promise.reject({
+          message: data?.message || 'Subscription inactive',
+          code: errorType,
+          status: 403,
+        });
+      }
+      
+      // Other 403 errors - access denied
+      return Promise.reject({
+        message: data?.message || 'Access denied',
+        code: 'ACCESS_DENIED',
+        details,
+        status: 403,
+      });
     }
 
     // Handle 503 Service Unavailable - maintenance mode or system disabled
-    if (error.response?.status === 503) {
-      const responseData = error.response?.data as unknown as Record<string, unknown>;
-      if (responseData?.maintenance || responseData?.loginDisabled || responseData?.readonly) {
+    if (status === 503) {
+      if (data?.maintenance || data?.loginDisabled || data?.readonly) {
         // Store maintenance message for display
-        sessionStorage.setItem('maintenance_message', responseData.message as string || 'System unavailable');
+        sessionStorage.setItem('maintenance_message', data.message as string || 'System unavailable');
         sessionStorage.setItem('maintenance_mode', 'true');
         
         // Redirect to login if not already there
@@ -63,16 +107,16 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Extract error message
-    const message = error.response?.data?.message 
+    // Extract error message for all other errors
+    const message = data?.message as string
       || error.message 
       || 'An unexpected error occurred';
 
     return Promise.reject({
       message,
-      code: error.response?.data?.code,
-      details: error.response?.data?.details,
-      status: error.response?.status,
+      code: data?.code,
+      details: data?.details,
+      status,
     });
   }
 );

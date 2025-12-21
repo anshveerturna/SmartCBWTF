@@ -31,6 +31,7 @@ export interface JwtPayload {
   profile_photo_url: string | null;
   tenant_id: string | null;
   hcf_id: string | null;
+  must_change_password?: boolean;
   iat: number;
   exp: number;
 }
