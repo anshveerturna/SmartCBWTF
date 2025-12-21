@@ -74,18 +74,23 @@ const AuditLogs: React.FC = () => {
     {
       field: 'actor',
       headerName: 'Actor',
-      width: 180,
+      width: 150,
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar sx={{ width: 28, height: 28, fontSize: '0.75rem' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden' }}>
+          <Avatar sx={{ width: 28, height: 28, fontSize: '0.75rem', flexShrink: 0 }}>
             {params.row.actorUsername?.charAt(0) || '?'}
           </Avatar>
-          <Box>
-            <Typography variant="body2">{params.row.actorUsername || 'SYSTEM'}</Typography>
-            <Typography variant="caption" color="text.secondary">
-              {params.row.actorRole || ''}
-            </Typography>
-          </Box>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis', 
+              whiteSpace: 'nowrap' 
+            }}
+            title={`${params.row.actorUsername || 'SYSTEM'} (${params.row.actorRole || ''})`}
+          >
+            {params.row.actorUsername || 'SYSTEM'}
+          </Typography>
         </Box>
       )
     },
@@ -226,6 +231,7 @@ const AuditLogs: React.FC = () => {
           pageSizeOptions={[20]}
           disableRowSelectionOnClick
           autoHeight
+          rowHeight={52}
           getRowId={(row) => row.id}
           sx={{ 
             bgcolor: 'background.paper', 
@@ -237,6 +243,7 @@ const AuditLogs: React.FC = () => {
             '& .MuiDataGrid-cell': {
               display: 'flex',
               alignItems: 'center',
+              py: 1,
             },
             '& .MuiDataGrid-row': {
               cursor: 'default'

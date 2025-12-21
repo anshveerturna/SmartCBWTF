@@ -11,14 +11,18 @@ import {
   Menu,
   MenuItem,
   Divider,
+  Tooltip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Person as PersonIcon,
   Logout as LogoutIcon,
+  LightMode as LightModeIcon,
+  DarkMode as DarkModeIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../auth';
 import { Sidebar, DRAWER_WIDTH } from './Sidebar';
+import { useThemeMode } from '../../theme';
 
 export const DashboardShell: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,6 +30,7 @@ export const DashboardShell: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { mode, toggleTheme } = useThemeMode();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -81,6 +86,12 @@ export const DashboardShell: React.FC = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {getPageTitle()}
           </Typography>
+          {/* Theme Toggle */}
+          <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <IconButton onClick={toggleTheme} color="inherit" sx={{ mr: 1 }}>
+              {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+          </Tooltip>
           <IconButton onClick={handleProfileMenuOpen} size="small">
             <Avatar
               src={user?.profile_photo_url ? `http://localhost:8080${user.profile_photo_url}` : undefined}

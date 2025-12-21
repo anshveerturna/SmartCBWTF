@@ -1,8 +1,8 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline, Box, CircularProgress } from '@mui/material';
+import { CssBaseline, Box, CircularProgress } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import theme from './theme';
+import { ThemeContextProvider } from './theme';
 import { AuthProvider, ProtectedRoute, RoleGuard, SUPER_ADMIN_ONLY, CBWTF_ADMIN_ONLY, HCF_ADMIN_ONLY } from './auth';
 import { DashboardShell } from './components/layout';
 
@@ -65,7 +65,7 @@ const queryClient = new QueryClient({
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
+      <ThemeContextProvider>
         <CssBaseline />
         <AuthProvider>
           <BrowserRouter>
@@ -161,7 +161,7 @@ const App: React.FC = () => {
             </Suspense>
           </BrowserRouter>
         </AuthProvider>
-      </ThemeProvider>
+      </ThemeContextProvider>
     </QueryClientProvider>
   );
 };
