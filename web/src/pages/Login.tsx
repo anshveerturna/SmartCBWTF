@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -49,7 +49,6 @@ const getRoleRedirectPath = (role: UserRole): string => {
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { login, isLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,17 +69,17 @@ const Login: React.FC = () => {
     setError(null);
     try {
       await login(data);
-      // Redirect based on role or intended destination
-      const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
-      if (from) {
-        navigate(from, { replace: true });
+      // Always redirect based on role from token
+      // Don't use 'from' location as it may be for a different role
+      const token = localStorage.getItem('smartcbwtf_token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const redirectPath = getRoleRedirectPath(payload.role);
+        console.log('Login successful, redirecting to:', redirectPath, 'for role:', payload.role);
+        navigate(redirectPath, { replace: true });
       } else {
-        // Parse role from new token and redirect
-        const token = localStorage.getItem('smartcbwtf_token');
-        if (token) {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          navigate(getRoleRedirectPath(payload.role), { replace: true });
-        }
+        // Fallback to home
+        navigate('/', { replace: true });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Login failed. Please try again.';

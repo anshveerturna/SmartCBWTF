@@ -27,6 +27,7 @@ public class AttendanceService {
     private final HcfRepository hcfRepository;
     private final AppUserRepository appUserRepository;
     private final AuditLogService auditLogService;
+    private final FeatureGuardService featureGuardService;
 
     @Value("${app.attendance.geofence-radius-m:50}")
     private double geofenceRadiusM;
@@ -38,15 +39,20 @@ public class AttendanceService {
             AttendanceRepository attendanceRepository,
             HcfRepository hcfRepository,
             AppUserRepository appUserRepository,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            FeatureGuardService featureGuardService) {
         this.attendanceRepository = attendanceRepository;
         this.hcfRepository = hcfRepository;
         this.appUserRepository = appUserRepository;
         this.auditLogService = auditLogService;
+        this.featureGuardService = featureGuardService;
     }
 
     @Transactional
-    public AttendanceSyncResponse sync(AttendanceSyncRequest request, UUID driverId) {
+    public AttendanceSyncResponse sync(AttendanceSyncRequest request, UUID driverId, UUID facilityId) {
+        // Feature flag enforcement at service layer (MANDATORY)
+        featureGuardService.assertEnabled(facilityId, FeatureGuardService.ATTENDANCE_ENFORCEMENT);
+
         AttendanceSyncResponse response = new AttendanceSyncResponse();
         response.setTotalReceived(request.getEvents().size());
         response.setResults(new ArrayList<>());
@@ -96,14 +102,12 @@ public class AttendanceService {
         // Geofence validation
         double distance = haversineMeters(
                 item.getGpsLat(), item.getGpsLon(),
-                hcf.getGpsLat(), hcf.getGpsLon()
-        );
+                hcf.getGpsLat(), hcf.getGpsLon());
         if (distance > geofenceRadiusM) {
             return AttendanceSyncItemResult.error(
                     clientEventId,
                     "OUT_OF_GEOFENCE",
-                    String.format("Location is %.1fm from HCF, exceeds %.0fm limit", distance, geofenceRadiusM)
-            );
+                    String.format("Location is %.1fm from HCF, exceeds %.0fm limit", distance, geofenceRadiusM));
         }
 
         // Cooldown validation (server-side enforcement)
@@ -113,8 +117,7 @@ public class AttendanceService {
             if (lastAttendance.isPresent()) {
                 long remainingMs = Duration.between(
                         Instant.now(),
-                        lastAttendance.get().getEventTs().plus(Duration.ofMinutes(cooldownMinutes))
-                ).toMillis();
+                        lastAttendance.get().getEventTs().plus(Duration.ofMinutes(cooldownMinutes))).toMillis();
                 if (remainingMs > 0) {
                     return AttendanceSyncItemResult.cooldownError(clientEventId, remainingMs);
                 }
@@ -142,8 +145,7 @@ public class AttendanceService {
                 "MARKED",
                 driverId,
                 String.format("{\"hcfId\":\"%s\",\"hcfName\":\"%s\",\"distanceM\":%.1f}",
-                        hcf.getId(), hcf.getName(), distance)
-        );
+                        hcf.getId(), hcf.getName(), distance));
 
         return AttendanceSyncItemResult.success(clientEventId);
     }
@@ -154,7 +156,7 @@ public class AttendanceService {
         double dLon = Math.toRadians(lon2 - lon1);
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                        * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return r * c;
     }

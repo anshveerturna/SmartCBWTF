@@ -21,22 +21,39 @@ import java.util.UUID;
 public class AnalyticsService {
 
     private final BagEventRepository bagEventRepository;
+    private final FeatureGuardService featureGuardService;
     private final long missingBagHours;
 
     public AnalyticsService(BagEventRepository bagEventRepository,
-                            @Value("${app.alerts.missing-bag-hours:24}") long missingBagHours) {
+            FeatureGuardService featureGuardService,
+            @Value("${app.alerts.missing-bag-hours:24}") long missingBagHours) {
         this.bagEventRepository = bagEventRepository;
+        this.featureGuardService = featureGuardService;
         this.missingBagHours = missingBagHours;
     }
 
-    public AnalyticsResponse hcfAnalytics(UUID hcfId, LocalDate start, LocalDate end) {
+    /**
+     * Get analytics for a specific HCF.
+     * Requires ADVANCED_ANALYTICS feature to be enabled.
+     */
+    public AnalyticsResponse hcfAnalytics(UUID hcfId, UUID facilityId, LocalDate start, LocalDate end) {
+        // Feature flag enforcement at service layer (MANDATORY)
+        featureGuardService.assertEnabled(facilityId, FeatureGuardService.ADVANCED_ANALYTICS);
+
         Instant from = start.atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant to = end.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
         List<BagEvent> events = bagEventRepository.findByHcfIdAndEventTsBetween(hcfId, from, to);
         return aggregate(events, from, to);
     }
 
+    /**
+     * Get analytics for a facility.
+     * Requires ADVANCED_ANALYTICS feature to be enabled.
+     */
     public AnalyticsResponse facilityAnalytics(UUID facilityId, LocalDate start, LocalDate end) {
+        // Feature flag enforcement at service layer (MANDATORY)
+        featureGuardService.assertEnabled(facilityId, FeatureGuardService.ADVANCED_ANALYTICS);
+
         Instant from = start.atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant to = end.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
         List<BagEvent> events = bagEventRepository.findByFacilityIdAndEventTsBetween(facilityId, from, to);
@@ -67,7 +84,8 @@ public class AnalyticsService {
             weightTrendByDate.merge(dayKey, w, BigDecimal::add);
             bagCountTrendByDate.merge(dayKey, 1L, Long::sum);
 
-            if ("CBWTF_VERIFICATION".equalsIgnoreCase(e.getEventType()) && "MISMATCH".equalsIgnoreCase(e.getAnomalyState())) {
+            if ("CBWTF_VERIFICATION".equalsIgnoreCase(e.getEventType())
+                    && "MISMATCH".equalsIgnoreCase(e.getAnomalyState())) {
                 mismatchCount++;
                 verifiedLabels.add(e.getBagLabel().getId());
             }
@@ -79,7 +97,8 @@ public class AnalyticsService {
             }
         }
 
-        // missing if collected in window and not verified within window or before cutoff horizon
+        // missing if collected in window and not verified within window or before
+        // cutoff horizon
         Instant cutoff = Instant.now().minusSeconds(missingBagHours * 3600);
         long missingCount = collectedLabels.stream()
                 .filter(id -> !verifiedLabels.contains(id))
@@ -88,6 +107,7 @@ public class AnalyticsService {
                         && ev.getEventTs().isBefore(cutoff)))
                 .count();
 
-        return new AnalyticsResponse(total, bagCount, weightByCategory, bagCountByCategory, mismatchCount, missingCount, weightTrendByDate, bagCountTrendByDate);
+        return new AnalyticsResponse(total, bagCount, weightByCategory, bagCountByCategory, mismatchCount, missingCount,
+                weightTrendByDate, bagCountTrendByDate);
     }
 }

@@ -44,7 +44,9 @@ public class AttendanceController {
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
 
         UUID driverId = user.getId();
-        AttendanceSyncResponse response = attendanceService.sync(request, driverId);
+        UUID facilityId = user.getFacility() != null ? user.getFacility().getId() : null;
+
+        AttendanceSyncResponse response = attendanceService.sync(request, driverId, facilityId);
         return ResponseEntity.ok(response);
     }
 }

@@ -41,6 +41,16 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
     }
 
+    @ExceptionHandler(com.smartcbwtf.exception.FeatureDisabledException.class)
+    public ResponseEntity<ApiError> handleFeatureDisabled(
+            com.smartcbwtf.exception.FeatureDisabledException ex, HttpServletRequest request) {
+        Map<String, Object> details = Map.of(
+                "error", "FEATURE_DISABLED",
+                "feature", ex.getFeatureKey(),
+                "message", "This feature is not enabled for your CBWTF");
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), request, details);
+    }
+
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)

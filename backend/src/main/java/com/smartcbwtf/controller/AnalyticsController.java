@@ -41,7 +41,8 @@ public class AnalyticsController {
     public AnalyticsResponse hcf(@PathVariable UUID hcfId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
-        return analyticsService.hcfAnalytics(hcfId, start, end);
+        UUID facilityId = TenantContext.getTenantId();
+        return analyticsService.hcfAnalytics(hcfId, facilityId, start, end);
     }
 
     @GetMapping("/facility/{facilityId}")
