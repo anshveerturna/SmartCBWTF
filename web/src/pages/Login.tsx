@@ -138,21 +138,15 @@ const Login: React.FC = () => {
           {/* Logo */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Box
+              component="img"
+              src="/logo.svg"
+              alt="SmartCBWTF"
               sx={{
-                width: 64,
-                height: 64,
-                borderRadius: 3,
-                background: 'linear-gradient(135deg, #6366F1 0%, #10B981 100%)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                width: 72,
+                height: 72,
                 mb: 2,
               }}
-            >
-              <Typography variant="h4" sx={{ color: 'white', fontWeight: 700 }}>
-                S
-              </Typography>
-            </Box>
+            />
             <Typography variant="h4" sx={{ fontWeight: 700 }}>
               SmartCBWTF
             </Typography>

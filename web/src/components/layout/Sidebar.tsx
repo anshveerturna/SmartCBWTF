@@ -241,20 +241,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
         }}
       >
         <Box
+          component="img"
+          src="/logo.svg"
+          alt="SmartCBWTF"
           sx={{
             width: 40,
             height: 40,
-            borderRadius: 2,
-            background: 'linear-gradient(135deg, #6366F1 0%, #10B981 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
           }}
-        >
-          <Typography variant="h6" sx={{ color: 'white', fontWeight: 700 }}>
-            S
-          </Typography>
-        </Box>
+        />
         <Box>
           <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
             SmartCBWTF

@@ -27,6 +27,8 @@ export interface LoginResponse {
 export interface JwtPayload {
   sub: string;
   role: UserRole;
+  full_name: string | null;
+  profile_photo_url: string | null;
   tenant_id: string | null;
   hcf_id: string | null;
   iat: number;

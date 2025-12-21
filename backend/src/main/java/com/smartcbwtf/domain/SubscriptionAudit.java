@@ -35,7 +35,17 @@ public class SubscriptionAudit {
         STATUS_CHANGED, // General status change
         ACCOUNT_LOCKED, // Account locked due to failed login attempts
         ACCOUNT_UNLOCKED, // Account unlocked by admin
-        FEATURE_DEFAULTS_APPLIED // Default feature flags applied on creation
+        FEATURE_DEFAULTS_APPLIED, // Default feature flags applied on creation
+        // SuperAdmin profile management
+        LOGIN_SUCCESS, // Successful login
+        LOGIN_FAILURE, // Failed login attempt
+        PROFILE_UPDATED, // Profile details updated
+        PHOTO_UPDATED, // Profile photo changed
+        SUPERADMIN_CREATED, // New SuperAdmin created
+        SUPERADMIN_UPDATED, // SuperAdmin updated
+        SUPERADMIN_DISABLED, // SuperAdmin disabled
+        SUPERADMIN_ENABLED, // SuperAdmin enabled
+        LOGOUT // User logout
     }
 
     @Id

@@ -83,6 +83,7 @@ export const DashboardShell: React.FC = () => {
           </Typography>
           <IconButton onClick={handleProfileMenuOpen} size="small">
             <Avatar
+              src={user?.profile_photo_url ? `http://localhost:8080${user.profile_photo_url}` : undefined}
               sx={{
                 width: 36,
                 height: 36,
@@ -90,7 +91,9 @@ export const DashboardShell: React.FC = () => {
                 fontSize: '0.875rem',
               }}
             >
-              {user?.sub?.charAt(0).toUpperCase() || 'U'}
+              {user?.full_name
+                ? user.full_name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 3)
+                : user?.sub?.charAt(0).toUpperCase() || 'U'}
             </Avatar>
           </IconButton>
           <Menu
@@ -115,7 +118,16 @@ export const DashboardShell: React.FC = () => {
               </Typography>
             </Box>
             <Divider />
-            <MenuItem onClick={handleProfileMenuClose}>
+            <MenuItem onClick={() => {
+              handleProfileMenuClose();
+              // Navigate to profile based on role
+              const profilePath = user?.role === 'SUPER_ADMIN' 
+                ? '/superadmin/profile' 
+                : user?.role === 'CBWTF_ADMIN'
+                  ? '/cbwtf/profile'
+                  : '/hcf/profile';
+              navigate(profilePath);
+            }}>
               <PersonIcon sx={{ mr: 1.5, fontSize: 20 }} />
               Profile
             </MenuItem>

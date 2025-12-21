@@ -49,4 +49,13 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
                         Pageable pageable);
 
         boolean existsByUsername(String username);
+
+        // SuperAdmin user management - search and count methods
+        @Query("SELECT u FROM AppUser u WHERE u.role = :role AND " +
+                        "(LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                        "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+        Page<AppUser> searchByRoleAndUsernameOrEmail(@Param("role") String role, @Param("search") String search,
+                        Pageable pageable);
+
+        long countByRoleAndActive(String role, boolean active);
 }

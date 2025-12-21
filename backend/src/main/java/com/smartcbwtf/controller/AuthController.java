@@ -101,6 +101,8 @@ public class AuthController {
             Map<String, Object> claims = new HashMap<>();
             claims.put("user_id", user.getId().toString());
             claims.put("role", user.getRole());
+            claims.put("full_name", user.getFullName());
+            claims.put("profile_photo_url", user.getProfilePhotoUrl());
             claims.put("tenant_id", user.getFacility() != null ? user.getFacility().getId().toString() : null);
             claims.put("hcf_id", user.getHcf() != null ? user.getHcf().getId().toString() : null);
             claims.put("must_change_password", mustChangePassword);

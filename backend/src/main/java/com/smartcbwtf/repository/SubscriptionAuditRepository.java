@@ -64,4 +64,14 @@ public interface SubscriptionAuditRepository extends JpaRepository<SubscriptionA
          * Find most recent 20 audit entries
          */
         List<SubscriptionAudit> findTop20ByOrderByCreatedAtDesc();
+
+        /**
+         * Find audit records by entity type
+         */
+        Page<SubscriptionAudit> findByEntityTypeOrderByCreatedAtDesc(String entityType, Pageable pageable);
+
+        /**
+         * Find audit records by performer role
+         */
+        Page<SubscriptionAudit> findByPerformedByRoleOrderByCreatedAtDesc(String role, Pageable pageable);
 }

@@ -16,6 +16,7 @@ interface AuthContextValue extends AuthState {
   hasRole: (role: UserRole | UserRole[]) => boolean;
   tenantId: string | null;
   hcfId: string | null;
+  updateUserProfile: (updates: Partial<Pick<JwtPayload, 'full_name' | 'profile_photo_url'>>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -117,6 +118,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
+  // Update user profile without re-login (for photo and name changes)
+  const updateUserProfile = useCallback((updates: Partial<Pick<JwtPayload, 'full_name' | 'profile_photo_url'>>) => {
+    setState((prev) => {
+      if (!prev.user) return prev;
+      return {
+        ...prev,
+        user: { ...prev.user, ...updates },
+      };
+    });
+  }, []);
+
   // Role check helper
   const hasRole = useCallback(
     (role: UserRole | UserRole[]): boolean => {
@@ -136,8 +148,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       hasRole,
       tenantId: state.user?.tenant_id ?? null,
       hcfId: state.user?.hcf_id ?? null,
+      updateUserProfile,
     }),
-    [state, login, logout, hasRole]
+    [state, login, logout, hasRole, updateUserProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

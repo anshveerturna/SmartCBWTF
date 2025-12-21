@@ -41,13 +41,19 @@ public class PasswordPolicyValidator {
 
         // Get config values
         int minLength = configService.getInt("security.password_min_length", 8);
+        int maxLength = configService.getInt("security.password_max_length", 12);
         boolean requireUppercase = configService.getBoolean("security.password_require_uppercase", true);
         boolean requireNumber = configService.getBoolean("security.password_require_number", true);
-        boolean requireSpecial = configService.getBoolean("security.password_require_special", false);
+        boolean requireSpecial = configService.getBoolean("security.password_require_special", true);
 
         // Validate minimum length
         if (password.length() < minLength) {
             violations.add("Password must be at least " + minLength + " characters long");
+        }
+
+        // Validate maximum length
+        if (password.length() > maxLength) {
+            violations.add("Password must be at most " + maxLength + " characters long");
         }
 
         // Validate uppercase requirement
