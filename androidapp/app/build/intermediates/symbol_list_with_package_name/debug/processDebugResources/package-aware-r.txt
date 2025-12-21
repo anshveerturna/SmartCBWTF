@@ -2193,6 +2193,7 @@ color notification_action_color_filter
 color notification_icon_bg_color
 color pickupCardGradientEnd
 color pickupCardGradientStart
+color primary
 color primaryGreen
 color primary_color
 color primary_color_dark
@@ -2221,6 +2222,8 @@ color switch_thumb_material_dark
 color switch_thumb_material_light
 color switch_thumb_normal_material_dark
 color switch_thumb_normal_material_light
+color textPrimary
+color textSecondary
 color text_hint
 color text_primary
 color text_secondary
@@ -3226,6 +3229,7 @@ drawable ic_launcher_foreground
 drawable ic_location
 drawable ic_location_off
 drawable ic_location_on
+drawable ic_lock
 drawable ic_logo_smartcbwtf
 drawable ic_logo_smartcbwtf_green
 drawable ic_logout_menu
@@ -3390,6 +3394,8 @@ id action_bar_root
 id action_bar_spinner
 id action_bar_subtitle
 id action_bar_title
+id action_changePasswordFragment_to_homeFragment
+id action_changePasswordFragment_to_loginFragment
 id action_container
 id action_context_bar
 id action_divider
@@ -3505,6 +3511,8 @@ id center_vertical
 id chain
 id chain2
 id chains
+id changePasswordButton
+id changePasswordFragment
 id checkbox
 id checked
 id chronometer
@@ -3517,6 +3525,8 @@ id closest
 id collapseActionView
 id compatible
 id compress
+id confirmPasswordInput
+id confirmPasswordLayout
 id confirm_button
 id constraint
 id container
@@ -3528,6 +3538,8 @@ id coordinator
 id cos
 id counterclockwise
 id cradle
+id currentPasswordInput
+id currentPasswordLayout
 id currentState
 id custom
 id customPanel
@@ -3577,6 +3589,7 @@ id end
 id endToStart
 id enterAlways
 id enterAlwaysCollapsed
+id errorText
 id escape
 id etAadharNo
 id etAddress
@@ -3693,7 +3706,9 @@ id listMode
 id list_item
 id loadingOverlay
 id locale
+id lockIcon
 id loginFragment
+id logoutButton
 id lottie_layer_name
 id ltr
 id m3_side_sheet
@@ -3725,6 +3740,7 @@ id matrix
 id menu_logout
 id menu_profile
 id message
+id messageText
 id middle
 id mini
 id month_grid
@@ -3772,6 +3788,8 @@ id navigation_header_container
 id never
 id neverCompleteToEnd
 id neverCompleteToStart
+id newPasswordInput
+id newPasswordLayout
 id noScroll
 id noState
 id none
@@ -3823,6 +3841,7 @@ id pressed
 id previewView
 id profileFragment
 id progressBar
+id progressIndicator
 id progressLocation
 id progressSubmit
 id progressTerms
@@ -3836,6 +3855,7 @@ id radioHcfSelect
 id ratio
 id rectangles
 id report_drawn
+id requirementsText
 id restart
 id reverse
 id reverseSawtooth
@@ -3990,6 +4010,7 @@ id tilUsername
 id time
 id title
 id titleDividerNoCustom
+id titleText
 id title_template
 id toggle
 id toolbar
@@ -4224,6 +4245,7 @@ layout design_navigation_menu_item
 layout design_text_input_end_icon
 layout design_text_input_start_icon
 layout fragment_attendance
+layout fragment_change_password
 layout fragment_hcf_registration
 layout fragment_home
 layout fragment_login

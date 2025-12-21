@@ -138,6 +138,18 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
                                     Log.e("LoginFragment", "Navigation failed", e)
                                 }
                             }
+                            is AuthEvent.NavigateToChangePassword -> {
+                                // SECURITY: User must change password before accessing app
+                                Log.d("LoginFragment", "User must change password - navigating to ChangePasswordFragment")
+                                try {
+                                    val navController = findNavController()
+                                    if (navController.currentDestination?.id == R.id.loginFragment) {
+                                        navController.navigate(R.id.changePasswordFragment)
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("LoginFragment", "Navigation to change password failed", e)
+                                }
+                            }
                         }
                     }
                 }

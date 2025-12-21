@@ -9,6 +9,8 @@ import com.smartcbwtf.mobile.di.NetworkModule;
 import com.smartcbwtf.mobile.di.RepositoryModule;
 import com.smartcbwtf.mobile.di.ScaleModule;
 import com.smartcbwtf.mobile.ui.AttendanceFragment_GeneratedInjector;
+import com.smartcbwtf.mobile.ui.ChangePasswordFragment_GeneratedInjector;
+import com.smartcbwtf.mobile.ui.ChangePasswordViewModel_HiltModules;
 import com.smartcbwtf.mobile.ui.HcfRegistrationFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.HomeFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.LoginFragment_GeneratedInjector;
@@ -195,6 +197,7 @@ public final class App_HiltComponents {
           ViewModelCBuilderModule.class,
           AttendanceViewModel_HiltModules.KeyModule.class,
           AuthViewModel_HiltModules.KeyModule.class,
+          ChangePasswordViewModel_HiltModules.KeyModule.class,
           HcfRegistrationViewModel_HiltModules.KeyModule.class,
           HiltWrapper_ActivityRetainedComponentManager_LifecycleModule.class,
           HiltWrapper_SavedStateHandleModule.class,
@@ -241,6 +244,7 @@ public final class App_HiltComponents {
       modules = {
           AttendanceViewModel_HiltModules.BindsModule.class,
           AuthViewModel_HiltModules.BindsModule.class,
+          ChangePasswordViewModel_HiltModules.BindsModule.class,
           HcfRegistrationViewModel_HiltModules.BindsModule.class,
           HiltWrapper_HiltViewModelFactory_ViewModelModule.class,
           HomeViewModel_HiltModules.BindsModule.class,
@@ -274,6 +278,7 @@ public final class App_HiltComponents {
   )
   @FragmentScoped
   public abstract static class FragmentC implements AttendanceFragment_GeneratedInjector,
+      ChangePasswordFragment_GeneratedInjector,
       HcfRegistrationFragment_GeneratedInjector,
       HomeFragment_GeneratedInjector,
       LoginFragment_GeneratedInjector,

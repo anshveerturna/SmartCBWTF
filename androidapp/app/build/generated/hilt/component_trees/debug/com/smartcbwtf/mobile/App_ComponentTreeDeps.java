@@ -28,6 +28,9 @@ import hilt_aggregated_deps._com_smartcbwtf_mobile_di_NetworkModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_di_RepositoryModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_di_ScaleModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_AttendanceFragment_GeneratedInjector;
+import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_ChangePasswordFragment_GeneratedInjector;
+import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_ChangePasswordViewModel_HiltModules_BindsModule;
+import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_ChangePasswordViewModel_HiltModules_KeyModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_HcfRegistrationFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_HomeFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_LoginFragment_GeneratedInjector;
@@ -110,6 +113,9 @@ import hilt_aggregated_deps._dagger_hilt_android_internal_modules_HiltWrapper_Ac
         _com_smartcbwtf_mobile_di_RepositoryModule.class,
         _com_smartcbwtf_mobile_di_ScaleModule.class,
         _com_smartcbwtf_mobile_ui_AttendanceFragment_GeneratedInjector.class,
+        _com_smartcbwtf_mobile_ui_ChangePasswordFragment_GeneratedInjector.class,
+        _com_smartcbwtf_mobile_ui_ChangePasswordViewModel_HiltModules_BindsModule.class,
+        _com_smartcbwtf_mobile_ui_ChangePasswordViewModel_HiltModules_KeyModule.class,
         _com_smartcbwtf_mobile_ui_HcfRegistrationFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_HomeFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_LoginFragment_GeneratedInjector.class,

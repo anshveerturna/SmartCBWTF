@@ -35,5 +35,9 @@
     <color name="divider">#E5E7EB</color>
     <color name="primaryGreen">#00695C</color>
     <color name="text_hint">#9CA3AF</color>
+    
+    <!-- Semantic aliases for layouts -->
+    <color name="primary">@color/primary_color</color>
+    <color name="textPrimary">@color/text_primary</color>
+    <color name="textSecondary">@color/text_secondary</color>
 </resources>
-

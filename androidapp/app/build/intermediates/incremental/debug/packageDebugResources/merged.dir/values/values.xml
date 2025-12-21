@@ -14,6 +14,7 @@
     <color name="neutralBg">#E0F2F1</color>
     <color name="pickupCardGradientEnd">#4DB6AC</color>
     <color name="pickupCardGradientStart">#00695C</color>
+    <color name="primary">@color/primary_color</color>
     <color name="primaryGreen">#00695C</color>
     <color name="primary_color">#00695C</color>
     <color name="primary_color_dark">#00503D</color>
@@ -22,6 +23,8 @@
     <color name="success">#10B981</color>
     <color name="successAccent">#10B981</color>
     <color name="surface_color">#FFFFFF</color>
+    <color name="textPrimary">@color/text_primary</color>
+    <color name="textSecondary">@color/text_secondary</color>
     <color name="text_hint">#9CA3AF</color>
     <color name="text_primary">#102027</color>
     <color name="text_secondary">#546E7A</color>

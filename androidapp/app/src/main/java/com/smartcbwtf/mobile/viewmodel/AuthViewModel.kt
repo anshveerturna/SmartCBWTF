@@ -59,15 +59,16 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _loginState.value = LoginState.Loading
             try {
-                val success = authRepository.login(username, password)
-                if (success) {
-                    _loginState.value = LoginState.Success
-                    _authState.value = AuthState.Authenticated
-                    _authEvents.send(AuthEvent.NavigateToHome)
+                val response = authRepository.login(username, password)
+                // Login succeeded - response contains the AuthResponse
+                _loginState.value = LoginState.Success
+                _authState.value = AuthState.Authenticated
+                
+                // Check if password change is required
+                if (response.mustChangePassword) {
+                    _authEvents.send(AuthEvent.NavigateToChangePassword)
                 } else {
-                    // This branch might not be reached if repository throws on failure, 
-                    // but if it returns false, it's likely invalid credentials.
-                    _loginState.value = LoginState.Error(LoginError.InvalidCredentials)
+                    _authEvents.send(AuthEvent.NavigateToHome)
                 }
             } catch (e: Exception) {
                 val error = when {
@@ -105,6 +106,7 @@ class AuthViewModel @Inject constructor(
 
 sealed class AuthEvent {
     object NavigateToHome : AuthEvent()
+    object NavigateToChangePassword : AuthEvent()
 }
 
 sealed class LoginError {

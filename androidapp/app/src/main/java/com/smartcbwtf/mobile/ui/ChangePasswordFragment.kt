@@ -7,7 +7,10 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.fragment.findNavController
 import com.smartcbwtf.mobile.MainActivity
@@ -20,6 +23,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -97,30 +101,34 @@ class ChangePasswordFragment : Fragment() {
     }
 
     private fun observeViewModel() {
-        viewModel.uiState.observe(viewLifecycleOwner) { state ->
-            when (state) {
-                is ChangePasswordUiState.Idle -> {
-                    setLoading(false)
-                    hideError()
-                }
-                is ChangePasswordUiState.Loading -> {
-                    setLoading(true)
-                    hideError()
-                }
-                is ChangePasswordUiState.Success -> {
-                    setLoading(false)
-                    Toast.makeText(context, "Password changed successfully!", Toast.LENGTH_LONG).show()
-                    
-                    // Notify MainActivity to navigate home
-                    (activity as? MainActivity)?.onPasswordChangeComplete()
-                }
-                is ChangePasswordUiState.Error -> {
-                    setLoading(false)
-                    showError(state.message)
-                }
-                is ChangePasswordUiState.LoggedOut -> {
-                    // Navigate to login screen
-                    findNavController().navigate(R.id.action_changePasswordFragment_to_loginFragment)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collectLatest { state ->
+                    when (state) {
+                        is ChangePasswordUiState.Idle -> {
+                            setLoading(false)
+                            hideError()
+                        }
+                        is ChangePasswordUiState.Loading -> {
+                            setLoading(true)
+                            hideError()
+                        }
+                        is ChangePasswordUiState.Success -> {
+                            setLoading(false)
+                            Toast.makeText(context, "Password changed successfully!", Toast.LENGTH_LONG).show()
+                            
+                            // Notify MainActivity to navigate home
+                            (activity as? MainActivity)?.onPasswordChangeComplete()
+                        }
+                        is ChangePasswordUiState.Error -> {
+                            setLoading(false)
+                            showError(state.message)
+                        }
+                        is ChangePasswordUiState.LoggedOut -> {
+                            // Navigate to login screen
+                            findNavController().navigate(R.id.action_changePasswordFragment_to_loginFragment)
+                        }
+                    }
                 }
             }
         }
@@ -174,10 +182,6 @@ class ChangePasswordViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ChangePasswordUiState>(ChangePasswordUiState.Idle)
     val uiState: StateFlow<ChangePasswordUiState> = _uiState
 
-    // LiveData wrapper for Fragment observation
-    val uiStateLiveData: androidx.lifecycle.LiveData<ChangePasswordUiState> = 
-        androidx.lifecycle.asLiveData(_uiState)
-
     fun changePassword(currentPassword: String, newPassword: String) {
         viewModelScope.launch {
             _uiState.value = ChangePasswordUiState.Loading
@@ -226,3 +230,4 @@ data class ChangePasswordRequest(
     val currentPassword: String,
     val newPassword: String
 )
+
