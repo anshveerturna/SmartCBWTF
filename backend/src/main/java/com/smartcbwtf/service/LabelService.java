@@ -1,10 +1,12 @@
 package com.smartcbwtf.service;
 
+import com.smartcbwtf.domain.Agreement;
 import com.smartcbwtf.domain.BagLabel;
 import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.dto.LabelIssueRequest;
 import com.smartcbwtf.dto.LabelIssueResponse;
+import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.repository.BagLabelRepository;
 import com.smartcbwtf.repository.FacilityRepository;
 import com.smartcbwtf.repository.HcfRepository;
@@ -20,17 +22,23 @@ public class LabelService {
     private final BagLabelRepository bagLabelRepository;
     private final HcfRepository hcfRepository;
     private final FacilityRepository facilityRepository;
+    private final AgreementRepository agreementRepository;
+    private final AgreementGuardService agreementGuard;
     private final PdfService pdfService;
     private final AuditLogService auditLogService;
 
     public LabelService(BagLabelRepository bagLabelRepository,
-                        HcfRepository hcfRepository,
-                        FacilityRepository facilityRepository,
-                        PdfService pdfService,
-                        AuditLogService auditLogService) {
+            HcfRepository hcfRepository,
+            FacilityRepository facilityRepository,
+            AgreementRepository agreementRepository,
+            AgreementGuardService agreementGuard,
+            PdfService pdfService,
+            AuditLogService auditLogService) {
         this.bagLabelRepository = bagLabelRepository;
         this.hcfRepository = hcfRepository;
         this.facilityRepository = facilityRepository;
+        this.agreementRepository = agreementRepository;
+        this.agreementGuard = agreementGuard;
         this.pdfService = pdfService;
         this.auditLogService = auditLogService;
     }
@@ -39,6 +47,12 @@ public class LabelService {
     public LabelIssueResponse issue(LabelIssueRequest request) {
         Hcf hcf = hcfRepository.findById(request.getHcfId()).orElseThrow();
         Facility facility = facilityRepository.findById(request.getFacilityId()).orElseThrow();
+
+        // *** CRITICAL: Agreement Guard Check ***
+        Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcf.getId(), facility.getId())
+                .orElseThrow(() -> new IllegalStateException("No active agreement for HCF under this facility"));
+        agreementGuard.assertAgreementActive(agreement.getId(), "LABEL_ISSUE");
+
         int quantity = request.getQuantity();
         List<String> qrCodes = new ArrayList<>(quantity);
         long existingCount = bagLabelRepository.count();
@@ -55,8 +69,10 @@ public class LabelService {
             bagLabelRepository.save(label);
             qrCodes.add(qrCode);
         }
-        String pdfUrl = pdfService.generateLabelBatchPdf(hcf, facility, request.getCategory(), qrCodes.toArray(new String[0]));
-        auditLogService.log("BAG_LABEL", null, "ISSUE", null, "{\"quantity\":" + quantity + "}");
+        String pdfUrl = pdfService.generateLabelBatchPdf(hcf, facility, request.getCategory(),
+                qrCodes.toArray(new String[0]));
+        auditLogService.log("BAG_LABEL", null, "ISSUE", null,
+                "{\"quantity\":" + quantity + ",\"agreementId\":\"" + agreement.getId() + "\"}");
         return new LabelIssueResponse(hcf.getId(), facility.getId(), request.getCategory(), quantity, qrCodes, pdfUrl);
     }
 }

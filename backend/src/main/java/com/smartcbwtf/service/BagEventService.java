@@ -1,5 +1,6 @@
 package com.smartcbwtf.service;
 
+import com.smartcbwtf.domain.Agreement;
 import com.smartcbwtf.domain.BagEvent;
 import com.smartcbwtf.domain.BagLabel;
 import com.smartcbwtf.domain.Facility;
@@ -9,6 +10,8 @@ import com.smartcbwtf.dto.BagEventSyncRequest;
 import com.smartcbwtf.dto.BagEventSyncResponse;
 import com.smartcbwtf.dto.BagVerifyRequest;
 import com.smartcbwtf.dto.BagVerifyResponse;
+import com.smartcbwtf.exception.AgreementNotActiveException;
+import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.repository.BagEventRepository;
 import com.smartcbwtf.repository.BagLabelRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +30,8 @@ public class BagEventService {
 
     private final BagLabelRepository bagLabelRepository;
     private final BagEventRepository bagEventRepository;
+    private final AgreementRepository agreementRepository;
+    private final AgreementGuardService agreementGuard;
     private final AuditLogService auditLogService;
     private final double hcfGeofenceRadiusM;
     private final double facilityDefaultRadiusM;
@@ -34,14 +39,18 @@ public class BagEventService {
     private final double maxGpsAccuracyM;
 
     public BagEventService(BagLabelRepository bagLabelRepository,
-                           BagEventRepository bagEventRepository,
-                           AuditLogService auditLogService,
-                           @Value("${app.geofence.hcf-radius-m:200}") double hcfGeofenceRadiusM,
-                           @Value("${app.geofence.facility-default-radius-m:200}") double facilityDefaultRadiusM,
-                           @Value("${app.weight.mismatch-threshold-kg:0.5}") double mismatchThresholdKg,
-                           @Value("${app.gps.max-accuracy-m:100}") double maxGpsAccuracyM) {
+            BagEventRepository bagEventRepository,
+            AgreementRepository agreementRepository,
+            AgreementGuardService agreementGuard,
+            AuditLogService auditLogService,
+            @Value("${app.geofence.hcf-radius-m:200}") double hcfGeofenceRadiusM,
+            @Value("${app.geofence.facility-default-radius-m:200}") double facilityDefaultRadiusM,
+            @Value("${app.weight.mismatch-threshold-kg:0.5}") double mismatchThresholdKg,
+            @Value("${app.gps.max-accuracy-m:100}") double maxGpsAccuracyM) {
         this.bagLabelRepository = bagLabelRepository;
         this.bagEventRepository = bagEventRepository;
+        this.agreementRepository = agreementRepository;
+        this.agreementGuard = agreementGuard;
         this.auditLogService = auditLogService;
         this.hcfGeofenceRadiusM = hcfGeofenceRadiusM;
         this.facilityDefaultRadiusM = facilityDefaultRadiusM;
@@ -56,11 +65,16 @@ public class BagEventService {
             try {
                 BagLabel label = bagLabelRepository.findByQrCode(item.getQrCode())
                         .orElseThrow(() -> new IllegalArgumentException("Label not found"));
+
+                // *** CRITICAL: Agreement Guard Check ***
+                assertAgreementActiveForLabel(label, item.getEventType());
+
                 validateEventType(item.getEventType());
                 String normalizedEventType = item.getEventType().toUpperCase();
                 Instant eventTs = item.getEventTs() != null ? item.getEventTs() : Instant.now();
 
-                if (bagEventRepository.existsByBagLabelIdAndEventTypeAndEventTs(label.getId(), normalizedEventType, eventTs)) {
+                if (bagEventRepository.existsByBagLabelIdAndEventTypeAndEventTs(label.getId(), normalizedEventType,
+                        eventTs)) {
                     throw new IllegalArgumentException("Duplicate event for label and timestamp");
                 }
 
@@ -99,11 +113,26 @@ public class BagEventService {
                 String dataJson = buildAuditDataJson(mismatchResult);
                 auditLogService.log("BAG_EVENT", event.getId(), "CREATE", item.getCollectedByUserId(), dataJson);
                 acks.add(new BagEventSyncResponse.Ack(item.getQrCode(), "SUCCESS", anomaly));
+            } catch (AgreementNotActiveException ex) {
+                acks.add(new BagEventSyncResponse.Ack(item.getQrCode(), "AGREEMENT_BLOCKED", ex.getMessage()));
             } catch (Exception ex) {
                 acks.add(new BagEventSyncResponse.Ack(item.getQrCode(), "FAILED", ex.getMessage()));
             }
         }
         return new BagEventSyncResponse(acks);
+    }
+
+    /**
+     * Assert that the HCF-Facility agreement is active for this label.
+     */
+    private void assertAgreementActiveForLabel(BagLabel label, String operation) {
+        if (label.getHcf() == null || label.getFacility() == null) {
+            throw new IllegalStateException("Label missing HCF or facility assignment");
+        }
+        Agreement agreement = agreementRepository
+                .findActiveByHcfAndFacility(label.getHcf().getId(), label.getFacility().getId())
+                .orElseThrow(() -> new AgreementNotActiveException(null, null, operation));
+        agreementGuard.assertAgreementActive(agreement.getId(), operation);
     }
 
     private void validateEventType(String eventType) {
@@ -143,7 +172,8 @@ public class BagEventService {
             if (facLat == null || facLon == null) {
                 return "OK";
             }
-            double radius = facility.getGeofenceRadiusM() != null ? facility.getGeofenceRadiusM() : facilityDefaultRadiusM;
+            double radius = facility.getGeofenceRadiusM() != null ? facility.getGeofenceRadiusM()
+                    : facilityDefaultRadiusM;
             double distance = haversineMeters(lat, lon, facLat, facLon);
             return distance > radius ? "OUT_OF_GEOFENCE" : "OK";
         }
@@ -151,7 +181,8 @@ public class BagEventService {
     }
 
     private MismatchResult evaluateMismatch(UUID bagLabelId, BigDecimal cbtwfWeight, String existingAnomaly) {
-        Optional<BagEvent> latestCollection = bagEventRepository.findFirstByBagLabelIdAndEventTypeOrderByEventTsDesc(bagLabelId, "HCF_COLLECTION");
+        Optional<BagEvent> latestCollection = bagEventRepository
+                .findFirstByBagLabelIdAndEventTypeOrderByEventTsDesc(bagLabelId, "HCF_COLLECTION");
         if (latestCollection.isEmpty()) {
             return new MismatchResult(existingAnomaly, null);
         }
@@ -176,7 +207,7 @@ public class BagEventService {
         double dLon = Math.toRadians(lon2 - lon1);
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                        * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return r * c;
     }
@@ -190,8 +221,13 @@ public class BagEventService {
             this.delta = delta;
         }
 
-        String getAnomaly() { return anomaly; }
-        BigDecimal getDelta() { return delta; }
+        String getAnomaly() {
+            return anomaly;
+        }
+
+        BigDecimal getDelta() {
+            return delta;
+        }
     }
 
     /**
@@ -207,6 +243,15 @@ public class BagEventService {
             return new VerifyResult(404, BagVerifyResponse.error("NOT_FOUND", "Bag label not found"));
         }
 
+        // *** CRITICAL: Agreement Guard Check ***
+        try {
+            assertAgreementActiveForLabel(label, "CBWTF_VERIFICATION");
+        } catch (AgreementNotActiveException ex) {
+            return new VerifyResult(409, BagVerifyResponse.error("AGREEMENT_NOT_ACTIVE", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return new VerifyResult(400, BagVerifyResponse.error("NO_AGREEMENT", ex.getMessage()));
+        }
+
         // Check idempotency - already verified
         if (bagEventRepository.existsByBagLabelIdAndEventType(label.getId(), "CBWTF_VERIFICATION")) {
             return new VerifyResult(409, BagVerifyResponse.error("ALREADY_VERIFIED", "Bag has already been verified"));
@@ -214,14 +259,16 @@ public class BagEventService {
 
         Facility facility = label.getFacility();
         if (facility == null) {
-            return new VerifyResult(400, BagVerifyResponse.error("NO_FACILITY", "Bag label not assigned to a facility"));
+            return new VerifyResult(400,
+                    BagVerifyResponse.error("NO_FACILITY", "Bag label not assigned to a facility"));
         }
 
         // Server-side geofence check (authoritative)
         Double facLat = facility.getGpsLat();
         Double facLon = facility.getGpsLon();
         if (facLat != null && facLon != null && request.getGpsLat() != null && request.getGpsLon() != null) {
-            double radius = facility.getGeofenceRadiusM() != null ? facility.getGeofenceRadiusM() : facilityDefaultRadiusM;
+            double radius = facility.getGeofenceRadiusM() != null ? facility.getGeofenceRadiusM()
+                    : facilityDefaultRadiusM;
             double distance = haversineMeters(request.getGpsLat(), request.getGpsLon(), facLat, facLon);
             if (distance > radius) {
                 return new VerifyResult(403, BagVerifyResponse.error("OUT_OF_GEOFENCE",
@@ -264,8 +311,7 @@ public class BagEventService {
                 label.getId(),
                 verifiedAt,
                 mismatchResult.getAnomaly(),
-                mismatchResult.getDelta()
-        );
+                mismatchResult.getDelta());
 
         return new VerifyResult(200, response);
     }
@@ -282,7 +328,12 @@ public class BagEventService {
             this.response = response;
         }
 
-        public int getHttpStatus() { return httpStatus; }
-        public BagVerifyResponse getResponse() { return response; }
+        public int getHttpStatus() {
+            return httpStatus;
+        }
+
+        public BagVerifyResponse getResponse() {
+            return response;
+        }
     }
 }

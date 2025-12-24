@@ -41,6 +41,42 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
     }
 
+    @ExceptionHandler(com.smartcbwtf.exception.AgreementBlockedException.class)
+    public ResponseEntity<ApiError> handleAgreementBlocked(
+            com.smartcbwtf.exception.AgreementBlockedException ex, HttpServletRequest request) {
+        Map<String, Object> details = new java.util.HashMap<>();
+        details.put("error", "AGREEMENT_BLOCKED");
+        details.put("reason", ex.getReason().name());
+        if (ex.getBlockingAgreementId() != null) {
+            details.put("blockingAgreementId", ex.getBlockingAgreementId().toString());
+        }
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request, details);
+    }
+
+    @ExceptionHandler(com.smartcbwtf.exception.AgreementNotActiveException.class)
+    public ResponseEntity<ApiError> handleAgreementNotActive(
+            com.smartcbwtf.exception.AgreementNotActiveException ex, HttpServletRequest request) {
+        Map<String, Object> details = new java.util.HashMap<>();
+        details.put("error", "AGREEMENT_NOT_ACTIVE");
+        if (ex.getCurrentStatus() != null) {
+            details.put("currentStatus", ex.getCurrentStatus().name());
+        }
+        if (ex.getAgreementId() != null) {
+            details.put("agreementId", ex.getAgreementId().toString());
+        }
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request, details);
+    }
+
+    @ExceptionHandler(com.smartcbwtf.exception.IllegalTransitionException.class)
+    public ResponseEntity<ApiError> handleIllegalTransition(
+            com.smartcbwtf.exception.IllegalTransitionException ex, HttpServletRequest request) {
+        Map<String, Object> details = Map.of(
+                "error", "ILLEGAL_TRANSITION",
+                "from", ex.getFrom().name(),
+                "to", ex.getTo().name());
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request, details);
+    }
+
     @ExceptionHandler(com.smartcbwtf.exception.FeatureDisabledException.class)
     public ResponseEntity<ApiError> handleFeatureDisabled(
             com.smartcbwtf.exception.FeatureDisabledException ex, HttpServletRequest request) {

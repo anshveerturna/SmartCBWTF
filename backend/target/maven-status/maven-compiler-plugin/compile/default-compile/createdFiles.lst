@@ -75,6 +75,7 @@ com/smartcbwtf/config/GlobalExceptionHandler$ApiError.class
 com/smartcbwtf/repository/AppUserRepository.class
 com/smartcbwtf/service/SystemConfigService$1.class
 com/smartcbwtf/service/AlertsService.class
+com/smartcbwtf/service/HCFIdentityService.class
 com/smartcbwtf/config/RequestLoggingFilter.class
 com/smartcbwtf/dto/HcfApprovalRequest.class
 com/smartcbwtf/service/PasswordPolicyValidator$ValidationResult.class
