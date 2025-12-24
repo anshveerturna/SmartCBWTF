@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,4 +24,9 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     Page<Invoice> findByStatus(String status, Pageable pageable);
 
     Page<Invoice> findByFacilityIdAndStatus(UUID facilityId, String status, Pageable pageable);
+
+    // Tenant-scoped queries (non-paginated)
+    List<Invoice> findByFacilityId(UUID facilityId);
+
+    List<Invoice> findByFacilityIdAndStatus(UUID facilityId, String status);
 }

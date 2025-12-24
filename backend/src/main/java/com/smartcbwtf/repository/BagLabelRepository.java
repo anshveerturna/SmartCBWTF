@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,4 +23,13 @@ public interface BagLabelRepository extends JpaRepository<BagLabel, UUID> {
 
     @Query("SELECT b FROM BagLabel b WHERE LOWER(b.qrCode) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(b.serialNo) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<BagLabel> searchByQrCodeOrSerial(@Param("search") String search, Pageable pageable);
+
+    // Tenant-scoped queries (non-paginated)
+    List<BagLabel> findByFacilityId(UUID facilityId);
+
+    List<BagLabel> findByFacilityIdAndStatus(UUID facilityId, String status);
+
+    long countByFacilityId(UUID facilityId);
+
+    long countByFacilityIdAndStatus(UUID facilityId, String status);
 }
