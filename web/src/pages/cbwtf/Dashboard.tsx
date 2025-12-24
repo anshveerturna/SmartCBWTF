@@ -1,4 +1,5 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Grid,
@@ -8,6 +9,11 @@ import {
   Chip,
   LinearProgress,
   alpha,
+  Alert,
+  AlertTitle,
+  Skeleton,
+  Stack,
+  Divider,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -16,6 +22,11 @@ import {
   Delete as WasteIcon,
   Warning as WarningIcon,
   AttachMoney,
+  People as PeopleIcon,
+  Speed as SpeedIcon,
+  Schedule as ScheduleIcon,
+  ErrorOutline,
+  Autorenew,
 } from '@mui/icons-material';
 import {
   BarChart,
@@ -32,6 +43,7 @@ import {
   Line,
   Legend,
 } from 'recharts';
+import { cbwtfApi, type CBWTFDashboardDTO, type RiskAlert } from '../../api/cbwtf';
 
 // Metric Card Component
 interface MetricCardProps {
@@ -41,6 +53,7 @@ interface MetricCardProps {
   icon: React.ReactNode;
   trend?: { value: number; label: string };
   color?: string;
+  loading?: boolean;
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({
@@ -50,17 +63,22 @@ const MetricCard: React.FC<MetricCardProps> = ({
   icon,
   trend,
   color = '#6366F1',
+  loading = false,
 }) => (
   <Card>
     <CardContent sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box>
+        <Box sx={{ flex: 1 }}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
             {title}
           </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-            {value}
-          </Typography>
+          {loading ? (
+            <Skeleton width={80} height={40} />
+          ) : (
+            <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {value}
+            </Typography>
+          )}
           {subtitle && (
             <Typography variant="caption" color="text.secondary">
               {subtitle}
@@ -101,7 +119,44 @@ const MetricCard: React.FC<MetricCardProps> = ({
   </Card>
 );
 
-// Mock data for charts
+// Risk Alert Component
+const RiskAlertCard: React.FC<{ alerts: RiskAlert[] }> = ({ alerts }) => {
+  if (alerts.length === 0) return null;
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'CRITICAL': return 'error';
+      case 'HIGH': return 'warning';
+      case 'MEDIUM': return 'info';
+      default: return 'info';
+    }
+  };
+
+  return (
+    <Card sx={{ mb: 3 }}>
+      <CardContent>
+        <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon color="warning" />
+          Risk Alerts ({alerts.length})
+        </Typography>
+        <Stack spacing={2}>
+          {alerts.map((alert, index) => (
+            <Alert 
+              key={index} 
+              severity={getSeverityColor(alert.severity) as 'error' | 'warning' | 'info'}
+              icon={<ErrorOutline />}
+            >
+              <AlertTitle sx={{ fontWeight: 600 }}>{alert.title}</AlertTitle>
+              {alert.description}
+            </Alert>
+          ))}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Mock data for charts (keep for visualization - would need real data from API)
 const categoryData = [
   { name: 'Yellow', value: 45, color: '#FBBF24' },
   { name: 'Red', value: 25, color: '#EF4444' },
@@ -119,67 +174,186 @@ const trendData = [
   { date: 'Sun', yellow: 70, red: 45, blue: 35, white: 25 },
 ];
 
-const hcfPerformanceData = [
-  { name: 'City Hospital', waste: 450, target: 500 },
-  { name: 'Apollo Clinic', waste: 380, target: 400 },
-  { name: 'Metro Health', waste: 320, target: 350 },
-  { name: 'Care Plus', waste: 280, target: 300 },
-  { name: 'Wellness Center', waste: 220, target: 250 },
-];
-
 const CbwtfDashboard: React.FC = () => {
+  // Fetch dashboard data from API
+  const { data: dashboard, isLoading, isError, error, refetch } = useQuery<CBWTFDashboardDTO>({
+    queryKey: ['cbwtf-dashboard'],
+    queryFn: cbwtfApi.getDashboard,
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(1)}L`;
+    } else if (amount >= 1000) {
+      return `₹${(amount / 1000).toFixed(1)}K`;
+    }
+    return `₹${amount.toFixed(0)}`;
+  };
+
+  if (isError) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert 
+          severity="error" 
+          action={
+            <Chip 
+              icon={<Autorenew />} 
+              label="Retry" 
+              onClick={() => refetch()} 
+              size="small" 
+            />
+          }
+        >
+          Failed to load dashboard: {error instanceof Error ? error.message : 'Unknown error'}
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box>
       {/* Welcome Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Welcome back
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Here's what's happening with your facility today.
-        </Typography>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+            {isLoading ? <Skeleton width={200} /> : `Welcome back`}
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            {isLoading ? <Skeleton width={300} /> : `Here's what's happening with ${dashboard?.facilityName || 'your facility'} today.`}
+          </Typography>
+        </Box>
+        {dashboard && (
+          <Chip 
+            label={`${dashboard.subscriptionPlan} • ${dashboard.subscriptionDaysLeft >= 0 ? `${dashboard.subscriptionDaysLeft} days left` : 'Unlimited'}`}
+            color={dashboard.subscriptionDaysLeft < 7 && dashboard.subscriptionDaysLeft >= 0 ? 'error' : 'primary'}
+            icon={<ScheduleIcon />}
+          />
+        )}
       </Box>
 
-      {/* Metric Cards */}
+      {/* Risk Alerts */}
+      {dashboard?.riskAlerts && dashboard.riskAlerts.length > 0 && (
+        <RiskAlertCard alerts={dashboard.riskAlerts} />
+      )}
+
+      {/* Phase 2 Metric Cards - All 6 Required Metrics */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* 1. Active HCFs */}
+        <Grid size={{ xs: 12, sm: 6, lg: 4, xl: 2 }}>
+          <MetricCard
+            title="Active HCFs"
+            value={dashboard?.activeHcfs ?? '-'}
+            subtitle={`of ${dashboard?.totalAgreements ?? 0} total agreements`}
+            icon={<PeopleIcon />}
+            color="#10B981"
+            loading={isLoading}
+          />
+        </Grid>
+        
+        {/* 2. Total Waste Today */}
+        <Grid size={{ xs: 12, sm: 6, lg: 4, xl: 2 }}>
+          <MetricCard
+            title="Bags Processed Today"
+            value={dashboard?.bagsProcessedToday ?? '-'}
+            subtitle={`${dashboard?.bagsProcessedThisWeek ?? 0} this week`}
+            icon={<WasteIcon />}
+            trend={{ value: 12, label: 'vs yesterday' }}
+            color="#6366F1"
+            loading={isLoading}
+          />
+        </Grid>
+
+        {/* 3. Vehicles Online */}
+        <Grid size={{ xs: 12, sm: 6, lg: 4, xl: 2 }}>
+          <MetricCard
+            title="Vehicles Online"
+            value={`${dashboard?.vehiclesOnline ?? 0}/${dashboard?.totalVehicles ?? 0}`}
+            subtitle="GPS active < 15 min"
+            icon={<LocalShipping />}
+            color="#8B5CF6"
+            loading={isLoading}
+          />
+        </Grid>
+
+        {/* 4. Staff Attendance */}
+        <Grid size={{ xs: 12, sm: 6, lg: 4, xl: 2 }}>
+          <MetricCard
+            title="Staff Present"
+            value={`${dashboard?.staffPresentToday ?? 0}/${dashboard?.totalStaff ?? 0}`}
+            subtitle="Attendance today"
+            icon={<SpeedIcon />}
+            color="#06B6D4"
+            loading={isLoading}
+          />
+        </Grid>
+
+        {/* 5. Unpaid Invoices */}
+        <Grid size={{ xs: 12, sm: 6, lg: 4, xl: 2 }}>
+          <MetricCard
+            title="Unpaid Invoices"
+            value={dashboard ? formatCurrency(dashboard.pendingInvoiceAmount) : '-'}
+            subtitle={`${dashboard?.pendingInvoiceCount ?? 0} pending`}
+            icon={<AttachMoney />}
+            color="#F59E0B"
+            loading={isLoading}
+          />
+        </Grid>
+
+        {/* 6. Subscription Days Left */}
+        <Grid size={{ xs: 12, sm: 6, lg: 4, xl: 2 }}>
+          <MetricCard
+            title="Subscription"
+            value={dashboard?.subscriptionDaysLeft ?? '-'}
+            subtitle={dashboard?.subscriptionDaysLeft !== undefined && dashboard.subscriptionDaysLeft >= 0 ? 'days remaining' : 'Unlimited'}
+            icon={<ScheduleIcon />}
+            color={dashboard?.subscriptionDaysLeft !== undefined && dashboard.subscriptionDaysLeft < 7 ? '#EF4444' : '#22C55E'}
+            loading={isLoading}
+          />
+        </Grid>
+      </Grid>
+
+      {/* Additional Metrics Row */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
-            title="Total Waste Collected"
-            value="2,845 kg"
-            subtitle="Today"
-            icon={<WasteIcon />}
-            trend={{ value: 12, label: 'vs yesterday' }}
-            color="#10B981"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <MetricCard
-            title="Bags Verified"
-            value="342"
-            subtitle="Today"
-            icon={<LocalShipping />}
-            trend={{ value: 8, label: 'vs yesterday' }}
-            color="#6366F1"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <MetricCard
-            title="Active Alerts"
-            value="7"
-            subtitle="3 critical"
+            title="Agreements Expiring"
+            value={dashboard?.agreementsExpiringSoon ?? '-'}
+            subtitle="Within 30 days"
             icon={<WarningIcon />}
             color="#EF4444"
+            loading={isLoading}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
-            title="Revenue Outstanding"
-            value="₹4.2L"
-            subtitle="This month"
+            title="Anomaly Bags"
+            value={dashboard?.anomalyBagsThisWeek ?? '-'}
+            subtitle="This week"
+            icon={<ErrorOutline />}
+            color="#F97316"
+            loading={isLoading}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <MetricCard
+            title="Total Revenue"
+            value={dashboard ? formatCurrency(dashboard.totalRevenueAllTime) : '-'}
+            subtitle="All time"
             icon={<AttachMoney />}
-            trend={{ value: -5, label: 'improved' }}
-            color="#F59E0B"
+            color="#22C55E"
+            loading={isLoading}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <MetricCard
+            title="QR Labels Issued"
+            value={dashboard?.totalBagLabelsIssued ?? '-'}
+            subtitle="Total generated"
+            icon={<WasteIcon />}
+            color="#3B82F6"
+            loading={isLoading}
           />
         </Grid>
       </Grid>
@@ -304,30 +478,88 @@ const CbwtfDashboard: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* HCF Performance */}
+      {/* Recent Activity & Expiring Agreements */}
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12 }}>
+        {/* Recent Bag Events */}
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Top HCFs by Waste Volume
+                Recent Activity
               </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={hcfPerformanceData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis type="number" stroke="#94A3B8" />
-                  <YAxis dataKey="name" type="category" stroke="#94A3B8" width={120} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1E293B',
-                      border: '1px solid #334155',
-                      borderRadius: 8,
-                    }}
-                  />
-                  <Bar dataKey="waste" fill="#6366F1" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="target" fill="#334155" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {isLoading ? (
+                <Stack spacing={2}>
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} height={40} />
+                  ))}
+                </Stack>
+              ) : dashboard?.recentBagEvents && dashboard.recentBagEvents.length > 0 ? (
+                <Stack divider={<Divider />} spacing={1}>
+                  {dashboard.recentBagEvents.slice(0, 5).map((event, index) => (
+                    <Box key={index} sx={{ py: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" fontWeight={500}>
+                          {event.qrCode || 'Unknown QR'}
+                        </Typography>
+                        <Chip 
+                          label={event.eventType} 
+                          size="small" 
+                          color={event.anomalyState && event.anomalyState !== 'NONE' ? 'error' : 'default'}
+                        />
+                      </Box>
+                      <Typography variant="caption" color="text.secondary">
+                        {event.hcfName || 'Unknown HCF'} • {new Date(event.eventTs).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No recent activity
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Expiring Agreements */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Agreements Expiring Soon
+              </Typography>
+              {isLoading ? (
+                <Stack spacing={2}>
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} height={40} />
+                  ))}
+                </Stack>
+              ) : dashboard?.expiringAgreements && dashboard.expiringAgreements.length > 0 ? (
+                <Stack divider={<Divider />} spacing={1}>
+                  {dashboard.expiringAgreements.slice(0, 5).map((agreement, index) => (
+                    <Box key={index} sx={{ py: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" fontWeight={500}>
+                          {agreement.hcfName || agreement.agreementNumber}
+                        </Typography>
+                        <Chip 
+                          label={`${agreement.daysUntilExpiry} days`}
+                          size="small" 
+                          color={agreement.daysUntilExpiry < 7 ? 'error' : 'warning'}
+                        />
+                      </Box>
+                      <Typography variant="caption" color="text.secondary">
+                        {agreement.agreementNumber} • Expires: {agreement.endDate ? new Date(agreement.endDate).toLocaleDateString() : 'N/A'}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No agreements expiring soon
+                </Typography>
+              )}
             </CardContent>
           </Card>
         </Grid>

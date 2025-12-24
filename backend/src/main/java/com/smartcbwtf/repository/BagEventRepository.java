@@ -35,4 +35,17 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 	Page<BagEvent> findByEventType(String eventType, Pageable pageable);
 
 	Page<BagEvent> findByEventTsBetween(Instant start, Instant end, Pageable pageable);
+
+	// Dashboard metrics queries
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.facility.id = :facilityId AND e.eventType = :eventType AND e.eventTs >= :since")
+	long countByFacilityIdAndEventTypeAndEventTsAfter(
+			@Param("facilityId") UUID facilityId,
+			@Param("eventType") String eventType,
+			@Param("since") Instant since);
+
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.facility.id = :facilityId AND e.anomalyState != 'OK' AND e.eventTs >= :since")
+	long countAnomaliesByFacilityIdSince(@Param("facilityId") UUID facilityId, @Param("since") Instant since);
+
+	@Query("SELECT e FROM BagEvent e WHERE e.facility.id = :facilityId ORDER BY e.eventTs DESC LIMIT :limit")
+	List<BagEvent> findRecentByFacilityId(@Param("facilityId") UUID facilityId, @Param("limit") int limit);
 }

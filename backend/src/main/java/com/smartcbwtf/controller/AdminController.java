@@ -214,7 +214,10 @@ public class AdminController {
                     String oldUsername = admin.getUsername();
                     admin.setUsername(request.newUsername());
                     admin.setPasswordHash(passwordEncoder.encode(request.newPassword()));
-                    admin.setForcePasswordChange(true);
+                    // Don't force password change when SuperAdmin sets a new password
+                    // User can use "Force Password Reset" action separately if needed
+                    admin.setForcePasswordChange(false);
+                    admin.setMustChangePassword(false);
                     userRepository.save(admin);
 
                     // Audit
@@ -226,14 +229,56 @@ public class AdminController {
                             getCurrentUserId(),
                             getCurrentUsername(),
                             "SUPER_ADMIN",
-                            "CBWTF admin credentials changed, password reset required"));
+                            "CBWTF admin credentials changed by SuperAdmin"));
 
                     log.info("Changed credentials for CBWTF {} admin", facility.getCode());
 
                     return ResponseEntity.ok(Map.of(
-                            "message", "Credentials updated",
-                            "username", request.newUsername(),
-                            "forcePasswordChange", "true"));
+                            "message", "Credentials updated successfully",
+                            "username", request.newUsername()));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Force password reset for CBWTF admin.
+     * This marks the user to change password on next login.
+     */
+    @PostMapping("/cbwtfs/{id}/force-password-reset")
+    @Transactional
+    public ResponseEntity<Map<String, String>> forceCBWTFPasswordReset(@PathVariable("id") UUID id) {
+        return facilityRepository.findById(id)
+                .map(facility -> {
+                    AppUser admin = userRepository.findByFacilityIdAndRole(id, "CBWTF_ADMIN")
+                            .stream()
+                            .findFirst()
+                            .orElse(null);
+
+                    if (admin == null) {
+                        return ResponseEntity.badRequest()
+                                .<Map<String, String>>body(Map.of("error", "No CBWTF_ADMIN found for this facility"));
+                    }
+
+                    admin.setForcePasswordChange(true);
+                    admin.setMustChangePassword(true);
+                    userRepository.save(admin);
+
+                    // Audit
+                    auditRepository.save(SubscriptionAudit.forFacility(
+                            id,
+                            SubscriptionAudit.Action.PASSWORD_RESET_FORCED,
+                            null,
+                            admin.getUsername(),
+                            getCurrentUserId(),
+                            getCurrentUsername(),
+                            "SUPER_ADMIN",
+                            "CBWTF admin forced to reset password on next login"));
+
+                    log.info("Forced password reset for CBWTF {} admin", facility.getCode());
+
+                    return ResponseEntity.ok(Map.of(
+                            "message", "Password reset required on next login",
+                            "username", admin.getUsername()));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }

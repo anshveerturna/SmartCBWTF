@@ -45,4 +45,25 @@ public interface AgreementRepository extends JpaRepository<Agreement, UUID> {
     // Count active agreements for CBWTF (dashboard metric)
     @Query("SELECT COUNT(a) FROM Agreement a WHERE a.facility.id = :facilityId AND a.status = 'ACTIVE'")
     long countActiveByFacilityId(@Param("facilityId") UUID facilityId);
+
+    // Count all agreements for facility
+    long countByFacilityId(UUID facilityId);
+
+    // Count by status
+    @Query("SELECT COUNT(a) FROM Agreement a WHERE a.facility.id = :facilityId AND a.status = :status")
+    long countByFacilityIdAndStatus(@Param("facilityId") UUID facilityId, @Param("status") String status);
+
+    // Count by dues status
+    @Query("SELECT COUNT(a) FROM Agreement a WHERE a.facility.id = :facilityId AND a.duesStatus = :duesStatus")
+    long countByFacilityIdAndDuesStatus(@Param("facilityId") UUID facilityId, @Param("duesStatus") String duesStatus);
+
+    // Count expiring soon (within date)
+    @Query("SELECT COUNT(a) FROM Agreement a WHERE a.facility.id = :facilityId AND a.status = 'ACTIVE' AND a.endDate <= :endDate")
+    long countExpiringSoonByFacilityId(@Param("facilityId") UUID facilityId,
+            @Param("endDate") java.time.LocalDate endDate);
+
+    // Find expiring agreements for dashboard
+    @Query("SELECT a FROM Agreement a WHERE a.facility.id = :facilityId AND a.status = 'ACTIVE' AND a.endDate <= :endDate ORDER BY a.endDate ASC")
+    List<Agreement> findExpiringSoonByFacilityId(@Param("facilityId") UUID facilityId,
+            @Param("endDate") java.time.LocalDate endDate);
 }

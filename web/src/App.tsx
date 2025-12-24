@@ -37,6 +37,7 @@ const FinanceBills = lazy(() => import('./pages/cbwtf/finance/Bills'));
 const FinanceRevenue = lazy(() => import('./pages/cbwtf/finance/Revenue'));
 // Utility pages
 const Blocked = lazy(() => import('./pages/Blocked'));
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 
 // Loading fallback
 const PageLoader: React.FC = () => (
@@ -76,6 +77,7 @@ const App: React.FC = () => {
                 {/* Public Routes */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/blocked" element={<Blocked />} />
+                <Route path="/change-password" element={<ChangePassword />} />
 
                 {/* SuperAdmin Routes */}
                 <Route

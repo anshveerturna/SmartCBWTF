@@ -31,6 +31,7 @@ import {
   PlayArrow as PlayArrowIcon,
   AccessTime as AccessTimeIcon,
   Key as KeyIcon,
+  LockReset as LockResetIcon,
 } from '@mui/icons-material';
 import { adminApi, FEATURE_FLAGS } from '../../api/admin';
 
@@ -60,6 +61,7 @@ export default function CBWTFDetail() {
   const [credentialsSaving, setCredentialsSaving] = useState(false);
   const [credentialsSuccess, setCredentialsSuccess] = useState<string | null>(null);
   const [credentialsError, setCredentialsError] = useState<string | null>(null);
+  const [forceResetLoading, setForceResetLoading] = useState(false);
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -556,6 +558,29 @@ export default function CBWTFDetail() {
                       </Typography>
                     </Box>
                   )}
+                  <Divider sx={{ my: 1 }} />
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    size="small"
+                    startIcon={<LockResetIcon />}
+                    disabled={forceResetLoading}
+                    onClick={async () => {
+                      if (!confirm('This will require the CBWTF admin to change their password on next login. Continue?')) return;
+                      try {
+                        setForceResetLoading(true);
+                        await adminApi.forceCBWTFPasswordReset(id!);
+                        await refetchAdmin();
+                        setCredentialsSuccess('Password reset will be required on next login');
+                      } catch {
+                        setCredentialsError('Failed to force password reset');
+                      } finally {
+                        setForceResetLoading(false);
+                      }
+                    }}
+                  >
+                    {forceResetLoading ? 'Processing...' : 'Force Password Reset'}
+                  </Button>
                 </Stack>
               ) : (
                 <Alert severity="warning">No admin user found for this CBWTF</Alert>

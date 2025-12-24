@@ -375,6 +375,12 @@ export const adminApi = {
     return response.data;
   },
 
+  // Force password reset for CBWTF admin
+  forceCBWTFPasswordReset: async (id: string): Promise<{ message: string; username: string }> => {
+    const response = await apiClient.post(`/api/admin/cbwtfs/${id}/force-password-reset`);
+    return response.data;
+  },
+
   // Revoke all access immediately
   revokeAccess: async (id: string): Promise<void> => {
     await apiClient.delete(`/api/admin/users/${id}/revoke`);
