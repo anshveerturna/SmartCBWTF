@@ -29,6 +29,7 @@ const PaymentGateway = lazy(() => import('./pages/superadmin/PaymentGateway'));
 const SystemConfig = lazy(() => import('./pages/superadmin/SystemConfig'));
 const ProfilePage = lazy(() => import('./pages/superadmin/profile/ProfilePage'));
 const CbwtfDashboard = lazy(() => import('./pages/cbwtf/Dashboard'));
+const CbwtfAnalytics = lazy(() => import('./pages/cbwtf/Analytics'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 // CBWTF Finance pages
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
@@ -129,6 +130,7 @@ const App: React.FC = () => {
                 >
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<CbwtfDashboard />} />
+                  <Route path="analytics" element={<CbwtfAnalytics />} />
                   <Route path="hcfs" element={<div>HCF Management (Coming Soon)</div>} />
                   <Route path="labels" element={<div>QR Labels (Coming Soon)</div>} />
                   <Route path="operations" element={<div>Waste Operations (Coming Soon)</div>} />

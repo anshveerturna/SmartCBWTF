@@ -25,14 +25,17 @@ public class AnalyticsController {
     private final AnalyticsService analyticsService;
     private final DailyWasteSnapshotRepository dailySnapshotRepository;
     private final MonthlyWasteSnapshotRepository monthlySnapshotRepository;
+    private final com.smartcbwtf.service.AnalyticsPageService analyticsPageService;
 
     public AnalyticsController(
             AnalyticsService analyticsService,
             DailyWasteSnapshotRepository dailySnapshotRepository,
-            MonthlyWasteSnapshotRepository monthlySnapshotRepository) {
+            MonthlyWasteSnapshotRepository monthlySnapshotRepository,
+            com.smartcbwtf.service.AnalyticsPageService analyticsPageService) {
         this.analyticsService = analyticsService;
         this.dailySnapshotRepository = dailySnapshotRepository;
         this.monthlySnapshotRepository = monthlySnapshotRepository;
+        this.analyticsPageService = analyticsPageService;
     }
 
     // Existing endpoints
@@ -141,6 +144,66 @@ public class AnalyticsController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(trends);
+    }
+
+    // =====================================================
+    // ANALYTICS PAGE ENDPOINTS - Dedicated APIs
+    // =====================================================
+
+    /**
+     * Get total waste collected for the Analytics Page.
+     * Endpoint: GET /api/analytics/page/total-waste
+     */
+    @GetMapping("/page/total-waste")
+    @PreAuthorize("hasRole('CBWTF_ADMIN')")
+    public ResponseEntity<com.smartcbwtf.dto.AnalyticsPageDTO.TotalWasteResponse> getPageTotalWaste(
+            @RequestParam(name = "from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(name = "to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(name = "hcfId", required = false) UUID hcfId) {
+
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            return ResponseEntity.status(403).build();
+        }
+
+        var response = analyticsPageService.getTotalWaste(facilityId, from, to, hcfId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get waste breakdown by category for the Analytics Page.
+     * Endpoint: GET /api/analytics/page/waste-by-category
+     */
+    @GetMapping("/page/waste-by-category")
+    @PreAuthorize("hasRole('CBWTF_ADMIN')")
+    public ResponseEntity<com.smartcbwtf.dto.AnalyticsPageDTO.WasteByCategoryResponse> getPageWasteByCategory(
+            @RequestParam(name = "from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(name = "to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(name = "hcfId", required = false) UUID hcfId) {
+
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            return ResponseEntity.status(403).build();
+        }
+
+        var response = analyticsPageService.getWasteByCategory(facilityId, from, to, hcfId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get list of HCFs with ACTIVE agreements for the HCF dropdown.
+     * Endpoint: GET /api/analytics/page/hcfs/active
+     */
+    @GetMapping("/page/hcfs/active")
+    @PreAuthorize("hasRole('CBWTF_ADMIN')")
+    public ResponseEntity<List<com.smartcbwtf.dto.AnalyticsPageDTO.HcfOption>> getActiveHcfs() {
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            return ResponseEntity.status(403).build();
+        }
+
+        var response = analyticsPageService.getActiveHcfs(facilityId);
+        return ResponseEntity.ok(response);
     }
 
     // Helper methods

@@ -48,4 +48,124 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 
 	@Query("SELECT e FROM BagEvent e WHERE e.facility.id = :facilityId ORDER BY e.eventTs DESC LIMIT :limit")
 	List<BagEvent> findRecentByFacilityId(@Param("facilityId") UUID facilityId, @Param("limit") int limit);
+
+	// =====================================================
+	// ANALYTICS PAGE QUERIES - Scoped by ACTIVE agreements
+	// =====================================================
+
+	/**
+	 * Sum total weight for facility within date range.
+	 * Only includes events from HCFs with ACTIVE agreements.
+	 */
+	@Query("""
+			SELECT COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			AND e.eventTs >= :fromInstant
+			AND e.eventTs < :toInstant
+			AND EXISTS (
+				SELECT 1 FROM Agreement a
+				WHERE a.hcf.id = e.hcf.id
+				AND a.facility.id = :facilityId
+				AND a.status = 'ACTIVE'
+			)
+			""")
+	java.math.BigDecimal sumWeightByFacilityAndDateRange(
+			@Param("facilityId") UUID facilityId,
+			@Param("fromInstant") Instant fromInstant,
+			@Param("toInstant") Instant toInstant);
+
+	/**
+	 * Sum total weight for specific HCF within date range.
+	 * Verifies HCF has ACTIVE agreement with facility.
+	 */
+	@Query("""
+			SELECT COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			AND e.hcf.id = :hcfId
+			AND e.eventTs >= :fromInstant
+			AND e.eventTs < :toInstant
+			AND EXISTS (
+				SELECT 1 FROM Agreement a
+				WHERE a.hcf.id = :hcfId
+				AND a.facility.id = :facilityId
+				AND a.status = 'ACTIVE'
+			)
+			""")
+	java.math.BigDecimal sumWeightByFacilityAndHcfAndDateRange(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("fromInstant") Instant fromInstant,
+			@Param("toInstant") Instant toInstant);
+
+	/**
+	 * Count events for facility within date range (ACTIVE agreements only).
+	 */
+	@Query("""
+			SELECT COUNT(e)
+			FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			AND e.eventTs >= :fromInstant
+			AND e.eventTs < :toInstant
+			AND EXISTS (
+				SELECT 1 FROM Agreement a
+				WHERE a.hcf.id = e.hcf.id
+				AND a.facility.id = :facilityId
+				AND a.status = 'ACTIVE'
+			)
+			""")
+	long countEventsByFacilityAndDateRange(
+			@Param("facilityId") UUID facilityId,
+			@Param("fromInstant") Instant fromInstant,
+			@Param("toInstant") Instant toInstant);
+
+	/**
+	 * Sum weight grouped by category for facility (ACTIVE agreements only).
+	 * Returns Object[] with [category, sumWeight].
+	 */
+	@Query("""
+			SELECT e.bagLabel.category, COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			AND e.eventTs >= :fromInstant
+			AND e.eventTs < :toInstant
+			AND EXISTS (
+				SELECT 1 FROM Agreement a
+				WHERE a.hcf.id = e.hcf.id
+				AND a.facility.id = :facilityId
+				AND a.status = 'ACTIVE'
+			)
+			GROUP BY e.bagLabel.category
+			ORDER BY e.bagLabel.category
+			""")
+	List<Object[]> sumWeightGroupedByCategoryForFacility(
+			@Param("facilityId") UUID facilityId,
+			@Param("fromInstant") Instant fromInstant,
+			@Param("toInstant") Instant toInstant);
+
+	/**
+	 * Sum weight grouped by category for specific HCF (ACTIVE agreement only).
+	 */
+	@Query("""
+			SELECT e.bagLabel.category, COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			AND e.hcf.id = :hcfId
+			AND e.eventTs >= :fromInstant
+			AND e.eventTs < :toInstant
+			AND EXISTS (
+				SELECT 1 FROM Agreement a
+				WHERE a.hcf.id = :hcfId
+				AND a.facility.id = :facilityId
+				AND a.status = 'ACTIVE'
+			)
+			GROUP BY e.bagLabel.category
+			ORDER BY e.bagLabel.category
+			""")
+	List<Object[]> sumWeightGroupedByCategoryForHcf(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("fromInstant") Instant fromInstant,
+			@Param("toInstant") Instant toInstant);
 }

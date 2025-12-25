@@ -83,4 +83,57 @@ export const cbwtfApi = {
   },
 };
 
+// ============= Analytics Page Types =============
+
+export interface TotalWasteResponse {
+  totalWeightKg: number;
+  periodLabel: string;
+  eventCount: number;
+}
+
+export interface CategoryBreakdown {
+  category: string;
+  weightKg: number;
+  percentContribution: number;
+}
+
+export interface WasteByCategoryResponse {
+  categories: CategoryBreakdown[];
+  grandTotalKg: number;
+}
+
+export interface HcfOption {
+  id: string;
+  name: string;
+}
+
+// ============= Analytics Page API Functions =============
+
+export const getAnalyticsTotalWaste = async (
+  from: string,
+  to: string,
+  hcfId?: string
+): Promise<TotalWasteResponse> => {
+  const params = new URLSearchParams({ from, to });
+  if (hcfId) params.append('hcfId', hcfId);
+  const response = await apiClient.get(`/api/analytics/page/total-waste?${params}`);
+  return response.data;
+};
+
+export const getAnalyticsWasteByCategory = async (
+  from: string,
+  to: string,
+  hcfId?: string
+): Promise<WasteByCategoryResponse> => {
+  const params = new URLSearchParams({ from, to });
+  if (hcfId) params.append('hcfId', hcfId);
+  const response = await apiClient.get(`/api/analytics/page/waste-by-category?${params}`);
+  return response.data;
+};
+
+export const getAnalyticsActiveHcfs = async (): Promise<HcfOption[]> => {
+  const response = await apiClient.get('/api/analytics/page/hcfs/active');
+  return response.data;
+};
+
 export default cbwtfApi;
