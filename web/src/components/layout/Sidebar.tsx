@@ -102,6 +102,7 @@ const getSuperAdminSections = (): NavSection[] => [
 const getCbwtfAdminItems = (): NavItem[] => [
   { path: '/cbwtf/dashboard', label: 'Dashboard', icon: <DashboardIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/analytics', label: 'Analytics', icon: <AnalyticsIcon />, roles: ['CBWTF_ADMIN'] },
+  { path: '/cbwtf/vehicles', label: 'Vehicles', icon: <OperationsIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/hcfs', label: 'HCF Management', icon: <HcfIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/labels', label: 'QR Labels', icon: <QrCodeIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/operations', label: 'Waste Operations', icon: <OperationsIcon />, roles: ['CBWTF_ADMIN'] },

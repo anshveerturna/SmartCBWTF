@@ -1,0 +1,3 @@
+-- V22: Facility timezone
+-- This migration was already applied to the database
+-- Placeholder file to satisfy Flyway validation

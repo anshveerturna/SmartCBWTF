@@ -136,4 +136,72 @@ export const getAnalyticsActiveHcfs = async (): Promise<HcfOption[]> => {
   return response.data;
 };
 
+// ============= Vehicle & GPS Types =============
+
+export interface VehicleDTO {
+  id: string;
+  registrationNumber: string;
+  vehicleType: string;
+  gpsStatus: string;
+  lastGpsAt: string | null;
+  lastLatitude: number | null;
+  lastLongitude: number | null;
+  driverName: string | null;
+  status: string;
+}
+
+export interface LivePositionDTO {
+  id: string;
+  registrationNumber: string;
+  vehicleType: string;
+  latitude: number | null;
+  longitude: number | null;
+  lastGpsAt: string | null;
+  gpsStatus: string;
+  driverName: string | null;
+}
+
+export interface LiveMapDTO {
+  vehicles: LivePositionDTO[];
+  onlineCount: number;
+  totalCount: number;
+  timestamp: string;
+}
+
+export interface GpsLocationDTO {
+  latitude: number;
+  longitude: number;
+  speed: number | null;
+  heading: number | null;
+  recordedAt: string;
+}
+
+// ============= Vehicle API Functions =============
+
+export const getVehicles = async (): Promise<VehicleDTO[]> => {
+  const response = await apiClient.get('/api/cbwtf/vehicles');
+  return response.data;
+};
+
+export const getVehicle = async (id: string): Promise<VehicleDTO> => {
+  const response = await apiClient.get(`/api/cbwtf/vehicles/${id}`);
+  return response.data;
+};
+
+export const getLiveMap = async (): Promise<LiveMapDTO> => {
+  const response = await apiClient.get('/api/cbwtf/vehicles/live-map');
+  return response.data;
+};
+
+export const getVehicleLastLocation = async (id: string): Promise<GpsLocationDTO | null> => {
+  const response = await apiClient.get(`/api/cbwtf/vehicles/${id}/last-location`);
+  return response.data || null;
+};
+
+export const getVehicleTrail = async (id: string, limit = 50): Promise<GpsLocationDTO[]> => {
+  const response = await apiClient.get(`/api/cbwtf/vehicles/${id}/trail?limit=${limit}`);
+  return response.data;
+};
+
 export default cbwtfApi;
+
