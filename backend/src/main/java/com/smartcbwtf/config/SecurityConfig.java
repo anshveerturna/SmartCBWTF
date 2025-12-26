@@ -45,7 +45,8 @@ public class SecurityConfig {
                                 "/api/health",
                                 "/api/hcfs/register",
                                 "/api/terms/latest", // Public endpoint for mobile app to fetch T&C
-                                "/uploads/**" // Profile photos and other uploaded files
+                                "/uploads/**", // Profile photos and other uploaded files
+                                "/error" // Allow error dispatching
                         ).permitAll()
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())

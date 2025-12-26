@@ -207,12 +207,8 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
                         com.google.android.material.snackbar.Snackbar.make(
                             binding.root,
                             "No internet connection. Please check your network and try again.",
-                            com.google.android.material.snackbar.Snackbar.LENGTH_INDEFINITE
-                        ).setAction("Retry") {
-                            val username = binding.etUsername.text.toString()
-                            val password = binding.etPassword.text.toString()
-                            viewModel.login(username, password)
-                        }.show()
+                            com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                        ).show()
                     }
                     LoginError.UnknownError -> {
                         com.google.android.material.snackbar.Snackbar.make(

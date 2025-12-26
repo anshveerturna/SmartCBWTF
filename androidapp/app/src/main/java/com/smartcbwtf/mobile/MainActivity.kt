@@ -13,6 +13,8 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import com.smartcbwtf.mobile.databinding.ActivityMainBinding
 import com.smartcbwtf.mobile.repository.AuthRepository
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -89,6 +91,27 @@ class MainActivity : AppCompatActivity() {
                 }
                 else -> {
                     supportActionBar?.show()
+                }
+            }
+        }
+
+        // Global auth state observer
+        // If token is cleared (e.g. 401 Unauthorized), force navigation to login
+        lifecycleScope.launch {
+            authRepository.getAuthStateFlow().collect { token ->
+                if (token == null) {
+                    val currentDest = navController.currentDestination?.id
+                    if (currentDest != R.id.loginFragment && currentDest != R.id.splashFragment) {
+                        Log.i(TAG, "Token cleared (remote logout), redirecting to Login")
+                        navController.navigate(
+                            R.id.loginFragment,
+                            null,
+                            NavOptions.Builder()
+                                .setPopUpTo(R.id.nav_graph, true)
+                                .build()
+                        )
+                        Toast.makeText(this@MainActivity, "Session expired. Please login again.", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }

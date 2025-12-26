@@ -20,9 +20,11 @@ import java.util.Collections;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final com.smartcbwtf.repository.AppUserRepository appUserRepository;
 
-    public JwtAuthFilter(JwtService jwtService) {
+    public JwtAuthFilter(JwtService jwtService, com.smartcbwtf.repository.AppUserRepository appUserRepository) {
         this.jwtService = jwtService;
+        this.appUserRepository = appUserRepository;
     }
 
     @Override
@@ -36,8 +38,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     Claims claims = jwtService.parseClaims(token);
                     String username = claims.getSubject();
                     String role = claims.get("role", String.class);
+                    String userIdStr = claims.get("user_id", String.class);
 
                     if (StringUtils.hasText(username) && StringUtils.hasText(role)) {
+
+                        // Security hardening: Check if user exists and is active/unlocked in real-time
+                        if (userIdStr != null) {
+                            java.util.UUID userId = java.util.UUID.fromString(userIdStr);
+                            var user = appUserRepository.findById(userId).orElse(null);
+
+                            if (user == null || !user.isActive()) {
+                                // User disabled or deleted - reject immediately
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                                        "Account disabled or not found");
+                                return;
+                            }
+
+                            if (user.isLocked()) {
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Account locked");
+                                return;
+                            }
+                        }
+
                         // Set up Spring Security authentication
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                                 username,
@@ -48,7 +70,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         // Populate TenantContext for query scoping
                         String tenantIdStr = claims.get("tenant_id", String.class);
                         String hcfIdStr = claims.get("hcf_id", String.class);
-                        String userIdStr = claims.get("user_id", String.class);
 
                         java.util.UUID tenantId = tenantIdStr != null ? java.util.UUID.fromString(tenantIdStr) : null;
                         java.util.UUID hcfId = hcfIdStr != null ? java.util.UUID.fromString(hcfIdStr) : null;
