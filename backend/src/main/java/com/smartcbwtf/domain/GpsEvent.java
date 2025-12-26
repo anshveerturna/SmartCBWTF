@@ -1,8 +1,12 @@
 package com.smartcbwtf.domain;
 
+import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Type;
+
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -55,8 +59,13 @@ public class GpsEvent {
     @Column(name = "source", nullable = false, length = 20)
     private String source;
 
-    @Column(name = "raw_payload", columnDefinition = "TEXT")
-    private String rawPayload;
+    /**
+     * Original vendor payload stored as JSONB for audit/debug.
+     * READ-ONLY - never queried directly by application logic.
+     */
+    @Type(JsonType.class)
+    @Column(name = "raw_payload", columnDefinition = "jsonb")
+    private Map<String, Object> rawPayload;
 
     @PrePersist
     protected void onCreate() {
@@ -79,7 +88,7 @@ public class GpsEvent {
         return event;
     }
 
-    // Getters only - no setters to emphasize immutability after creation
+    // Getters
     public UUID getId() {
         return id;
     }
@@ -124,11 +133,11 @@ public class GpsEvent {
         return source;
     }
 
-    public String getRawPayload() {
+    public Map<String, Object> getRawPayload() {
         return rawPayload;
     }
 
-    // Builder-style setters for initial creation
+    // Setters for initial creation only
     public void setVehicle(Vehicle vehicle) {
         this.vehicle = vehicle;
     }
@@ -169,7 +178,7 @@ public class GpsEvent {
         this.source = source;
     }
 
-    public void setRawPayload(String rawPayload) {
+    public void setRawPayload(Map<String, Object> rawPayload) {
         this.rawPayload = rawPayload;
     }
 }

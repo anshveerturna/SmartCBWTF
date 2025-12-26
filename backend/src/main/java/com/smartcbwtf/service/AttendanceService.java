@@ -2,6 +2,7 @@ package com.smartcbwtf.service;
 
 import com.smartcbwtf.domain.AppUser;
 import com.smartcbwtf.domain.Attendance;
+import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.dto.AttendanceSyncItem;
 import com.smartcbwtf.dto.AttendanceSyncItemResult;
@@ -9,6 +10,7 @@ import com.smartcbwtf.dto.AttendanceSyncRequest;
 import com.smartcbwtf.dto.AttendanceSyncResponse;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.repository.AttendanceRepository;
+import com.smartcbwtf.repository.FacilityRepository;
 import com.smartcbwtf.repository.HcfRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -26,8 +28,10 @@ public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final HcfRepository hcfRepository;
     private final AppUserRepository appUserRepository;
+    private final FacilityRepository facilityRepository;
     private final AuditLogService auditLogService;
     private final FeatureGuardService featureGuardService;
+    private final AgreementGuardService agreementGuard;
 
     @Value("${app.attendance.geofence-radius-m:50}")
     private double geofenceRadiusM;
@@ -39,13 +43,17 @@ public class AttendanceService {
             AttendanceRepository attendanceRepository,
             HcfRepository hcfRepository,
             AppUserRepository appUserRepository,
+            FacilityRepository facilityRepository,
             AuditLogService auditLogService,
-            FeatureGuardService featureGuardService) {
+            FeatureGuardService featureGuardService,
+            AgreementGuardService agreementGuard) {
         this.attendanceRepository = attendanceRepository;
         this.hcfRepository = hcfRepository;
         this.appUserRepository = appUserRepository;
+        this.facilityRepository = facilityRepository;
         this.auditLogService = auditLogService;
         this.featureGuardService = featureGuardService;
+        this.agreementGuard = agreementGuard;
     }
 
     @Transactional
@@ -62,7 +70,7 @@ public class AttendanceService {
         int failureCount = 0;
 
         for (AttendanceSyncItem item : request.getEvents()) {
-            AttendanceSyncItemResult result = processItem(item, driverId);
+            AttendanceSyncItemResult result = processItem(item, driverId, facilityId);
             response.getResults().add(result);
             if (result.isSuccess()) {
                 successCount++;
@@ -77,7 +85,7 @@ public class AttendanceService {
         return response;
     }
 
-    private AttendanceSyncItemResult processItem(AttendanceSyncItem item, UUID driverId) {
+    private AttendanceSyncItemResult processItem(AttendanceSyncItem item, UUID driverId, UUID facilityId) {
         UUID clientEventId = item.getClientEventId();
 
         // Idempotency check
@@ -98,6 +106,17 @@ public class AttendanceService {
             return AttendanceSyncItemResult.error(clientEventId, "HCF_NOT_FOUND", "Healthcare Facility not found");
         }
         Hcf hcf = hcfOpt.get();
+
+        // AGREEMENT CHECK: Staff can only mark attendance for HCFs with ACTIVE
+        // agreement
+        try {
+            agreementGuard.getActiveAgreement(hcf.getId(), facilityId);
+        } catch (Exception e) {
+            return AttendanceSyncItemResult.error(
+                    clientEventId,
+                    "AGREEMENT_NOT_ACTIVE",
+                    "No active agreement exists for this HCF");
+        }
 
         // Geofence validation
         double distance = haversineMeters(
@@ -125,9 +144,13 @@ public class AttendanceService {
         }
 
         // Create and save attendance record
+        Facility facility = facilityRepository.findById(facilityId)
+                .orElseThrow(() -> new IllegalStateException("Facility not found"));
+
         Attendance attendance = new Attendance();
         attendance.setDriver(driver);
         attendance.setHcf(hcf);
+        attendance.setFacility(facility); // Denormalized for efficient queries
         attendance.setEventTs(item.getEventTs());
         attendance.setGpsLat(item.getGpsLat());
         attendance.setGpsLon(item.getGpsLon());

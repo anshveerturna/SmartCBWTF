@@ -1,13 +1,20 @@
 package com.smartcbwtf.domain;
 
+import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Type;
+
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * GPS Vendor Integration - stores vendor-specific configuration per CBWTF
  * facility.
  * Managed by support team, not exposed to CBWTF admins.
+ * 
+ * SECURITY: credentials field contains sensitive auth data and must never
+ * be exposed to CBWTF admin APIs.
  */
 @Entity
 @Table(name = "gps_vendor_integration", uniqueConstraints = {
@@ -32,8 +39,16 @@ public class GpsVendorIntegration {
     @Column(name = "auth_type", length = 20)
     private String authType; // API_KEY, BASIC, OAUTH, NONE
 
-    @Column(name = "credentials", columnDefinition = "TEXT")
-    private String credentials; // JSON string, encrypted at rest
+    /**
+     * Vendor credentials stored as JSONB.
+     * Structure varies by vendor and auth_type.
+     * Example: {"api_key": "...", "secret": "..."}
+     * 
+     * SECURITY: This field must NEVER be exposed to CBWTF admin APIs.
+     */
+    @Type(JsonType.class)
+    @Column(name = "credentials", columnDefinition = "jsonb")
+    private Map<String, Object> credentials;
 
     @Column(name = "webhook_url")
     private String webhookUrl;
@@ -102,11 +117,11 @@ public class GpsVendorIntegration {
         this.authType = authType;
     }
 
-    public String getCredentials() {
+    public Map<String, Object> getCredentials() {
         return credentials;
     }
 
-    public void setCredentials(String credentials) {
+    public void setCredentials(Map<String, Object> credentials) {
         this.credentials = credentials;
     }
 

@@ -112,6 +112,7 @@ public class GenericWebhookAdapter implements GpsVendorAdapter {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private GpsEventDTO parseItem(JsonNode item) {
         String deviceId = findStringField(item, "device_id", "deviceId", "imei", "id", "tracker_id");
         if (deviceId == null || deviceId.isBlank()) {
@@ -130,6 +131,9 @@ public class GenericWebhookAdapter implements GpsVendorAdapter {
             recordedAt = Instant.now();
         }
 
+        // Convert JsonNode to Map for JSONB storage
+        java.util.Map<String, Object> rawPayload = objectMapper.convertValue(item, java.util.Map.class);
+
         return GpsEventDTO.builder()
                 .deviceId(deviceId)
                 .latitude(lat)
@@ -140,7 +144,7 @@ public class GenericWebhookAdapter implements GpsVendorAdapter {
                 .accuracy(findDecimalField(item, "accuracy", "hdop"))
                 .recordedAt(recordedAt)
                 .source(SOURCE)
-                .rawPayload(item.toString())
+                .rawPayload(rawPayload)
                 .build();
     }
 

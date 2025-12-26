@@ -61,6 +61,16 @@ public class AppUser {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    // GPS tracking fields for quick "online" status
+    @Column(name = "last_gps_at")
+    private Instant lastGpsAt;
+
+    @Column(name = "last_gps_lat", precision = 10, scale = 7)
+    private java.math.BigDecimal lastGpsLat;
+
+    @Column(name = "last_gps_lon", precision = 10, scale = 7)
+    private java.math.BigDecimal lastGpsLon;
+
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
 
@@ -267,7 +277,9 @@ public class AppUser {
     }
 
     public void lockAccount(int lockoutMinutes) {
-        this.lockedUntil = Instant.now().plusSeconds(lockoutMinutes * 60L);
+        // Lock indefinitely - only admin can unlock
+        // Using 100 years in the future as "infinite"
+        this.lockedUntil = Instant.now().plusSeconds(100L * 365L * 24L * 60L * 60L);
     }
 
     public void unlockAccount() {
@@ -278,6 +290,37 @@ public class AppUser {
     public void recordSuccessfulLogin() {
         this.lastLoginAt = Instant.now();
         resetFailedAttempts();
+    }
+
+    // GPS tracking getters/setters
+    public Instant getLastGpsAt() {
+        return lastGpsAt;
+    }
+
+    public void setLastGpsAt(Instant lastGpsAt) {
+        this.lastGpsAt = lastGpsAt;
+    }
+
+    public java.math.BigDecimal getLastGpsLat() {
+        return lastGpsLat;
+    }
+
+    public void setLastGpsLat(java.math.BigDecimal lastGpsLat) {
+        this.lastGpsLat = lastGpsLat;
+    }
+
+    public java.math.BigDecimal getLastGpsLon() {
+        return lastGpsLon;
+    }
+
+    public void setLastGpsLon(java.math.BigDecimal lastGpsLon) {
+        this.lastGpsLon = lastGpsLon;
+    }
+
+    public void updateGpsPosition(java.math.BigDecimal lat, java.math.BigDecimal lon) {
+        this.lastGpsLat = lat;
+        this.lastGpsLon = lon;
+        this.lastGpsAt = Instant.now();
     }
 
     @PreUpdate

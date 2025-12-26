@@ -63,6 +63,9 @@ public final class FragmentLoginBinding implements ViewBinding {
   public final TextView tvAppTitle;
 
   @NonNull
+  public final TextView tvError;
+
+  @NonNull
   public final View viewHeader;
 
   private FragmentLoginBinding(@NonNull ConstraintLayout rootView,
@@ -71,7 +74,7 @@ public final class FragmentLoginBinding implements ViewBinding {
       @NonNull ImageView ivLogo, @NonNull LinearLayout layoutErrorBanner,
       @NonNull ProgressBar progressBar, @NonNull TextInputLayout tilPassword,
       @NonNull TextInputLayout tilUsername, @NonNull TextView tvAppSubtitle,
-      @NonNull TextView tvAppTitle, @NonNull View viewHeader) {
+      @NonNull TextView tvAppTitle, @NonNull TextView tvError, @NonNull View viewHeader) {
     this.rootView = rootView;
     this.btnForgotPassword = btnForgotPassword;
     this.btnLogin = btnLogin;
@@ -85,6 +88,7 @@ public final class FragmentLoginBinding implements ViewBinding {
     this.tilUsername = tilUsername;
     this.tvAppSubtitle = tvAppSubtitle;
     this.tvAppTitle = tvAppTitle;
+    this.tvError = tvError;
     this.viewHeader = viewHeader;
   }
 
@@ -187,6 +191,12 @@ public final class FragmentLoginBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.tvError;
+      TextView tvError = ViewBindings.findChildViewById(rootView, id);
+      if (tvError == null) {
+        break missingId;
+      }
+
       id = R.id.viewHeader;
       View viewHeader = ViewBindings.findChildViewById(rootView, id);
       if (viewHeader == null) {
@@ -195,7 +205,7 @@ public final class FragmentLoginBinding implements ViewBinding {
 
       return new FragmentLoginBinding((ConstraintLayout) rootView, btnForgotPassword, btnLogin,
           cardLogin, etPassword, etUsername, ivLogo, layoutErrorBanner, progressBar, tilPassword,
-          tilUsername, tvAppSubtitle, tvAppTitle, viewHeader);
+          tilUsername, tvAppSubtitle, tvAppTitle, tvError, viewHeader);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

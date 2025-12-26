@@ -1,0 +1,654 @@
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Chip,
+  Grid,
+  Divider,
+  Alert,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  Tooltip,
+  Stack,
+  Paper,
+  TextField,
+} from '@mui/material';
+import {
+  ArrowBack as BackIcon,
+  Person as PersonIcon,
+  LocalShipping as DriverIcon,
+  Engineering as PlantIcon,
+  GpsFixed as OnlineIcon,
+  GpsOff as OfflineIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  LockReset as ResetIcon,
+  Block as DisableIcon,
+  CheckCircle as EnableIcon,
+  ContentCopy as CopyIcon,
+  AccessTime as TimeIcon,
+  LocationOn as LocationIcon,
+  EventNote as AttendanceIcon,
+  Edit as EditIcon,
+  VpnKey as KeyIcon,
+} from '@mui/icons-material';
+import {
+  getStaffDetail,
+  disableStaff,
+  enableStaff,
+  unlockStaff,
+  updateStaff,
+  updateStaffCredentials,
+  type StaffDetailDTO,
+  type UpdateStaffRequest,
+  type UpdateCredentialsRequest,
+} from '../../api/cbwtf';
+
+const roleLabels: Record<string, string> = {
+  DRIVER: 'Driver',
+  PLANT_OPERATOR: 'Plant Operator',
+};
+
+export default function StaffDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [passwordDialog, setPasswordDialog] = useState<{ open: boolean; password: string | null }>({
+    open: false,
+    password: null,
+  });
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: 'disable' | 'enable' | null }>({
+    open: false,
+    action: null,
+  });
+  const [editDialog, setEditDialog] = useState(false);
+  const [editForm, setEditForm] = useState<UpdateStaffRequest>({
+    fullName: '',
+    email: '',
+    phone: '',
+  });
+  const [credentialsDialog, setCredentialsDialog] = useState(false);
+  const [credentialsForm, setCredentialsForm] = useState<UpdateCredentialsRequest>({
+    username: '',
+    password: '',
+    forcePasswordChange: false,
+  });
+
+  // Fetch staff detail
+  const { data: staff, isLoading, error } = useQuery<StaffDetailDTO>({
+    queryKey: ['staff-detail', id],
+    queryFn: () => getStaffDetail(id!),
+    enabled: !!id,
+  });
+
+  // Mutations
+  const disableMutation = useMutation({
+    mutationFn: () => disableStaff(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      setConfirmDialog({ open: false, action: null });
+    },
+  });
+
+  const enableMutation = useMutation({
+    mutationFn: () => enableStaff(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      setConfirmDialog({ open: false, action: null });
+    },
+  });
+
+  const unlockMutation = useMutation({
+    mutationFn: () => unlockStaff(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: UpdateStaffRequest) => updateStaff(id!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      setEditDialog(false);
+    },
+  });
+
+  const openEditDialog = () => {
+    if (staff) {
+      setEditForm({
+        fullName: staff.fullName,
+        email: staff.email || '',
+        phone: staff.phone || '',
+      });
+      setEditDialog(true);
+    }
+  };
+
+  const handleEditSubmit = () => {
+    updateMutation.mutate(editForm);
+  };
+
+  const credentialsMutation = useMutation({
+    mutationFn: (data: UpdateCredentialsRequest) => updateStaffCredentials(id!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      setCredentialsDialog(false);
+      setCredentialsForm({ username: '', password: '', forcePasswordChange: false });
+    },
+  });
+
+  const openCredentialsDialog = () => {
+    if (staff) {
+      setCredentialsForm({
+        username: staff.username,
+        password: '',
+        forcePasswordChange: false,
+      });
+      setCredentialsDialog(true);
+    }
+  };
+
+  const handleCredentialsSubmit = () => {
+    credentialsMutation.mutate(credentialsForm);
+  };
+
+  const formatDateTime = (dateString: string | null): string => {
+    if (!dateString) return 'Never';
+    return new Date(dateString).toLocaleString();
+  };
+
+  const formatTimeAgo = (dateString: string | null): string => {
+    if (!dateString) return 'Never';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    return `${Math.floor(diffHours / 24)} days ago`;
+  };
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error || !staff) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          Failed to load staff details. The staff member may not exist or you don't have access.
+        </Alert>
+        <Button startIcon={<BackIcon />} onClick={() => navigate('/cbwtf/staff')} sx={{ mt: 2 }}>
+          Back to Staff List
+        </Button>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+        <IconButton onClick={() => navigate('/cbwtf/staff')}>
+          <BackIcon />
+        </IconButton>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="h4" sx={{ fontWeight: 600 }}>
+            {staff.fullName}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+            {staff.username}
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="contained"
+            startIcon={<EditIcon />}
+            onClick={openEditDialog}
+          >
+            Edit Profile
+          </Button>
+          {staff.active ? (
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DisableIcon />}
+              onClick={() => setConfirmDialog({ open: true, action: 'disable' })}
+            >
+              Disable
+            </Button>
+          ) : (
+            <Button
+              variant="outlined"
+              color="success"
+              startIcon={<EnableIcon />}
+              onClick={() => setConfirmDialog({ open: true, action: 'enable' })}
+            >
+              Enable
+            </Button>
+          )}
+        </Stack>
+      </Box>
+
+      <Grid container spacing={3}>
+        {/* Profile Card */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{ borderRadius: 2, height: '100%' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PersonIcon /> Profile
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+              
+              <Stack spacing={2}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Role</Typography>
+                  <Chip
+                    icon={staff.role === 'DRIVER' ? <DriverIcon /> : <PlantIcon />}
+                    label={roleLabels[staff.role]}
+                    size="small"
+                    color={staff.role === 'DRIVER' ? 'primary' : 'secondary'}
+                  />
+                </Box>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Status</Typography>
+                  <Chip
+                    label={staff.active ? 'Active' : 'Disabled'}
+                    size="small"
+                    color={staff.active ? 'success' : 'default'}
+                  />
+                </Box>
+
+                {staff.email && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <EmailIcon fontSize="small" color="action" />
+                    <Typography variant="body2">{staff.email}</Typography>
+                  </Box>
+                )}
+
+                {staff.phone && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PhoneIcon fontSize="small" color="action" />
+                    <Typography variant="body2">{staff.phone}</Typography>
+                  </Box>
+                )}
+
+                <Divider />
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Created</Typography>
+                  <Typography variant="body2">{formatDateTime(staff.createdAt)}</Typography>
+                </Box>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Last Login</Typography>
+                  <Typography variant="body2">{formatTimeAgo(staff.lastLoginAt)}</Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* GPS Status Card */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{ borderRadius: 2, height: '100%' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <LocationIcon /> GPS Status
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+
+              <Box sx={{ textAlign: 'center', py: 2 }}>
+                {staff.gpsStatus === 'ONLINE' ? (
+                  <>
+                    <OnlineIcon sx={{ fontSize: 48, color: 'success.main', mb: 1 }} />
+                    <Typography variant="h6" color="success.main">Online</Typography>
+                  </>
+                ) : staff.gpsStatus === 'OFFLINE' ? (
+                  <>
+                    <OfflineIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                    <Typography variant="h6" color="text.secondary">Offline</Typography>
+                  </>
+                ) : (
+                  <>
+                    <OfflineIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                    <Typography variant="h6" color="text.secondary">Never Connected</Typography>
+                  </>
+                )}
+              </Box>
+
+              <Stack spacing={2} sx={{ mt: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Last GPS Update</Typography>
+                  <Typography variant="body2">{formatTimeAgo(staff.lastGpsAt)}</Typography>
+                </Box>
+
+                {staff.lastGpsLat && staff.lastGpsLon && (
+                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'grey.50' }}>
+                    <Typography variant="caption" color="text.secondary">Last Known Position</Typography>
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                      {staff.lastGpsLat.toFixed(6)}, {staff.lastGpsLon.toFixed(6)}
+                    </Typography>
+                  </Paper>
+                )}
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Last Attendance Card */}
+        <Grid size={{ xs: 12 }}>
+          <Card sx={{ borderRadius: 2 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <AttendanceIcon /> Last Attendance
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+
+              {staff.lastAttendanceAt ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">Healthcare Facility</Typography>
+                    <Typography variant="body1" fontWeight={500}>{staff.lastAttendanceHcf}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">Time</Typography>
+                    <Typography variant="body1">{formatDateTime(staff.lastAttendanceAt)}</Typography>
+                  </Box>
+                  <Chip
+                    icon={<TimeIcon />}
+                    label={formatTimeAgo(staff.lastAttendanceAt)}
+                    size="small"
+                    variant="outlined"
+                  />
+                </Box>
+              ) : (
+                <Typography color="text.secondary">
+                  No attendance records yet.
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* App Credentials Card */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{ borderRadius: 2, height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <KeyIcon /> App Credentials
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={openCredentialsDialog}
+                >
+                  Update Credentials
+                </Button>
+              </Box>
+              <Divider sx={{ my: 2 }} />
+
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Username</Typography>
+                  <Typography variant="body1" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
+                    {staff.username}
+                  </Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Password</Typography>
+                  <Typography variant="body1" color="text.secondary" fontStyle="italic">
+                    •••••••• (hashed, cannot be displayed)
+                  </Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Status</Typography>
+                  <Chip
+                    label={staff.active ? 'Active' : 'Disabled'}
+                    size="small"
+                    color={staff.active ? 'success' : 'default'}
+                    sx={{ mt: 0.5 }}
+                  />
+                </Box>
+
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Last Login</Typography>
+                  <Typography variant="body1">
+                    {staff.lastLoginAt ? formatDateTime(staff.lastLoginAt) : 'Never'}
+                  </Typography>
+                </Box>
+              </Stack>
+
+              <Button
+                variant="outlined"
+                color="warning"
+                fullWidth
+                startIcon={<ResetIcon />}
+                onClick={() => unlockMutation.mutate()}
+                disabled={unlockMutation.isPending}
+                sx={{ mt: 3 }}
+              >
+                {unlockMutation.isPending ? 'Unlocking...' : 'Unlock Account'}
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Confirm Dialog */}
+      <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, action: null })}>
+        <DialogTitle>
+          {confirmDialog.action === 'disable' ? 'Disable Staff Account' : 'Enable Staff Account'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            {confirmDialog.action === 'disable' 
+              ? `Are you sure you want to disable ${staff.fullName}? They will no longer be able to log in.`
+              : `Are you sure you want to re-enable ${staff.fullName}?`
+            }
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialog({ open: false, action: null })}>Cancel</Button>
+          <Button
+            variant="contained"
+            color={confirmDialog.action === 'disable' ? 'error' : 'success'}
+            onClick={() => confirmDialog.action === 'disable' ? disableMutation.mutate() : enableMutation.mutate()}
+            disabled={disableMutation.isPending || enableMutation.isPending}
+          >
+            {confirmDialog.action === 'disable' ? 'Disable' : 'Enable'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Password Dialog */}
+      <PasswordRevealDialog
+        open={passwordDialog.open}
+        password={passwordDialog.password}
+        onClose={() => setPasswordDialog({ open: false, password: null })}
+      />
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={editDialog} onClose={() => setEditDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Staff Profile</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            <TextField
+              label="Full Name"
+              value={editForm.fullName}
+              onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+              fullWidth
+              required
+            />
+            <TextField
+              label="Email"
+              type="email"
+              value={editForm.email}
+              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Phone"
+              value={editForm.phone}
+              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+              fullWidth
+            />
+          </Stack>
+          {updateMutation.isError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              Failed to update staff profile. Please try again.
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleEditSubmit}
+            disabled={updateMutation.isPending || !editForm.fullName.trim()}
+          >
+            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Credentials Dialog */}
+      <Dialog open={credentialsDialog} onClose={() => setCredentialsDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Login Credentials</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Changing credentials will immediately affect the staff member's ability to login to the Android app.
+          </Alert>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            <TextField
+              label="Username"
+              value={credentialsForm.username}
+              onChange={(e) => setCredentialsForm({ ...credentialsForm, username: e.target.value })}
+              fullWidth
+              helperText="Must be unique across the system"
+            />
+            <TextField
+              label="New Password"
+              type="password"
+              value={credentialsForm.password}
+              onChange={(e) => setCredentialsForm({ ...credentialsForm, password: e.target.value })}
+              fullWidth
+              helperText="Leave blank to keep current password"
+            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <input
+                type="checkbox"
+                id="forcePasswordChange"
+                checked={credentialsForm.forcePasswordChange || false}
+                onChange={(e) => setCredentialsForm({ ...credentialsForm, forcePasswordChange: e.target.checked })}
+              />
+              <label htmlFor="forcePasswordChange">
+                Force password change on next login
+              </label>
+            </Box>
+          </Stack>
+          {credentialsMutation.isError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              Failed to update credentials. The username may already exist.
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCredentialsDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleCredentialsSubmit}
+            disabled={credentialsMutation.isPending || !credentialsForm.username?.trim()}
+          >
+            {credentialsMutation.isPending ? 'Saving...' : 'Update Credentials'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
+
+// Password Reveal Dialog
+function PasswordRevealDialog({
+  open,
+  password,
+  onClose,
+}: {
+  open: boolean;
+  password: string | null;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (password) {
+      navigator.clipboard.writeText(password);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Password Reset</DialogTitle>
+      <DialogContent>
+        <Alert severity="success" sx={{ mb: 2 }}>
+          Password has been reset successfully.
+        </Alert>
+        <Alert severity="warning" icon={false}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            <strong>New Temporary Password</strong> (shown only once):
+          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            bgcolor: 'grey.100',
+            p: 1.5,
+            borderRadius: 1,
+          }}>
+            <Typography variant="h6" sx={{ fontFamily: 'monospace', flex: 1 }}>
+              {password}
+            </Typography>
+            <Tooltip title={copied ? 'Copied!' : 'Copy'}>
+              <IconButton onClick={handleCopy} size="small">
+                <CopyIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            The staff member will be required to change this password on next login.
+          </Typography>
+        </Alert>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} variant="contained">Done</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}

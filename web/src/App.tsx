@@ -32,6 +32,8 @@ const CbwtfDashboard = lazy(() => import('./pages/cbwtf/Dashboard'));
 const CbwtfAnalytics = lazy(() => import('./pages/cbwtf/Analytics'));
 const CbwtfVehicles = lazy(() => import('./pages/cbwtf/Vehicles'));
 const CbwtfVehicleLiveMap = lazy(() => import('./pages/cbwtf/VehicleLiveMap'));
+const CbwtfStaff = lazy(() => import('./pages/cbwtf/Staff'));
+const CbwtfStaffDetail = lazy(() => import('./pages/cbwtf/StaffDetail'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 // CBWTF Finance pages
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
@@ -135,6 +137,8 @@ const App: React.FC = () => {
                   <Route path="analytics" element={<CbwtfAnalytics />} />
                   <Route path="vehicles" element={<CbwtfVehicles />} />
                   <Route path="vehicles/live-map" element={<CbwtfVehicleLiveMap />} />
+                  <Route path="staff" element={<CbwtfStaff />} />
+                  <Route path="staff/:id" element={<CbwtfStaffDetail />} />
                   <Route path="hcfs" element={<div>HCF Management (Coming Soon)</div>} />
                   <Route path="labels" element={<div>QR Labels (Coming Soon)</div>} />
                   <Route path="operations" element={<div>Waste Operations (Coming Soon)</div>} />

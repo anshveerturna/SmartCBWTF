@@ -58,4 +58,7 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
                         Pageable pageable);
 
         long countByRoleAndActive(String role, boolean active);
+
+        // Staff management - find by facility and roles (DRIVER, PLANT_OPERATOR)
+        Page<AppUser> findByFacilityIdAndRoleIn(UUID facilityId, java.util.List<String> roles, Pageable pageable);
 }

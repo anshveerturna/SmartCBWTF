@@ -133,11 +133,21 @@ public class VehicleController {
 
     // DTO conversion methods
     private VehicleDTO toDTO(Vehicle v) {
+        // Compute real-time GPS status based on 15-minute threshold
+        String computedStatus;
+        if (v.getLastGpsAt() == null) {
+            computedStatus = v.getGpsDeviceId() != null ? "PENDING" : "NO_DEVICE";
+        } else {
+            Instant threshold = Instant.now().minus(VehicleService.ONLINE_THRESHOLD_MINUTES,
+                    java.time.temporal.ChronoUnit.MINUTES);
+            computedStatus = v.getLastGpsAt().isAfter(threshold) ? "ONLINE" : "OFFLINE";
+        }
+
         return new VehicleDTO(
                 v.getId(),
                 v.getRegistrationNumber(),
                 v.getVehicleType(),
-                v.getGpsStatus(),
+                computedStatus,
                 v.getLastGpsAt(),
                 v.getLastLatitude(),
                 v.getLastLongitude(),

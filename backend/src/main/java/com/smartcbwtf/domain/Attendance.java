@@ -22,6 +22,11 @@ public class Attendance {
     @JoinColumn(name = "hcf_id", nullable = false)
     private Hcf hcf;
 
+    // Denormalized for efficient tenant-scoped queries
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "facility_id")
+    private Facility facility;
+
     @Column(name = "event_ts", nullable = false)
     private Instant eventTs;
 
@@ -48,36 +53,99 @@ public class Attendance {
     private Instant createdAt = Instant.now();
 
     // Getters and setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public AppUser getDriver() { return driver; }
-    public void setDriver(AppUser driver) { this.driver = driver; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public Hcf getHcf() { return hcf; }
-    public void setHcf(Hcf hcf) { this.hcf = hcf; }
+    public AppUser getDriver() {
+        return driver;
+    }
 
-    public Instant getEventTs() { return eventTs; }
-    public void setEventTs(Instant eventTs) { this.eventTs = eventTs; }
+    public void setDriver(AppUser driver) {
+        this.driver = driver;
+    }
 
-    public Double getGpsLat() { return gpsLat; }
-    public void setGpsLat(Double gpsLat) { this.gpsLat = gpsLat; }
+    public Hcf getHcf() {
+        return hcf;
+    }
 
-    public Double getGpsLon() { return gpsLon; }
-    public void setGpsLon(Double gpsLon) { this.gpsLon = gpsLon; }
+    public void setHcf(Hcf hcf) {
+        this.hcf = hcf;
+    }
 
-    public Double getGpsAccuracyM() { return gpsAccuracyM; }
-    public void setGpsAccuracyM(Double gpsAccuracyM) { this.gpsAccuracyM = gpsAccuracyM; }
+    public Facility getFacility() {
+        return facility;
+    }
 
-    public String getAppDeviceId() { return appDeviceId; }
-    public void setAppDeviceId(String appDeviceId) { this.appDeviceId = appDeviceId; }
+    public void setFacility(Facility facility) {
+        this.facility = facility;
+    }
 
-    public Double getDistanceFromHcfM() { return distanceFromHcfM; }
-    public void setDistanceFromHcfM(Double distanceFromHcfM) { this.distanceFromHcfM = distanceFromHcfM; }
+    public Instant getEventTs() {
+        return eventTs;
+    }
 
-    public UUID getClientEventId() { return clientEventId; }
-    public void setClientEventId(UUID clientEventId) { this.clientEventId = clientEventId; }
+    public void setEventTs(Instant eventTs) {
+        this.eventTs = eventTs;
+    }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Double getGpsLat() {
+        return gpsLat;
+    }
+
+    public void setGpsLat(Double gpsLat) {
+        this.gpsLat = gpsLat;
+    }
+
+    public Double getGpsLon() {
+        return gpsLon;
+    }
+
+    public void setGpsLon(Double gpsLon) {
+        this.gpsLon = gpsLon;
+    }
+
+    public Double getGpsAccuracyM() {
+        return gpsAccuracyM;
+    }
+
+    public void setGpsAccuracyM(Double gpsAccuracyM) {
+        this.gpsAccuracyM = gpsAccuracyM;
+    }
+
+    public String getAppDeviceId() {
+        return appDeviceId;
+    }
+
+    public void setAppDeviceId(String appDeviceId) {
+        this.appDeviceId = appDeviceId;
+    }
+
+    public Double getDistanceFromHcfM() {
+        return distanceFromHcfM;
+    }
+
+    public void setDistanceFromHcfM(Double distanceFromHcfM) {
+        this.distanceFromHcfM = distanceFromHcfM;
+    }
+
+    public UUID getClientEventId() {
+        return clientEventId;
+    }
+
+    public void setClientEventId(UUID clientEventId) {
+        this.clientEventId = clientEventId;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
 }

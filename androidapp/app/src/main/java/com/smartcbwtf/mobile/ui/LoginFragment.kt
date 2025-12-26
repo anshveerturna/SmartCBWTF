@@ -184,6 +184,21 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
                 when (state.error) {
                     LoginError.InvalidCredentials -> {
                         binding.layoutErrorBanner.isVisible = true
+                        binding.tvError.text = "Invalid username or password. Please try again."
+                        android.animation.ObjectAnimator.ofFloat(binding.cardLogin, "translationX", 0f, 25f, -25f, 25f, -25f, 15f, -15f, 6f, -6f, 0f)
+                            .setDuration(500)
+                            .start()
+                    }
+                    LoginError.AccountDisabled -> {
+                        binding.layoutErrorBanner.isVisible = true
+                        binding.tvError.text = "Your access has been revoked. Please contact your administrator."
+                        android.animation.ObjectAnimator.ofFloat(binding.cardLogin, "translationX", 0f, 25f, -25f, 25f, -25f, 15f, -15f, 6f, -6f, 0f)
+                            .setDuration(500)
+                            .start()
+                    }
+                    LoginError.AccountLocked -> {
+                        binding.layoutErrorBanner.isVisible = true
+                        binding.tvError.text = "Your account is locked. Please try again later or contact your administrator."
                         android.animation.ObjectAnimator.ofFloat(binding.cardLogin, "translationX", 0f, 25f, -25f, 25f, -25f, 15f, -15f, 6f, -6f, 0f)
                             .setDuration(500)
                             .start()

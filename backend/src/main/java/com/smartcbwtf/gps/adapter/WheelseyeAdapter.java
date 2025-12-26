@@ -89,6 +89,7 @@ public class WheelseyeAdapter implements GpsVendorAdapter {
         return events;
     }
 
+    @SuppressWarnings("unchecked")
     private GpsEventDTO parseItem(JsonNode item) {
         String deviceId = getStringField(item, "imei");
         if (deviceId == null || deviceId.isBlank()) {
@@ -108,6 +109,9 @@ public class WheelseyeAdapter implements GpsVendorAdapter {
             recordedAt = Instant.now();
         }
 
+        // Convert JsonNode to Map for JSONB storage
+        java.util.Map<String, Object> rawPayload = objectMapper.convertValue(item, java.util.Map.class);
+
         return GpsEventDTO.builder()
                 .deviceId(deviceId)
                 .latitude(lat)
@@ -118,7 +122,7 @@ public class WheelseyeAdapter implements GpsVendorAdapter {
                 .accuracy(getDecimalField(item, "accuracy"))
                 .recordedAt(recordedAt)
                 .source(SOURCE)
-                .rawPayload(item.toString())
+                .rawPayload(rawPayload)
                 .build();
     }
 

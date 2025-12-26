@@ -2,6 +2,7 @@ package com.smartcbwtf.gps.adapter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Map;
 
 /**
  * Normalized GPS Event DTO - internal format used after vendor-specific
@@ -18,7 +19,7 @@ public record GpsEventDTO(
         BigDecimal accuracy,
         Instant recordedAt,
         String source,
-        String rawPayload) {
+        Map<String, Object> rawPayload) {
     public static Builder builder() {
         return new Builder();
     }
@@ -33,7 +34,7 @@ public record GpsEventDTO(
         private BigDecimal accuracy;
         private Instant recordedAt;
         private String source;
-        private String rawPayload;
+        private Map<String, Object> rawPayload;
 
         public Builder deviceId(String deviceId) {
             this.deviceId = deviceId;
@@ -80,7 +81,7 @@ public record GpsEventDTO(
             return this;
         }
 
-        public Builder rawPayload(String rawPayload) {
+        public Builder rawPayload(Map<String, Object> rawPayload) {
             this.rawPayload = rawPayload;
             return this;
         }

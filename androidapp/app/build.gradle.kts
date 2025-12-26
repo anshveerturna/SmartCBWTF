@@ -26,7 +26,7 @@ android {
     buildTypes {
         debug {
             val apiBaseUrl = project.findProperty("API_BASE_URL") as String?
-            ?: "http://192.168.1.131:8080/api/"
+            ?: "http://10.0.2.2:8080/api/"
             buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
         }
         release {

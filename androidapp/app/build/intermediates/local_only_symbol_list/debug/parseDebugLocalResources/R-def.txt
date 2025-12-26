@@ -310,6 +310,7 @@ id tvBaseUrl
 id tvBluetoothStatus
 id tvCategory
 id tvCooldownTime
+id tvError
 id tvGps
 id tvGpsCoordinates
 id tvGpsLabel

@@ -74,7 +74,15 @@ class AuthViewModel @Inject constructor(
                 val error = when {
                     e.message?.contains("No internet") == true -> LoginError.NetworkError
                     e is java.io.IOException -> LoginError.NetworkError
-                    e is retrofit2.HttpException && (e.code() == 401 || e.code() == 403) -> LoginError.InvalidCredentials
+                    e is retrofit2.HttpException -> {
+                        val errorBody = e.response()?.errorBody()?.string()
+                        when {
+                            errorBody?.contains("ACCOUNT_DISABLED") == true -> LoginError.AccountDisabled
+                            errorBody?.contains("ACCOUNT_LOCKED") == true -> LoginError.AccountLocked
+                            e.code() == 401 || e.code() == 403 -> LoginError.InvalidCredentials
+                            else -> LoginError.UnknownError
+                        }
+                    }
                     else -> LoginError.UnknownError
                 }
                 _loginState.value = LoginState.Error(error)
@@ -113,6 +121,8 @@ sealed class LoginError {
     object EmptyUsername : LoginError()
     object EmptyPassword : LoginError()
     object InvalidCredentials : LoginError()
+    object AccountDisabled : LoginError()
+    object AccountLocked : LoginError()
     object NetworkError : LoginError()
     object UnknownError : LoginError()
 }

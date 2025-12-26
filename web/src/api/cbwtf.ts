@@ -203,5 +203,102 @@ export const getVehicleTrail = async (id: string, limit = 50): Promise<GpsLocati
   return response.data;
 };
 
+// ============= Staff Management Types =============
+
+export interface StaffDTO {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  role: 'DRIVER' | 'PLANT_OPERATOR';
+  active: boolean;
+  gpsStatus: 'ONLINE' | 'OFFLINE' | 'NEVER';
+  lastGpsAt: string | null;
+  createdAt: string;
+  tempPassword?: string; // Only returned on creation
+}
+
+export interface StaffDetailDTO extends StaffDTO {
+  lastGpsLat: number | null;
+  lastGpsLon: number | null;
+  lastAttendanceHcf: string | null;
+  lastAttendanceAt: string | null;
+  lastLoginAt: string | null;
+  updatedAt: string;
+}
+
+export interface CreateStaffRequest {
+  fullName: string;
+  email?: string;
+  phone?: string;
+  role: 'DRIVER' | 'PLANT_OPERATOR';
+  password?: string;
+}
+
+export interface UpdateStaffRequest {
+  fullName: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
+// ============= Staff API Functions =============
+
+export const getStaffList = async (page = 0, size = 20, role?: string): Promise<PageResponse<StaffDTO>> => {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (role) params.append('role', role);
+  const response = await apiClient.get(`/api/cbwtf/staff?${params.toString()}`);
+  return response.data;
+};
+
+export const getStaffDetail = async (id: string): Promise<StaffDetailDTO> => {
+  const response = await apiClient.get(`/api/cbwtf/staff/${id}`);
+  return response.data;
+};
+
+export const createStaff = async (data: CreateStaffRequest): Promise<StaffDTO> => {
+  const response = await apiClient.post('/api/cbwtf/staff', data);
+  return response.data;
+};
+
+export const updateStaff = async (id: string, data: UpdateStaffRequest): Promise<StaffDTO> => {
+  const response = await apiClient.put(`/api/cbwtf/staff/${id}`, data);
+  return response.data;
+};
+
+export const disableStaff = async (id: string): Promise<StaffDTO> => {
+  const response = await apiClient.post(`/api/cbwtf/staff/${id}/disable`);
+  return response.data;
+};
+
+export const enableStaff = async (id: string): Promise<StaffDTO> => {
+  const response = await apiClient.post(`/api/cbwtf/staff/${id}/enable`);
+  return response.data;
+};
+
+export const unlockStaff = async (id: string): Promise<StaffDTO> => {
+  const response = await apiClient.post(`/api/cbwtf/staff/${id}/unlock`);
+  return response.data;
+};
+
+export interface UpdateCredentialsRequest {
+  username?: string;
+  password?: string;
+  forcePasswordChange?: boolean;
+}
+
+export const updateStaffCredentials = async (id: string, data: UpdateCredentialsRequest): Promise<StaffDTO> => {
+  const response = await apiClient.put(`/api/cbwtf/staff/${id}/credentials`, data);
+  return response.data;
+};
+
 export default cbwtfApi;
 

@@ -42,6 +42,7 @@ com/smartcbwtf/repository/AgreementSnapshotRepository.class
 com/smartcbwtf/repository/BagLabelRepository.class
 com/smartcbwtf/dto/CBWTFDashboardDTO$AgreementSummary.class
 com/smartcbwtf/controller/SystemConfigController$SystemConfigDTO.class
+com/smartcbwtf/service/GpsIngestionHealthService$HealthStatus.class
 com/smartcbwtf/controller/SuperAdminUserController.class
 com/smartcbwtf/dto/BagVerifyResponse.class
 com/smartcbwtf/Application.class
@@ -49,6 +50,7 @@ com/smartcbwtf/controller/VehicleController$VehicleDTO.class
 com/smartcbwtf/repository/AgreementRepository.class
 com/smartcbwtf/controller/AlertsController.class
 com/smartcbwtf/dto/UserProfileResponse.class
+com/smartcbwtf/service/GpsIngestionHealthService.class
 com/smartcbwtf/dto/HcfRegistrationRequest.class
 com/smartcbwtf/controller/VehicleController$GpsLocationDTO.class
 com/smartcbwtf/gps/adapter/WheelseyeAdapter.class
@@ -79,6 +81,7 @@ com/smartcbwtf/service/InvoiceService.class
 com/smartcbwtf/domain/GpsIngestionLog.class
 com/smartcbwtf/domain/AgreementSnapshot$SnapshotReason.class
 com/smartcbwtf/exception/IllegalTransitionException.class
+com/smartcbwtf/domain/UserGpsEvent.class
 com/smartcbwtf/controller/BankAccountController$CreateBankAccountRequest.class
 com/smartcbwtf/service/AgreementGuardService.class
 com/smartcbwtf/controller/GpsIngestionController$UnbindRequest.class
@@ -108,6 +111,7 @@ com/smartcbwtf/domain/GpsVendorIntegration.class
 com/smartcbwtf/repository/GpsVendorIntegrationRepository.class
 com/smartcbwtf/service/AppUserDetailsService.class
 com/smartcbwtf/controller/GpsIngestionController.class
+com/smartcbwtf/controller/GpsHealthController.class
 com/smartcbwtf/dto/AnalyticsPageDTO$TotalWasteResponse.class
 com/smartcbwtf/repository/GpsDeviceBindingRepository.class
 com/smartcbwtf/service/TenantAssertionService.class
@@ -145,9 +149,11 @@ com/smartcbwtf/service/FacilityTemplateService.class
 com/smartcbwtf/service/SystemConfigService.class
 com/smartcbwtf/controller/AuthController.class
 com/smartcbwtf/service/FacilityTermsService.class
+com/smartcbwtf/controller/GpsHealthController$HealthSummaryResponse.class
 com/smartcbwtf/gps/adapter/GpsEventDTO.class
 com/smartcbwtf/controller/AttendanceController.class
 com/smartcbwtf/gps/adapter/GpsEventDTO$Builder.class
+com/smartcbwtf/service/GpsIngestionHealthService$IngestionHealthDTO.class
 com/smartcbwtf/dto/admin/TenantDTO.class
 com/smartcbwtf/service/HcfService.class
 com/smartcbwtf/domain/AuditLog.class
@@ -174,6 +180,7 @@ com/smartcbwtf/repository/GpsEventRepository.class
 com/smartcbwtf/service/CBWTFScopedQueryService.class
 com/smartcbwtf/dto/AuthLoginResponse.class
 com/smartcbwtf/repository/AgreementCodeSequenceRepository.class
+com/smartcbwtf/controller/GpsHealthController$FacilityHealthResponse.class
 com/smartcbwtf/service/FeatureGuardService.class
 com/smartcbwtf/domain/SubscriptionAudit$Action.class
 com/smartcbwtf/repository/TenantFeatureFlagRepository.class
