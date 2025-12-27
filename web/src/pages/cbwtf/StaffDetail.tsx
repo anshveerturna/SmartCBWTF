@@ -40,6 +40,7 @@ import {
   EventNote as AttendanceIcon,
   Edit as EditIcon,
   VpnKey as KeyIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import {
   getStaffDetail,
@@ -48,6 +49,7 @@ import {
   unlockStaff,
   updateStaff,
   updateStaffCredentials,
+  requestGpsRefresh,
   type StaffDetailDTO,
   type UpdateStaffRequest,
   type UpdateCredentialsRequest,
@@ -114,6 +116,16 @@ export default function StaffDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff-detail', id] });
       queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+    },
+  });
+
+  const gpsRefreshMutation = useMutation({
+    mutationFn: () => requestGpsRefresh(id!),
+    onSuccess: () => {
+      // Invalidate after short delay to give Android app time to respond
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['staff-detail', id] });
+      }, 3000);
     },
   });
 
@@ -315,9 +327,22 @@ export default function StaffDetail() {
         <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ borderRadius: 2, height: '100%' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <LocationIcon /> GPS Status
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <LocationIcon /> GPS Status
+                </Typography>
+                <Tooltip title="Request location update from Android app">
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={gpsRefreshMutation.isPending ? <CircularProgress size={16} /> : <RefreshIcon />}
+                    onClick={() => gpsRefreshMutation.mutate()}
+                    disabled={gpsRefreshMutation.isPending}
+                  >
+                    {gpsRefreshMutation.isPending ? 'Requesting...' : 'Refresh'}
+                  </Button>
+                </Tooltip>
+              </Box>
               <Divider sx={{ my: 2 }} />
 
               <Box sx={{ textAlign: 'center', py: 1 }}>

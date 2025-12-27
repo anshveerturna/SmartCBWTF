@@ -112,4 +112,16 @@ public class StaffController {
             @RequestBody UpdateCredentialsRequest request) {
         return ResponseEntity.ok(staffService.updateCredentials(id, request));
     }
+
+    /**
+     * Request GPS refresh from staff's Android app.
+     * Sets a timestamp that the Android app checks and responds with current
+     * location.
+     */
+    @PostMapping("/{id}/request-gps-refresh")
+    public ResponseEntity<Void> requestGpsRefresh(@PathVariable("id") UUID id) {
+        staffService.requestGpsRefresh(id);
+        log.info("GPS refresh requested for staff: {}", id);
+        return ResponseEntity.ok().build();
+    }
 }

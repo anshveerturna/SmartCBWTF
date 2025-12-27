@@ -300,5 +300,9 @@ export const updateStaffCredentials = async (id: string, data: UpdateCredentials
   return response.data;
 };
 
+export const requestGpsRefresh = async (id: string): Promise<void> => {
+  await apiClient.post(`/api/cbwtf/staff/${id}/request-gps-refresh`);
+};
+
 export default cbwtfApi;
 

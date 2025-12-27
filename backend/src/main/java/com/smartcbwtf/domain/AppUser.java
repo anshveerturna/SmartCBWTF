@@ -71,6 +71,10 @@ public class AppUser {
     @Column(name = "last_gps_lon", precision = 10, scale = 7)
     private java.math.BigDecimal lastGpsLon;
 
+    // Admin can request a GPS refresh - Android app checks this timestamp
+    @Column(name = "gps_refresh_requested_at")
+    private Instant gpsRefreshRequestedAt;
+
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
 
@@ -321,6 +325,19 @@ public class AppUser {
         this.lastGpsLat = lat;
         this.lastGpsLon = lon;
         this.lastGpsAt = Instant.now();
+    }
+
+    // GPS refresh request getters/setters
+    public Instant getGpsRefreshRequestedAt() {
+        return gpsRefreshRequestedAt;
+    }
+
+    public void setGpsRefreshRequestedAt(Instant gpsRefreshRequestedAt) {
+        this.gpsRefreshRequestedAt = gpsRefreshRequestedAt;
+    }
+
+    public void requestGpsRefresh() {
+        this.gpsRefreshRequestedAt = Instant.now();
     }
 
     @PreUpdate

@@ -19,8 +19,11 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.navOptions
 import androidx.appcompat.widget.PopupMenu
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import android.util.Log
 import com.smartcbwtf.mobile.R
 import com.smartcbwtf.mobile.databinding.FragmentHomeBinding
+import com.smartcbwtf.mobile.repository.LocationRepository
+import com.smartcbwtf.mobile.service.ForegroundLocationService
 import com.smartcbwtf.mobile.utils.LocationHelper
 import com.smartcbwtf.mobile.viewmodel.AuthState
 import com.smartcbwtf.mobile.viewmodel.AuthViewModel
@@ -33,6 +36,7 @@ import javax.inject.Inject
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
     @Inject lateinit var locationHelper: LocationHelper
+    @Inject lateinit var locationRepository: LocationRepository
 
     private val viewModel: AuthViewModel by activityViewModels()
     private val homeViewModel: HomeViewModel by viewModels()
@@ -55,6 +59,12 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentHomeBinding.bind(view)
+
+        // Start GPS tracking service if consent was previously given
+        if (locationRepository.hasLocationConsent()) {
+            Log.d("HomeFragment", "Location consent already given, starting GPS tracking service")
+            ForegroundLocationService.startService(requireContext())
+        }
 
         setupActions()
         setupProfileMenu()

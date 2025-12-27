@@ -317,6 +317,28 @@ public class StaffService {
         return toStaffDTO(user);
     }
 
+    /**
+     * Request GPS refresh from staff's Android app.
+     * Sets a timestamp that the Android app checks during sync and responds with
+     * immediate location update.
+     */
+    public void requestGpsRefresh(UUID staffId) {
+        UUID facilityId = TenantContext.getTenantId();
+
+        AppUser user = appUserRepository.findById(staffId)
+                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
+                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+                .orElseThrow(() -> new IllegalArgumentException("Staff not found or access denied"));
+
+        user.requestGpsRefresh();
+        appUserRepository.save(user);
+
+        auditLogService.log("STAFF", user.getId(), "GPS_REFRESH_REQUESTED", TenantContext.getUserId(),
+                String.format("{\"username\":\"%s\"}", user.getUsername()));
+
+        log.info("GPS refresh requested for staff: {}", user.getUsername());
+    }
+
     // ============ Helper Methods ============
 
     private String generateUsername(String cbwtfCode, String role) {
