@@ -23,7 +23,18 @@ public class GlobalExceptionHandler {
         List<String> errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(this::formatFieldError)
                 .toList();
+        log.error("Validation failed for {}: {}", request.getRequestURI(), errors);
         return build(HttpStatus.BAD_REQUEST, "Validation failed", request, Map.of("errors", errors));
+    }
+
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> handleTypeMismatch(
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex,
+            HttpServletRequest request) {
+        String error = String.format("Parameter '%s' should be of type '%s'", ex.getName(),
+                ex.getRequiredType().getSimpleName());
+        log.error("Type mismatch for {}: {} (Value: '{}')", request.getRequestURI(), error, ex.getValue());
+        return build(HttpStatus.BAD_REQUEST, "Type mismatch", request, Map.of("error", error));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -38,6 +49,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleBadData(IllegalArgumentException ex, HttpServletRequest request) {
+        log.error("Bad Request (IllegalArgumentException) at {}: {}", request.getRequestURI(), ex.getMessage(), ex);
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
     }
 

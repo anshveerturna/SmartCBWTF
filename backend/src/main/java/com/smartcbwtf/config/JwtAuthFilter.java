@@ -77,8 +77,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                         TenantContext.set(new TenantContext.TenantInfo(userId, tenantId, hcfId, role, username));
                     }
-                } catch (Exception ignored) {
+                } catch (Exception e) {
                     // On parse failure, fall through to reject by security chain
+                    // LOGGING ADDED FOR DEBUGGING
+                    System.err.println("JWT Parse Error: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
             filterChain.doFilter(request, response);

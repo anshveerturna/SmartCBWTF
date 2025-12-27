@@ -22,12 +22,47 @@ public class HcfApprovalRequest {
     @DecimalMin("0.0")
     private BigDecimal perBedPerDayRate;
 
-    public java.util.UUID getFacilityId() { return facilityId; }
-    public void setFacilityId(java.util.UUID facilityId) { this.facilityId = facilityId; }
-    public LocalDate getStartDate() { return startDate; }
-    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
-    public LocalDate getEndDate() { return endDate; }
-    public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
-    public BigDecimal getPerBedPerDayRate() { return perBedPerDayRate; }
-    public void setPerBedPerDayRate(BigDecimal perBedPerDayRate) { this.perBedPerDayRate = perBedPerDayRate; }
+    @NotNull
+    @DecimalMin("0.0")
+    private BigDecimal excessRatePerKg;
+
+    public java.util.UUID getFacilityId() {
+        return facilityId;
+    }
+
+    public void setFacilityId(java.util.UUID facilityId) {
+        this.facilityId = facilityId;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public BigDecimal getPerBedPerDayRate() {
+        return perBedPerDayRate;
+    }
+
+    public void setPerBedPerDayRate(BigDecimal perBedPerDayRate) {
+        this.perBedPerDayRate = perBedPerDayRate;
+    }
+
+    public BigDecimal getExcessRatePerKg() {
+        return excessRatePerKg;
+    }
+
+    public void setExcessRatePerKg(BigDecimal excessRatePerKg) {
+        this.excessRatePerKg = excessRatePerKg;
+    }
 }

@@ -324,4 +324,175 @@ export const removeStaffPhoto = async (id: string): Promise<{ message: string }>
   return response.data;
 };
 
+// ============= HCF Management Types =============
+
+export interface HcfListItem {
+  id: string;
+  code: string;
+  name: string;
+  address: string;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  numberOfBeds: number | null;
+  agreementId: string | null;
+  agreementNumber: string | null;
+  agreementStatus: string | null;
+  duesStatus: string | null;
+  agreementStartDate: string | null;
+  agreementEndDate: string | null;
+  lastPickupAt: string | null;
+  createdAt: string;
+}
+
+export interface AgreementInfo {
+  id: string;
+  agreementNumber: string;
+  status: string;
+  duesStatus: string;
+  startDate: string;
+  endDate: string | null;
+  perBedPerDayRate: number;
+  createdAt: string;
+}
+
+export interface BillingConfigInfo {
+  id: string;
+  baseGramsPerBedPerDay: number;
+  baseRatePerBedPerDay: number;
+  excessRatePerKg: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  active: boolean;
+}
+
+export interface OperationalSummary {
+  totalPickups: number;
+  totalAttendanceMarks: number;
+  lastPickupAt: string | null;
+  lastAttendanceAt: string | null;
+  totalWasteKg: number | null;
+}
+
+export interface HcfDetail {
+  id: string;
+  code: string;
+  name: string;
+  address: string;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  numberOfBeds: number | null;
+  hcfStatus: string;
+  gpsLat: number;
+  gpsLon: number;
+  doctorName: string | null;
+  panNo: string | null;
+  gstNo: string | null;
+  pcbAuthorizationNo: string | null;
+  aadharNo: string | null;
+  monthlyCharges: number | null;
+  bedded: boolean | null;
+  otherNotes: string | null;
+  registrationGpsLat: number | null;
+  registrationGpsLon: number | null;
+  registrationGpsAccuracy: number | null;
+  registeredByUsername: string | null;
+  createdAt: string;
+  updatedAt: string;
+  agreement: AgreementInfo | null;
+  billingConfig: BillingConfigInfo | null;
+  summary: OperationalSummary | null;
+}
+
+export interface UpdateHcfRequest {
+  name?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: string;
+  numberOfBeds?: number;
+  doctorName?: string;
+  gstNo?: string;
+  panNo?: string;
+  aadharNo?: string;
+  pcbAuthorizationNo?: string;
+  monthlyCharges?: number;
+  bedded?: boolean;
+  otherNotes?: string;
+}
+
+export interface UpdateLocationRequest {
+  latitude: number;
+  longitude: number;
+}
+
+export interface DeactivateHcfRequest {
+  reason: string;
+  terminate?: boolean;
+}
+
+export interface BillingConfigRequest {
+  baseGramsPerBedPerDay?: number;
+  baseRatePerBedPerDay: number;
+  excessRatePerKg: number;
+}
+
+export interface HcfApprovalRequest {
+  perBedPerDayRate: number;
+  excessRatePerKg: number;
+}
+
+export interface HcfRejectionRequest {
+  reason: string;
+}
+
+// ============= HCF API Functions =============
+
+export const getHcfList = async (): Promise<HcfListItem[]> => {
+  const response = await apiClient.get('/api/cbwtf/hcfs');
+  return response.data;
+};
+
+export const getHcfDetail = async (id: string): Promise<HcfDetail> => {
+  const response = await apiClient.get(`/api/cbwtf/hcfs/${id}`);
+  return response.data;
+};
+
+export const updateHcf = async (id: string, data: UpdateHcfRequest): Promise<HcfDetail> => {
+  const response = await apiClient.put(`/api/cbwtf/hcfs/${id}`, data);
+  return response.data;
+};
+
+export const updateHcfLocation = async (id: string, data: UpdateLocationRequest): Promise<HcfDetail> => {
+  const response = await apiClient.put(`/api/cbwtf/hcfs/${id}/location`, data);
+  return response.data;
+};
+
+export const deactivateHcf = async (id: string, data: DeactivateHcfRequest): Promise<void> => {
+  await apiClient.post(`/api/cbwtf/hcfs/${id}/deactivate`, data);
+};
+
+export const getHcfBillingConfig = async (id: string): Promise<BillingConfigInfo> => {
+  const response = await apiClient.get(`/api/cbwtf/hcfs/${id}/billing`);
+  return response.data;
+};
+
+export const updateHcfBillingConfig = async (id: string, data: BillingConfigRequest): Promise<BillingConfigInfo> => {
+  const response = await apiClient.put(`/api/cbwtf/hcfs/${id}/billing`, data);
+  return response.data;
+};
+
+export const getPendingHcfs = async (): Promise<HcfListItem[]> => {
+  const response = await apiClient.get('/api/cbwtf/hcfs/pending');
+  return response.data;
+};
+
+export const approveHcf = async (id: string, data: HcfApprovalRequest): Promise<HcfDetail> => {
+  const response = await apiClient.post(`/api/cbwtf/hcfs/${id}/approve`, data);
+  return response.data;
+};
+
+export const rejectHcf = async (id: string, data: HcfRejectionRequest): Promise<void> => {
+  await apiClient.post(`/api/cbwtf/hcfs/${id}/reject`, data);
+};
+
 export default cbwtfApi;
+

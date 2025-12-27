@@ -29,8 +29,7 @@ import {
   Autorenew,
 } from '@mui/icons-material';
 import {
-  BarChart,
-  Bar,
+
   XAxis,
   YAxis,
   CartesianGrid,
