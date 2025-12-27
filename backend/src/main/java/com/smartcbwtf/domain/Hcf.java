@@ -50,6 +50,14 @@ public class Hcf {
     @Column(columnDefinition = "TEXT")
     private String otherNotes;
 
+    // Ownership type: OWNED or RENTED
+    @Column(name = "ownership_type", nullable = false)
+    private String ownershipType = "OWNED";
+
+    // Rent agreement document URL (required if RENTED)
+    @Column(name = "rent_agreement_url", length = 500)
+    private String rentAgreementUrl;
+
     // Identity fingerprint for anti-fraud detection
     @Column(name = "identity_hash", length = 64)
     private String identityHash;
@@ -261,5 +269,21 @@ public class Hcf {
 
     public void setIdentityHash(String identityHash) {
         this.identityHash = identityHash;
+    }
+
+    public String getOwnershipType() {
+        return ownershipType;
+    }
+
+    public void setOwnershipType(String ownershipType) {
+        this.ownershipType = ownershipType;
+    }
+
+    public String getRentAgreementUrl() {
+        return rentAgreementUrl;
+    }
+
+    public void setRentAgreementUrl(String rentAgreementUrl) {
+        this.rentAgreementUrl = rentAgreementUrl;
     }
 }

@@ -159,6 +159,12 @@ public class HcfService {
             throw new IllegalArgumentException("Number of beds is required for bedded facilities");
         }
 
+        // Ownership validation: rent agreement required if RENTED
+        if ("RENTED".equalsIgnoreCase(request.getOwnershipType()) &&
+                (request.getRentAgreementUrl() == null || request.getRentAgreementUrl().isBlank())) {
+            throw new IllegalArgumentException("Rent agreement document is required for rented premises");
+        }
+
         // Duplicate detection
         if (request.getPanNo() != null && !request.getPanNo().isBlank() &&
                 hcfRepository.findByPanNo(request.getPanNo()).isPresent()) {
@@ -204,6 +210,10 @@ public class HcfService {
         hcf.setBedded(request.getBedded());
         hcf.setPcbAuthorizationNo(request.getPcbAuthorizationNo());
         hcf.setOtherNotes(request.getOtherNotes());
+
+        // Ownership fields
+        hcf.setOwnershipType(request.getOwnershipType() != null ? request.getOwnershipType() : "OWNED");
+        hcf.setRentAgreementUrl(request.getRentAgreementUrl());
 
         // Use registration GPS as main GPS coordinates
         hcf.setGpsLat(request.getRegistrationGpsLat());

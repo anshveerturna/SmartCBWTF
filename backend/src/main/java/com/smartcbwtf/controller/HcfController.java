@@ -46,4 +46,56 @@ public class HcfController {
     public HcfApprovalResponse approve(@PathVariable UUID hcfId, @Valid @RequestBody HcfApprovalRequest request) {
         return agreementService.approveHcf(hcfId, request);
     }
+
+    /**
+     * Upload rent agreement document (PDF or image).
+     * Max size: 10MB.
+     */
+    @PostMapping("/rent-agreement")
+    @PreAuthorize("hasAnyRole('DRIVER', 'CBWTF_ADMIN')")
+    public ResponseEntity<java.util.Map<String, String>> uploadRentAgreement(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("No file provided");
+        }
+
+        // Validate file type (PDF or image)
+        String contentType = file.getContentType();
+        if (contentType == null ||
+                (!contentType.equals("application/pdf") && !contentType.startsWith("image/"))) {
+            throw new IllegalArgumentException("Only PDF or image files are allowed");
+        }
+
+        // Validate file size (max 10MB)
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new IllegalArgumentException("File size exceeds maximum limit of 10MB");
+        }
+
+        String ext = switch (contentType) {
+            case "application/pdf" -> "pdf";
+            case "image/jpeg" -> "jpg";
+            case "image/png" -> "png";
+            default -> "pdf";
+        };
+
+        try {
+            String uploadDir = "uploads/rent-agreements";
+            java.nio.file.Path uploadPath = java.nio.file.Paths.get(uploadDir);
+            if (!java.nio.file.Files.exists(uploadPath)) {
+                java.nio.file.Files.createDirectories(uploadPath);
+            }
+
+            String filename = UUID.randomUUID().toString() + "." + ext;
+            java.nio.file.Path filePath = uploadPath.resolve(filename);
+            java.nio.file.Files.copy(file.getInputStream(), filePath,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            String fileUrl = "/uploads/rent-agreements/" + filename;
+            return ResponseEntity.ok(java.util.Map.of("url", fileUrl));
+
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Failed to save file", e);
+        }
+    }
 }

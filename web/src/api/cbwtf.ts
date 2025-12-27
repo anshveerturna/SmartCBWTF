@@ -359,10 +359,12 @@ export interface BillingConfigInfo {
   id: string;
   baseGramsPerBedPerDay: number;
   baseRatePerBedPerDay: number;
-  excessRatePerKg: number;
   effectiveFrom: string;
   effectiveTo: string | null;
   active: boolean;
+  // Global excess rate (from Facility)
+  globalExcessRatePerKg: number | null;
+  globalExcessRateEffectiveFrom: string | null;
 }
 
 export interface OperationalSummary {
@@ -398,6 +400,9 @@ export interface HcfDetail {
   registeredByUsername: string | null;
   createdAt: string;
   updatedAt: string;
+  // Ownership information
+  ownershipType: string | null;
+  rentAgreementUrl: string | null;
   agreement: AgreementInfo | null;
   billingConfig: BillingConfigInfo | null;
   summary: OperationalSummary | null;
@@ -470,6 +475,20 @@ export const deactivateHcf = async (id: string, data: DeactivateHcfRequest): Pro
   await apiClient.post(`/api/cbwtf/hcfs/${id}/deactivate`, data);
 };
 
+export const activateHcf = async (id: string): Promise<void> => {
+  await apiClient.post(`/api/cbwtf/hcfs/${id}/activate`);
+};
+
+export interface UpdateAgreementRequest {
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+}
+
+export const updateHcfAgreement = async (id: string, data: UpdateAgreementRequest): Promise<HcfDetail> => {
+  const response = await apiClient.put(`/api/cbwtf/hcfs/${id}/agreement`, data);
+  return response.data;
+};
+
 export const getHcfBillingConfig = async (id: string): Promise<BillingConfigInfo> => {
   const response = await apiClient.get(`/api/cbwtf/hcfs/${id}/billing`);
   return response.data;
@@ -492,6 +511,17 @@ export const approveHcf = async (id: string, data: HcfApprovalRequest): Promise<
 
 export const rejectHcf = async (id: string, data: HcfRejectionRequest): Promise<void> => {
   await apiClient.post(`/api/cbwtf/hcfs/${id}/reject`, data);
+};
+
+export interface RenewAgreementRequest {
+  startDate: string;
+  endDate: string;
+  perBedPerDayRate: number;
+}
+
+export const renewAgreement = async (id: string, data: RenewAgreementRequest): Promise<HcfDetail> => {
+  const response = await apiClient.post(`/api/cbwtf/hcfs/${id}/agreements/renew`, data);
+  return response.data;
 };
 
 export default cbwtfApi;

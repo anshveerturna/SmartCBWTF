@@ -3142,6 +3142,7 @@ drawable bg_avatar_placeholder
 drawable bg_avatar_teal
 drawable bg_badge_error
 drawable bg_badge_warning
+drawable bg_bottom_sheet_handle
 drawable bg_circle_button_dark
 drawable bg_gradient_pickup
 drawable bg_hcf_selected
@@ -3219,6 +3220,7 @@ drawable ic_clock_black_24dp
 drawable ic_email
 drawable ic_error
 drawable ic_error_24
+drawable ic_file
 drawable ic_flashlight_off
 drawable ic_flashlight_on
 drawable ic_gps
@@ -3243,6 +3245,7 @@ drawable ic_mtrl_chip_close_circle
 drawable ic_pending
 drawable ic_person
 drawable ic_phone
+drawable ic_photo
 drawable ic_pickup_outline
 drawable ic_pickup_waste
 drawable ic_profile_menu
@@ -3484,6 +3487,7 @@ id btnSettings
 id btnSubmit
 id btnSubmitAll
 id btnTorch
+id btnUploadRentAgreement
 id buttonPanel
 id cache_measures
 id callMeasure
@@ -3501,6 +3505,7 @@ id cardPermissions
 id cardPickup
 id cardQrScan
 id cardRegister
+id cardRentAgreement
 id cardScanSuccess
 id cardSessionSummary
 id cardStatus
@@ -3610,7 +3615,6 @@ id etName
 id etOtherNotes
 id etPanNo
 id etPassword
-id etPcbNo
 id etPhone
 id etUsername
 id exitUntilCollapsed
@@ -3686,6 +3690,7 @@ id italic
 id item_touch_helper_previous_elevation
 id ivGpsStatus
 id ivLogo
+id ivRentAgreementStatus
 id ivSuccessCheck
 id jumpToEnd
 id jumpToStart
@@ -3824,6 +3829,8 @@ id open_search_view_search_prefix
 id open_search_view_status_bar_spacer
 id open_search_view_toolbar
 id open_search_view_toolbar_container
+id optionPdf
+id optionPhoto
 id outline
 id outward
 id overshoot
@@ -3852,6 +3859,7 @@ id profileFragment
 id progressBar
 id progressIndicator
 id progressLocation
+id progressRentAgreement
 id progressSubmit
 id progressTerms
 id progress_circular
@@ -3862,12 +3870,15 @@ id qrScannerFragment
 id radio
 id radioHcfSelect
 id ratio
+id rbOwned
+id rbRented
 id rectangles
 id report_drawn
 id requirementsText
 id restart
 id reverse
 id reverseSawtooth
+id rgOwnershipType
 id right
 id rightToLeft
 id right_icon
@@ -4013,7 +4024,6 @@ id tilName
 id tilOtherNotes
 id tilPanNo
 id tilPassword
-id tilPcbNo
 id tilPhone
 id tilUsername
 id time
@@ -4066,6 +4076,7 @@ id tvPendingSync
 id tvQrCode
 id tvQrCodeError
 id tvQrTimestamp
+id tvRentAgreementStatus
 id tvScaleStatus
 id tvScanHint
 id tvScannedQr
@@ -4236,6 +4247,7 @@ layout abc_search_view
 layout abc_select_dialog_material
 layout abc_tooltip
 layout activity_main
+layout bottom_sheet_document_picker
 layout custom_dialog
 layout design_bottom_navigation_item
 layout design_bottom_sheet_dialog

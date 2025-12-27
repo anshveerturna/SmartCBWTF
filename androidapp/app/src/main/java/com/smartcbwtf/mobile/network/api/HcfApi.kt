@@ -9,6 +9,11 @@ import retrofit2.http.POST
 import retrofit2.http.Body
 import retrofit2.http.Query
 
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import retrofit2.http.Multipart
+import retrofit2.http.Part
+
 interface HcfApi {
     @GET("hcfs")
     suspend fun getAll(): List<HcfDto>
@@ -18,4 +23,8 @@ interface HcfApi {
     
     @GET("terms/latest")
     suspend fun getLatestTerms(@Query("facilityId") facilityId: String? = null): TermsResponse
+    
+    @Multipart
+    @POST("hcfs/rent-agreement")
+    suspend fun uploadRentAgreement(@Part file: MultipartBody.Part): Map<String, String>
 }

@@ -181,6 +181,7 @@ com/smartcbwtf/controller/GpsIngestionController$BindResponse.class
 com/smartcbwtf/repository/UserGpsEventRepository.class
 com/smartcbwtf/dto/CBWTFDashboardDTO.class
 com/smartcbwtf/service/BillingConfigService.class
+com/smartcbwtf/dto/UpdateAgreementRequest.class
 com/smartcbwtf/controller/SystemConfigController$ConfigAuditDTO.class
 com/smartcbwtf/dto/TermsResponse.class
 com/smartcbwtf/domain/BagEvent.class

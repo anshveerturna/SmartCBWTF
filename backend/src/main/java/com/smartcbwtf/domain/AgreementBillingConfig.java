@@ -47,13 +47,6 @@ public class AgreementBillingConfig {
     private BigDecimal baseRatePerBedPerDay;
 
     /**
-     * Rate charged per kilogram for excess waste
-     * (above baseGramsPerBedPerDay * numberOfBeds).
-     */
-    @Column(name = "excess_rate_per_kg", nullable = false, precision = 12, scale = 2)
-    private BigDecimal excessRatePerKg;
-
-    /**
      * Date from which this config is effective (inclusive).
      */
     @Column(name = "effective_from", nullable = false)
@@ -123,14 +116,6 @@ public class AgreementBillingConfig {
 
     public void setBaseRatePerBedPerDay(BigDecimal baseRatePerBedPerDay) {
         this.baseRatePerBedPerDay = baseRatePerBedPerDay;
-    }
-
-    public BigDecimal getExcessRatePerKg() {
-        return excessRatePerKg;
-    }
-
-    public void setExcessRatePerKg(BigDecimal excessRatePerKg) {
-        this.excessRatePerKg = excessRatePerKg;
     }
 
     public LocalDate getEffectiveFrom() {

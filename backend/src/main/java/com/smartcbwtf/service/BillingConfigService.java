@@ -26,82 +26,82 @@ import java.util.UUID;
 @Service
 public class BillingConfigService {
 
-    private static final Logger log = LoggerFactory.getLogger(BillingConfigService.class);
+        private static final Logger log = LoggerFactory.getLogger(BillingConfigService.class);
 
-    private final AgreementRepository agreementRepository;
-    private final AgreementBillingConfigRepository billingConfigRepository;
-    private final AuditLogService auditLogService;
+        private final AgreementRepository agreementRepository;
+        private final AgreementBillingConfigRepository billingConfigRepository;
+        private final AuditLogService auditLogService;
 
-    public BillingConfigService(
-            AgreementRepository agreementRepository,
-            AgreementBillingConfigRepository billingConfigRepository,
-            AuditLogService auditLogService) {
-        this.agreementRepository = agreementRepository;
-        this.billingConfigRepository = billingConfigRepository;
-        this.auditLogService = auditLogService;
-    }
-
-    /**
-     * Get current active billing config for HCF's agreement.
-     */
-    @Transactional(readOnly = true)
-    public HcfDetailDTO.BillingConfigInfo getCurrentConfig(UUID hcfId, UUID facilityId) {
-        Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
-                .orElseThrow(() -> new IllegalArgumentException("HCF not found or agreement not active"));
-
-        AgreementBillingConfig config = billingConfigRepository
-                .findActiveByAgreementId(agreement.getId())
-                .orElse(null);
-
-        return HcfDetailDTO.BillingConfigInfo.from(config);
-    }
-
-    /**
-     * Create new billing config (expires previous if exists).
-     * Only allowed if agreement is ACTIVE.
-     */
-    @Transactional
-    public HcfDetailDTO.BillingConfigInfo createConfig(UUID hcfId, UUID facilityId, BillingConfigRequest request) {
-        // Verify access and get agreement
-        Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
-                .orElseThrow(() -> new IllegalArgumentException("HCF not found or agreement not active"));
-
-        // Check agreement is active
-        if (!agreement.isActive()) {
-            throw new IllegalStateException("Cannot modify billing config: Agreement is not active");
+        public BillingConfigService(
+                        AgreementRepository agreementRepository,
+                        AgreementBillingConfigRepository billingConfigRepository,
+                        AuditLogService auditLogService) {
+                this.agreementRepository = agreementRepository;
+                this.billingConfigRepository = billingConfigRepository;
+                this.auditLogService = auditLogService;
         }
 
-        LocalDate today = LocalDate.now();
+        /**
+         * Get current active billing config for HCF's agreement.
+         */
+        @Transactional(readOnly = true)
+        public HcfDetailDTO.BillingConfigInfo getCurrentConfig(UUID hcfId, UUID facilityId) {
+                Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "HCF not found or agreement not active"));
 
-        // Expire previous active config if exists
-        billingConfigRepository.findActiveByAgreementId(agreement.getId())
-                .ifPresent(existingConfig -> {
-                    existingConfig.expire(today.minusDays(1));
-                    billingConfigRepository.save(existingConfig);
-                    log.info("Expired previous billing config {} for agreement {}",
-                            existingConfig.getId(), agreement.getAgreementNumber());
-                });
+                AgreementBillingConfig config = billingConfigRepository
+                                .findActiveByAgreementId(agreement.getId())
+                                .orElse(null);
 
-        // Create new config
-        AgreementBillingConfig newConfig = new AgreementBillingConfig();
-        newConfig.setAgreement(agreement);
-        newConfig.setBaseGramsPerBedPerDay(request.getBaseGramsPerBedPerDay());
-        newConfig.setBaseRatePerBedPerDay(request.getBaseRatePerBedPerDay());
-        newConfig.setExcessRatePerKg(request.getExcessRatePerKg());
-        newConfig.setEffectiveFrom(today);
-        // effectiveTo stays null (active)
-        newConfig.setCreatedBy(UUID.randomUUID()); // TODO: Get from security context
+                return HcfDetailDTO.BillingConfigInfo.from(config, agreement.getFacility());
+        }
 
-        billingConfigRepository.save(newConfig);
+        /**
+         * Create new billing config (expires previous if exists).
+         * Only allowed if agreement is ACTIVE.
+         */
+        @Transactional
+        public HcfDetailDTO.BillingConfigInfo createConfig(UUID hcfId, UUID facilityId, BillingConfigRequest request) {
+                // Verify access and get agreement
+                Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "HCF not found or agreement not active"));
 
-        // Audit log
-        String details = String.format("Base: %s/bed/day, Excess: %s/kg, Allowance: %dg/bed/day",
-                request.getBaseRatePerBedPerDay(),
-                request.getExcessRatePerKg(),
-                request.getBaseGramsPerBedPerDay());
-        auditLogService.log("AGREEMENT", agreement.getId(), "BILLING_CONFIG_CREATED", null, details);
-        log.info("Created billing config for agreement {}: {}", agreement.getAgreementNumber(), details);
+                // Check agreement is active
+                if (!agreement.isActive()) {
+                        throw new IllegalStateException("Cannot modify billing config: Agreement is not active");
+                }
 
-        return HcfDetailDTO.BillingConfigInfo.from(newConfig);
-    }
+                LocalDate today = LocalDate.now();
+
+                // Expire previous active config if exists
+                billingConfigRepository.findActiveByAgreementId(agreement.getId())
+                                .ifPresent(existingConfig -> {
+                                        existingConfig.expire(today.minusDays(1));
+                                        billingConfigRepository.save(existingConfig);
+                                        log.info("Expired previous billing config {} for agreement {}",
+                                                        existingConfig.getId(), agreement.getAgreementNumber());
+                                });
+
+                // Create new config
+                AgreementBillingConfig newConfig = new AgreementBillingConfig();
+                newConfig.setAgreement(agreement);
+                newConfig.setBaseGramsPerBedPerDay(request.getBaseGramsPerBedPerDay());
+                newConfig.setBaseRatePerBedPerDay(request.getBaseRatePerBedPerDay());
+                newConfig.setEffectiveFrom(today);
+                // effectiveTo stays null (active)
+                newConfig.setCreatedBy(UUID.randomUUID()); // TODO: Get from security context
+
+                billingConfigRepository.save(newConfig);
+
+                // Audit log
+                String details = String.format("Base: %s/bed/day, Allowance: %dg/bed/day",
+                                request.getBaseRatePerBedPerDay(),
+                                request.getBaseGramsPerBedPerDay());
+                auditLogService.log("AGREEMENT", agreement.getId(), "BILLING_CONFIG_CREATED", null, details);
+                log.info("Created billing config for agreement {}: {}", agreement.getAgreementNumber(), details);
+
+                return HcfDetailDTO.BillingConfigInfo.from(newConfig, agreement.getFacility());
+        }
 }

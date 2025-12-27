@@ -72,6 +72,13 @@ public class Facility {
     @Column(name = "updated_at")
     private Instant updatedAt = Instant.now();
 
+    // Global billing settings (V29 migration)
+    @Column(name = "excess_rate_per_kg", nullable = false)
+    private java.math.BigDecimal excessRatePerKg = new java.math.BigDecimal("50.00");
+
+    @Column(name = "excess_rate_effective_from", nullable = false)
+    private java.time.LocalDate excessRateEffectiveFrom = java.time.LocalDate.now();
+
     // Basic getters and setters
     public UUID getId() {
         return id;
@@ -261,6 +268,23 @@ public class Facility {
 
     public boolean isExpired() {
         return subscriptionExpiresAt != null && Instant.now().isAfter(subscriptionExpiresAt);
+    }
+
+    // Global billing getters/setters
+    public java.math.BigDecimal getExcessRatePerKg() {
+        return excessRatePerKg;
+    }
+
+    public void setExcessRatePerKg(java.math.BigDecimal excessRatePerKg) {
+        this.excessRatePerKg = excessRatePerKg;
+    }
+
+    public java.time.LocalDate getExcessRateEffectiveFrom() {
+        return excessRateEffectiveFrom;
+    }
+
+    public void setExcessRateEffectiveFrom(java.time.LocalDate excessRateEffectiveFrom) {
+        this.excessRateEffectiveFrom = excessRateEffectiveFrom;
     }
 
     @PreUpdate

@@ -28,20 +28,20 @@ import {
   Cancel as CancelIcon,
   LocationOn as LocationIcon,
   Business as HcfIcon,
-  Warning as WarningIcon,
+
   Description as AgreementIcon,
   AttachMoney as BillingIcon,
   Assessment as StatsIcon,
 } from '@mui/icons-material';
+
 import {
   getHcfDetail,
   updateHcf,
-  updateHcfBillingConfig,
-  deactivateHcf,
   updateHcfLocation,
+  renewAgreement,
   type UpdateHcfRequest,
-  type BillingConfigRequest,
   type UpdateLocationRequest,
+  type RenewAgreementRequest,
 } from '../../api/cbwtf';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -140,13 +140,8 @@ export default function HcfDetailPage() {
   // State
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<UpdateHcfRequest>({});
-  const [billingForm, setBillingForm] = useState<BillingConfigRequest>({
-    baseRatePerBedPerDay: 0,
-    excessRatePerKg: 0,
-  });
-  const [isBillingEditing, setIsBillingEditing] = useState(false);
-  const [deactivateOpen, setDeactivateOpen] = useState(false);
-  const [deactivateReason, setDeactivateReason] = useState('');
+
+
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -156,6 +151,14 @@ export default function HcfDetailPage() {
   // Location editing state
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [tempLocation, setTempLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Renewal state
+  const [renewDialogOpen, setRenewDialogOpen] = useState(false);
+  const [renewForm, setRenewForm] = useState<RenewAgreementRequest>({
+    startDate: '',
+    endDate: '',
+    perBedPerDayRate: 0,
+  });
 
   // Queries
   const { data: hcf, isLoading, error } = useQuery({
@@ -189,29 +192,19 @@ export default function HcfDetailPage() {
     },
   });
 
-  const billingMutation = useMutation({
-    mutationFn: (data: BillingConfigRequest) => updateHcfBillingConfig(id!, data),
+  // Renewal mutation
+  const renewalMutation = useMutation({
+    mutationFn: (data: RenewAgreementRequest) => renewAgreement(id!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cbwtf-hcf', id] });
-      setIsBillingEditing(false);
-      setSnackbar({ open: true, message: 'Billing config updated successfully', severity: 'success' });
+      setRenewDialogOpen(false);
+      setSnackbar({ open: true, message: 'Agreement renewed successfully', severity: 'success' });
     },
     onError: () => {
-      setSnackbar({ open: true, message: 'Failed to update billing config', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to renew agreement', severity: 'error' });
     },
   });
 
-  const deactivateMutation = useMutation({
-    mutationFn: () => deactivateHcf(id!, { reason: deactivateReason }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cbwtf-hcf', id] });
-      setDeactivateOpen(false);
-      setSnackbar({ open: true, message: 'HCF deactivated successfully', severity: 'success' });
-    },
-    onError: () => {
-      setSnackbar({ open: true, message: 'Failed to deactivate HCF', severity: 'error' });
-    },
-  });
 
   // Handlers
   const startEditing = () => {
@@ -228,16 +221,7 @@ export default function HcfDetailPage() {
     }
   };
 
-  const startBillingEditing = () => {
-    if (hcf?.billingConfig) {
-      setBillingForm({
-        baseGramsPerBedPerDay: hcf.billingConfig.baseGramsPerBedPerDay,
-        baseRatePerBedPerDay: hcf.billingConfig.baseRatePerBedPerDay,
-        excessRatePerKg: hcf.billingConfig.excessRatePerKg,
-      });
-      setIsBillingEditing(true);
-    }
-  };
+
 
   if (isLoading) {
     return (
@@ -273,16 +257,7 @@ export default function HcfDetailPage() {
             {hcf.code}
           </Typography>
         </Box>
-        {isActive && (
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<WarningIcon />}
-            onClick={() => setDeactivateOpen(true)}
-          >
-            Deactivate HCF
-          </Button>
-        )}
+
       </Box>
 
       <Grid container spacing={3}>
@@ -504,6 +479,44 @@ export default function HcfDetailPage() {
                           </Box>
                         </Grid>
                       </Grid>
+                      <Grid container spacing={2}>
+                        <Grid size={{ xs: 6 }}>
+                          <Box>
+                             <Typography variant="caption" color="text.secondary">Ownership Type</Typography>
+                             <Typography sx={{ 
+                               display: 'inline-flex',
+                               alignItems: 'center',
+                               gap: 0.5,
+                               bgcolor: hcf.ownershipType === 'RENTED' ? 'warning.light' : 'success.light',
+                               color: hcf.ownershipType === 'RENTED' ? 'warning.dark' : 'success.dark',
+                               px: 1,
+                               py: 0.25,
+                               borderRadius: 1,
+                               fontSize: '0.875rem',
+                               fontWeight: 500
+                             }}>
+                               {hcf.ownershipType === 'RENTED' ? 'Rented' : 'Owned'}
+                             </Typography>
+                          </Box>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                           {hcf.ownershipType === 'RENTED' && hcf.rentAgreementUrl && (
+                             <Box>
+                               <Typography variant="caption" color="text.secondary">Rent Agreement</Typography>
+                               <Button
+                                 variant="outlined"
+                                 size="small"
+                                 href={hcf.rentAgreementUrl}
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 startIcon={<AgreementIcon />}
+                               >
+                                 View Document
+                               </Button>
+                             </Box>
+                           )}
+                        </Grid>
+                      </Grid>
                        <Box>
                         <Typography variant="caption" color="text.secondary">Notes</Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
@@ -591,17 +604,38 @@ export default function HcfDetailPage() {
         {/* Right Column: Agreement, Registration, Billing */}
         <Grid size={{ xs: 12, md: 6 }}>
            <Stack spacing={3}>
-            {/* Agreement Card (Read-Only) */}
+            {/* Agreement Card */}
             <Card>
               <CardContent>
-                <Box display="flex" alignItems="center" gap={1} mb={2}>
-                  <AgreementIcon color="primary" />
-                  <Typography variant="h6" fontWeight="bold">
-                    Agreement Details
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                    (Read-Only)
-                  </Typography>
+                <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <AgreementIcon color="primary" />
+                    <Typography variant="h6" fontWeight="bold">
+                      Agreement Details
+                    </Typography>
+                  </Box>
+                  {hcf.agreement?.status === 'EXPIRED' && hcf.agreement?.duesStatus === 'CLEAR' && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={() => {
+                        // Default to starting tomorrow for 1 year
+                        const tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        const nextYear = new Date(tomorrow);
+                        nextYear.setFullYear(nextYear.getFullYear() + 1);
+                        setRenewForm({
+                          startDate: tomorrow.toISOString().split('T')[0],
+                          endDate: nextYear.toISOString().split('T')[0],
+                          perBedPerDayRate: hcf.agreement?.perBedPerDayRate || 15.50,
+                        });
+                        setRenewDialogOpen(true);
+                      }}
+                    >
+                      Renew Agreement
+                    </Button>
+                  )}
+
                 </Box>
                 {hcf.agreement ? (
                   <Stack spacing={2}>
@@ -693,84 +727,37 @@ export default function HcfDetailPage() {
               </CardContent>
              </Card>
 
-            {/* Billing Config Card */}
+            {/* Billing Information Card (READ-ONLY) */}
             <Card>
               <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <BillingIcon color="primary" />
-                    <Typography variant="h6" fontWeight="bold">
-                      Billing Configuration
-                    </Typography>
-                  </Box>
-                  {!isBillingEditing && hcf.billingConfig ? (
-                    <IconButton onClick={startBillingEditing} disabled={!isActive}>
-                      <EditIcon />
-                    </IconButton>
-                  ) : isBillingEditing ? (
-                    <Stack direction="row" spacing={1}>
-                      <IconButton
-                        color="primary"
-                        onClick={() => billingMutation.mutate(billingForm)}
-                        disabled={billingMutation.isPending}
-                      >
-                        <SaveIcon />
-                      </IconButton>
-                      <IconButton onClick={() => setIsBillingEditing(false)}>
-                        <CancelIcon />
-                      </IconButton>
-                    </Stack>
-                  ) : null}
+                <Box display="flex" alignItems="center" gap={1} mb={2}>
+                  <BillingIcon color="primary" />
+                  <Typography variant="h6" fontWeight="bold">
+                    Billing Information
+                  </Typography>
                 </Box>
                 {hcf.billingConfig ? (
                   <Stack spacing={2}>
-                    {isBillingEditing ? (
-                      <>
-                        <TextField
-                          label="Base Allowance (grams/bed/day)"
-                          type="number"
-                          value={billingForm.baseGramsPerBedPerDay || 270}
-                          onChange={(e) => setBillingForm({ ...billingForm, baseGramsPerBedPerDay: parseInt(e.target.value) })}
-                          fullWidth
-                          size="small"
-                        />
-                        <TextField
-                          label="Base Rate (₹/bed/day)"
-                          type="number"
-                          value={billingForm.baseRatePerBedPerDay}
-                          onChange={(e) => setBillingForm({ ...billingForm, baseRatePerBedPerDay: parseFloat(e.target.value) })}
-                          fullWidth
-                          size="small"
-                        />
-                        <TextField
-                          label="Excess Rate (₹/kg)"
-                          type="number"
-                          value={billingForm.excessRatePerKg}
-                          onChange={(e) => setBillingForm({ ...billingForm, excessRatePerKg: parseFloat(e.target.value) })}
-                          fullWidth
-                          size="small"
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Base Allowance</Typography>
-                          <Typography>{hcf.billingConfig.baseGramsPerBedPerDay}g per bed/day</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Base Rate</Typography>
-                          <Typography>{formatCurrency(hcf.billingConfig.baseRatePerBedPerDay)} per bed/day</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Excess Waste Rate</Typography>
-                          <Typography>{formatCurrency(hcf.billingConfig.excessRatePerKg)} per kg</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Effective From</Typography>
-                          <Typography>{formatDate(hcf.billingConfig.effectiveFrom)}</Typography>
-                        </Box>
-                      </>
-                    )}
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Base Allowance</Typography>
+                      <Typography>{hcf.billingConfig.baseGramsPerBedPerDay}g per bed/day</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Bed Rate (Contractual)</Typography>
+                      <Typography>{formatCurrency(hcf.billingConfig.baseRatePerBedPerDay)} per bed/day</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Excess Rate (Global)</Typography>
+                      <Typography>
+                        {hcf.billingConfig.globalExcessRatePerKg 
+                          ? formatCurrency(hcf.billingConfig.globalExcessRatePerKg) + ' per kg'
+                          : '₹50.00 per kg'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Effective From</Typography>
+                      <Typography>{formatDate(hcf.billingConfig.effectiveFrom)}</Typography>
+                    </Box>
                   </Stack>
                 ) : (
                   <Typography color="text.secondary">No billing configuration</Typography>
@@ -934,44 +921,53 @@ export default function HcfDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
-      
-      {/* Deactivate Dialog */}
-      <Dialog open={deactivateOpen} onClose={() => setDeactivateOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: 'error.main' }}>
-          <Box display="flex" alignItems="center" gap={1}>
-            <WarningIcon />
-            Deactivate HCF
-          </Box>
-        </DialogTitle>
+
+      {/* Renewal Dialog */}
+      <Dialog open={renewDialogOpen} onClose={() => setRenewDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Renew Agreement</DialogTitle>
         <DialogContent>
-          <Typography gutterBottom>
-            This will expire the agreement for <strong>{hcf.name}</strong>. 
-            The HCF will no longer be able to use the system for attendance or pickups.
-          </Typography>
-          <TextField
-            label="Reason for deactivation"
-            value={deactivateReason}
-            onChange={(e) => setDeactivateReason(e.target.value)}
-            fullWidth
-            multiline
-            rows={3}
-            required
-            sx={{ mt: 2 }}
-          />
+          <Stack spacing={3} sx={{ mt: 2 }}>
+            <Alert severity="info">
+              This will create a NEW agreement with a NEW agreement number. The old agreement will remain EXPIRED.
+            </Alert>
+            <TextField
+              label="Start Date"
+              type="date"
+              value={renewForm.startDate}
+              onChange={(e) => setRenewForm({ ...renewForm, startDate: e.target.value })}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="End Date"
+              type="date"
+              value={renewForm.endDate}
+              onChange={(e) => setRenewForm({ ...renewForm, endDate: e.target.value })}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Bed Rate (₹ per bed/day)"
+              type="number"
+              value={renewForm.perBedPerDayRate}
+              onChange={(e) => setRenewForm({ ...renewForm, perBedPerDayRate: parseFloat(e.target.value) })}
+              fullWidth
+              inputProps={{ step: '0.50', min: '0' }}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeactivateOpen(false)}>Cancel</Button>
+          <Button onClick={() => setRenewDialogOpen(false)}>Cancel</Button>
           <Button
             variant="contained"
-            color="error"
-            onClick={() => deactivateMutation.mutate()}
-            disabled={!deactivateReason.trim() || deactivateMutation.isPending}
+            onClick={() => renewalMutation.mutate(renewForm)}
+            disabled={renewalMutation.isPending || !renewForm.startDate || !renewForm.endDate || !renewForm.perBedPerDayRate}
           >
-            {deactivateMutation.isPending ? 'Deactivating...' : 'Deactivate'}
+            {renewalMutation.isPending ? 'Renewing...' : 'Create New Agreement'}
           </Button>
         </DialogActions>
       </Dialog>
-
+      
       {/* Snackbar */}
       <Snackbar
         open={snackbar.open}

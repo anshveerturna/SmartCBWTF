@@ -49,16 +49,46 @@ public class CbwtfHcfService {
     }
 
     /**
-     * List HCFs with active agreements for the facility.
+     * List HCFs with agreements for the facility.
+     * Auto-corrects agreement/HCF status based on current date and validity period.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public List<HcfListItemDTO> listByFacility(UUID facilityId) {
         // Return latest agreement for each HCF (including Expired/Terminated)
         List<Agreement> agreements = agreementRepository.findLatestAgreementsByFacilityId(facilityId);
+        LocalDate today = LocalDate.now();
 
         return agreements.stream()
                 .map(agreement -> {
                     Hcf hcf = agreement.getHcf();
+
+                    // Auto-correct status based on validity period
+                    LocalDate startDate = agreement.getStartDate();
+                    LocalDate endDate = agreement.getEndDate();
+
+                    boolean shouldBeActive = startDate != null && endDate != null &&
+                            !today.isBefore(startDate) && !today.isAfter(endDate);
+
+                    if (shouldBeActive && !Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
+                        agreement.setStatus(Agreement.Status.ACTIVE.name());
+                        hcf.setStatus("ACTIVE");
+                        agreement.setUpdatedAt(Instant.now());
+                        hcf.setUpdatedAt(Instant.now());
+                        agreementRepository.save(agreement);
+                        hcfRepository.save(hcf);
+                        log.info("Auto-corrected agreement {} status to ACTIVE in list",
+                                agreement.getAgreementNumber());
+                    } else if (!shouldBeActive && Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
+                        agreement.setStatus(Agreement.Status.EXPIRED.name());
+                        hcf.setStatus("INACTIVE");
+                        agreement.setUpdatedAt(Instant.now());
+                        hcf.setUpdatedAt(Instant.now());
+                        agreementRepository.save(agreement);
+                        hcfRepository.save(hcf);
+                        log.info("Auto-corrected agreement {} status to EXPIRED in list",
+                                agreement.getAgreementNumber());
+                    }
+
                     // TODO: Get last pickup timestamp from attendance/pickup events
                     Instant lastPickupAt = null;
                     return HcfListItemDTO.from(hcf, agreement, lastPickupAt);
@@ -68,8 +98,9 @@ public class CbwtfHcfService {
 
     /**
      * Get HCF detail with agreement, billing config, and operational summary.
+     * Auto-corrects agreement/HCF status based on current date and validity period.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public HcfDetailDTO getHcfDetail(UUID hcfId, UUID facilityId) {
         log.info("Fetching HCF detail for HCF: {} and Facility: {}", hcfId, facilityId);
 
@@ -85,6 +116,36 @@ public class CbwtfHcfService {
                 });
 
         Hcf hcf = agreement.getHcf();
+
+        // Auto-correct status based on validity period
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = agreement.getStartDate();
+        LocalDate endDate = agreement.getEndDate();
+
+        boolean shouldBeActive = startDate != null && endDate != null &&
+                !today.isBefore(startDate) && !today.isAfter(endDate);
+
+        boolean statusCorrected = false;
+        if (shouldBeActive && !Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
+            agreement.setStatus(Agreement.Status.ACTIVE.name());
+            hcf.setStatus("ACTIVE");
+            statusCorrected = true;
+            log.info("Auto-corrected agreement {} status to ACTIVE (within validity period)",
+                    agreement.getAgreementNumber());
+        } else if (!shouldBeActive && Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
+            agreement.setStatus(Agreement.Status.EXPIRED.name());
+            hcf.setStatus("INACTIVE");
+            statusCorrected = true;
+            log.info("Auto-corrected agreement {} status to EXPIRED (outside validity period)",
+                    agreement.getAgreementNumber());
+        }
+
+        if (statusCorrected) {
+            agreement.setUpdatedAt(Instant.now());
+            hcf.setUpdatedAt(Instant.now());
+            agreementRepository.save(agreement);
+            hcfRepository.save(hcf);
+        }
 
         // Get active billing config
         AgreementBillingConfig billingConfig = billingConfigRepository
@@ -240,6 +301,80 @@ public class CbwtfHcfService {
     }
 
     /**
+     * Activate HCF (Re-enable).
+     */
+    @Transactional
+    public void activate(UUID hcfId, UUID facilityId) {
+        // Find latest agreement (even if inactive)
+        Agreement agreement = agreementRepository.findAllByHcfIdAndFacilityId(hcfId, facilityId)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found or not associated with this facility"));
+
+        if (agreement.isActive()) {
+            throw new IllegalStateException("Agreement is already active");
+        }
+
+        // Reactivate
+        agreement.setStatus(Agreement.Status.ACTIVE.name());
+        agreement.setUpdatedAt(Instant.now());
+        agreementRepository.save(agreement);
+
+        // Update HCF status
+        Hcf hcf = agreement.getHcf();
+        hcf.setStatus("ACTIVE");
+        hcf.setUpdatedAt(Instant.now());
+        hcfRepository.save(hcf);
+
+        // Audit log
+        auditLogService.log("HCF", hcfId, "HCF_ACTIVATED", null, "HCF re-enabled");
+        log.info("HCF {} activated by facility {}", hcfId, facilityId);
+    }
+
+    /**
+     * Update Agreement validity dates.
+     */
+    @Transactional
+    public HcfDetailDTO updateAgreement(UUID hcfId, UUID facilityId, UpdateAgreementRequest request) {
+        Agreement agreement = agreementRepository.findAllByHcfIdAndFacilityId(hcfId, facilityId)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found or not associated with this facility"));
+
+        // Allow updating dates even if inactive, but usually for corrections
+        LocalDate oldStart = agreement.getStartDate();
+        LocalDate oldEnd = agreement.getEndDate();
+
+        agreement.setStartDate(request.getStartDate());
+        agreement.setEndDate(request.getEndDate());
+
+        // Auto-update status based on validity
+        LocalDate today = LocalDate.now();
+        boolean isExpired = request.getEndDate().isBefore(today);
+
+        if (isExpired) {
+            agreement.setStatus(Agreement.Status.EXPIRED.name());
+            agreement.getHcf().setStatus("INACTIVE");
+        } else {
+            // Re-activate if valid
+            agreement.setStatus(Agreement.Status.ACTIVE.name());
+            agreement.getHcf().setStatus("ACTIVE");
+        }
+
+        agreement.setUpdatedAt(Instant.now());
+        agreementRepository.save(agreement);
+        hcfRepository.save(agreement.getHcf());
+
+        // Audit log
+        String details = String.format("Agreement period changed from %s - %s to %s - %s",
+                oldStart, oldEnd, request.getStartDate(), request.getEndDate());
+        auditLogService.log("HCF", hcfId, "AGREEMENT_UPDATED", null, details);
+        log.info("HCF {} agreement updated: {}", hcfId, details);
+
+        return getHcfDetail(hcfId, facilityId);
+    }
+
+    /**
      * List pending HCF registrations (from Android app).
      */
     @Transactional(readOnly = true)
@@ -297,7 +432,6 @@ public class CbwtfHcfService {
         config.setAgreement(agreement);
         config.setBaseGramsPerBedPerDay(270);
         config.setBaseRatePerBedPerDay(request.getPerBedPerDayRate());
-        config.setExcessRatePerKg(request.getExcessRatePerKg());
         config.setEffectiveFrom(LocalDate.now());
         // createdBy would be set from security context
         config.setCreatedBy(UUID.randomUUID()); // TODO: Get from security context
@@ -331,5 +465,78 @@ public class CbwtfHcfService {
         // Audit log
         auditLogService.log("HCF", hcfId, "HCF_REJECTED", null, "Reason: " + request.getReason());
         log.info("HCF {} rejected: {}", hcfId, request.getReason());
+    }
+
+    /**
+     * Renew an expired agreement by creating a NEW agreement.
+     * Old agreement remains immutable.
+     * 
+     * Rules:
+     * - Only allowed if last agreement is EXPIRED
+     * - Dues must be CLEAR
+     * - Creates new agreement with new number
+     * - Version is incremented
+     */
+    @Transactional
+    public HcfDetailDTO renewAgreement(UUID hcfId, UUID facilityId, RenewAgreementRequest request) {
+        // Get latest agreement (even if expired)
+        Agreement oldAgreement = agreementRepository.findAllByHcfIdAndFacilityId(hcfId, facilityId)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found or not associated with this facility"));
+
+        // Validate: must be EXPIRED
+        if (!Agreement.Status.EXPIRED.name().equals(oldAgreement.getStatus())) {
+            throw new IllegalStateException("Cannot renew: Agreement is not EXPIRED");
+        }
+
+        // Validate: dues must be CLEAR
+        if (!oldAgreement.isDuesClear()) {
+            throw new IllegalStateException("Cannot renew: Outstanding dues must be cleared first");
+        }
+
+        Hcf hcf = oldAgreement.getHcf();
+        Facility facility = facilityRepository.findById(facilityId)
+                .orElseThrow(() -> new IllegalArgumentException("Facility not found"));
+
+        // Create NEW agreement
+        Agreement newAgreement = new Agreement();
+        newAgreement.setHcf(hcf);
+        newAgreement.setFacility(facility);
+        newAgreement.setAgreementNumber(agreementNumberGenerator.generateNextAgreementNumber(facility));
+        newAgreement.setStatus(Agreement.Status.ACTIVE.name());
+        newAgreement.setDuesStatus(Agreement.DuesStatus.CLEAR.name());
+        newAgreement.setStartDate(request.getStartDate());
+        newAgreement.setEndDate(request.getEndDate());
+        newAgreement.setPerBedPerDayRate(request.getPerBedPerDayRate());
+        newAgreement.setVersion(oldAgreement.getVersion() + 1);
+        newAgreement.setCreatedAt(Instant.now());
+        newAgreement.setUpdatedAt(Instant.now());
+        agreementRepository.save(newAgreement);
+
+        // Update HCF status to ACTIVE
+        hcf.setStatus("ACTIVE");
+        hcf.setUpdatedAt(Instant.now());
+        hcfRepository.save(hcf);
+
+        // Create billing config with new bed rate
+        AgreementBillingConfig config = new AgreementBillingConfig();
+        config.setAgreement(newAgreement);
+        config.setBaseGramsPerBedPerDay(277);
+        config.setBaseRatePerBedPerDay(request.getPerBedPerDayRate());
+        config.setEffectiveFrom(request.getStartDate());
+        config.setCreatedBy(UUID.randomUUID()); // TODO: Get from security context
+        billingConfigRepository.save(config);
+
+        // Audit log
+        auditLogService.log("HCF", hcfId, "AGREEMENT_RENEWED", null,
+                String.format("New agreement %s created (version %d), replacing expired %s",
+                        newAgreement.getAgreementNumber(),
+                        newAgreement.getVersion(),
+                        oldAgreement.getAgreementNumber()));
+        log.info("Agreement renewed for HCF {}: {} -> {}",
+                hcfId, oldAgreement.getAgreementNumber(), newAgreement.getAgreementNumber());
+
+        return getHcfDetail(hcfId, facilityId);
     }
 }

@@ -1,5 +1,8 @@
 package com.smartcbwtf.mobile.repository
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import com.smartcbwtf.mobile.database.dao.HcfDao
 import com.smartcbwtf.mobile.database.entity.HcfEntity
 import com.smartcbwtf.mobile.network.api.HcfApi
@@ -13,6 +16,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okio.BufferedSink
+import okio.source
 
 @Singleton
 class DefaultHcfRepository @Inject constructor(
@@ -61,4 +71,46 @@ class DefaultHcfRepository @Inject constructor(
             }
             api.getLatestTerms(facilityId)
         }
+    
+    override suspend fun uploadRentAgreement(context: Context, uri: Uri): String = 
+        withContext(ioDispatcher) {
+            if (!networkMonitor.isOnline()) {
+                throw Exception("No internet connection")
+            }
+            
+            val contentResolver = context.contentResolver
+            val mimeType = contentResolver.getType(uri) ?: "application/octet-stream"
+            val fileName = getFileName(context, uri)
+            
+            // Create streaming request body from ContentResolver
+            val requestBody = object : RequestBody() {
+                override fun contentType(): MediaType? = mimeType.toMediaTypeOrNull()
+                
+                override fun contentLength(): Long {
+                    return contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1
+                }
+                
+                override fun writeTo(sink: BufferedSink) {
+                    contentResolver.openInputStream(uri)?.use { inputStream ->
+                        sink.writeAll(inputStream.source())
+                    } ?: throw Exception("Cannot read file")
+                }
+            }
+            
+            val part = MultipartBody.Part.createFormData("file", fileName, requestBody)
+            val response = api.uploadRentAgreement(part)
+            response["url"] ?: throw Exception("Upload failed: No URL returned")
+        }
+    
+    private fun getFileName(context: Context, uri: Uri): String {
+        var name = "document"
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && nameIndex >= 0) {
+                name = cursor.getString(nameIndex)
+            }
+        }
+        return name
+    }
 }
+

@@ -42,6 +42,10 @@ public class HcfDetailDTO {
     private Instant createdAt;
     private Instant updatedAt;
 
+    // Ownership information
+    private String ownershipType;
+    private String rentAgreementUrl;
+
     // Agreement (READ-ONLY)
     private AgreementInfo agreement;
 
@@ -116,22 +120,30 @@ public class HcfDetailDTO {
         private UUID id;
         private Integer baseGramsPerBedPerDay;
         private BigDecimal baseRatePerBedPerDay;
-        private BigDecimal excessRatePerKg;
         private LocalDate effectiveFrom;
         private LocalDate effectiveTo;
         private boolean active;
 
-        public static BillingConfigInfo from(AgreementBillingConfig config) {
+        // Global excess rate (from Facility)
+        private BigDecimal globalExcessRatePerKg;
+        private LocalDate globalExcessRateEffectiveFrom;
+
+        public static BillingConfigInfo from(AgreementBillingConfig config, com.smartcbwtf.domain.Facility facility) {
             if (config == null)
                 return null;
             BillingConfigInfo info = new BillingConfigInfo();
             info.id = config.getId();
             info.baseGramsPerBedPerDay = config.getBaseGramsPerBedPerDay();
             info.baseRatePerBedPerDay = config.getBaseRatePerBedPerDay();
-            info.excessRatePerKg = config.getExcessRatePerKg();
             info.effectiveFrom = config.getEffectiveFrom();
             info.effectiveTo = config.getEffectiveTo();
             info.active = config.isActive();
+
+            // Populate global excess rate from facility
+            if (facility != null) {
+                info.globalExcessRatePerKg = facility.getExcessRatePerKg();
+                info.globalExcessRateEffectiveFrom = facility.getExcessRateEffectiveFrom();
+            }
             return info;
         }
 
@@ -148,10 +160,6 @@ public class HcfDetailDTO {
             return baseRatePerBedPerDay;
         }
 
-        public BigDecimal getExcessRatePerKg() {
-            return excessRatePerKg;
-        }
-
         public LocalDate getEffectiveFrom() {
             return effectiveFrom;
         }
@@ -162,6 +170,14 @@ public class HcfDetailDTO {
 
         public boolean isActive() {
             return active;
+        }
+
+        public BigDecimal getGlobalExcessRatePerKg() {
+            return globalExcessRatePerKg;
+        }
+
+        public LocalDate getGlobalExcessRateEffectiveFrom() {
+            return globalExcessRateEffectiveFrom;
         }
     }
 
@@ -246,8 +262,10 @@ public class HcfDetailDTO {
         }
         dto.createdAt = hcf.getCreatedAt();
         dto.updatedAt = hcf.getUpdatedAt();
+        dto.ownershipType = hcf.getOwnershipType();
+        dto.rentAgreementUrl = hcf.getRentAgreementUrl();
         dto.agreement = AgreementInfo.from(agreement);
-        dto.billingConfig = BillingConfigInfo.from(billingConfig);
+        dto.billingConfig = BillingConfigInfo.from(billingConfig, agreement != null ? agreement.getFacility() : null);
         dto.summary = summary;
         return dto;
     }
@@ -467,5 +485,21 @@ public class HcfDetailDTO {
 
     public void setSummary(OperationalSummary summary) {
         this.summary = summary;
+    }
+
+    public String getOwnershipType() {
+        return ownershipType;
+    }
+
+    public void setOwnershipType(String ownershipType) {
+        this.ownershipType = ownershipType;
+    }
+
+    public String getRentAgreementUrl() {
+        return rentAgreementUrl;
+    }
+
+    public void setRentAgreementUrl(String rentAgreementUrl) {
+        this.rentAgreementUrl = rentAgreementUrl;
     }
 }

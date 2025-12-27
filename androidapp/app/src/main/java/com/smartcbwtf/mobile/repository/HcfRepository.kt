@@ -1,5 +1,7 @@
 package com.smartcbwtf.mobile.repository
 
+import android.content.Context
+import android.net.Uri
 import com.smartcbwtf.mobile.database.entity.HcfEntity
 import com.smartcbwtf.mobile.network.model.HcfRegistrationRequest
 import com.smartcbwtf.mobile.network.model.HcfRegistrationResponse
@@ -19,4 +21,11 @@ interface HcfRepository {
      * Get the latest active terms and conditions for the facility.
      */
     suspend fun getLatestTerms(facilityId: String? = null): TermsResponse
+    
+    /**
+     * Upload rent agreement document (PDF or image) from a content Uri.
+     * Returns the URL of the uploaded file.
+     */
+    suspend fun uploadRentAgreement(context: Context, uri: Uri): String
 }
+

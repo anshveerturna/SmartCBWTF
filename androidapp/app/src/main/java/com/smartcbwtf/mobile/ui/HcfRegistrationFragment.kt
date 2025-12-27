@@ -6,10 +6,13 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.Html
 import android.util.Patterns
+import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
@@ -17,6 +20,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.smartcbwtf.mobile.R
@@ -25,6 +29,7 @@ import com.smartcbwtf.mobile.viewmodel.GpsState
 import com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel
 import com.smartcbwtf.mobile.viewmodel.RegistrationState
 import com.smartcbwtf.mobile.viewmodel.TermsState
+import com.smartcbwtf.mobile.viewmodel.RentAgreementState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -36,6 +41,16 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
     private val viewModel: HcfRegistrationViewModel by viewModels()
     private var _binding: FragmentHcfRegistrationBinding? = null
     private val binding get() = _binding!!
+    
+    // PDF picker - specific MIME type
+    private val pdfPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { handleFileSelected(it) }
+    }
+    
+    // Image picker - PhotoPicker for modern Android
+    private val imagePicker = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri?.let { handleFileSelected(it) }
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -45,6 +60,7 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         setupHideKeyboardOnTouch(binding.root)
 
         setupFormFields()
+        setupOwnershipType()
         setupGpsCapture()
         setupTermsCard()
         setupRegisterButton()
@@ -100,6 +116,51 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
             binding.etGstNo.setSelection(binding.etGstNo.text?.length ?: 0)
             textWatcher(); validateGstField(showError = true)
         }
+    }
+    
+    private fun setupOwnershipType() {
+        // RadioGroup for ownership type
+        binding.rgOwnershipType.setOnCheckedChangeListener { _, checkedId ->
+            val isRented = checkedId == R.id.rbRented
+            binding.cardRentAgreement.isVisible = isRented
+            viewModel.setOwnershipType(if (isRented) "RENTED" else "OWNED")
+            updateRegisterButtonState()
+        }
+        
+        // Upload button - show bottom sheet with options
+        binding.btnUploadRentAgreement.setOnClickListener {
+            showDocumentPickerBottomSheet()
+        }
+    }
+    
+    private fun showDocumentPickerBottomSheet() {
+        val bottomSheet = BottomSheetDialog(requireContext())
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_document_picker, null)
+        
+        view.findViewById<View>(R.id.optionPdf).setOnClickListener {
+            pdfPicker.launch(arrayOf("application/pdf"))
+            bottomSheet.dismiss()
+        }
+        
+        view.findViewById<View>(R.id.optionPhoto).setOnClickListener {
+            imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            bottomSheet.dismiss()
+        }
+        
+        bottomSheet.setContentView(view)
+        bottomSheet.show()
+    }
+    
+    private fun handleFileSelected(uri: Uri) {
+        // Take persistent permission for the URI
+        try {
+            requireContext().contentResolver.takePersistableUriPermission(
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (e: SecurityException) {
+            // May not be grantable for all URIs, continue anyway
+        }
+        viewModel.uploadRentAgreement(uri)
     }
     
     private fun setupGpsCapture() {
@@ -229,7 +290,6 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
             panNo = binding.etPanNo.text?.toString(),
             gstNo = binding.etGstNo.text?.toString(),
             aadharNo = binding.etAadharNo.text?.toString(),
-            pcbNo = binding.etPcbNo.text?.toString(),
             beds = beds,
             monthlyCharges = monthlyCharges,
             otherNotes = binding.etOtherNotes.text?.toString()
@@ -281,6 +341,48 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.termsState.collectLatest { state ->
                 updateTermsUI(state)
+            }
+        }
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.rentAgreementState.collectLatest { state ->
+                updateRentAgreementUI(state)
+            }
+        }
+    }
+    
+    private fun updateRentAgreementUI(state: RentAgreementState) {
+        when (state) {
+            is RentAgreementState.None -> {
+                binding.ivRentAgreementStatus.setImageResource(R.drawable.ic_file)
+                binding.ivRentAgreementStatus.setColorFilter(ContextCompat.getColor(requireContext(), R.color.error))
+                binding.tvRentAgreementStatus.text = "Upload rent agreement (PDF/Photo)"
+                binding.progressRentAgreement.isVisible = false
+                binding.btnUploadRentAgreement.isEnabled = true
+                binding.btnUploadRentAgreement.text = "Upload"
+            }
+            is RentAgreementState.Uploading -> {
+                binding.tvRentAgreementStatus.text = "Uploading..."
+                binding.progressRentAgreement.isVisible = true
+                binding.btnUploadRentAgreement.isEnabled = false
+            }
+            is RentAgreementState.Uploaded -> {
+                binding.ivRentAgreementStatus.setImageResource(R.drawable.ic_check)
+                binding.ivRentAgreementStatus.setColorFilter(ContextCompat.getColor(requireContext(), R.color.success))
+                binding.tvRentAgreementStatus.text = "Uploaded: ${state.fileName}"
+                binding.progressRentAgreement.isVisible = false
+                binding.btnUploadRentAgreement.isEnabled = true
+                binding.btnUploadRentAgreement.text = "Change"
+                updateRegisterButtonState()
+            }
+            is RentAgreementState.Error -> {
+                binding.ivRentAgreementStatus.setImageResource(R.drawable.ic_file)
+                binding.ivRentAgreementStatus.setColorFilter(ContextCompat.getColor(requireContext(), R.color.error))
+                binding.tvRentAgreementStatus.text = "Upload failed: ${state.message}"
+                binding.progressRentAgreement.isVisible = false
+                binding.btnUploadRentAgreement.isEnabled = true
+                binding.btnUploadRentAgreement.text = "Retry"
+                Snackbar.make(binding.root, state.message, Snackbar.LENGTH_LONG).show()
             }
         }
     }

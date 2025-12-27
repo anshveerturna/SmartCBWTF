@@ -13,9 +13,14 @@ data class HcfRegistrationRequest(
     @SerializedName("aadharNo") val aadharNo: String?,
     val bedded: Boolean = false,
     @SerializedName("numberOfBeds") val numberOfBeds: Int?,
-    @SerializedName("pcbAuthorizationNo") val pcbAuthorizationNo: String?,
     @SerializedName("otherNotes") val otherNotes: String?,
     @SerializedName("monthlyCharges") val monthlyCharges: Double?,
+    
+    // Ownership type: OWNED or RENTED
+    @SerializedName("ownershipType") val ownershipType: String,
+    
+    // Rent agreement URL (required if RENTED)
+    @SerializedName("rentAgreementUrl") val rentAgreementUrl: String?,
     
     // Terms acceptance (required)
     @SerializedName("termsAccepted") val termsAccepted: Boolean = true,

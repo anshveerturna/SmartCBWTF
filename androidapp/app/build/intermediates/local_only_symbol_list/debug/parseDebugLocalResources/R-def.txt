@@ -46,6 +46,7 @@ drawable bg_avatar_placeholder
 drawable bg_avatar_teal
 drawable bg_badge_error
 drawable bg_badge_warning
+drawable bg_bottom_sheet_handle
 drawable bg_circle_button_dark
 drawable bg_gradient_pickup
 drawable bg_hcf_selected
@@ -80,6 +81,7 @@ drawable ic_clock
 drawable ic_email
 drawable ic_error
 drawable ic_error_24
+drawable ic_file
 drawable ic_flashlight_off
 drawable ic_flashlight_on
 drawable ic_gps
@@ -96,6 +98,7 @@ drawable ic_logout_menu
 drawable ic_pending
 drawable ic_person
 drawable ic_phone
+drawable ic_photo
 drawable ic_pickup_outline
 drawable ic_pickup_waste
 drawable ic_profile_menu
@@ -158,6 +161,7 @@ id btnSettings
 id btnSubmit
 id btnSubmitAll
 id btnTorch
+id btnUploadRentAgreement
 id cardAttendance
 id cardCooldown
 id cardGps
@@ -171,6 +175,7 @@ id cardPermissions
 id cardPickup
 id cardQrScan
 id cardRegister
+id cardRentAgreement
 id cardScanSuccess
 id cardSessionSummary
 id cardStatus
@@ -197,7 +202,6 @@ id etName
 id etOtherNotes
 id etPanNo
 id etPassword
-id etPcbNo
 id etPhone
 id etUsername
 id footerStatus
@@ -219,6 +223,7 @@ id imgLogo
 id imgProfilePhoto
 id ivGpsStatus
 id ivLogo
+id ivRentAgreementStatus
 id ivSuccessCheck
 id layoutCategory
 id layoutContent
@@ -244,6 +249,8 @@ id nav_graph
 id nav_host_fragment
 id newPasswordInput
 id newPasswordLayout
+id optionPdf
+id optionPhoto
 id permissionBluetooth
 id permissionCamera
 id permissionLocation
@@ -253,13 +260,17 @@ id profileFragment
 id progressBar
 id progressIndicator
 id progressLocation
+id progressRentAgreement
 id progressSubmit
 id progressTerms
 id qrScanPrompt
 id qrScannedInfo
 id qrScannerFragment
 id radioHcfSelect
+id rbOwned
+id rbRented
 id requirementsText
+id rgOwnershipType
 id rowDob
 id rowEmail
 id rowGender
@@ -305,7 +316,6 @@ id tilName
 id tilOtherNotes
 id tilPanNo
 id tilPassword
-id tilPcbNo
 id tilPhone
 id tilUsername
 id titleText
@@ -339,6 +349,7 @@ id tvPendingSync
 id tvQrCode
 id tvQrCodeError
 id tvQrTimestamp
+id tvRentAgreementStatus
 id tvScaleStatus
 id tvScanHint
 id tvScannedQr
@@ -356,6 +367,7 @@ id tvWeightLabel
 id viewHeader
 id viewfinderOverlay
 layout activity_main
+layout bottom_sheet_document_picker
 layout fragment_attendance
 layout fragment_change_password
 layout fragment_hcf_registration

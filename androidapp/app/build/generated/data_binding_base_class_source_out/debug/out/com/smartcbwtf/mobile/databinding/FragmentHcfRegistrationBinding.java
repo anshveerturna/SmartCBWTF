@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,6 +17,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.smartcbwtf.mobile.R;
@@ -34,7 +36,13 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
   public final MaterialButton btnRegister;
 
   @NonNull
+  public final MaterialButton btnUploadRentAgreement;
+
+  @NonNull
   public final MaterialCardView cardGps;
+
+  @NonNull
+  public final MaterialCardView cardRentAgreement;
 
   @NonNull
   public final MaterialCardView cardTerms;
@@ -73,19 +81,31 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
   public final TextInputEditText etPanNo;
 
   @NonNull
-  public final TextInputEditText etPcbNo;
-
-  @NonNull
   public final TextInputEditText etPhone;
 
   @NonNull
   public final ImageView ivGpsStatus;
 
   @NonNull
+  public final ImageView ivRentAgreementStatus;
+
+  @NonNull
   public final ProgressBar progressBar;
 
   @NonNull
+  public final ProgressBar progressRentAgreement;
+
+  @NonNull
   public final ProgressBar progressTerms;
+
+  @NonNull
+  public final MaterialRadioButton rbOwned;
+
+  @NonNull
+  public final MaterialRadioButton rbRented;
+
+  @NonNull
+  public final RadioGroup rgOwnershipType;
 
   @NonNull
   public final MaterialSwitch switchBedded;
@@ -121,9 +141,6 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
   public final TextInputLayout tilPanNo;
 
   @NonNull
-  public final TextInputLayout tilPcbNo;
-
-  @NonNull
   public final TextInputLayout tilPhone;
 
   @NonNull
@@ -133,31 +150,39 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
   public final TextView tvGpsStatus;
 
   @NonNull
+  public final TextView tvRentAgreementStatus;
+
+  @NonNull
   public final TextView tvTermsVersion;
 
   private FragmentHcfRegistrationBinding(@NonNull NestedScrollView rootView,
       @NonNull MaterialButton btnCaptureGps, @NonNull MaterialButton btnRegister,
-      @NonNull MaterialCardView cardGps, @NonNull MaterialCardView cardTerms,
+      @NonNull MaterialButton btnUploadRentAgreement, @NonNull MaterialCardView cardGps,
+      @NonNull MaterialCardView cardRentAgreement, @NonNull MaterialCardView cardTerms,
       @NonNull MaterialCheckBox cbTermsAccepted, @NonNull TextInputEditText etAadharNo,
       @NonNull TextInputEditText etAddress, @NonNull TextInputEditText etBeds,
       @NonNull TextInputEditText etDoctorName, @NonNull TextInputEditText etEmail,
       @NonNull TextInputEditText etGstNo, @NonNull TextInputEditText etMonthlyCharges,
       @NonNull TextInputEditText etName, @NonNull TextInputEditText etOtherNotes,
-      @NonNull TextInputEditText etPanNo, @NonNull TextInputEditText etPcbNo,
-      @NonNull TextInputEditText etPhone, @NonNull ImageView ivGpsStatus,
-      @NonNull ProgressBar progressBar, @NonNull ProgressBar progressTerms,
+      @NonNull TextInputEditText etPanNo, @NonNull TextInputEditText etPhone,
+      @NonNull ImageView ivGpsStatus, @NonNull ImageView ivRentAgreementStatus,
+      @NonNull ProgressBar progressBar, @NonNull ProgressBar progressRentAgreement,
+      @NonNull ProgressBar progressTerms, @NonNull MaterialRadioButton rbOwned,
+      @NonNull MaterialRadioButton rbRented, @NonNull RadioGroup rgOwnershipType,
       @NonNull MaterialSwitch switchBedded, @NonNull TextInputLayout tilAadharNo,
       @NonNull TextInputLayout tilAddress, @NonNull TextInputLayout tilBeds,
       @NonNull TextInputLayout tilDoctorName, @NonNull TextInputLayout tilEmail,
       @NonNull TextInputLayout tilGstNo, @NonNull TextInputLayout tilMonthlyCharges,
       @NonNull TextInputLayout tilName, @NonNull TextInputLayout tilOtherNotes,
-      @NonNull TextInputLayout tilPanNo, @NonNull TextInputLayout tilPcbNo,
-      @NonNull TextInputLayout tilPhone, @NonNull TextView tvGpsCoordinates,
-      @NonNull TextView tvGpsStatus, @NonNull TextView tvTermsVersion) {
+      @NonNull TextInputLayout tilPanNo, @NonNull TextInputLayout tilPhone,
+      @NonNull TextView tvGpsCoordinates, @NonNull TextView tvGpsStatus,
+      @NonNull TextView tvRentAgreementStatus, @NonNull TextView tvTermsVersion) {
     this.rootView = rootView;
     this.btnCaptureGps = btnCaptureGps;
     this.btnRegister = btnRegister;
+    this.btnUploadRentAgreement = btnUploadRentAgreement;
     this.cardGps = cardGps;
+    this.cardRentAgreement = cardRentAgreement;
     this.cardTerms = cardTerms;
     this.cbTermsAccepted = cbTermsAccepted;
     this.etAadharNo = etAadharNo;
@@ -170,11 +195,15 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
     this.etName = etName;
     this.etOtherNotes = etOtherNotes;
     this.etPanNo = etPanNo;
-    this.etPcbNo = etPcbNo;
     this.etPhone = etPhone;
     this.ivGpsStatus = ivGpsStatus;
+    this.ivRentAgreementStatus = ivRentAgreementStatus;
     this.progressBar = progressBar;
+    this.progressRentAgreement = progressRentAgreement;
     this.progressTerms = progressTerms;
+    this.rbOwned = rbOwned;
+    this.rbRented = rbRented;
+    this.rgOwnershipType = rgOwnershipType;
     this.switchBedded = switchBedded;
     this.tilAadharNo = tilAadharNo;
     this.tilAddress = tilAddress;
@@ -186,10 +215,10 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
     this.tilName = tilName;
     this.tilOtherNotes = tilOtherNotes;
     this.tilPanNo = tilPanNo;
-    this.tilPcbNo = tilPcbNo;
     this.tilPhone = tilPhone;
     this.tvGpsCoordinates = tvGpsCoordinates;
     this.tvGpsStatus = tvGpsStatus;
+    this.tvRentAgreementStatus = tvRentAgreementStatus;
     this.tvTermsVersion = tvTermsVersion;
   }
 
@@ -232,9 +261,21 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.btnUploadRentAgreement;
+      MaterialButton btnUploadRentAgreement = ViewBindings.findChildViewById(rootView, id);
+      if (btnUploadRentAgreement == null) {
+        break missingId;
+      }
+
       id = R.id.cardGps;
       MaterialCardView cardGps = ViewBindings.findChildViewById(rootView, id);
       if (cardGps == null) {
+        break missingId;
+      }
+
+      id = R.id.cardRentAgreement;
+      MaterialCardView cardRentAgreement = ViewBindings.findChildViewById(rootView, id);
+      if (cardRentAgreement == null) {
         break missingId;
       }
 
@@ -310,12 +351,6 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.etPcbNo;
-      TextInputEditText etPcbNo = ViewBindings.findChildViewById(rootView, id);
-      if (etPcbNo == null) {
-        break missingId;
-      }
-
       id = R.id.etPhone;
       TextInputEditText etPhone = ViewBindings.findChildViewById(rootView, id);
       if (etPhone == null) {
@@ -328,15 +363,45 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.ivRentAgreementStatus;
+      ImageView ivRentAgreementStatus = ViewBindings.findChildViewById(rootView, id);
+      if (ivRentAgreementStatus == null) {
+        break missingId;
+      }
+
       id = R.id.progressBar;
       ProgressBar progressBar = ViewBindings.findChildViewById(rootView, id);
       if (progressBar == null) {
         break missingId;
       }
 
+      id = R.id.progressRentAgreement;
+      ProgressBar progressRentAgreement = ViewBindings.findChildViewById(rootView, id);
+      if (progressRentAgreement == null) {
+        break missingId;
+      }
+
       id = R.id.progressTerms;
       ProgressBar progressTerms = ViewBindings.findChildViewById(rootView, id);
       if (progressTerms == null) {
+        break missingId;
+      }
+
+      id = R.id.rbOwned;
+      MaterialRadioButton rbOwned = ViewBindings.findChildViewById(rootView, id);
+      if (rbOwned == null) {
+        break missingId;
+      }
+
+      id = R.id.rbRented;
+      MaterialRadioButton rbRented = ViewBindings.findChildViewById(rootView, id);
+      if (rbRented == null) {
+        break missingId;
+      }
+
+      id = R.id.rgOwnershipType;
+      RadioGroup rgOwnershipType = ViewBindings.findChildViewById(rootView, id);
+      if (rgOwnershipType == null) {
         break missingId;
       }
 
@@ -406,12 +471,6 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.tilPcbNo;
-      TextInputLayout tilPcbNo = ViewBindings.findChildViewById(rootView, id);
-      if (tilPcbNo == null) {
-        break missingId;
-      }
-
       id = R.id.tilPhone;
       TextInputLayout tilPhone = ViewBindings.findChildViewById(rootView, id);
       if (tilPhone == null) {
@@ -430,6 +489,12 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.tvRentAgreementStatus;
+      TextView tvRentAgreementStatus = ViewBindings.findChildViewById(rootView, id);
+      if (tvRentAgreementStatus == null) {
+        break missingId;
+      }
+
       id = R.id.tvTermsVersion;
       TextView tvTermsVersion = ViewBindings.findChildViewById(rootView, id);
       if (tvTermsVersion == null) {
@@ -437,11 +502,13 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
       }
 
       return new FragmentHcfRegistrationBinding((NestedScrollView) rootView, btnCaptureGps,
-          btnRegister, cardGps, cardTerms, cbTermsAccepted, etAadharNo, etAddress, etBeds,
-          etDoctorName, etEmail, etGstNo, etMonthlyCharges, etName, etOtherNotes, etPanNo, etPcbNo,
-          etPhone, ivGpsStatus, progressBar, progressTerms, switchBedded, tilAadharNo, tilAddress,
-          tilBeds, tilDoctorName, tilEmail, tilGstNo, tilMonthlyCharges, tilName, tilOtherNotes,
-          tilPanNo, tilPcbNo, tilPhone, tvGpsCoordinates, tvGpsStatus, tvTermsVersion);
+          btnRegister, btnUploadRentAgreement, cardGps, cardRentAgreement, cardTerms,
+          cbTermsAccepted, etAadharNo, etAddress, etBeds, etDoctorName, etEmail, etGstNo,
+          etMonthlyCharges, etName, etOtherNotes, etPanNo, etPhone, ivGpsStatus,
+          ivRentAgreementStatus, progressBar, progressRentAgreement, progressTerms, rbOwned,
+          rbRented, rgOwnershipType, switchBedded, tilAadharNo, tilAddress, tilBeds, tilDoctorName,
+          tilEmail, tilGstNo, tilMonthlyCharges, tilName, tilOtherNotes, tilPanNo, tilPhone,
+          tvGpsCoordinates, tvGpsStatus, tvRentAgreementStatus, tvTermsVersion);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

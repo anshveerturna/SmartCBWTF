@@ -40,6 +40,13 @@ public class HcfRegistrationRequest {
 
     private String pcbAuthorizationNo;
 
+    // Ownership type: OWNED or RENTED
+    @NotBlank(message = "Ownership type is required")
+    private String ownershipType;
+
+    // Rent agreement URL (required if rented)
+    private String rentAgreementUrl;
+
     private LocalDate agreementStartDate;
     private LocalDate agreementEndDate;
 
@@ -162,6 +169,22 @@ public class HcfRegistrationRequest {
 
     public void setPcbAuthorizationNo(String pcbAuthorizationNo) {
         this.pcbAuthorizationNo = pcbAuthorizationNo;
+    }
+
+    public String getOwnershipType() {
+        return ownershipType;
+    }
+
+    public void setOwnershipType(String ownershipType) {
+        this.ownershipType = ownershipType;
+    }
+
+    public String getRentAgreementUrl() {
+        return rentAgreementUrl;
+    }
+
+    public void setRentAgreementUrl(String rentAgreementUrl) {
+        this.rentAgreementUrl = rentAgreementUrl;
     }
 
     public LocalDate getAgreementStartDate() {

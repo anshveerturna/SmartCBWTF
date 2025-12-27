@@ -76,4 +76,7 @@ public interface AgreementRepository extends JpaRepository<Agreement, UUID> {
         // Find all agreements for HCF under facility, latest first
         @Query("SELECT a FROM Agreement a WHERE a.hcf.id = :hcfId AND a.facility.id = :facilityId ORDER BY a.createdAt DESC")
         List<Agreement> findAllByHcfIdAndFacilityId(@Param("hcfId") UUID hcfId, @Param("facilityId") UUID facilityId);
+
+        // Find agreements by status and end date (for expiration)
+        List<Agreement> findByStatusAndEndDateBefore(String status, java.time.LocalDate endDate);
 }

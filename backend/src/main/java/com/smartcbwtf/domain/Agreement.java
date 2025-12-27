@@ -108,6 +108,10 @@ public class Agreement {
     @Column(name = "created_by")
     private UUID createdBy;
 
+    // Version for renewal tracking (V31 migration)
+    @Column(nullable = false)
+    private Integer version = 1;
+
     // ---------- Getters and Setters ----------
 
     public UUID getId() {
@@ -324,6 +328,14 @@ public class Agreement {
 
     public void setCreatedBy(UUID createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
     }
 
     @PreUpdate

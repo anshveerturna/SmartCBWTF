@@ -146,4 +146,16 @@ public class CbwtfHcfController {
         hcfService.rejectHcf(id, facilityId, request);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Renew an expired agreement by creating a NEW agreement.
+     * Old agreement remains immutable.
+     */
+    @PostMapping("/{id}/agreements/renew")
+    public ResponseEntity<HcfDetailDTO> renewAgreement(
+            @PathVariable UUID id,
+            @Valid @RequestBody RenewAgreementRequest request) {
+        UUID facilityId = TenantContext.getTenantId();
+        return ResponseEntity.ok(hcfService.renewAgreement(id, facilityId, request));
+    }
 }
