@@ -27,12 +27,14 @@ import hilt_aggregated_deps._com_smartcbwtf_mobile_di_DatabaseModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_di_NetworkModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_di_RepositoryModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_di_ScaleModule;
+import hilt_aggregated_deps._com_smartcbwtf_mobile_service_ForegroundLocationService_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_AttendanceFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_ChangePasswordFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_ChangePasswordViewModel_HiltModules_BindsModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_ChangePasswordViewModel_HiltModules_KeyModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_HcfRegistrationFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_HomeFragment_GeneratedInjector;
+import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_LocationDisclosureFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_LoginFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_PermissionsFragment_GeneratedInjector;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_ui_ProfileFragment_GeneratedInjector;
@@ -60,6 +62,7 @@ import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_StartPickupViewMode
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_StartPickupViewModel_HiltModules_KeyModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel_HiltModules_BindsModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel_HiltModules_KeyModule;
+import hilt_aggregated_deps._com_smartcbwtf_mobile_work_LocationTrackingWorker_HiltModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_work_SyncAttendanceWorker_HiltModule;
 import hilt_aggregated_deps._com_smartcbwtf_mobile_work_SyncBagEventsWorker_HiltModule;
 import hilt_aggregated_deps._dagger_hilt_android_flags_FragmentGetContextFix_FragmentGetContextFixEntryPoint;
@@ -112,12 +115,14 @@ import hilt_aggregated_deps._dagger_hilt_android_internal_modules_HiltWrapper_Ac
         _com_smartcbwtf_mobile_di_NetworkModule.class,
         _com_smartcbwtf_mobile_di_RepositoryModule.class,
         _com_smartcbwtf_mobile_di_ScaleModule.class,
+        _com_smartcbwtf_mobile_service_ForegroundLocationService_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_AttendanceFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_ChangePasswordFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_ChangePasswordViewModel_HiltModules_BindsModule.class,
         _com_smartcbwtf_mobile_ui_ChangePasswordViewModel_HiltModules_KeyModule.class,
         _com_smartcbwtf_mobile_ui_HcfRegistrationFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_HomeFragment_GeneratedInjector.class,
+        _com_smartcbwtf_mobile_ui_LocationDisclosureFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_LoginFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_PermissionsFragment_GeneratedInjector.class,
         _com_smartcbwtf_mobile_ui_ProfileFragment_GeneratedInjector.class,
@@ -145,6 +150,7 @@ import hilt_aggregated_deps._dagger_hilt_android_internal_modules_HiltWrapper_Ac
         _com_smartcbwtf_mobile_viewmodel_StartPickupViewModel_HiltModules_KeyModule.class,
         _com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel_HiltModules_BindsModule.class,
         _com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel_HiltModules_KeyModule.class,
+        _com_smartcbwtf_mobile_work_LocationTrackingWorker_HiltModule.class,
         _com_smartcbwtf_mobile_work_SyncAttendanceWorker_HiltModule.class,
         _com_smartcbwtf_mobile_work_SyncBagEventsWorker_HiltModule.class,
         _dagger_hilt_android_flags_FragmentGetContextFix_FragmentGetContextFixEntryPoint.class,

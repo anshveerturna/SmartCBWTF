@@ -12,16 +12,16 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-68:/drawable/ic_bluetooth.xml"
     },
     {
-        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-66:/drawable_bg_hint_pill.xml.flat",
-        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-68:/drawable/bg_hint_pill.xml"
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-66:/drawable_bg_icon_circle_neutral.xml.flat",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-68:/drawable/bg_icon_circle_neutral.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-66:/layout_fragment_attendance.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-68:/layout/fragment_attendance.xml"
     },
     {
-        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-66:/drawable_bg_icon_circle_neutral.xml.flat",
-        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-68:/drawable/bg_icon_circle_neutral.xml"
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-66:/drawable_bg_hint_pill.xml.flat",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-68:/drawable/bg_hint_pill.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-66:/drawable_bg_avatar_circle.xml.flat",
@@ -148,10 +148,6 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-68:/drawable/bg_badge_error.xml"
     },
     {
-        "merged": "com.smartcbwtf.mobile.app-debug-66:/layout_fragment_login.xml.flat",
-        "source": "com.smartcbwtf.mobile.app-main-68:/layout/fragment_login.xml"
-    },
-    {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-66:/drawable_ic_check_circle_filled.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-68:/drawable/ic_check_circle_filled.xml"
     },
@@ -170,6 +166,14 @@
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-66:/drawable_ic_gps.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-68:/drawable/ic_gps.xml"
+    },
+    {
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-66:/layout_fragment_location_disclosure.xml.flat",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-68:/layout/fragment_location_disclosure.xml"
+    },
+    {
+        "merged": "com.smartcbwtf.mobile.app-debug-66:/navigation_nav_graph.xml.flat",
+        "source": "com.smartcbwtf.mobile.app-main-68:/navigation/nav_graph.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-66:/drawable_ic_check_circle.xml.flat",

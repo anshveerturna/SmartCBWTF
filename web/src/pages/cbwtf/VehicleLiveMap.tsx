@@ -25,8 +25,54 @@ import {
 } from '@mui/icons-material';
 import { getLiveMap, type LiveMapDTO, type LivePositionDTO } from '../../api/cbwtf';
 import { useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { LocationAddress } from '../../components/LocationAddress';
+
+// Custom truck SVG icon creator
+const createTruckIcon = (color: string) => {
+  const svg = `
+    <svg viewBox="0 0 24 24" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+      <path fill="${color}" stroke="#fff" stroke-width="1" d="M20,8H17V4H3C1.9,4,1,4.9,1,6V17H3C3,18.7,4.3,20,6,20S9,18.7,9,17H15C15,18.7,16.3,20,18,20S21,18.7,21,17H23V12L20,8M6,18.5C5.2,18.5,4.5,17.8,4.5,17S5.2,15.5,6,15.5S7.5,16.2,7.5,17S6.8,18.5,6,18.5M18,18.5C17.2,18.5,16.5,17.8,16.5,17S17.2,15.5,18,15.5S19.5,16.2,19.5,17S18.8,18.5,18,18.5M19.5,12H17V9.5H18.5L19.5,12Z"/>
+    </svg>
+  `;
+  
+  return L.divIcon({
+    html: svg,
+    className: 'truck-marker',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  });
+};
+
+// Create online (green) and offline (red) truck icons
+const onlineTruckIcon = createTruckIcon('#22C55E'); // Green
+const offlineTruckIcon = createTruckIcon('#EF4444'); // Red
 
 const AUTO_REFRESH_INTERVAL = 10000; // 10 seconds
+
+// Default center (India)
+const DEFAULT_CENTER: [number, number] = [20.5937, 78.9629];
+const DEFAULT_ZOOM = 5;
+
+// Component to fit map bounds to markers
+function FitBounds({ vehicles }: { vehicles: LivePositionDTO[] }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    const validVehicles = vehicles.filter(v => v.latitude && v.longitude);
+    if (validVehicles.length > 0) {
+      const bounds = L.latLngBounds(
+        validVehicles.map(v => [v.latitude!, v.longitude!] as [number, number])
+      );
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    }
+  }, [vehicles, map]);
+  
+  return null;
+}
 
 const VehicleLiveMap = () => {
   const navigate = useNavigate();
@@ -55,7 +101,7 @@ const VehicleLiveMap = () => {
     return `${Math.floor(diffMins / 60)}h ago`;
   };
 
-  // Auto-clear selection when data updates
+  // Auto-update selection when data refreshes
   useEffect(() => {
     if (selectedVehicle && liveMap?.vehicles) {
       const updated = liveMap.vehicles.find(v => v.id === selectedVehicle.id);
@@ -64,6 +110,9 @@ const VehicleLiveMap = () => {
       }
     }
   }, [liveMap, selectedVehicle?.id]);
+
+  // Get vehicles with valid coordinates
+  const vehiclesWithLocation = liveMap?.vehicles.filter(v => v.latitude && v.longitude) || [];
 
   return (
     <Box sx={{ p: 3, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
@@ -164,78 +213,98 @@ const VehicleLiveMap = () => {
               display: 'flex', 
               flexDirection: 'column',
               overflow: 'hidden',
-              bgcolor: 'grey.100',
+              borderRadius: 2,
             }}
           >
-            {/* Map Placeholder - In production, integrate with Leaflet/Google Maps */}
-            <Box 
-              sx={{ 
-                flex: 1, 
-                display: 'flex', 
-                flexDirection: 'column',
-                alignItems: 'center', 
-                justifyContent: 'center',
-                p: 4,
-                textAlign: 'center',
-              }}
-            >
-              <LocalShipping sx={{ fontSize: 64, color: 'grey.400', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                Map Integration Ready
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mb: 3 }}>
-                This area will display an interactive map with vehicle positions.
-                Integrate with Leaflet, Google Maps, or Mapbox based on your preference.
-              </Typography>
-
-              {/* Show selected vehicle details */}
-              {selectedVehicle && (
-                <Card sx={{ mt: 2, minWidth: 300 }}>
-                  <CardContent>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      {selectedVehicle.registrationNumber}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {selectedVehicle.vehicleType} • {selectedVehicle.driverName || 'No driver'}
-                    </Typography>
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Last Position:
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                        {selectedVehicle.latitude?.toFixed(6)}, {selectedVehicle.longitude?.toFixed(6)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Updated: {formatTimeAgo(selectedVehicle.lastGpsAt)}
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Summary Stats */}
-              <Box sx={{ mt: 4, display: 'flex', gap: 4 }}>
-                {liveMap.vehicles.slice(0, 3).map((v) => (
-                  <Box key={v.id} sx={{ textAlign: 'center' }}>
-                    <Chip
-                      icon={<LocalShipping />}
-                      label={v.registrationNumber}
-                      color={v.gpsStatus === 'ONLINE' ? 'success' : 'default'}
-                      variant="outlined"
-                    />
-                    <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                      {v.latitude?.toFixed(4)}, {v.longitude?.toFixed(4)}
-                    </Typography>
-                  </Box>
+            {/* OpenStreetMap with Leaflet */}
+            <Box sx={{ flex: 1, position: 'relative' }}>
+              <MapContainer
+                center={DEFAULT_CENTER}
+                zoom={DEFAULT_ZOOM}
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                
+                {/* Fit map to vehicle bounds */}
+                {vehiclesWithLocation.length > 0 && (
+                  <FitBounds vehicles={vehiclesWithLocation} />
+                )}
+                
+                {/* Vehicle markers */}
+                {vehiclesWithLocation.map((vehicle) => (
+                  <Marker
+                    key={vehicle.id}
+                    position={[vehicle.latitude!, vehicle.longitude!]}
+                    icon={vehicle.gpsStatus === 'ONLINE' ? onlineTruckIcon : offlineTruckIcon}
+                    eventHandlers={{
+                      click: () => setSelectedVehicle(vehicle),
+                    }}
+                  >
+                    <Popup>
+                      <Box sx={{ minWidth: 150 }}>
+                        <Typography variant="subtitle2" fontWeight={600}>
+                          {vehicle.registrationNumber}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {vehicle.vehicleType}
+                        </Typography>
+                        {vehicle.driverName && (
+                          <Typography variant="body2">
+                            Driver: {vehicle.driverName}
+                          </Typography>
+                        )}
+                        <Typography variant="caption" color="text.secondary">
+                          Last update: {formatTimeAgo(vehicle.lastGpsAt)}
+                        </Typography>
+                        <Box sx={{ mt: 0.5 }}>
+                          <LocationAddress 
+                            latitude={vehicle.latitude} 
+                            longitude={vehicle.longitude}
+                            showCoords
+                          />
+                        </Box>
+                      </Box>
+                    </Popup>
+                  </Marker>
                 ))}
-              </Box>
+              </MapContainer>
+
+              {/* No location data overlay */}
+              {vehiclesWithLocation.length === 0 && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    textAlign: 'center',
+                    bgcolor: 'background.paper',
+                    p: 3,
+                    borderRadius: 2,
+                    boxShadow: 3,
+                    zIndex: 1000,
+                  }}
+                >
+                  <LocalShipping sx={{ fontSize: 48, color: 'grey.400', mb: 1 }} />
+                  <Typography variant="h6" color="text.secondary">
+                    No Location Data
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Vehicles will appear on the map once they report GPS data.
+                  </Typography>
+                </Box>
+              )}
             </Box>
 
             {/* Footer with timestamp */}
             <Box sx={{ p: 1, bgcolor: 'background.paper', borderTop: 1, borderColor: 'divider' }}>
               <Typography variant="caption" color="text.secondary">
                 Last updated: {new Date(liveMap.timestamp).toLocaleTimeString()} • 
-                Auto-refresh every {AUTO_REFRESH_INTERVAL / 1000}s
+                Auto-refresh every {AUTO_REFRESH_INTERVAL / 1000}s • 
+                {vehiclesWithLocation.length} of {liveMap.totalCount} vehicles have GPS data
               </Typography>
             </Box>
           </Paper>
@@ -246,3 +315,4 @@ const VehicleLiveMap = () => {
 };
 
 export default VehicleLiveMap;
+

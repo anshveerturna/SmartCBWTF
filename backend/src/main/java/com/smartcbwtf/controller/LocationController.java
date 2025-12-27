@@ -71,6 +71,21 @@ public class LocationController {
                 request.accuracy);
         locationRepository.save(location);
 
+        // Update user's last GPS position (throttled - only if last update > 5 min ago)
+        var lastLoc = locationRepository.findFirstByUserIdOrderByRecordedAtDesc(userId);
+        boolean shouldUpdateUser = lastLoc.isEmpty() ||
+                lastLoc.get().getRecordedAt()
+                        .isBefore(java.time.Instant.now().minus(5, java.time.temporal.ChronoUnit.MINUTES));
+
+        if (shouldUpdateUser) {
+            userRepository.findById(userId).ifPresent(user -> {
+                user.updateGpsPosition(
+                        java.math.BigDecimal.valueOf(request.latitude),
+                        java.math.BigDecimal.valueOf(request.longitude));
+                userRepository.save(user);
+            });
+        }
+
         log.debug("Recorded location for user {}: ({}, {})", userId, request.latitude, request.longitude);
 
         return ResponseEntity.ok(Map.of(

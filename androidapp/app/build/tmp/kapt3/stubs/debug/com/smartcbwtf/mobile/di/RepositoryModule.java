@@ -1,7 +1,7 @@
 package com.smartcbwtf.mobile.di;
 
 @dagger.Module()
-@kotlin.Metadata(mv = {1, 9, 0}, k = 1, xi = 48, d1 = {"\u00006\n\u0002\u0018\u0002\n\u0002\u0010\u0000\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\b\'\u0018\u00002\u00020\u0001B\u0005\u00a2\u0006\u0002\u0010\u0002J\u0010\u0010\u0003\u001a\u00020\u00042\u0006\u0010\u0005\u001a\u00020\u0006H\'J\u0010\u0010\u0007\u001a\u00020\b2\u0006\u0010\u0005\u001a\u00020\tH\'J\u0010\u0010\n\u001a\u00020\u000b2\u0006\u0010\u0005\u001a\u00020\fH\'J\u0010\u0010\r\u001a\u00020\u000e2\u0006\u0010\u0005\u001a\u00020\u000fH\'\u00a8\u0006\u0010"}, d2 = {"Lcom/smartcbwtf/mobile/di/RepositoryModule;", "", "()V", "bindAttendanceRepository", "Lcom/smartcbwtf/mobile/repository/AttendanceRepository;", "repo", "Lcom/smartcbwtf/mobile/repository/DefaultAttendanceRepository;", "bindAuthRepository", "Lcom/smartcbwtf/mobile/repository/AuthRepository;", "Lcom/smartcbwtf/mobile/repository/DefaultAuthRepository;", "bindBagEventRepository", "Lcom/smartcbwtf/mobile/repository/BagEventRepository;", "Lcom/smartcbwtf/mobile/repository/DefaultBagEventRepository;", "bindHcfRepository", "Lcom/smartcbwtf/mobile/repository/HcfRepository;", "Lcom/smartcbwtf/mobile/repository/DefaultHcfRepository;", "app_debug"})
+@kotlin.Metadata(mv = {1, 9, 0}, k = 1, xi = 48, d1 = {"\u0000@\n\u0002\u0018\u0002\n\u0002\u0010\u0000\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\b\'\u0018\u00002\u00020\u0001B\u0005\u00a2\u0006\u0002\u0010\u0002J\u0010\u0010\u0003\u001a\u00020\u00042\u0006\u0010\u0005\u001a\u00020\u0006H\'J\u0010\u0010\u0007\u001a\u00020\b2\u0006\u0010\u0005\u001a\u00020\tH\'J\u0010\u0010\n\u001a\u00020\u000b2\u0006\u0010\u0005\u001a\u00020\fH\'J\u0010\u0010\r\u001a\u00020\u000e2\u0006\u0010\u0005\u001a\u00020\u000fH\'J\u0010\u0010\u0010\u001a\u00020\u00112\u0006\u0010\u0005\u001a\u00020\u0012H\'\u00a8\u0006\u0013"}, d2 = {"Lcom/smartcbwtf/mobile/di/RepositoryModule;", "", "()V", "bindAttendanceRepository", "Lcom/smartcbwtf/mobile/repository/AttendanceRepository;", "repo", "Lcom/smartcbwtf/mobile/repository/DefaultAttendanceRepository;", "bindAuthRepository", "Lcom/smartcbwtf/mobile/repository/AuthRepository;", "Lcom/smartcbwtf/mobile/repository/DefaultAuthRepository;", "bindBagEventRepository", "Lcom/smartcbwtf/mobile/repository/BagEventRepository;", "Lcom/smartcbwtf/mobile/repository/DefaultBagEventRepository;", "bindHcfRepository", "Lcom/smartcbwtf/mobile/repository/HcfRepository;", "Lcom/smartcbwtf/mobile/repository/DefaultHcfRepository;", "bindLocationRepository", "Lcom/smartcbwtf/mobile/repository/LocationRepository;", "Lcom/smartcbwtf/mobile/repository/DefaultLocationRepository;", "app_debug"})
 @dagger.hilt.InstallIn(value = {dagger.hilt.components.SingletonComponent.class})
 public abstract class RepositoryModule {
     
@@ -32,4 +32,10 @@ public abstract class RepositoryModule {
     @org.jetbrains.annotations.NotNull()
     public abstract com.smartcbwtf.mobile.repository.AttendanceRepository bindAttendanceRepository(@org.jetbrains.annotations.NotNull()
     com.smartcbwtf.mobile.repository.DefaultAttendanceRepository repo);
+    
+    @dagger.Binds()
+    @javax.inject.Singleton()
+    @org.jetbrains.annotations.NotNull()
+    public abstract com.smartcbwtf.mobile.repository.LocationRepository bindLocationRepository(@org.jetbrains.annotations.NotNull()
+    com.smartcbwtf.mobile.repository.DefaultLocationRepository repo);
 }

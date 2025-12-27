@@ -8,6 +8,7 @@ import com.smartcbwtf.mobile.network.api.AttendanceApi
 import com.smartcbwtf.mobile.network.api.AuthApi
 import com.smartcbwtf.mobile.network.api.BagEventApi
 import com.smartcbwtf.mobile.network.api.HcfApi
+import com.smartcbwtf.mobile.network.api.LocationApi
 import com.smartcbwtf.mobile.network.api.ProfileApi
 import com.smartcbwtf.mobile.network.api.VerificationApi
 import dagger.Module
@@ -73,5 +74,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideProfileApi(retrofit: Retrofit): ProfileApi = retrofit.create(ProfileApi::class.java)
-}
 
+    @Provides
+    @Singleton
+    fun provideLocationApi(retrofit: Retrofit): LocationApi = retrofit.create(LocationApi::class.java)
+}

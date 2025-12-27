@@ -7,7 +7,9 @@ import com.smartcbwtf.mobile.repository.DefaultAttendanceRepository
 import com.smartcbwtf.mobile.repository.DefaultAuthRepository
 import com.smartcbwtf.mobile.repository.DefaultBagEventRepository
 import com.smartcbwtf.mobile.repository.DefaultHcfRepository
+import com.smartcbwtf.mobile.repository.DefaultLocationRepository
 import com.smartcbwtf.mobile.repository.HcfRepository
+import com.smartcbwtf.mobile.repository.LocationRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -33,4 +35,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAttendanceRepository(repo: DefaultAttendanceRepository): AttendanceRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLocationRepository(repo: DefaultLocationRepository): LocationRepository
 }

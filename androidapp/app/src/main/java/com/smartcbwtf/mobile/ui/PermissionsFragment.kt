@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.smartcbwtf.mobile.R
 import com.smartcbwtf.mobile.databinding.FragmentPermissionsBinding
+import com.smartcbwtf.mobile.repository.LocationRepository
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -26,6 +27,9 @@ class PermissionsFragment : Fragment(R.layout.fragment_permissions) {
 
     @Inject
     lateinit var sharedPreferences: SharedPreferences
+
+    @Inject
+    lateinit var locationRepository: LocationRepository
 
     // Location permission launcher
     private val locationPermissionLauncher = registerForActivityResult(
@@ -79,12 +83,12 @@ class PermissionsFragment : Fragment(R.layout.fragment_permissions) {
 
         binding.btnContinue.setOnClickListener {
             markOnboardingComplete()
-            navigateToHome()
+            navigateToNextScreen()
         }
 
         binding.tvSkip.setOnClickListener {
             markOnboardingComplete()
-            navigateToHome()
+            navigateToNextScreen()
         }
 
         // Tap on location row to request location permission
@@ -227,8 +231,18 @@ class PermissionsFragment : Fragment(R.layout.fragment_permissions) {
             .apply()
     }
 
-    private fun navigateToHome() {
-        findNavController().navigate(R.id.action_permissionsFragment_to_homeFragment)
+    /**
+     * Navigate to next screen based on location consent status.
+     * If consent not given, show disclosure screen. Otherwise go to home.
+     */
+    private fun navigateToNextScreen() {
+        if (!locationRepository.hasLocationConsent()) {
+            Log.d("PermissionsFragment", "Location consent needed, navigating to disclosure")
+            findNavController().navigate(R.id.action_permissionsFragment_to_locationDisclosureFragment)
+        } else {
+            Log.d("PermissionsFragment", "Location consent already given, navigating to home")
+            findNavController().navigate(R.id.action_permissionsFragment_to_homeFragment)
+        }
     }
 
     override fun onDestroyView() {
@@ -240,3 +254,4 @@ class PermissionsFragment : Fragment(R.layout.fragment_permissions) {
         const val PREF_ONBOARDING_COMPLETE = "onboarding_complete"
     }
 }
+

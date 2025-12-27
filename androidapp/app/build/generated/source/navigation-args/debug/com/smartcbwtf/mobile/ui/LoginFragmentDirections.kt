@@ -11,5 +11,8 @@ public class LoginFragmentDirections private constructor() {
 
     public fun actionLoginFragmentToPermissionsFragment(): NavDirections =
         ActionOnlyNavDirections(R.id.action_loginFragment_to_permissionsFragment)
+
+    public fun actionLoginFragmentToLocationDisclosureFragment(): NavDirections =
+        ActionOnlyNavDirections(R.id.action_loginFragment_to_locationDisclosureFragment)
   }
 }

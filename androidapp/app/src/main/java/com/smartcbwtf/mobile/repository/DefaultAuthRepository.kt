@@ -3,6 +3,7 @@ package com.smartcbwtf.mobile.repository
 import com.smartcbwtf.mobile.network.api.AuthApi
 import com.smartcbwtf.mobile.network.model.AuthRequest
 import com.smartcbwtf.mobile.network.model.AuthResponse
+import com.smartcbwtf.mobile.storage.AppConfigStore
 import com.smartcbwtf.mobile.storage.AuthTokenStore
 import com.smartcbwtf.mobile.utils.NetworkMonitor
 import kotlinx.coroutines.CoroutineDispatcher
@@ -16,6 +17,7 @@ import javax.inject.Singleton
 class DefaultAuthRepository @Inject constructor(
     private val api: AuthApi,
     private val tokenStore: AuthTokenStore,
+    private val appConfigStore: AppConfigStore,
     private val networkMonitor: NetworkMonitor,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : AuthRepository {
@@ -31,6 +33,11 @@ class DefaultAuthRepository @Inject constructor(
         if (response.mustChangePassword) {
             tokenStore.setMustChangePassword(true)
         }
+
+        // Store user role for GPS tracking guard
+        response.role?.let { role ->
+            appConfigStore.setUserRole(role)
+        }
         
         response
     }
@@ -38,6 +45,7 @@ class DefaultAuthRepository @Inject constructor(
     override suspend fun logout() = withContext(ioDispatcher) {
         tokenStore.setToken(null)
         tokenStore.setMustChangePassword(false)
+        appConfigStore.setUserRole("") // Clear role on logout
     }
 
     override suspend fun currentToken(): String? = withContext(ioDispatcher) {
@@ -48,3 +56,4 @@ class DefaultAuthRepository @Inject constructor(
     
     override fun mustChangePassword(): Boolean = tokenStore.getMustChangePassword()
 }
+

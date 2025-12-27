@@ -53,6 +53,24 @@ class AppConfigStore @Inject constructor(
     val qrVerificationDisabled: Boolean
         get() = prefs.getBoolean("qrVerificationDisabled", false)
 
+    // GPS tracking controls (backend-configurable)
+    val gpsEnabled: Boolean
+        get() = prefs.getBoolean("gpsEnabled", true)
+
+    val gpsPingIntervalMinutes: Int
+        get() = prefs.getInt("gpsPingIntervalMinutes", 5)
+
+    val gpsRequireForeground: Boolean
+        get() = prefs.getBoolean("gpsRequireForeground", true)
+
+    // User info (populated from login response / JWT decode)
+    val userRole: String
+        get() = prefs.getString("userRole", "") ?: ""
+
+    fun setUserRole(role: String) {
+        prefs.edit().putString("userRole", role).apply()
+    }
+
     // Subscription status
     val subscriptionActive: Boolean
         get() = prefs.getBoolean("subscriptionActive", true)

@@ -122,9 +122,12 @@ id action_homeFragment_to_scanWeighFragment
 id action_homeFragment_to_settingsFragment
 id action_homeFragment_to_startPickupFragment
 id action_homeFragment_to_verifyAtCbtwfFragment
+id action_locationDisclosureFragment_to_homeFragment
 id action_loginFragment_to_homeFragment
+id action_loginFragment_to_locationDisclosureFragment
 id action_loginFragment_to_permissionsFragment
 id action_permissionsFragment_to_homeFragment
+id action_permissionsFragment_to_locationDisclosureFragment
 id action_scanWeighFragment_to_qrScannerFragment
 id action_splashFragment_to_homeFragment
 id action_splashFragment_to_loginFragment
@@ -134,11 +137,13 @@ id avatarView
 id bluetoothStatusBadge
 id bluetoothStatusDot
 id bottomControls
+id btnAccept
 id btnAddBag
 id btnBack
 id btnCaptureGps
 id btnConnectScale
 id btnContinue
+id btnDecline
 id btnForgotPassword
 id btnGrantPermissions
 id btnLogin
@@ -159,6 +164,7 @@ id cardGps
 id cardGreeting
 id cardHcfInfo
 id cardHcfItem
+id cardInfo
 id cardLocationStatus
 id cardLogin
 id cardPermissions
@@ -170,6 +176,7 @@ id cardSessionSummary
 id cardStatus
 id cardTerms
 id cardVerify
+id cardWarning
 id cardWeight
 id cbTermsAccepted
 id changePasswordButton
@@ -226,6 +233,7 @@ id layoutScanResult
 id layoutSingleHcf
 id layoutWeightWarning
 id loadingOverlay
+id locationDisclosureFragment
 id lockIcon
 id loginFragment
 id logoutButton
@@ -310,6 +318,7 @@ id tvBaseUrl
 id tvBluetoothStatus
 id tvCategory
 id tvCooldownTime
+id tvDescription
 id tvError
 id tvGps
 id tvGpsCoordinates
@@ -354,6 +363,7 @@ layout fragment_attendance
 layout fragment_change_password
 layout fragment_hcf_registration
 layout fragment_home
+layout fragment_location_disclosure
 layout fragment_login
 layout fragment_permissions
 layout fragment_profile

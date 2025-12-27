@@ -1,6 +1,7 @@
 package com.smartcbwtf.mobile.repository;
 
 import com.smartcbwtf.mobile.network.api.AuthApi;
+import com.smartcbwtf.mobile.storage.AppConfigStore;
 import com.smartcbwtf.mobile.storage.AuthTokenStore;
 import com.smartcbwtf.mobile.utils.NetworkMonitor;
 import dagger.internal.DaggerGenerated;
@@ -30,32 +31,38 @@ public final class DefaultAuthRepository_Factory implements Factory<DefaultAuthR
 
   private final Provider<AuthTokenStore> tokenStoreProvider;
 
+  private final Provider<AppConfigStore> appConfigStoreProvider;
+
   private final Provider<NetworkMonitor> networkMonitorProvider;
 
   private final Provider<CoroutineDispatcher> ioDispatcherProvider;
 
   public DefaultAuthRepository_Factory(Provider<AuthApi> apiProvider,
-      Provider<AuthTokenStore> tokenStoreProvider, Provider<NetworkMonitor> networkMonitorProvider,
+      Provider<AuthTokenStore> tokenStoreProvider, Provider<AppConfigStore> appConfigStoreProvider,
+      Provider<NetworkMonitor> networkMonitorProvider,
       Provider<CoroutineDispatcher> ioDispatcherProvider) {
     this.apiProvider = apiProvider;
     this.tokenStoreProvider = tokenStoreProvider;
+    this.appConfigStoreProvider = appConfigStoreProvider;
     this.networkMonitorProvider = networkMonitorProvider;
     this.ioDispatcherProvider = ioDispatcherProvider;
   }
 
   @Override
   public DefaultAuthRepository get() {
-    return newInstance(apiProvider.get(), tokenStoreProvider.get(), networkMonitorProvider.get(), ioDispatcherProvider.get());
+    return newInstance(apiProvider.get(), tokenStoreProvider.get(), appConfigStoreProvider.get(), networkMonitorProvider.get(), ioDispatcherProvider.get());
   }
 
   public static DefaultAuthRepository_Factory create(Provider<AuthApi> apiProvider,
-      Provider<AuthTokenStore> tokenStoreProvider, Provider<NetworkMonitor> networkMonitorProvider,
+      Provider<AuthTokenStore> tokenStoreProvider, Provider<AppConfigStore> appConfigStoreProvider,
+      Provider<NetworkMonitor> networkMonitorProvider,
       Provider<CoroutineDispatcher> ioDispatcherProvider) {
-    return new DefaultAuthRepository_Factory(apiProvider, tokenStoreProvider, networkMonitorProvider, ioDispatcherProvider);
+    return new DefaultAuthRepository_Factory(apiProvider, tokenStoreProvider, appConfigStoreProvider, networkMonitorProvider, ioDispatcherProvider);
   }
 
   public static DefaultAuthRepository newInstance(AuthApi api, AuthTokenStore tokenStore,
-      NetworkMonitor networkMonitor, CoroutineDispatcher ioDispatcher) {
-    return new DefaultAuthRepository(api, tokenStore, networkMonitor, ioDispatcher);
+      AppConfigStore appConfigStore, NetworkMonitor networkMonitor,
+      CoroutineDispatcher ioDispatcher) {
+    return new DefaultAuthRepository(api, tokenStore, appConfigStore, networkMonitor, ioDispatcher);
   }
 }

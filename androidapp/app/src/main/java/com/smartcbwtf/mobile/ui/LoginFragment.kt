@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.smartcbwtf.mobile.R
 import com.smartcbwtf.mobile.databinding.FragmentLoginBinding
+import com.smartcbwtf.mobile.repository.LocationRepository
 import com.smartcbwtf.mobile.viewmodel.AuthEvent
 import com.smartcbwtf.mobile.viewmodel.AuthState
 import com.smartcbwtf.mobile.viewmodel.AuthViewModel
@@ -36,6 +37,9 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
 
     @Inject
     lateinit var sharedPreferences: SharedPreferences
+
+    @Inject
+    lateinit var locationRepository: LocationRepository
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -123,12 +127,16 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
                                             PermissionsFragment.PREF_ONBOARDING_COMPLETE, false
                                         )
                                         
-                                        if (onboardingComplete) {
-                                            Log.d("LoginFragment", "Onboarding complete, navigating to Home")
-                                            navController.navigate(R.id.action_loginFragment_to_homeFragment)
-                                        } else {
+                                        if (!onboardingComplete) {
                                             Log.d("LoginFragment", "First login, navigating to Permissions")
                                             navController.navigate(R.id.action_loginFragment_to_permissionsFragment)
+                                        } else if (!locationRepository.hasLocationConsent()) {
+                                            // GPS tracking consent required
+                                            Log.d("LoginFragment", "Location consent needed, navigating to LocationDisclosure")
+                                            navController.navigate(R.id.action_loginFragment_to_locationDisclosureFragment)
+                                        } else {
+                                            Log.d("LoginFragment", "All setup complete, navigating to Home")
+                                            navController.navigate(R.id.action_loginFragment_to_homeFragment)
                                         }
                                         Log.d("LoginFragment", "Navigate called, new destination: ${navController.currentDestination?.label} (ID: ${navController.currentDestination?.id})")
                                     } else {

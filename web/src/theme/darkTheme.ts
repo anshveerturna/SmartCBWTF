@@ -101,6 +101,18 @@ const darkComponents = {
       root: {
         borderBottom: `1px solid ${alpha('#94A3B8', 0.1)}`,
       },
+      head: {
+        backgroundColor: '#1E293B', // Slate 800 - matches paper
+        color: '#F1F5F9',
+        fontWeight: 600,
+      },
+    },
+  },
+  MuiTableHead: {
+    styleOverrides: {
+      root: {
+        backgroundColor: '#1E293B', // Slate 800
+      },
     },
   },
   MuiChip: {

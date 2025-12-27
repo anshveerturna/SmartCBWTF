@@ -25,6 +25,7 @@ import {
 } from '@mui/icons-material';
 import { getVehicles, type VehicleDTO } from '../../api/cbwtf';
 import { useNavigate } from 'react-router-dom';
+import { LocationAddress } from '../../components/LocationAddress';
 
 const getGpsStatusChip = (status: string) => {
   switch (status) {
@@ -155,13 +156,10 @@ const Vehicles = () => {
                         {vehicle.driverName || '-'}
                       </TableCell>
                       <TableCell>
-                        {vehicle.lastLatitude && vehicle.lastLongitude ? (
-                          <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                            {Number(vehicle.lastLatitude).toFixed(4)}, {Number(vehicle.lastLongitude).toFixed(4)}
-                          </Typography>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">-</Typography>
-                        )}
+                        <LocationAddress 
+                          latitude={vehicle.lastLatitude ? Number(vehicle.lastLatitude) : null} 
+                          longitude={vehicle.lastLongitude ? Number(vehicle.lastLongitude) : null} 
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

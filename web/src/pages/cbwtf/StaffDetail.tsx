@@ -320,36 +320,69 @@ export default function StaffDetail() {
               </Typography>
               <Divider sx={{ my: 2 }} />
 
-              <Box sx={{ textAlign: 'center', py: 2 }}>
+              <Box sx={{ textAlign: 'center', py: 1 }}>
                 {staff.gpsStatus === 'ONLINE' ? (
                   <>
-                    <OnlineIcon sx={{ fontSize: 48, color: 'success.main', mb: 1 }} />
-                    <Typography variant="h6" color="success.main">Online</Typography>
+                    <OnlineIcon sx={{ fontSize: 40, color: 'success.main', mb: 0.5 }} />
+                    <Typography variant="subtitle1" color="success.main">Online</Typography>
                   </>
                 ) : staff.gpsStatus === 'OFFLINE' ? (
                   <>
-                    <OfflineIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-                    <Typography variant="h6" color="text.secondary">Offline</Typography>
+                    <OfflineIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 0.5 }} />
+                    <Typography variant="subtitle1" color="text.secondary">Offline</Typography>
                   </>
                 ) : (
                   <>
-                    <OfflineIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-                    <Typography variant="h6" color="text.secondary">Never Connected</Typography>
+                    <OfflineIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 0.5 }} />
+                    <Typography variant="subtitle1" color="text.secondary">Never Connected</Typography>
                   </>
                 )}
               </Box>
 
-              <Stack spacing={2} sx={{ mt: 2 }}>
+              <Stack spacing={2} sx={{ mt: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">Last GPS Update</Typography>
                   <Typography variant="body2">{formatTimeAgo(staff.lastGpsAt)}</Typography>
                 </Box>
 
+                {/* Mini Map */}
                 {staff.lastGpsLat && staff.lastGpsLon && (
-                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'grey.50' }}>
-                    <Typography variant="caption" color="text.secondary">Last Known Position</Typography>
-                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                      {staff.lastGpsLat.toFixed(6)}, {staff.lastGpsLon.toFixed(6)}
+                  <Paper 
+                    variant="outlined" 
+                    sx={{ 
+                      overflow: 'hidden', 
+                      borderRadius: 2,
+                      bgcolor: 'grey.100'
+                    }}
+                  >
+                    <Box
+                      component="iframe"
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${staff.lastGpsLon - 0.01}%2C${staff.lastGpsLat - 0.01}%2C${staff.lastGpsLon + 0.01}%2C${staff.lastGpsLat + 0.01}&layer=mapnik&marker=${staff.lastGpsLat}%2C${staff.lastGpsLon}`}
+                      sx={{
+                        border: 0,
+                        width: '100%',
+                        height: 180,
+                        display: 'block',
+                      }}
+                      loading="lazy"
+                      title="Staff Location Map"
+                    />
+                    <Box sx={{ p: 1, bgcolor: 'background.paper' }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Last Known Position
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                        {staff.lastGpsLat.toFixed(6)}, {staff.lastGpsLon.toFixed(6)}
+                      </Typography>
+                    </Box>
+                  </Paper>
+                )}
+
+                {!staff.lastGpsLat && !staff.lastGpsLon && (
+                  <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', bgcolor: 'grey.50' }}>
+                    <LocationIcon sx={{ fontSize: 32, color: 'grey.400', mb: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      No location data available
                     </Typography>
                   </Paper>
                 )}

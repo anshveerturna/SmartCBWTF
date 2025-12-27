@@ -8,5 +8,8 @@ public class PermissionsFragmentDirections private constructor() {
   public companion object {
     public fun actionPermissionsFragmentToHomeFragment(): NavDirections =
         ActionOnlyNavDirections(R.id.action_permissionsFragment_to_homeFragment)
+
+    public fun actionPermissionsFragmentToLocationDisclosureFragment(): NavDirections =
+        ActionOnlyNavDirections(R.id.action_permissionsFragment_to_locationDisclosureFragment)
   }
 }
