@@ -4,7 +4,7 @@ package com.smartcbwtf.mobile.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -17,37 +17,24 @@ import java.lang.String;
 
 public final class FragmentSettingsBinding implements ViewBinding {
   @NonNull
-  private final LinearLayout rootView;
+  private final ScrollView rootView;
 
   @NonNull
-  public final TextView tvAppVersion;
+  public final TextView tvBuild;
 
   @NonNull
-  public final TextView tvBaseUrl;
+  public final TextView tvVersion;
 
-  @NonNull
-  public final TextView tvPendingEvents;
-
-  @NonNull
-  public final TextView tvScaleService;
-
-  @NonNull
-  public final TextView tvUser;
-
-  private FragmentSettingsBinding(@NonNull LinearLayout rootView, @NonNull TextView tvAppVersion,
-      @NonNull TextView tvBaseUrl, @NonNull TextView tvPendingEvents,
-      @NonNull TextView tvScaleService, @NonNull TextView tvUser) {
+  private FragmentSettingsBinding(@NonNull ScrollView rootView, @NonNull TextView tvBuild,
+      @NonNull TextView tvVersion) {
     this.rootView = rootView;
-    this.tvAppVersion = tvAppVersion;
-    this.tvBaseUrl = tvBaseUrl;
-    this.tvPendingEvents = tvPendingEvents;
-    this.tvScaleService = tvScaleService;
-    this.tvUser = tvUser;
+    this.tvBuild = tvBuild;
+    this.tvVersion = tvVersion;
   }
 
   @Override
   @NonNull
-  public LinearLayout getRoot() {
+  public ScrollView getRoot() {
     return rootView;
   }
 
@@ -72,38 +59,19 @@ public final class FragmentSettingsBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
-      id = R.id.tvAppVersion;
-      TextView tvAppVersion = ViewBindings.findChildViewById(rootView, id);
-      if (tvAppVersion == null) {
+      id = R.id.tvBuild;
+      TextView tvBuild = ViewBindings.findChildViewById(rootView, id);
+      if (tvBuild == null) {
         break missingId;
       }
 
-      id = R.id.tvBaseUrl;
-      TextView tvBaseUrl = ViewBindings.findChildViewById(rootView, id);
-      if (tvBaseUrl == null) {
+      id = R.id.tvVersion;
+      TextView tvVersion = ViewBindings.findChildViewById(rootView, id);
+      if (tvVersion == null) {
         break missingId;
       }
 
-      id = R.id.tvPendingEvents;
-      TextView tvPendingEvents = ViewBindings.findChildViewById(rootView, id);
-      if (tvPendingEvents == null) {
-        break missingId;
-      }
-
-      id = R.id.tvScaleService;
-      TextView tvScaleService = ViewBindings.findChildViewById(rootView, id);
-      if (tvScaleService == null) {
-        break missingId;
-      }
-
-      id = R.id.tvUser;
-      TextView tvUser = ViewBindings.findChildViewById(rootView, id);
-      if (tvUser == null) {
-        break missingId;
-      }
-
-      return new FragmentSettingsBinding((LinearLayout) rootView, tvAppVersion, tvBaseUrl,
-          tvPendingEvents, tvScaleService, tvUser);
+      return new FragmentSettingsBinding((ScrollView) rootView, tvBuild, tvVersion);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

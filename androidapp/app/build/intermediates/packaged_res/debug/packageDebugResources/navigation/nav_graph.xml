@@ -189,7 +189,7 @@
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.smartcbwtf.mobile.ui.SettingsFragment"
-        android:label="Settings"
+        android:label="About"
         tools:layout="@layout/fragment_settings" />
 
     <!-- Security: Forced password change screen -->

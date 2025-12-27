@@ -313,9 +313,8 @@ id toolbar
 id topBar
 id tvAppSubtitle
 id tvAppTitle
-id tvAppVersion
-id tvBaseUrl
 id tvBluetoothStatus
+id tvBuild
 id tvCategory
 id tvCooldownTime
 id tvDescription
@@ -336,12 +335,10 @@ id tvLocationStatusSubtitle
 id tvLocationStatusTitle
 id tvModeSubtitle
 id tvModeTitle
-id tvPendingEvents
 id tvPendingSync
 id tvQrCode
 id tvQrCodeError
 id tvQrTimestamp
-id tvScaleService
 id tvScaleStatus
 id tvScanHint
 id tvScannedQr
@@ -353,7 +350,7 @@ id tvSuccessText
 id tvTermsVersion
 id tvTimestamp
 id tvTitle
-id tvUser
+id tvVersion
 id tvWeight
 id tvWeightLabel
 id viewHeader
