@@ -124,4 +124,22 @@ public class StaffController {
         log.info("GPS refresh requested for staff: {}", id);
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * Upload staff profile photo.
+     */
+    @PostMapping(value = "/{id}/photo", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadPhoto(
+            @PathVariable("id") UUID id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        return ResponseEntity.ok(staffService.uploadPhoto(id, file));
+    }
+
+    /**
+     * Remove staff profile photo.
+     */
+    @DeleteMapping("/{id}/photo")
+    public ResponseEntity<?> removePhoto(@PathVariable("id") UUID id) {
+        return ResponseEntity.ok(staffService.removePhoto(id));
+    }
 }

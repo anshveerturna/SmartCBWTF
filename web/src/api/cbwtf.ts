@@ -211,6 +211,9 @@ export interface StaffDTO {
   fullName: string;
   email: string | null;
   phone: string | null;
+  gender: string | null;
+  dob: string | null;
+  profilePhotoUrl: string | null;
   role: 'DRIVER' | 'PLANT_OPERATOR';
   active: boolean;
   gpsStatus: 'ONLINE' | 'OFFLINE' | 'NEVER';
@@ -240,6 +243,9 @@ export interface UpdateStaffRequest {
   fullName: string;
   email?: string;
   phone?: string;
+  gender?: string;
+  dob?: string;
+  profilePhotoUrl?: string;
 }
 
 export interface PageResponse<T> {
@@ -304,5 +310,18 @@ export const requestGpsRefresh = async (id: string): Promise<void> => {
   await apiClient.post(`/api/cbwtf/staff/${id}/request-gps-refresh`);
 };
 
-export default cbwtfApi;
+export const uploadStaffPhoto = async (id: string, file: File): Promise<{ photoUrl: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post(`/api/cbwtf/staff/${id}/photo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};
 
+export const removeStaffPhoto = async (id: string): Promise<{ message: string }> => {
+  const response = await apiClient.delete(`/api/cbwtf/staff/${id}/photo`);
+  return response.data;
+};
+
+export default cbwtfApi;

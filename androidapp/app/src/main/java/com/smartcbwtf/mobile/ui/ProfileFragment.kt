@@ -123,8 +123,28 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
         genderRow.textValue.text = formatGender(profile.gender)
         dobRow.textValue.text = formatDob(profile.dob)
 
-        // Profile photo would be loaded here with Glide/Coil if URL is provided
-        // For now, we use the default placeholder
+        // Load profile photo with Coil
+        val photoUrl = profile.profilePhotoUrl
+        if (!photoUrl.isNullOrBlank()) {
+            // Build full URL (assuming backend is at the same host)
+            val baseUrl = "http://10.0.2.2:8080" // For emulator; update for production
+            val fullUrl = if (photoUrl.startsWith("http")) photoUrl else "$baseUrl$photoUrl"
+            
+            coil.ImageLoader(requireContext()).enqueue(
+                coil.request.ImageRequest.Builder(requireContext())
+                    .data(fullUrl)
+                    .target(binding.imgProfilePhoto)
+                    .placeholder(R.drawable.ic_person)
+                    .error(R.drawable.ic_person)
+                    .build()
+            )
+            // Remove tint and padding when showing actual photo
+            binding.imgProfilePhoto.imageTintList = null
+            binding.imgProfilePhoto.setPadding(0, 0, 0, 0)
+        } else {
+            // Use default placeholder
+            binding.imgProfilePhoto.setImageResource(R.drawable.ic_person)
+        }
     }
 
     /**

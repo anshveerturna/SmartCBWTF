@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -21,6 +21,9 @@ import {
   Stack,
   Paper,
   TextField,
+  MenuItem,
+  Avatar,
+  Snackbar,
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -41,6 +44,8 @@ import {
   Edit as EditIcon,
   VpnKey as KeyIcon,
   Refresh as RefreshIcon,
+  PhotoCamera as PhotoCameraIcon,
+  Save as SaveIcon,
 } from '@mui/icons-material';
 import {
   getStaffDetail,
@@ -50,6 +55,8 @@ import {
   updateStaff,
   updateStaffCredentials,
   requestGpsRefresh,
+  uploadStaffPhoto,
+  removeStaffPhoto,
   type StaffDetailDTO,
   type UpdateStaffRequest,
   type UpdateCredentialsRequest,
@@ -64,6 +71,7 @@ export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [passwordDialog, setPasswordDialog] = useState<{ open: boolean; password: string | null }>({
     open: false,
     password: null,
@@ -72,11 +80,19 @@ export default function StaffDetail() {
     open: false,
     action: null,
   });
-  const [editDialog, setEditDialog] = useState(false);
+  // Inline edit form state
   const [editForm, setEditForm] = useState<UpdateStaffRequest>({
     fullName: '',
     email: '',
     phone: '',
+    gender: '',
+    dob: '',
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
   });
   const [credentialsDialog, setCredentialsDialog] = useState(false);
   const [credentialsForm, setCredentialsForm] = useState<UpdateCredentialsRequest>({
@@ -134,23 +150,66 @@ export default function StaffDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff-detail', id] });
       queryClient.invalidateQueries({ queryKey: ['staff-list'] });
-      setEditDialog(false);
+      setIsEditing(false);
+      setSnackbar({ open: true, message: 'Profile updated successfully', severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: 'Failed to update profile', severity: 'error' });
     },
   });
 
-  const openEditDialog = () => {
+  const photoUploadMutation = useMutation({
+    mutationFn: (file: File) => uploadStaffPhoto(id!, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff-detail', id] });
+      setSnackbar({ open: true, message: 'Photo uploaded successfully', severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: 'Failed to upload photo', severity: 'error' });
+    },
+  });
+
+  const photoRemoveMutation = useMutation({
+    mutationFn: () => removeStaffPhoto(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff-detail', id] });
+      setSnackbar({ open: true, message: 'Photo removed successfully', severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: 'Failed to remove photo', severity: 'error' });
+    },
+  });
+
+  const startEditing = () => {
     if (staff) {
       setEditForm({
         fullName: staff.fullName,
         email: staff.email || '',
         phone: staff.phone || '',
+        gender: staff.gender || '',
+        dob: staff.dob || '',
       });
-      setEditDialog(true);
+      setIsEditing(true);
     }
   };
 
-  const handleEditSubmit = () => {
+  const cancelEditing = () => {
+    setIsEditing(false);
+  };
+
+  const handleSave = () => {
     updateMutation.mutate(editForm);
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      photoUploadMutation.mutate(file);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'ST';
   };
 
   const credentialsMutation = useMutation({
@@ -234,13 +293,6 @@ export default function StaffDetail() {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
-          <Button
-            variant="contained"
-            startIcon={<EditIcon />}
-            onClick={openEditDialog}
-          >
-            Edit Profile
-          </Button>
           {staff.active ? (
             <Button
               variant="outlined"
@@ -264,56 +316,177 @@ export default function StaffDetail() {
       </Box>
 
       <Grid container spacing={3}>
-        {/* Profile Card */}
+        {/* Profile Card - New Design with Avatar and Inline Editing */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ borderRadius: 2, height: '100%' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PersonIcon /> Profile
-              </Typography>
-              <Divider sx={{ my: 2 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PersonIcon /> Profile
+                </Typography>
+                {!isEditing ? (
+                  <Button size="small" startIcon={<EditIcon />} onClick={startEditing}>
+                    Edit
+                  </Button>
+                ) : (
+                  <Stack direction="row" spacing={1}>
+                    <Button size="small" onClick={cancelEditing}>Cancel</Button>
+                    <Button 
+                      size="small" 
+                      variant="contained" 
+                      startIcon={updateMutation.isPending ? <CircularProgress size={16} /> : <SaveIcon />}
+                      onClick={handleSave}
+                      disabled={updateMutation.isPending}
+                    >
+                      Save
+                    </Button>
+                  </Stack>
+                )}
+              </Box>
+              <Divider sx={{ mb: 3 }} />
               
-              <Stack spacing={2}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" color="text.secondary">Role</Typography>
+              {/* Avatar Section */}
+              <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                  <Avatar
+                    src={staff.profilePhotoUrl ? `http://localhost:8080${staff.profilePhotoUrl}` : undefined}
+                    sx={{ width: 100, height: 100, fontSize: '2.5rem', bgcolor: 'primary.main', mx: 'auto' }}
+                    slotProps={{ img: { sx: { objectFit: 'cover' } } }}
+                  >
+                    {getInitials(staff.fullName)}
+                  </Avatar>
+                  <IconButton
+                    sx={{
+                      position: 'absolute',
+                      bottom: 0,
+                      right: 0,
+                      bgcolor: 'grey.600',
+                      color: 'white',
+                      width: 32,
+                      height: 32,
+                      '&:hover': { bgcolor: 'grey.700' },
+                    }}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={photoUploadMutation.isPending}
+                  >
+                    {photoUploadMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <PhotoCameraIcon fontSize="small" />}
+                  </IconButton>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    hidden
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                  />
+                </Box>
+                {staff.profilePhotoUrl && (
+                  <Button
+                    size="small"
+                    color="error"
+                    variant="text"
+                    onClick={() => photoRemoveMutation.mutate()}
+                    disabled={photoRemoveMutation.isPending}
+                    sx={{ mt: 1 }}
+                  >
+                    Remove Photo
+                  </Button>
+                )}
+                <Typography variant="h6" sx={{ mt: 1, fontWeight: 600 }}>
+                  {staff.fullName}
+                </Typography>
+                <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 1 }}>
                   <Chip
                     icon={staff.role === 'DRIVER' ? <DriverIcon /> : <PlantIcon />}
                     label={roleLabels[staff.role]}
                     size="small"
                     color={staff.role === 'DRIVER' ? 'primary' : 'secondary'}
                   />
-                </Box>
-                
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" color="text.secondary">Status</Typography>
                   <Chip
                     label={staff.active ? 'Active' : 'Disabled'}
                     size="small"
                     color={staff.active ? 'success' : 'default'}
                   />
-                </Box>
-
-                {staff.email && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <EmailIcon fontSize="small" color="action" />
-                    <Typography variant="body2">{staff.email}</Typography>
-                  </Box>
+                </Stack>
+              </Box>
+              
+              <Divider sx={{ my: 2 }} />
+              
+              {/* Editable Fields */}
+              <Stack spacing={2}>
+                {isEditing ? (
+                  <>
+                    <TextField
+                      label="Full Name"
+                      value={editForm.fullName}
+                      onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                      size="small"
+                      fullWidth
+                      required
+                    />
+                    <TextField
+                      label="Email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      size="small"
+                      fullWidth
+                    />
+                    <TextField
+                      label="Phone"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      size="small"
+                      fullWidth
+                    />
+                    <TextField
+                      label="Gender"
+                      select
+                      value={editForm.gender || ''}
+                      onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                      size="small"
+                      fullWidth
+                    >
+                      <MenuItem value="">Not specified</MenuItem>
+                      <MenuItem value="MALE">Male</MenuItem>
+                      <MenuItem value="FEMALE">Female</MenuItem>
+                      <MenuItem value="OTHER">Other</MenuItem>
+                    </TextField>
+                    <TextField
+                      label="Date of Birth"
+                      type="date"
+                      value={editForm.dob || ''}
+                      onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })}
+                      size="small"
+                      fullWidth
+                      slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <EmailIcon fontSize="small" color="action" />
+                      <Typography variant="body2">{staff.email || 'Not provided'}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <PhoneIcon fontSize="small" color="action" />
+                      <Typography variant="body2">{staff.phone || 'Not provided'}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="text.secondary">Gender</Typography>
+                      <Typography variant="body2">{staff.gender || 'Not provided'}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="text.secondary">Date of Birth</Typography>
+                      <Typography variant="body2">{staff.dob || 'Not provided'}</Typography>
+                    </Box>
+                  </>
                 )}
-
-                {staff.phone && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <PhoneIcon fontSize="small" color="action" />
-                    <Typography variant="body2">{staff.phone}</Typography>
-                  </Box>
-                )}
-
+                
                 <Divider />
-
+                
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">Created</Typography>
                   <Typography variant="body2">{formatDateTime(staff.createdAt)}</Typography>
                 </Box>
-
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">Last Login</Typography>
                   <Typography variant="body2">{formatTimeAgo(staff.lastLoginAt)}</Typography>
@@ -551,49 +724,17 @@ export default function StaffDetail() {
         onClose={() => setPasswordDialog({ open: false, password: null })}
       />
 
-      {/* Edit Profile Dialog */}
-      <Dialog open={editDialog} onClose={() => setEditDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Staff Profile</DialogTitle>
-        <DialogContent>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            <TextField
-              label="Full Name"
-              value={editForm.fullName}
-              onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Email"
-              type="email"
-              value={editForm.email}
-              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Phone"
-              value={editForm.phone}
-              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-              fullWidth
-            />
-          </Stack>
-          {updateMutation.isError && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              Failed to update staff profile. Please try again.
-            </Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialog(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleEditSubmit}
-            disabled={updateMutation.isPending || !editForm.fullName.trim()}
-          >
-            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Success/Error Snackbar */}
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={3000} 
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
 
       {/* Edit Credentials Dialog */}
       <Dialog open={credentialsDialog} onClose={() => setCredentialsDialog(false)} maxWidth="sm" fullWidth>

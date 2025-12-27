@@ -102,6 +102,9 @@ dependencies {
     // Lottie for animations
     implementation("com.airbnb.android:lottie:6.4.0")
 
+    // Coil for image loading
+    implementation("io.coil-kt:coil:2.6.0")
+
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
     testImplementation("junit:junit:4.13.2")

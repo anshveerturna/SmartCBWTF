@@ -34,6 +34,7 @@ const CbwtfVehicles = lazy(() => import('./pages/cbwtf/Vehicles'));
 const CbwtfVehicleLiveMap = lazy(() => import('./pages/cbwtf/VehicleLiveMap'));
 const CbwtfStaff = lazy(() => import('./pages/cbwtf/Staff'));
 const CbwtfStaffDetail = lazy(() => import('./pages/cbwtf/StaffDetail'));
+const CbwtfProfile = lazy(() => import('./pages/cbwtf/Profile'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 // CBWTF Finance pages
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
@@ -149,6 +150,7 @@ const App: React.FC = () => {
                   <Route path="finance/revenue" element={<FinanceRevenue />} />
                   <Route path="alerts" element={<div>Alerts (Coming Soon)</div>} />
                   <Route path="settings" element={<div>Settings (Coming Soon)</div>} />
+                  <Route path="profile" element={<CbwtfProfile />} />
                 </Route>
 
                 {/* HCF Admin Routes */}

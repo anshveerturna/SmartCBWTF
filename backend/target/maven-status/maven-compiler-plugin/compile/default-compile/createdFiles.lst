@@ -151,6 +151,7 @@ com/smartcbwtf/controller/AuthController.class
 com/smartcbwtf/service/FacilityTermsService.class
 com/smartcbwtf/controller/GpsHealthController$HealthSummaryResponse.class
 com/smartcbwtf/gps/adapter/GpsEventDTO.class
+com/smartcbwtf/controller/CbwtfProfileController$ProfileUpdateRequest.class
 com/smartcbwtf/controller/AttendanceController.class
 com/smartcbwtf/gps/adapter/GpsEventDTO$Builder.class
 com/smartcbwtf/service/GpsIngestionHealthService$IngestionHealthDTO.class
@@ -180,6 +181,7 @@ com/smartcbwtf/repository/GpsEventRepository.class
 com/smartcbwtf/service/CBWTFScopedQueryService.class
 com/smartcbwtf/dto/AuthLoginResponse.class
 com/smartcbwtf/repository/AgreementCodeSequenceRepository.class
+com/smartcbwtf/controller/CbwtfProfileController$CbwtfProfileDTO.class
 com/smartcbwtf/controller/GpsHealthController$FacilityHealthResponse.class
 com/smartcbwtf/service/FeatureGuardService.class
 com/smartcbwtf/domain/SubscriptionAudit$Action.class
@@ -206,7 +208,9 @@ com/smartcbwtf/service/PasswordPolicyValidator$ValidationResult.class
 com/smartcbwtf/domain/AgreementCodeSequence.class
 com/smartcbwtf/dto/AlertMismatchedBagDto.class
 com/smartcbwtf/controller/UserController$ChangePasswordRequest.class
+com/smartcbwtf/controller/CbwtfProfileController$PasswordChangeRequest.class
 com/smartcbwtf/dto/TermsListItem.class
+com/smartcbwtf/controller/CbwtfProfileController.class
 com/smartcbwtf/domain/AgreementNumberSequence.class
 com/smartcbwtf/controller/UserManagementController.class
 com/smartcbwtf/domain/BankAccount.class

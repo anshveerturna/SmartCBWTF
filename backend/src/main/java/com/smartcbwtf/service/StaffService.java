@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -167,7 +168,7 @@ public class StaffService {
     }
 
     /**
-     * Update staff profile (name, email, phone only).
+     * Update staff profile (all profile fields).
      * Role changes require separate explicit action.
      */
     public StaffDTO updateStaff(UUID staffId, UpdateStaffRequest request) {
@@ -181,6 +182,9 @@ public class StaffService {
         user.setFullName(request.fullName());
         user.setEmail(request.email());
         user.setPhone(request.phone());
+        user.setGender(request.gender());
+        user.setDob(request.dob());
+        user.setProfilePhotoUrl(request.profilePhotoUrl());
         user = appUserRepository.save(user);
 
         auditLogService.log("STAFF", user.getId(), "STAFF_UPDATED", TenantContext.getUserId(),
@@ -339,6 +343,98 @@ public class StaffService {
         log.info("GPS refresh requested for staff: {}", user.getUsername());
     }
 
+    /**
+     * Upload staff profile photo.
+     */
+    public java.util.Map<String, String> uploadPhoto(UUID staffId,
+            org.springframework.web.multipart.MultipartFile file) {
+        UUID facilityId = TenantContext.getTenantId();
+        AppUser user = appUserRepository.findById(staffId)
+                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
+                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+                .orElseThrow(() -> new IllegalArgumentException("Staff not found: " + staffId));
+
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("No file provided");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("Only image files allowed");
+        }
+
+        String ext = switch (contentType) {
+            case "image/jpeg" -> "jpg";
+            case "image/png" -> "png";
+            case "image/gif" -> "gif";
+            case "image/webp" -> "webp";
+            default -> "jpg";
+        };
+
+        try {
+            String uploadDir = "uploads/profiles";
+            java.nio.file.Path uploadPath = java.nio.file.Paths.get(uploadDir);
+            if (!java.nio.file.Files.exists(uploadPath)) {
+                java.nio.file.Files.createDirectories(uploadPath);
+            }
+
+            String filename = user.getId().toString() + "." + ext;
+            java.nio.file.Path filePath = uploadPath.resolve(filename);
+            java.nio.file.Files.copy(file.getInputStream(), filePath,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            String oldPhoto = user.getProfilePhotoUrl();
+            String newPhoto = "/uploads/profiles/" + filename;
+            user.setProfilePhotoUrl(newPhoto);
+            user.setUpdatedAt(Instant.now());
+            appUserRepository.save(user);
+
+            auditLogService.log("STAFF", user.getId(), "PHOTO_UPDATED", TenantContext.getUserId(),
+                    String.format("{\"old\":\"%s\",\"new\":\"%s\"}", oldPhoto, newPhoto));
+
+            log.info("Photo uploaded for staff: {}", user.getUsername());
+            return java.util.Map.of("photoUrl", newPhoto);
+
+        } catch (java.io.IOException e) {
+            log.error("Failed to upload photo", e);
+            throw new RuntimeException("Failed to save file", e);
+        }
+    }
+
+    /**
+     * Remove staff profile photo.
+     */
+    public java.util.Map<String, String> removePhoto(UUID staffId) {
+        UUID facilityId = TenantContext.getTenantId();
+        AppUser user = appUserRepository.findById(staffId)
+                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
+                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+                .orElseThrow(() -> new IllegalArgumentException("Staff not found: " + staffId));
+
+        String oldPhoto = user.getProfilePhotoUrl();
+        if (oldPhoto == null) {
+            return java.util.Map.of("message", "No photo to remove");
+        }
+
+        try {
+            java.nio.file.Path filePath = java.nio.file.Paths.get("uploads/profiles",
+                    oldPhoto.replace("/uploads/profiles/", ""));
+            java.nio.file.Files.deleteIfExists(filePath);
+        } catch (java.io.IOException e) {
+            log.warn("Failed to delete photo file: {}", e.getMessage());
+        }
+
+        user.setProfilePhotoUrl(null);
+        user.setUpdatedAt(Instant.now());
+        appUserRepository.save(user);
+
+        auditLogService.log("STAFF", user.getId(), "PHOTO_REMOVED", TenantContext.getUserId(),
+                String.format("{\"removed\":\"%s\"}", oldPhoto));
+
+        log.info("Photo removed for staff: {}", user.getUsername());
+        return java.util.Map.of("message", "Photo removed successfully");
+    }
+
     // ============ Helper Methods ============
 
     private String generateUsername(String cbwtfCode, String role) {
@@ -415,6 +511,9 @@ public class StaffService {
                 user.getFullName(),
                 user.getEmail(),
                 user.getPhone(),
+                user.getGender(),
+                user.getDob(),
+                user.getProfilePhotoUrl(),
                 user.getRole(),
                 user.isActive(),
                 getGpsStatus(user),
@@ -450,6 +549,9 @@ public class StaffService {
             String fullName,
             String email,
             String phone,
+            String gender,
+            LocalDate dob,
+            String profilePhotoUrl,
             String role,
             boolean active,
             String gpsStatus,
@@ -474,7 +576,10 @@ public class StaffService {
     public record UpdateStaffRequest(
             String fullName,
             String email,
-            String phone) {
+            String phone,
+            String gender,
+            LocalDate dob,
+            String profilePhotoUrl) {
     }
 
     public record UpdateCredentialsRequest(

@@ -16,6 +16,10 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 server:
   port: 8080
@@ -36,37 +40,37 @@ app:
   geofence:
     hcf-radius-m: 200
     facility-default-radius-m: 200
-    enable-server-check: true       # Server-side geofence enforcement (authoritative)
+    enable-server-check: true # Server-side geofence enforcement (authoritative)
   gps:
-    min-accuracy-m: 50              # Minimum GPS accuracy required (meters)
-    max-accuracy-m: 100             # Maximum allowed GPS accuracy for events
+    min-accuracy-m: 50 # Minimum GPS accuracy required (meters)
+    max-accuracy-m: 100 # Maximum allowed GPS accuracy for events
   weight:
     mismatch-threshold-kg: 0.5
   alerts:
     missing-bag-hours: 24
-  
+
   # Attendance configuration
   attendance:
-    geofence-radius-m: 50           # Max distance from HCF for attendance marking
-    cooldown-minutes: 5             # Cooldown period between attendance marks
-  
+    geofence-radius-m: 50 # Max distance from HCF for attendance marking
+    cooldown-minutes: 5 # Cooldown period between attendance marks
+
   # Email configuration
   email:
-    enabled: false  # Set to true in production
+    enabled: false # Set to true in production
     from: noreply@smartcbwtf.com
-  
+
   # Agreement number format configuration
   # Default format: <FACILITY_CODE>-HCF-<YYYY>-<5-digit-sequence>
   # Example: GUT-HCF-2025-00023
   agreement:
     number:
-      prefix: HCF                    # Middle prefix (e.g., HCF, AGR, BMW)
-      separator: "-"                 # Separator character
-      sequence-digits: 5             # Number of digits for sequence (padded with zeros)
-      include-facility-code: true    # Whether to include facility code at start
-      include-year: true             # Whether to include year
-  
+      prefix: HCF # Middle prefix (e.g., HCF, AGR, BMW)
+      separator: "-" # Separator character
+      sequence-digits: 5 # Number of digits for sequence (padded with zeros)
+      include-facility-code: true # Whether to include facility code at start
+      include-year: true # Whether to include year
+
   # PDF generation settings
   pdf:
-    output-dir: files/agreements     # Base directory for generated PDFs
-    timezone: Asia/Kolkata           # Timezone for date formatting
+    output-dir: files/agreements # Base directory for generated PDFs
+    timezone: Asia/Kolkata # Timezone for date formatting

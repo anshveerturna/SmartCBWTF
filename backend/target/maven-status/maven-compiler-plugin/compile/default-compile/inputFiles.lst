@@ -8,6 +8,7 @@
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/VehicleRepository.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/AdminController.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/AgreementSnapshotRepository.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/controller/CbwtfProfileController.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/GpsEventRepository.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/AuditLogService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/config/FeatureGateInterceptor.java
