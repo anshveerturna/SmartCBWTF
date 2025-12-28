@@ -41,6 +41,7 @@
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/AuthLoginResponse.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/config/TenantContext.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/MonthlyWasteSnapshotRepository.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/CbwtfAdminHcfRegistrationRequest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/InvoiceResponse.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/Hcf.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/AgreementRepository.java

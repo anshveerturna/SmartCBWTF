@@ -130,6 +130,13 @@ export default function HcfList() {
         </Box>
         <Stack direction="row" spacing={2}>
           <Button
+            variant="contained"
+            startIcon={<HcfIcon />}
+            onClick={() => navigate('/cbwtf/hcfs/register')}
+          >
+            Register HCF
+          </Button>
+          <Button
             variant="outlined"
             startIcon={<PendingIcon />}
             onClick={() => navigate('/cbwtf/hcfs/pending')}

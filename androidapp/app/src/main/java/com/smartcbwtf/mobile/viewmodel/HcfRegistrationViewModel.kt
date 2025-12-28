@@ -135,6 +135,8 @@ class HcfRegistrationViewModel @Inject constructor(
     fun submit(
         name: String,
         address: String?,
+        pincode: String?,
+        state: String?,
         doctorName: String?,
         phone: String?,
         email: String?,
@@ -156,6 +158,21 @@ class HcfRegistrationViewModel @Inject constructor(
             return
         }
         
+        if (pincode.isNullOrBlank()) {
+            _state.value = RegistrationState.Error("Pincode is required")
+            return
+        }
+        
+        if (!pincode.matches(Regex("^\\d{6}$"))) {
+            _state.value = RegistrationState.Error("Pincode must be 6 digits")
+            return
+        }
+        
+       if (state.isNullOrBlank()) {
+            _state.value = RegistrationState.Error("State is required")
+            return
+        }
+
         if (doctorName.isNullOrBlank()) {
             _state.value = RegistrationState.Error("Doctor/Owner Name is required")
             return
@@ -163,6 +180,26 @@ class HcfRegistrationViewModel @Inject constructor(
         
         if (phone.isNullOrBlank()) {
             _state.value = RegistrationState.Error("Contact Phone is required")
+            return
+        }
+
+        if (email.isNullOrBlank()) {
+            _state.value = RegistrationState.Error("Email is required")
+            return
+        }
+
+        if (panNo.isNullOrBlank()) {
+            _state.value = RegistrationState.Error("PAN Number is required")
+            return
+        }
+
+        if (gstNo.isNullOrBlank()) {
+            _state.value = RegistrationState.Error("GST Number is required")
+            return
+        }
+
+        if (aadharNo.isNullOrBlank()) {
+            _state.value = RegistrationState.Error("Aadhar Number is required")
             return
         }
         
@@ -205,12 +242,14 @@ class HcfRegistrationViewModel @Inject constructor(
                 val request = HcfRegistrationRequest(
                     name = name.trim(),
                     address = address.trim(),
+                    pincode = pincode.trim(),
+                    state = state.trim(),
                     doctorName = doctorName.trim(),
                     phone = phone.trim(),
-                    email = email?.trim()?.takeIf { it.isNotBlank() },
-                    panNo = panNo?.trim()?.takeIf { it.isNotBlank() }?.uppercase(),
-                    gstNo = gstNo?.trim()?.takeIf { it.isNotBlank() }?.uppercase(),
-                    aadharNo = aadharNo?.trim()?.takeIf { it.isNotBlank() },
+                    email = email.trim(),
+                    panNo = panNo.trim().uppercase(),
+                    gstNo = gstNo.trim().uppercase(),
+                    aadharNo = aadharNo.trim(),
                     bedded = bedded,
                     numberOfBeds = if (bedded) beds else null,
                     monthlyCharges = monthlyCharges,

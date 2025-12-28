@@ -84,6 +84,12 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
   public final TextInputEditText etPhone;
 
   @NonNull
+  public final TextInputEditText etPincode;
+
+  @NonNull
+  public final TextInputEditText etState;
+
+  @NonNull
   public final ImageView ivGpsStatus;
 
   @NonNull
@@ -144,6 +150,12 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
   public final TextInputLayout tilPhone;
 
   @NonNull
+  public final TextInputLayout tilPincode;
+
+  @NonNull
+  public final TextInputLayout tilState;
+
+  @NonNull
   public final TextView tvGpsCoordinates;
 
   @NonNull
@@ -165,6 +177,7 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
       @NonNull TextInputEditText etGstNo, @NonNull TextInputEditText etMonthlyCharges,
       @NonNull TextInputEditText etName, @NonNull TextInputEditText etOtherNotes,
       @NonNull TextInputEditText etPanNo, @NonNull TextInputEditText etPhone,
+      @NonNull TextInputEditText etPincode, @NonNull TextInputEditText etState,
       @NonNull ImageView ivGpsStatus, @NonNull ImageView ivRentAgreementStatus,
       @NonNull ProgressBar progressBar, @NonNull ProgressBar progressRentAgreement,
       @NonNull ProgressBar progressTerms, @NonNull MaterialRadioButton rbOwned,
@@ -175,6 +188,7 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
       @NonNull TextInputLayout tilGstNo, @NonNull TextInputLayout tilMonthlyCharges,
       @NonNull TextInputLayout tilName, @NonNull TextInputLayout tilOtherNotes,
       @NonNull TextInputLayout tilPanNo, @NonNull TextInputLayout tilPhone,
+      @NonNull TextInputLayout tilPincode, @NonNull TextInputLayout tilState,
       @NonNull TextView tvGpsCoordinates, @NonNull TextView tvGpsStatus,
       @NonNull TextView tvRentAgreementStatus, @NonNull TextView tvTermsVersion) {
     this.rootView = rootView;
@@ -196,6 +210,8 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
     this.etOtherNotes = etOtherNotes;
     this.etPanNo = etPanNo;
     this.etPhone = etPhone;
+    this.etPincode = etPincode;
+    this.etState = etState;
     this.ivGpsStatus = ivGpsStatus;
     this.ivRentAgreementStatus = ivRentAgreementStatus;
     this.progressBar = progressBar;
@@ -216,6 +232,8 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
     this.tilOtherNotes = tilOtherNotes;
     this.tilPanNo = tilPanNo;
     this.tilPhone = tilPhone;
+    this.tilPincode = tilPincode;
+    this.tilState = tilState;
     this.tvGpsCoordinates = tvGpsCoordinates;
     this.tvGpsStatus = tvGpsStatus;
     this.tvRentAgreementStatus = tvRentAgreementStatus;
@@ -357,6 +375,18 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.etPincode;
+      TextInputEditText etPincode = ViewBindings.findChildViewById(rootView, id);
+      if (etPincode == null) {
+        break missingId;
+      }
+
+      id = R.id.etState;
+      TextInputEditText etState = ViewBindings.findChildViewById(rootView, id);
+      if (etState == null) {
+        break missingId;
+      }
+
       id = R.id.ivGpsStatus;
       ImageView ivGpsStatus = ViewBindings.findChildViewById(rootView, id);
       if (ivGpsStatus == null) {
@@ -477,6 +507,18 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.tilPincode;
+      TextInputLayout tilPincode = ViewBindings.findChildViewById(rootView, id);
+      if (tilPincode == null) {
+        break missingId;
+      }
+
+      id = R.id.tilState;
+      TextInputLayout tilState = ViewBindings.findChildViewById(rootView, id);
+      if (tilState == null) {
+        break missingId;
+      }
+
       id = R.id.tvGpsCoordinates;
       TextView tvGpsCoordinates = ViewBindings.findChildViewById(rootView, id);
       if (tvGpsCoordinates == null) {
@@ -504,11 +546,12 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
       return new FragmentHcfRegistrationBinding((NestedScrollView) rootView, btnCaptureGps,
           btnRegister, btnUploadRentAgreement, cardGps, cardRentAgreement, cardTerms,
           cbTermsAccepted, etAadharNo, etAddress, etBeds, etDoctorName, etEmail, etGstNo,
-          etMonthlyCharges, etName, etOtherNotes, etPanNo, etPhone, ivGpsStatus,
+          etMonthlyCharges, etName, etOtherNotes, etPanNo, etPhone, etPincode, etState, ivGpsStatus,
           ivRentAgreementStatus, progressBar, progressRentAgreement, progressTerms, rbOwned,
           rbRented, rgOwnershipType, switchBedded, tilAadharNo, tilAddress, tilBeds, tilDoctorName,
           tilEmail, tilGstNo, tilMonthlyCharges, tilName, tilOtherNotes, tilPanNo, tilPhone,
-          tvGpsCoordinates, tvGpsStatus, tvRentAgreementStatus, tvTermsVersion);
+          tilPincode, tilState, tvGpsCoordinates, tvGpsStatus, tvRentAgreementStatus,
+          tvTermsVersion);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

@@ -203,6 +203,8 @@ id etOtherNotes
 id etPanNo
 id etPassword
 id etPhone
+id etPincode
+id etState
 id etUsername
 id footerStatus
 id gpsStatusBadge
@@ -317,6 +319,8 @@ id tilOtherNotes
 id tilPanNo
 id tilPassword
 id tilPhone
+id tilPincode
+id tilState
 id tilUsername
 id titleText
 id toolbar

@@ -5,6 +5,8 @@ import com.google.gson.annotations.SerializedName
 data class HcfRegistrationRequest(
     val name: String,
     val address: String?,
+    val pincode: String?,
+    val state: String?,
     @SerializedName("contactPhone") val phone: String?,
     @SerializedName("contactEmail") val email: String?,
     @SerializedName("doctorName") val doctorName: String?,

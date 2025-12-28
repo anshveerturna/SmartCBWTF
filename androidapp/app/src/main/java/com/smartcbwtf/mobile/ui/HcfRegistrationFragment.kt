@@ -96,6 +96,8 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         val textWatcher = { updateRegisterButtonState() }
         binding.etName.doAfterTextChanged { textWatcher() }
         binding.etAddress.doAfterTextChanged { textWatcher() }
+        binding.etPincode.doAfterTextChanged { textWatcher() }
+        binding.etState.doAfterTextChanged { textWatcher() }
         binding.etDoctorName.doAfterTextChanged { textWatcher() }
         binding.etPhone.doAfterTextChanged { textWatcher(); validatePhoneField(showError = true) }
         binding.etEmail.doAfterTextChanged { textWatcher(); validateEmailField(showError = true) }
@@ -284,6 +286,8 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         viewModel.submit(
             name = binding.etName.text.toString(),
             address = binding.etAddress.text?.toString(),
+            pincode = binding.etPincode.text?.toString(),
+            state = binding.etState.text?.toString(),
             doctorName = binding.etDoctorName.text?.toString(),
             phone = binding.etPhone.text?.toString(),
             email = binding.etEmail.text?.toString(),
@@ -299,6 +303,8 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
     private fun updateRegisterButtonState() {
         val hasName = binding.etName.text?.isNotBlank() == true
         val hasAddress = binding.etAddress.text?.isNotBlank() == true
+        val pincodeText = binding.etPincode.text?.toString()
+        val pincodeOk = pincodeText.isNullOrBlank() || pincodeText.matches(Regex("^\\d{6}$"))
         val hasDoctorName = binding.etDoctorName.text?.isNotBlank() == true
         val hasPhone = binding.etPhone.text?.isNotBlank() == true && isValidPhone(binding.etPhone.text?.toString())
         val gpsOk = viewModel.gpsState.value is GpsState.Captured
@@ -310,7 +316,7 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         val aadharOk = binding.etAadharNo.text.isNullOrBlank() || isValidAadhar(binding.etAadharNo.text?.toString())
         val emailOk = binding.etEmail.text.isNullOrBlank() || isValidEmail(binding.etEmail.text?.toString())
 
-        binding.btnRegister.isEnabled = hasName && hasAddress && hasDoctorName && hasPhone &&
+        binding.btnRegister.isEnabled = hasName && hasAddress && pincodeOk && hasDoctorName && hasPhone &&
             gpsOk && termsAccepted && termsLoaded && panOk && gstOk && aadharOk && emailOk
     }
 

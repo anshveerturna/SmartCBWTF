@@ -53,6 +53,51 @@ public class CbwtfHcfController {
     }
 
     /**
+     * Directly register a new HCF (admin action, no approval required).
+     * Creates HCF, Agreement, and BillingConfig immediately.
+     */
+    @PostMapping
+    public ResponseEntity<HcfDetailDTO> registerHcf(
+            @Valid @RequestBody CbwtfAdminHcfRegistrationRequest request) {
+        UUID facilityId = TenantContext.getTenantId();
+        // Get admin user ID from tenant context (set by security filter)
+        UUID adminUserId = TenantContext.getUserId();
+        if (adminUserId == null) {
+            log.warn("Could not extract user ID from tenant context, using fallback");
+            adminUserId = UUID.randomUUID();
+        }
+        return ResponseEntity.ok(hcfService.registerHcfDirectly(facilityId, adminUserId, request));
+    }
+
+    /**
+     * Upload rent agreement document (PDF or image).
+     * Max file size: 20MB
+     */
+    @PostMapping(value = "/upload-rent-agreement", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadRentAgreement(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        UUID facilityId = TenantContext.getTenantId();
+
+        // Validate file type
+        String contentType = file.getContentType();
+        if (contentType == null ||
+                (!contentType.equals("application/pdf") &&
+                        !contentType.startsWith("image/"))) {
+            return ResponseEntity.badRequest().body(
+                    java.util.Map.of("error", "Only PDF and image files are allowed"));
+        }
+
+        // Validate file size (20MB max)
+        if (file.getSize() > 20 * 1024 * 1024) {
+            return ResponseEntity.badRequest().body(
+                    java.util.Map.of("error", "File size cannot exceed 20MB"));
+        }
+
+        String url = hcfService.uploadRentAgreement(facilityId, file);
+        return ResponseEntity.ok(java.util.Map.of("url", url));
+    }
+
+    /**
      * Update HCF profile (name, email, phone, address).
      * Audit logged.
      */

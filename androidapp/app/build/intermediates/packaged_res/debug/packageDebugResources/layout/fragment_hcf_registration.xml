@@ -54,6 +54,49 @@
                     android:maxLines="4" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:baselineAligned="false">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilPincode"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:hint="Pincode *"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etPincode"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:maxLength="6"
+                        android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilState"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginStart="4dp"
+                    android:hint="State *"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etState"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textCapWords"
+                        android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
+
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilDoctorName"
                 android:layout_width="match_parent"
@@ -92,7 +135,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:hint="Email"
+                android:hint="Email *"
                 app:startIconDrawable="@drawable/ic_email"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
                 <com.google.android.material.textfield.TextInputEditText
@@ -124,7 +167,7 @@
                 android:id="@+id/tilPanNo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="PAN Number"
+                android:hint="PAN Number *"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etPanNo"
@@ -140,7 +183,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:hint="GST Number"
+                android:hint="GST Number *"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etGstNo"
@@ -156,7 +199,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:hint="Aadhar Number"
+                android:hint="Aadhar Number *"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etAadharNo"

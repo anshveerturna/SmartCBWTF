@@ -152,8 +152,8 @@ public class HcfService {
                         hcf.getName(),
                         hcf.getAddress(),
                         null, // city not in Hcf entity
-                        null, // state not in Hcf entity
-                        null, // postalCode not in Hcf entity
+                        hcf.getState(),
+                        hcf.getPincode(),
                         hcf.getContactPhone(),
                         hcf.getGpsLat(),
                         hcf.getGpsLon(),
@@ -185,6 +185,31 @@ public class HcfService {
         if ("RENTED".equalsIgnoreCase(request.getOwnershipType()) &&
                 (request.getRentAgreementUrl() == null || request.getRentAgreementUrl().isBlank())) {
             throw new IllegalArgumentException("Rent agreement document is required for rented premises");
+        }
+
+        // Mandatory fields checks
+        if (request.getPincode() == null || request.getPincode().isBlank()) {
+            throw new IllegalArgumentException("Pincode is required");
+        }
+
+        if (request.getState() == null || request.getState().isBlank()) {
+            throw new IllegalArgumentException("State is required");
+        }
+
+        if (request.getContactEmail() == null || request.getContactEmail().isBlank()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+
+        if (request.getPanNo() == null || request.getPanNo().isBlank()) {
+            throw new IllegalArgumentException("PAN Number is required");
+        }
+
+        if (request.getGstNo() == null || request.getGstNo().isBlank()) {
+            throw new IllegalArgumentException("GST Number is required");
+        }
+
+        if (request.getAadharNo() == null || request.getAadharNo().isBlank()) {
+            throw new IllegalArgumentException("Aadhar Number is required");
         }
 
         // ============================================================================
@@ -355,6 +380,8 @@ public class HcfService {
         hcf.setCode("HCF-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         hcf.setName(request.getName());
         hcf.setAddress(request.getAddress());
+        hcf.setPincode(request.getPincode());
+        hcf.setState(request.getState());
         hcf.setContactEmail(request.getContactEmail());
         hcf.setContactPhone(request.getContactPhone());
         hcf.setNumberOfBeds(request.getNumberOfBeds());

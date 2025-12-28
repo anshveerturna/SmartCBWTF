@@ -14,7 +14,12 @@ public class HcfRegistrationRequest {
     private String name;
 
     @NotBlank(message = "Address is required")
+    @NotBlank(message = "Address is required")
     private String address;
+
+    // Optional address details
+    private String pincode;
+    private String state;
 
     private String doctorName;
 
@@ -89,6 +94,22 @@ public class HcfRegistrationRequest {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public String getPincode() {
+        return pincode;
+    }
+
+    public void setPincode(String pincode) {
+        this.pincode = pincode;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
     }
 
     public String getDoctorName() {

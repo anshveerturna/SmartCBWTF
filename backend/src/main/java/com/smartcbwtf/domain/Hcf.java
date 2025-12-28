@@ -24,6 +24,9 @@ public class Hcf {
     private String contactPhone;
     private Integer numberOfBeds;
 
+    private String pincode;
+    private String state;
+
     @Column(nullable = false)
     private Double gpsLat;
 
@@ -124,6 +127,22 @@ public class Hcf {
 
     public void setNumberOfBeds(Integer numberOfBeds) {
         this.numberOfBeds = numberOfBeds;
+    }
+
+    public String getPincode() {
+        return pincode;
+    }
+
+    public void setPincode(String pincode) {
+        this.pincode = pincode;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
     }
 
     public Double getGpsLat() {

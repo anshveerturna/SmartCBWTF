@@ -380,6 +380,8 @@ export interface HcfDetail {
   code: string;
   name: string;
   address: string;
+  pincode: string | null;
+  state: string | null;
   contactPhone: string | null;
   contactEmail: string | null;
   numberOfBeds: number | null;
@@ -521,6 +523,46 @@ export interface RenewAgreementRequest {
 
 export const renewAgreement = async (id: string, data: RenewAgreementRequest): Promise<HcfDetail> => {
   const response = await apiClient.post(`/api/cbwtf/hcfs/${id}/agreements/renew`, data);
+  return response.data;
+};
+
+// ============= HCF Admin Registration =============
+
+export interface CbwtfAdminHcfRegistrationRequest {
+  name: string;
+  address: string;
+  pincode: string;
+  state: string;
+  doctorName: string;
+  contactPhone: string;
+  contactEmail: string;
+  panNo: string;
+  gstNo: string;
+  aadharNo: string;
+  ownershipType: string;
+  rentAgreementUrl?: string;
+  bedded: boolean;
+  numberOfBeds?: number;
+  monthlyCharges?: number;
+  otherNotes?: string;
+  gpsLat: number;
+  gpsLon: number;
+  agreementStartDate: string;
+  agreementEndDate: string;
+  perBedPerDayRate: number;
+}
+
+export const registerHcf = async (data: CbwtfAdminHcfRegistrationRequest): Promise<HcfDetail> => {
+  const response = await apiClient.post('/api/cbwtf/hcfs', data);
+  return response.data;
+};
+
+export const uploadRentAgreement = async (file: File): Promise<{ url: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post('/api/cbwtf/hcfs/upload-rent-agreement', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
   return response.data;
 };
 

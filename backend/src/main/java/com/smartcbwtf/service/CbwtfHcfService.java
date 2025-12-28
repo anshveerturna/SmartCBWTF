@@ -30,6 +30,7 @@ public class CbwtfHcfService {
     private final AuditLogService auditLogService;
     private final AgreementValidationService agreementValidationService;
     private final AgreementNumberGeneratorService agreementNumberGenerator;
+    private final HCFIdentityService hcfIdentityService;
 
     public CbwtfHcfService(
             HcfRepository hcfRepository,
@@ -38,7 +39,8 @@ public class CbwtfHcfService {
             FacilityRepository facilityRepository,
             AuditLogService auditLogService,
             AgreementValidationService agreementValidationService,
-            AgreementNumberGeneratorService agreementNumberGenerator) {
+            AgreementNumberGeneratorService agreementNumberGenerator,
+            HCFIdentityService hcfIdentityService) {
         this.hcfRepository = hcfRepository;
         this.agreementRepository = agreementRepository;
         this.billingConfigRepository = billingConfigRepository;
@@ -46,6 +48,7 @@ public class CbwtfHcfService {
         this.auditLogService = auditLogService;
         this.agreementValidationService = agreementValidationService;
         this.agreementNumberGenerator = agreementNumberGenerator;
+        this.hcfIdentityService = hcfIdentityService;
     }
 
     /**
@@ -538,5 +541,157 @@ public class CbwtfHcfService {
                 hcfId, oldAgreement.getAgreementNumber(), newAgreement.getAgreementNumber());
 
         return getHcfDetail(hcfId, facilityId);
+    }
+
+    /**
+     * Directly register an HCF by CBWTF Admin (no approval required).
+     * 
+     * Security checks:
+     * 1. Compute identity hash to prevent duplicates
+     * 2. Validate eligibility for creating new agreement
+     * 3. Enforce rent agreement document for RENTED properties
+     * 
+     * Creates HCF with ACTIVE status, agreement, and billing config immediately.
+     * Logs audit event: HCF_REGISTERED_BY_ADMIN
+     */
+    @Transactional
+    public HcfDetailDTO registerHcfDirectly(UUID facilityId, UUID adminUserId,
+            CbwtfAdminHcfRegistrationRequest request) {
+        log.info("CBWTF Admin {} registering new HCF: {} for facility {}", adminUserId, request.getName(), facilityId);
+
+        // 1. Validate rent agreement for RENTED properties (backend enforcement)
+        if ("RENTED".equals(request.getOwnershipType()) &&
+                (request.getRentAgreementUrl() == null || request.getRentAgreementUrl().isBlank())) {
+            throw new IllegalArgumentException("Rent agreement document is required for rented properties");
+        }
+
+        // 2. Validate bedded facilities must have bed count
+        if (Boolean.TRUE.equals(request.getBedded()) &&
+                (request.getNumberOfBeds() == null || request.getNumberOfBeds() <= 0)) {
+            throw new IllegalArgumentException("Number of beds is required for bedded facilities");
+        }
+
+        // 3. Compute identity hash for duplicate detection
+        String identityHash = hcfIdentityService.computeFingerprint(
+                request.getName(),
+                request.getGstNo(),
+                request.getPanNo(),
+                request.getGpsLat(),
+                request.getGpsLon());
+        log.debug("Computed identity hash: {}", identityHash.substring(0, 16) + "...");
+
+        // Get facility
+        Facility facility = facilityRepository.findById(facilityId)
+                .orElseThrow(() -> new IllegalArgumentException("Facility not found"));
+
+        // 4. Create HCF entity
+        Hcf hcf = new Hcf();
+        hcf.setCode("HCF-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        hcf.setName(request.getName());
+        hcf.setAddress(request.getAddress());
+        hcf.setPincode(request.getPincode());
+        hcf.setState(request.getState());
+        hcf.setDoctorName(request.getDoctorName());
+        hcf.setContactPhone(request.getContactPhone());
+        hcf.setContactEmail(request.getContactEmail());
+        hcf.setPanNo(request.getPanNo());
+        hcf.setGstNo(request.getGstNo());
+        hcf.setAadharNo(request.getAadharNo());
+        hcf.setOwnershipType(request.getOwnershipType());
+        hcf.setRentAgreementUrl(request.getRentAgreementUrl());
+        hcf.setBedded(request.getBedded());
+        hcf.setNumberOfBeds(request.getNumberOfBeds());
+        hcf.setMonthlyCharges(request.getMonthlyCharges());
+        hcf.setOtherNotes(request.getOtherNotes());
+        hcf.setGpsLat(request.getGpsLat());
+        hcf.setGpsLon(request.getGpsLon());
+        hcf.setIdentityHash(identityHash);
+        hcf.setStatus("ACTIVE"); // Auto-approved for admin registration
+        hcf.setCreatedAt(Instant.now());
+        hcf.setUpdatedAt(Instant.now());
+        hcfRepository.save(hcf);
+
+        // 5. Check eligibility for new agreement (after HCF is created)
+        agreementValidationService.assertCanCreateAgreement(hcf.getId());
+
+        // 6. Create Agreement
+        Agreement agreement = new Agreement();
+        agreement.setHcf(hcf);
+        agreement.setFacility(facility);
+        agreement.setAgreementNumber(agreementNumberGenerator.generateNextAgreementNumber(facility));
+        agreement.setStatus(Agreement.Status.ACTIVE.name());
+        agreement.setDuesStatus(Agreement.DuesStatus.CLEAR.name());
+        agreement.setStartDate(request.getAgreementStartDate());
+        agreement.setEndDate(request.getAgreementEndDate());
+        agreement.setPerBedPerDayRate(request.getPerBedPerDayRate());
+        agreement.setCreatedAt(Instant.now());
+        agreement.setUpdatedAt(Instant.now());
+        agreementRepository.save(agreement);
+
+        // 7. Create default billing config
+        AgreementBillingConfig config = new AgreementBillingConfig();
+        config.setAgreement(agreement);
+        config.setBaseGramsPerBedPerDay(270); // Default waste allowance
+        config.setBaseRatePerBedPerDay(request.getPerBedPerDayRate());
+        config.setEffectiveFrom(request.getAgreementStartDate());
+        config.setCreatedBy(adminUserId);
+        billingConfigRepository.save(config);
+
+        // 8. Audit log with distinct event type
+        String auditDetails = String.format(
+                "Admin registered HCF. Agreement: %s, Source: CBWTF_PORTAL, Admin: %s",
+                agreement.getAgreementNumber(), adminUserId);
+        auditLogService.log("HCF", hcf.getId(), "HCF_REGISTERED_BY_ADMIN", adminUserId, auditDetails);
+        log.info("HCF {} registered by admin {}, agreement {} created",
+                hcf.getId(), adminUserId, agreement.getAgreementNumber());
+
+        return getHcfDetail(hcf.getId(), facilityId);
+    }
+
+    /**
+     * Upload rent agreement document to local storage.
+     * Returns the URL path to the uploaded file.
+     */
+    public String uploadRentAgreement(UUID facilityId, org.springframework.web.multipart.MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("No file provided");
+        }
+
+        String contentType = file.getContentType();
+        String ext;
+        if ("application/pdf".equals(contentType)) {
+            ext = "pdf";
+        } else if (contentType != null && contentType.startsWith("image/")) {
+            ext = switch (contentType) {
+                case "image/jpeg" -> "jpg";
+                case "image/png" -> "png";
+                case "image/gif" -> "gif";
+                case "image/webp" -> "webp";
+                default -> "jpg";
+            };
+        } else {
+            throw new IllegalArgumentException("Only PDF and image files allowed");
+        }
+
+        try {
+            String uploadDir = "uploads/rent-agreements";
+            java.nio.file.Path uploadPath = java.nio.file.Paths.get(uploadDir);
+            if (!java.nio.file.Files.exists(uploadPath)) {
+                java.nio.file.Files.createDirectories(uploadPath);
+            }
+
+            String filename = facilityId + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
+            java.nio.file.Path filePath = uploadPath.resolve(filename);
+            java.nio.file.Files.copy(file.getInputStream(), filePath,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            String url = "/uploads/rent-agreements/" + filename;
+            log.info("Rent agreement uploaded for facility {}: {}", facilityId, url);
+            return url;
+
+        } catch (java.io.IOException e) {
+            log.error("Failed to upload rent agreement", e);
+            throw new RuntimeException("Failed to save file", e);
+        }
     }
 }

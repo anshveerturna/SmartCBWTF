@@ -264,6 +264,18 @@ export default function HcfDetailPage() {
                       </Grid>
                       <Grid size={{ xs: 6 }}>
                         <Box>
+                          <Typography variant="caption" color="text.secondary">State</Typography>
+                          <Typography>{hcf.state || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Pincode</Typography>
+                          <Typography fontFamily="monospace">{hcf.pincode || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
                           <Typography variant="caption" color="text.secondary">Doctor/Owner Name</Typography>
                           <Typography>{hcf.doctorName || '-'}</Typography>
                         </Box>
@@ -307,12 +319,7 @@ export default function HcfDetailPage() {
                           <Typography fontFamily="monospace">{hcf.aadharNo || '-'}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">PCB Authorization No</Typography>
-                          <Typography fontFamily="monospace">{hcf.pcbAuthorizationNo || '-'}</Typography>
-                        </Box>
-                      </Grid>
+
                     </Grid>
                   </Box>
 
@@ -336,20 +343,29 @@ export default function HcfDetailPage() {
                         </Box>
                       </Grid>
                       <Grid size={{ xs: 6 }}>
-                        {hcf.ownershipType === 'RENTED' && hcf.rentAgreementUrl && (
+                        {(hcf.ownershipType === 'RENTED' || hcf.rentAgreementUrl) && (
                           <Box>
-                            <Typography variant="caption" color="text.secondary">Rent Agreement</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Rent Agreement {hcf.ownershipType === 'RENTED' ? '(Mandatory)' : ''}
+                            </Typography>
                             <Box>
-                              <Button
-                                variant="outlined"
-                                size="small"
-                                href={hcf.rentAgreementUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                startIcon={<AgreementIcon />}
-                              >
-                                View Document
-                              </Button>
+                              {hcf.rentAgreementUrl ? (
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  href={hcf.rentAgreementUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  startIcon={<AgreementIcon />}
+                                  sx={{ mt: 0.5 }}
+                                >
+                                  View Document
+                                </Button>
+                              ) : (
+                                <Typography variant="body2" color="error" sx={{ fontStyle: 'italic', mt: 0.5 }}>
+                                  Not Uploaded
+                                </Typography>
+                              )}
                             </Box>
                           </Box>
                         )}
