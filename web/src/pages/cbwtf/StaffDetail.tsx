@@ -237,23 +237,45 @@ export default function StaffDetail() {
     credentialsMutation.mutate(credentialsForm);
   };
 
-  const formatDateTime = (dateString: string | null): string => {
-    if (!dateString) return 'Never';
-    return new Date(dateString).toLocaleString();
+  const formatDateTime = (dateValue: string | number | null | undefined): string => {
+    if (!dateValue) return 'Never';
+    try {
+      // Handle epoch timestamps (numbers) and ISO strings
+      const date = typeof dateValue === 'number' ? new Date(dateValue) : new Date(dateValue);
+      if (isNaN(date.getTime())) return 'Unknown';
+      return date.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'Unknown';
+    }
   };
 
-  const formatTimeAgo = (dateString: string | null): string => {
-    if (!dateString) return 'Never';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    return `${Math.floor(diffHours / 24)} days ago`;
+  const formatTimeAgo = (dateValue: string | number | null | undefined): string => {
+    if (!dateValue) return 'Never';
+    try {
+      const date = typeof dateValue === 'number' ? new Date(dateValue) : new Date(dateValue);
+      if (isNaN(date.getTime())) return '';
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      if (diffMs < 0) return 'Just now';
+      const diffMins = Math.floor(diffMs / 60000);
+      
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} min ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours} hr ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      return `${Math.floor(diffDays / 7)} weeks ago`;
+    } catch {
+      return '';
+    }
   };
 
   if (isLoading) {
@@ -591,34 +613,61 @@ export default function StaffDetail() {
 
         {/* Last Attendance Card */}
         <Grid size={{ xs: 12 }}>
-          <Card sx={{ borderRadius: 2 }}>
+          <Card sx={{ borderRadius: 2, background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.05) 0%, transparent 100%)' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'success.main' }}>
                 <AttendanceIcon /> Last Attendance
               </Typography>
               <Divider sx={{ my: 2 }} />
 
               {staff.lastAttendanceAt ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">Healthcare Facility</Typography>
-                    <Typography variant="body1" fontWeight={500}>{staff.lastAttendanceHcf}</Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexWrap: 'wrap',
+                  alignItems: 'center', 
+                  gap: 4,
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider'
+                }}>
+                  <Box sx={{ minWidth: 200 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Healthcare Facility
+                    </Typography>
+                    <Typography variant="body1" fontWeight={600} sx={{ mt: 0.5 }}>
+                      {staff.lastAttendanceHcf || 'Unknown'}
+                    </Typography>
                   </Box>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">Time</Typography>
-                    <Typography variant="body1">{formatDateTime(staff.lastAttendanceAt)}</Typography>
+                  <Box sx={{ minWidth: 180 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Date & Time
+                    </Typography>
+                    <Typography variant="body1" fontWeight={500} sx={{ mt: 0.5 }}>
+                      {formatDateTime(staff.lastAttendanceAt)}
+                    </Typography>
                   </Box>
                   <Chip
                     icon={<TimeIcon />}
                     label={formatTimeAgo(staff.lastAttendanceAt)}
-                    size="small"
+                    size="medium"
+                    color="success"
                     variant="outlined"
+                    sx={{ fontWeight: 500, px: 1 }}
                   />
                 </Box>
               ) : (
-                <Typography color="text.secondary">
-                  No attendance records yet.
-                </Typography>
+                <Box sx={{ 
+                  p: 3, 
+                  textAlign: 'center', 
+                  borderRadius: 2, 
+                  bgcolor: 'action.hover' 
+                }}>
+                  <Typography color="text.secondary">
+                    No attendance records yet for this staff member.
+                  </Typography>
+                </Box>
               )}
             </CardContent>
           </Card>

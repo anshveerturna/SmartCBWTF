@@ -139,6 +139,28 @@ public class HcfService {
         return response;
     }
 
+    /**
+     * List HCFs with active agreements for mobile app attendance marking.
+     * Returns HCFs with GPS coordinates for geofence validation.
+     */
+    public List<com.smartcbwtf.controller.HcfController.MobileHcfDto> listActiveHcfsForMobile(UUID facilityId) {
+        List<Hcf> hcfs = agreementRepository.findHcfsByFacilityId(facilityId);
+        return hcfs.stream()
+                .filter(hcf -> hcf.getGpsLat() != null && hcf.getGpsLon() != null) // Only include HCFs with GPS
+                .map(hcf -> new com.smartcbwtf.controller.HcfController.MobileHcfDto(
+                        hcf.getId().toString(),
+                        hcf.getName(),
+                        hcf.getAddress(),
+                        null, // city not in Hcf entity
+                        null, // state not in Hcf entity
+                        null, // postalCode not in Hcf entity
+                        hcf.getContactPhone(),
+                        hcf.getGpsLat(),
+                        hcf.getGpsLon(),
+                        "ACTIVE".equals(hcf.getStatus())))
+                .toList();
+    }
+
     private void validateRegistrationRequest(HcfRegistrationRequest request) {
         // GPS validation
         if (request.getRegistrationGpsLat() == null || request.getRegistrationGpsLon() == null) {
@@ -165,23 +187,157 @@ public class HcfService {
             throw new IllegalArgumentException("Rent agreement document is required for rented premises");
         }
 
-        // Duplicate detection
-        if (request.getPanNo() != null && !request.getPanNo().isBlank() &&
-                hcfRepository.findByPanNo(request.getPanNo()).isPresent()) {
-            throw new IllegalArgumentException("An HCF with this PAN number already exists");
+        // ============================================================================
+        // ENTERPRISE DUPLICATE DETECTION - Agreement Status Aware
+        // Only blocks registration if existing HCF has an ACTIVE agreement
+        // HCFs with expired/terminated agreements can be re-registered with new CBWTF
+        // ============================================================================
+
+        validateNoDuplicateWithActiveAgreement(request);
+
+        // GPS PROXIMITY CHECK - Anti-fraud detection
+        validateGpsProximity(request);
+    }
+
+    /**
+     * Validates that no HCF with matching government IDs has an active agreement.
+     * This allows HCFs to switch CBWTFs after their agreement expires.
+     */
+    private void validateNoDuplicateWithActiveAgreement(HcfRegistrationRequest request) {
+        // PAN Number check
+        if (request.getPanNo() != null && !request.getPanNo().isBlank()) {
+            hcfRepository.findByPanNoWithActiveAgreement(request.getPanNo())
+                    .ifPresent(existing -> {
+                        throw new com.smartcbwtf.exception.DuplicateHcfException(
+                                "An HCF with PAN number " + maskIdentifier(request.getPanNo()) +
+                                        " is already registered with an active service agreement. " +
+                                        "Registration will be allowed once the existing agreement expires.",
+                                "PAN",
+                                existing.getCode());
+                    });
         }
-        if (request.getGstNo() != null && !request.getGstNo().isBlank() &&
-                hcfRepository.findByGstNo(request.getGstNo()).isPresent()) {
-            throw new IllegalArgumentException("An HCF with this GST number already exists");
+
+        // GST Number check
+        if (request.getGstNo() != null && !request.getGstNo().isBlank()) {
+            hcfRepository.findByGstNoWithActiveAgreement(request.getGstNo())
+                    .ifPresent(existing -> {
+                        throw new com.smartcbwtf.exception.DuplicateHcfException(
+                                "An HCF with GST number " + maskIdentifier(request.getGstNo()) +
+                                        " is already registered with an active service agreement. " +
+                                        "Registration will be allowed once the existing agreement expires.",
+                                "GST",
+                                existing.getCode());
+                    });
         }
-        if (request.getAadharNo() != null && !request.getAadharNo().isBlank() &&
-                hcfRepository.findByAadharNo(request.getAadharNo()).isPresent()) {
-            throw new IllegalArgumentException("An HCF with this Aadhar number already exists");
+
+        // Aadhar Number check
+        if (request.getAadharNo() != null && !request.getAadharNo().isBlank()) {
+            hcfRepository.findByAadharNoWithActiveAgreement(request.getAadharNo())
+                    .ifPresent(existing -> {
+                        throw new com.smartcbwtf.exception.DuplicateHcfException(
+                                "An HCF with this Aadhar number is already registered with an active service agreement. "
+                                        +
+                                        "Registration will be allowed once the existing agreement expires.",
+                                "AADHAR",
+                                existing.getCode());
+                    });
         }
-        if (request.getContactPhone() != null && !request.getContactPhone().isBlank() &&
-                hcfRepository.findByContactPhone(request.getContactPhone()).isPresent()) {
-            throw new IllegalArgumentException("An HCF with this phone number already exists");
+
+        // Phone Number check
+        if (request.getContactPhone() != null && !request.getContactPhone().isBlank()) {
+            hcfRepository.findByContactPhoneWithActiveAgreement(request.getContactPhone())
+                    .ifPresent(existing -> {
+                        throw new com.smartcbwtf.exception.DuplicateHcfException(
+                                "An HCF with phone number " + maskPhone(request.getContactPhone()) +
+                                        " is already registered with an active service agreement. " +
+                                        "Registration will be allowed once the existing agreement expires.",
+                                "PHONE",
+                                existing.getCode());
+                    });
         }
+
+        // Email check
+        if (request.getContactEmail() != null && !request.getContactEmail().isBlank()) {
+            hcfRepository.findByContactEmailWithActiveAgreement(request.getContactEmail())
+                    .ifPresent(existing -> {
+                        throw new com.smartcbwtf.exception.DuplicateHcfException(
+                                "An HCF with email " + maskEmail(request.getContactEmail()) +
+                                        " is already registered with an active service agreement. " +
+                                        "Registration will be allowed once the existing agreement expires.",
+                                "EMAIL",
+                                existing.getCode());
+                    });
+        }
+    }
+
+    /**
+     * Validates GPS proximity - prevents registration within 50 meters of
+     * existing HCFs with active agreements.
+     * This is an anti-fraud measure to prevent same location being registered
+     * with different identities.
+     * Note: CBWTFs can adjust HCF location after registration if needed.
+     */
+    private void validateGpsProximity(HcfRegistrationRequest request) {
+        // Proximity radius: 50 meters - allows multiple clinics in same building
+        // while preventing exact same location fraud
+        final double PROXIMITY_RADIUS_METERS = 50.0;
+
+        List<com.smartcbwtf.domain.Hcf> nearbyHcfs = hcfRepository.findNearbyWithActiveAgreement(
+                request.getRegistrationGpsLat(),
+                request.getRegistrationGpsLon(),
+                PROXIMITY_RADIUS_METERS);
+
+        if (!nearbyHcfs.isEmpty()) {
+            com.smartcbwtf.domain.Hcf nearest = nearbyHcfs.get(0);
+
+            // Calculate exact distance for error message
+            Double distance = hcfRepository.calculateDistance(
+                    request.getRegistrationGpsLat(),
+                    request.getRegistrationGpsLon(),
+                    nearest.getGpsLat(),
+                    nearest.getGpsLon());
+
+            String distanceStr = distance != null ? String.format("%.1f", distance)
+                    : "less than " + (int) PROXIMITY_RADIUS_METERS;
+
+            throw new com.smartcbwtf.exception.DuplicateHcfException(
+                    "Another healthcare facility (" + nearest.getName() + ") with an active service agreement " +
+                            "is located " + distanceStr + " meters from this location. " +
+                            "Please verify this is a different facility or contact support if the existing registration needs to be updated.",
+                    "GPS_LOCATION",
+                    nearest.getCode(),
+                    distance);
+        }
+    }
+
+    /**
+     * Masks PAN/GST number for display (shows first 3 and last 2 characters).
+     */
+    private String maskIdentifier(String id) {
+        if (id == null || id.length() < 6)
+            return "***";
+        return id.substring(0, 3) + "***" + id.substring(id.length() - 2);
+    }
+
+    /**
+     * Masks phone number for display (shows last 4 digits).
+     */
+    private String maskPhone(String phone) {
+        if (phone == null || phone.length() < 4)
+            return "***";
+        return "***" + phone.substring(phone.length() - 4);
+    }
+
+    /**
+     * Masks email for display (shows first 2 chars + domain).
+     */
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@"))
+            return "***";
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 2)
+            return "***" + email.substring(atIndex);
+        return email.substring(0, 2) + "***" + email.substring(atIndex);
     }
 
     private Facility getFacility(UUID facilityId) {

@@ -106,6 +106,31 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, ex.getMessage(), request, details);
     }
 
+    /**
+     * Handles duplicate HCF registration attempts.
+     * Returns CONFLICT (409) status with details about which field triggered the
+     * detection
+     * and which existing HCF conflicts.
+     */
+    @ExceptionHandler(com.smartcbwtf.exception.DuplicateHcfException.class)
+    public ResponseEntity<ApiError> handleDuplicateHcf(
+            com.smartcbwtf.exception.DuplicateHcfException ex, HttpServletRequest request) {
+        Map<String, Object> details = new java.util.HashMap<>();
+        details.put("error", "DUPLICATE_HCF");
+        details.put("duplicateField", ex.getDuplicateField());
+        if (ex.getExistingHcfCode() != null) {
+            details.put("existingHcfCode", ex.getExistingHcfCode());
+        }
+        if (ex.getDistanceMeters() != null) {
+            details.put("distanceMeters", ex.getDistanceMeters());
+        }
+
+        log.warn("Duplicate HCF registration blocked: field={}, existingHcf={}, distance={}",
+                ex.getDuplicateField(), ex.getExistingHcfCode(), ex.getDistanceMeters());
+
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request, details);
+    }
+
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)

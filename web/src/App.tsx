@@ -34,6 +34,7 @@ const CbwtfVehicles = lazy(() => import('./pages/cbwtf/Vehicles'));
 const CbwtfVehicleLiveMap = lazy(() => import('./pages/cbwtf/VehicleLiveMap'));
 const CbwtfStaff = lazy(() => import('./pages/cbwtf/Staff'));
 const CbwtfStaffDetail = lazy(() => import('./pages/cbwtf/StaffDetail'));
+const CbwtfAttendance = lazy(() => import('./pages/cbwtf/AttendanceList'));
 const CbwtfProfile = lazy(() => import('./pages/cbwtf/Profile'));
 const CbwtfHcfList = lazy(() => import('./pages/cbwtf/HcfList'));
 const CbwtfHcfDetail = lazy(() => import('./pages/cbwtf/HcfDetail'));
@@ -143,6 +144,7 @@ const App: React.FC = () => {
                   <Route path="vehicles/live-map" element={<CbwtfVehicleLiveMap />} />
                   <Route path="staff" element={<CbwtfStaff />} />
                   <Route path="staff/:id" element={<CbwtfStaffDetail />} />
+                  <Route path="attendance" element={<CbwtfAttendance />} />
                   <Route path="hcfs" element={<CbwtfHcfList />} />
                   <Route path="hcfs/pending" element={<CbwtfHcfPendingApprovals />} />
                   <Route path="hcfs/:id" element={<CbwtfHcfDetail />} />

@@ -7,7 +7,6 @@ import {
   CardContent,
   Typography,
   Grid,
-  TextField,
   Button,
   Chip,
   Stack,
@@ -20,26 +19,22 @@ import {
   IconButton,
   Paper,
   Snackbar,
+  TextField,
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
-  Edit as EditIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
   LocationOn as LocationIcon,
   Business as HcfIcon,
-
   Description as AgreementIcon,
   AttachMoney as BillingIcon,
   Assessment as StatsIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 
 import {
   getHcfDetail,
-  updateHcf,
   updateHcfLocation,
   renewAgreement,
-  type UpdateHcfRequest,
   type UpdateLocationRequest,
   type RenewAgreementRequest,
 } from '../../api/cbwtf';
@@ -138,10 +133,6 @@ export default function HcfDetailPage() {
   const queryClient = useQueryClient();
 
   // State
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<UpdateHcfRequest>({});
-
-
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -180,18 +171,6 @@ export default function HcfDetailPage() {
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: (data: UpdateHcfRequest) => updateHcf(id!, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cbwtf-hcf', id] });
-      setIsEditing(false);
-      setSnackbar({ open: true, message: 'Profile updated successfully', severity: 'success' });
-    },
-    onError: () => {
-      setSnackbar({ open: true, message: 'Failed to update profile', severity: 'error' });
-    },
-  });
-
   // Renewal mutation
   const renewalMutation = useMutation({
     mutationFn: (data: RenewAgreementRequest) => renewAgreement(id!, data),
@@ -204,23 +183,6 @@ export default function HcfDetailPage() {
       setSnackbar({ open: true, message: 'Failed to renew agreement', severity: 'error' });
     },
   });
-
-
-  // Handlers
-  const startEditing = () => {
-    if (hcf) {
-      setEditForm({
-        name: hcf.name,
-        contactEmail: hcf.contactEmail || '',
-        contactPhone: hcf.contactPhone || '',
-        address: hcf.address,
-        numberOfBeds: hcf.numberOfBeds || undefined,
-        doctorName: hcf.doctorName || '',
-      });
-      setIsEditing(true);
-    }
-  };
-
 
 
   if (isLoading) {
@@ -264,267 +226,228 @@ export default function HcfDetailPage() {
         {/* Left Column: Profile & Location */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Stack spacing={3}>
-            {/* Profile Card */}
+            {/* Profile Card - Read Only */}
             <Card>
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="h6" fontWeight="bold">
-                    HCF Profile
-                  </Typography>
-                  {!isEditing ? (
-                    <IconButton onClick={startEditing} disabled={!isActive}>
-                      <EditIcon />
-                    </IconButton>
-                  ) : (
-                    <Stack direction="row" spacing={1}>
-                      <IconButton
-                        color="primary"
-                        onClick={() => updateMutation.mutate(editForm)}
-                        disabled={updateMutation.isPending}
-                      >
-                        <SaveIcon />
-                      </IconButton>
-                      <IconButton onClick={() => setIsEditing(false)}>
-                        <CancelIcon />
-                      </IconButton>
-                    </Stack>
-                  )}
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <HcfIcon color="primary" />
+                    <Typography variant="h6" fontWeight="bold">
+                      HCF Profile
+                    </Typography>
+                  </Box>
+                  <Chip 
+                    label={hcf.hcfStatus} 
+                    color={hcf.hcfStatus === 'ACTIVE' ? 'success' : hcf.hcfStatus === 'PENDING_APPROVAL' ? 'warning' : 'default'} 
+                    size="small"
+                  />
                 </Box>
-                <Stack spacing={2}>
-                  {isEditing ? (
-                    <>
-                      <TextField
-                        label="Name"
-                        value={editForm.name || ''}
-                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        fullWidth
-                        size="small"
-                      />
-                      <TextField
-                        label="Email"
-                        value={editForm.contactEmail || ''}
-                        onChange={(e) => setEditForm({ ...editForm, contactEmail: e.target.value })}
-                        fullWidth
-                        size="small"
-                      />
-                      <TextField
-                        label="Phone"
-                        value={editForm.contactPhone || ''}
-                        onChange={(e) => setEditForm({ ...editForm, contactPhone: e.target.value })}
-                        fullWidth
-                        size="small"
-                      />
-                      <TextField
-                        label="Address"
-                        value={editForm.address || ''}
-                        onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                        fullWidth
-                        multiline
-                        rows={2}
-                        size="small"
-                      />
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 6 }}>
-                          <TextField
-                            label="Number of Beds"
-                            type="number"
-                            value={editForm.numberOfBeds || ''}
-                            onChange={(e) => setEditForm({ ...editForm, numberOfBeds: parseInt(e.target.value) || undefined })}
-                            fullWidth
-                            size="small"
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                           <TextField
-                            label="Monthly Charges (₹)"
-                            type="number"
-                            value={editForm.monthlyCharges || ''}
-                            onChange={(e) => setEditForm({ ...editForm, monthlyCharges: parseFloat(e.target.value) || undefined })}
-                            fullWidth
-                            size="small"
-                          />
-                        </Grid>
+                
+                <Stack spacing={2.5}>
+                  {/* Basic Info */}
+                  <Box>
+                    <Typography variant="overline" color="primary.main" fontWeight="bold">
+                      Basic Information
+                    </Typography>
+                    <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                      <Grid size={{ xs: 12 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Name</Typography>
+                          <Typography fontWeight={500}>{hcf.name}</Typography>
+                        </Box>
                       </Grid>
-                      <TextField
-                        label="Doctor Name"
-                        value={editForm.doctorName || ''}
-                        onChange={(e) => setEditForm({ ...editForm, doctorName: e.target.value })}
-                        fullWidth
-                        size="small"
-                      />
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 6 }}>
-                          <TextField
-                            label="GST No"
-                            value={editForm.gstNo || ''}
-                            onChange={(e) => setEditForm({ ...editForm, gstNo: e.target.value })}
-                            fullWidth
-                            size="small"
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <TextField
-                            label="PAN No"
-                            value={editForm.panNo || ''}
-                            onChange={(e) => setEditForm({ ...editForm, panNo: e.target.value })}
-                            fullWidth
-                            size="small"
-                          />
-                        </Grid>
+                      <Grid size={{ xs: 12 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Address</Typography>
+                          <Typography>{hcf.address}</Typography>
+                        </Box>
                       </Grid>
-                       <Grid container spacing={2}>
-                        <Grid size={{ xs: 6 }}>
-                          <TextField
-                            label="Aadhar No"
-                            value={editForm.aadharNo || ''}
-                            onChange={(e) => setEditForm({ ...editForm, aadharNo: e.target.value })}
-                            fullWidth
-                            size="small"
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <TextField
-                            label="PCB Auth No"
-                            value={editForm.pcbAuthorizationNo || ''}
-                            onChange={(e) => setEditForm({ ...editForm, pcbAuthorizationNo: e.target.value })}
-                            fullWidth
-                            size="small"
-                          />
-                        </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Doctor/Owner Name</Typography>
+                          <Typography>{hcf.doctorName || '-'}</Typography>
+                        </Box>
                       </Grid>
-                      <TextField
-                        label="Other Notes"
-                        value={editForm.otherNotes || ''}
-                        onChange={(e) => setEditForm({ ...editForm, otherNotes: e.target.value })}
-                        fullWidth
-                        multiline
-                        rows={2}
-                        size="small"
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 6 }}>
-                           <Box>
-                            <Typography variant="caption" color="text.secondary">Email</Typography>
-                            <Typography>{hcf.contactEmail || '-'}</Typography>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Contact Phone</Typography>
+                          <Typography fontFamily="monospace">{hcf.contactPhone || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Email</Typography>
+                          <Typography>{hcf.contactEmail || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Box>
+
+                  {/* Government IDs */}
+                  <Box>
+                    <Typography variant="overline" color="primary.main" fontWeight="bold">
+                      Government IDs
+                    </Typography>
+                    <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">PAN Number</Typography>
+                          <Typography fontFamily="monospace">{hcf.panNo || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">GST Number</Typography>
+                          <Typography fontFamily="monospace">{hcf.gstNo || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Aadhar Number</Typography>
+                          <Typography fontFamily="monospace">{hcf.aadharNo || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">PCB Authorization No</Typography>
+                          <Typography fontFamily="monospace">{hcf.pcbAuthorizationNo || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Box>
+
+                  {/* Facility Details */}
+                  <Box>
+                    <Typography variant="overline" color="primary.main" fontWeight="bold">
+                      Facility Details
+                    </Typography>
+                    <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Ownership Type</Typography>
+                          <Box>
+                            <Chip
+                              label={hcf.ownershipType === 'RENTED' ? 'Rented' : 'Owned'}
+                              size="small"
+                              color={hcf.ownershipType === 'RENTED' ? 'warning' : 'success'}
+                              variant="filled"
+                            />
                           </Box>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                           <Box>
-                            <Typography variant="caption" color="text.secondary">Phone</Typography>
-                            <Typography>{hcf.contactPhone || '-'}</Typography>
-                          </Box>
-                        </Grid>
+                        </Box>
                       </Grid>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">Address</Typography>
-                        <Typography>{hcf.address}</Typography>
-                      </Box>
-                      <Grid container spacing={2}>
+                      <Grid size={{ xs: 6 }}>
+                        {hcf.ownershipType === 'RENTED' && hcf.rentAgreementUrl && (
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">Rent Agreement</Typography>
+                            <Box>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                href={hcf.rentAgreementUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                startIcon={<AgreementIcon />}
+                              >
+                                View Document
+                              </Button>
+                            </Box>
+                          </Box>
+                        )}
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Facility Type</Typography>
+                          <Box>
+                            <Chip 
+                              label={hcf.bedded ? 'Bedded Facility' : 'Non-Bedded Facility'} 
+                              size="small" 
+                              color="default" 
+                              variant="outlined" 
+                            />
+                          </Box>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Number of Beds</Typography>
+                          <Typography>{hcf.numberOfBeds || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Monthly Charges</Typography>
+                          <Typography fontWeight={500}>{formatCurrency(hcf.monthlyCharges)}</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Box>
+
+                  {/* GPS Coordinates */}
+                  <Box>
+                    <Typography variant="overline" color="primary.main" fontWeight="bold">
+                      GPS Location
+                    </Typography>
+                    <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Latitude</Typography>
+                          <Typography fontFamily="monospace">{hcf.registrationGpsLat || hcf.gpsLat || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Longitude</Typography>
+                          <Typography fontFamily="monospace">{hcf.registrationGpsLon || hcf.gpsLon || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                      {hcf.registrationGpsAccuracy && (
                         <Grid size={{ xs: 6 }}>
                           <Box>
-                            <Typography variant="caption" color="text.secondary">Beds</Typography>
-                            <Typography>
-                              {hcf.numberOfBeds || '-'} 
-                              {hcf.bedded !== null && (
-                                <Chip 
-                                  label={hcf.bedded ? "Bedded" : "Non-Bedded"} 
-                                  size="small" 
-                                  color="default" 
-                                  variant="outlined" 
-                                  sx={{ ml: 1, height: 20, fontSize: '0.7rem' }} 
-                                />
-                              )}
-                            </Typography>
+                            <Typography variant="caption" color="text.secondary">Accuracy</Typography>
+                            <Typography fontFamily="monospace">{hcf.registrationGpsAccuracy.toFixed(2)}m</Typography>
                           </Box>
                         </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <Box>
-                            <Typography variant="caption" color="text.secondary">Monthly Charges</Typography>
-                            <Typography>{formatCurrency(hcf.monthlyCharges)}</Typography>
-                          </Box>
-                        </Grid>
-                      </Grid>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">Doctor Name</Typography>
-                        <Typography>{hcf.doctorName || '-'}</Typography>
-                      </Box>
-                       <Grid container spacing={2}>
-                        <Grid size={{ xs: 6 }}>
-                          <Box>
-                             <Typography variant="caption" color="text.secondary">GST No</Typography>
-                             <Typography fontFamily="monospace">{hcf.gstNo || '-'}</Typography>
-                          </Box>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                           <Box>
-                             <Typography variant="caption" color="text.secondary">PAN No</Typography>
-                             <Typography fontFamily="monospace">{hcf.panNo || '-'}</Typography>
-                          </Box>
-                        </Grid>
-                      </Grid>
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 6 }}>
-                          <Box>
-                             <Typography variant="caption" color="text.secondary">Aadhar No</Typography>
-                             <Typography fontFamily="monospace">{hcf.aadharNo || '-'}</Typography>
-                          </Box>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                           <Box>
-                             <Typography variant="caption" color="text.secondary">PCB Auth No</Typography>
-                             <Typography fontFamily="monospace">{hcf.pcbAuthorizationNo || '-'}</Typography>
-                          </Box>
-                        </Grid>
-                      </Grid>
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 6 }}>
-                          <Box>
-                             <Typography variant="caption" color="text.secondary">Ownership Type</Typography>
-                             <Typography sx={{ 
-                               display: 'inline-flex',
-                               alignItems: 'center',
-                               gap: 0.5,
-                               bgcolor: hcf.ownershipType === 'RENTED' ? 'warning.light' : 'success.light',
-                               color: hcf.ownershipType === 'RENTED' ? 'warning.dark' : 'success.dark',
-                               px: 1,
-                               py: 0.25,
-                               borderRadius: 1,
-                               fontSize: '0.875rem',
-                               fontWeight: 500
-                             }}>
-                               {hcf.ownershipType === 'RENTED' ? 'Rented' : 'Owned'}
-                             </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                           {hcf.ownershipType === 'RENTED' && hcf.rentAgreementUrl && (
-                             <Box>
-                               <Typography variant="caption" color="text.secondary">Rent Agreement</Typography>
-                               <Button
-                                 variant="outlined"
-                                 size="small"
-                                 href={hcf.rentAgreementUrl}
-                                 target="_blank"
-                                 rel="noopener noreferrer"
-                                 startIcon={<AgreementIcon />}
-                               >
-                                 View Document
-                               </Button>
-                             </Box>
-                           )}
-                        </Grid>
-                      </Grid>
-                       <Box>
-                        <Typography variant="caption" color="text.secondary">Notes</Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                          {hcf.otherNotes || 'No notes available'}
+                      )}
+                    </Grid>
+                  </Box>
+
+                  {/* Notes */}
+                  {hcf.otherNotes && (
+                    <Box>
+                      <Typography variant="overline" color="primary.main" fontWeight="bold">
+                        Notes
+                      </Typography>
+                      <Paper variant="outlined" sx={{ p: 1.5, mt: 0.5, bgcolor: 'background.default' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
+                          {hcf.otherNotes}
                         </Typography>
-                      </Box>
-                    </>
+                      </Paper>
+                    </Box>
                   )}
+
+                  {/* Registration Info */}
+                  <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Registered By</Typography>
+                          <Typography variant="body2">{hcf.registeredByUsername || 'System'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Created At</Typography>
+                          <Typography variant="body2">
+                            {hcf.createdAt ? new Date(hcf.createdAt).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            }) : '-'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Box>
                 </Stack>
               </CardContent>
             </Card>

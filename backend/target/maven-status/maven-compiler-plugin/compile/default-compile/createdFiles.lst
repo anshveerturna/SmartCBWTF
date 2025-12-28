@@ -33,7 +33,9 @@ com/smartcbwtf/controller/SuperAdminUserController$SuperAdminUserDTO.class
 com/smartcbwtf/domain/Attendance.class
 com/smartcbwtf/service/GpsIngestionService.class
 com/smartcbwtf/controller/SuperAdminUserController$PasswordResetRequest.class
+com/smartcbwtf/controller/CbwtfAttendanceController$AttendanceDTO.class
 com/smartcbwtf/service/AnalyticsPageService.class
+com/smartcbwtf/service/AgreementExpirationScheduler.class
 com/smartcbwtf/domain/SystemError.class
 com/smartcbwtf/gps/adapter/GpsVendorAdapter.class
 com/smartcbwtf/dto/InvoiceResponse.class
@@ -65,6 +67,7 @@ com/smartcbwtf/service/StaffService$UpdateStaffRequest.class
 com/smartcbwtf/dto/UpdateHcfRequest.class
 com/smartcbwtf/config/TenantContext$TenantInfo.class
 com/smartcbwtf/dto/InvoiceGenerateRequest.class
+com/smartcbwtf/controller/CbwtfAttendanceController$AttendanceListResponse.class
 com/smartcbwtf/dto/AnalyticsPageDTO$WasteByCategoryResponse.class
 com/smartcbwtf/exception/AgreementNotActiveException.class
 com/smartcbwtf/domain/AgreementBillingConfig.class
@@ -101,6 +104,7 @@ com/smartcbwtf/repository/FacilityTermsRepository.class
 com/smartcbwtf/controller/SystemErrorController$ErrorStatsDTO.class
 com/smartcbwtf/service/AgreementSnapshotService.class
 com/smartcbwtf/controller/SuperAdminProfileController$ProfileUpdateRequest.class
+com/smartcbwtf/controller/CbwtfAttendanceController.class
 com/smartcbwtf/dto/AnalyticsPageDTO.class
 com/smartcbwtf/dto/LabelIssueRequest.class
 com/smartcbwtf/config/SubscriptionGuardFilter.class
@@ -165,6 +169,7 @@ com/smartcbwtf/controller/GpsHealthController$HealthSummaryResponse.class
 com/smartcbwtf/gps/adapter/GpsEventDTO.class
 com/smartcbwtf/controller/CbwtfProfileController$ProfileUpdateRequest.class
 com/smartcbwtf/controller/AttendanceController.class
+com/smartcbwtf/exception/DuplicateHcfException.class
 com/smartcbwtf/dto/BillingConfigRequest.class
 com/smartcbwtf/gps/adapter/GpsEventDTO$Builder.class
 com/smartcbwtf/service/GpsIngestionHealthService$IngestionHealthDTO.class
@@ -207,9 +212,11 @@ com/smartcbwtf/repository/TenantFeatureFlagRepository.class
 com/smartcbwtf/repository/AgreementBillingConfigRepository.class
 com/smartcbwtf/service/StaffService.class
 com/smartcbwtf/controller/SystemConfigController.class
+com/smartcbwtf/exception/DuplicateHcfException$DuplicateHcfErrorResponse.class
 com/smartcbwtf/controller/AnalyticsController.class
 com/smartcbwtf/service/GpsDeviceBindingService.class
 com/smartcbwtf/dto/admin/UpdateUserRequest.class
+com/smartcbwtf/dto/RenewAgreementRequest.class
 com/smartcbwtf/service/AgreementTransitionService.class
 com/smartcbwtf/service/EmailService.class
 com/smartcbwtf/config/GlobalExceptionHandler.class
@@ -230,6 +237,7 @@ com/smartcbwtf/dto/HcfDetailDTO$AgreementInfo.class
 com/smartcbwtf/dto/AlertMismatchedBagDto.class
 com/smartcbwtf/controller/UserController$ChangePasswordRequest.class
 com/smartcbwtf/service/StaffService$StaffDetailDTO.class
+com/smartcbwtf/controller/HcfController$MobileHcfDto.class
 com/smartcbwtf/controller/CbwtfProfileController$PasswordChangeRequest.class
 com/smartcbwtf/dto/TermsListItem.class
 com/smartcbwtf/controller/CbwtfProfileController.class

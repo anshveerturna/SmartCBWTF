@@ -136,6 +136,14 @@ class AttendanceViewModel @Inject constructor(
             _hcfSearchState.value = HcfSearchState.Loading
             
             try {
+                // Refresh HCF data from server to get latest GPS coordinates
+                try {
+                    hcfRepository.refresh()
+                } catch (e: Exception) {
+                    // Continue with cached data if refresh fails
+                    android.util.Log.w("AttendanceVM", "HCF refresh failed, using cached data: ${e.message}")
+                }
+                
                 val allHcfs = hcfRepository.getAll().firstOrNull() ?: emptyList()
                 
                 val nearbyHcfs = allHcfs.mapNotNull { hcf ->

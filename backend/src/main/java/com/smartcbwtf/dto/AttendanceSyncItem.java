@@ -15,8 +15,12 @@ public class AttendanceSyncItem {
     @NotNull
     private UUID hcfId;
 
+    /**
+     * Event timestamp in epoch milliseconds (from Android
+     * System.currentTimeMillis()).
+     */
     @NotNull
-    private Instant eventTs;
+    private Long eventTsMillis;
 
     @NotNull
     private Double gpsLat;
@@ -29,24 +33,71 @@ public class AttendanceSyncItem {
     private String appDeviceId;
 
     // Getters and setters
-    public UUID getClientEventId() { return clientEventId; }
-    public void setClientEventId(UUID clientEventId) { this.clientEventId = clientEventId; }
+    public UUID getClientEventId() {
+        return clientEventId;
+    }
 
-    public UUID getHcfId() { return hcfId; }
-    public void setHcfId(UUID hcfId) { this.hcfId = hcfId; }
+    public void setClientEventId(UUID clientEventId) {
+        this.clientEventId = clientEventId;
+    }
 
-    public Instant getEventTs() { return eventTs; }
-    public void setEventTs(Instant eventTs) { this.eventTs = eventTs; }
+    public UUID getHcfId() {
+        return hcfId;
+    }
 
-    public Double getGpsLat() { return gpsLat; }
-    public void setGpsLat(Double gpsLat) { this.gpsLat = gpsLat; }
+    public void setHcfId(UUID hcfId) {
+        this.hcfId = hcfId;
+    }
 
-    public Double getGpsLon() { return gpsLon; }
-    public void setGpsLon(Double gpsLon) { this.gpsLon = gpsLon; }
+    /**
+     * Returns eventTs as a proper Instant, converting from epoch milliseconds.
+     */
+    public Instant getEventTs() {
+        return eventTsMillis != null ? Instant.ofEpochMilli(eventTsMillis) : null;
+    }
 
-    public Double getGpsAccuracyM() { return gpsAccuracyM; }
-    public void setGpsAccuracyM(Double gpsAccuracyM) { this.gpsAccuracyM = gpsAccuracyM; }
+    public Long getEventTsMillis() {
+        return eventTsMillis;
+    }
 
-    public String getAppDeviceId() { return appDeviceId; }
-    public void setAppDeviceId(String appDeviceId) { this.appDeviceId = appDeviceId; }
+    public void setEventTsMillis(Long eventTsMillis) {
+        this.eventTsMillis = eventTsMillis;
+    }
+
+    // For backward compatibility with existing JSON that uses "eventTs" field name
+    public void setEventTs(Long eventTs) {
+        this.eventTsMillis = eventTs;
+    }
+
+    public Double getGpsLat() {
+        return gpsLat;
+    }
+
+    public void setGpsLat(Double gpsLat) {
+        this.gpsLat = gpsLat;
+    }
+
+    public Double getGpsLon() {
+        return gpsLon;
+    }
+
+    public void setGpsLon(Double gpsLon) {
+        this.gpsLon = gpsLon;
+    }
+
+    public Double getGpsAccuracyM() {
+        return gpsAccuracyM;
+    }
+
+    public void setGpsAccuracyM(Double gpsAccuracyM) {
+        this.gpsAccuracyM = gpsAccuracyM;
+    }
+
+    public String getAppDeviceId() {
+        return appDeviceId;
+    }
+
+    public void setAppDeviceId(String appDeviceId) {
+        this.appDeviceId = appDeviceId;
+    }
 }

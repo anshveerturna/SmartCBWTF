@@ -33,7 +33,7 @@ public class AttendanceController {
      * Returns partial success: some events may succeed while others fail.
      */
     @PostMapping("/sync")
-    @PreAuthorize("hasRole('DRIVER')")
+    @PreAuthorize("hasAnyRole('DRIVER', 'PLANT_OPERATOR')")
     public ResponseEntity<AttendanceSyncResponse> sync(
             @Valid @RequestBody AttendanceSyncRequest request,
             Authentication authentication) {

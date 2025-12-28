@@ -524,5 +524,32 @@ export const renewAgreement = async (id: string, data: RenewAgreementRequest): P
   return response.data;
 };
 
-export default cbwtfApi;
+// ============= Attendance =============
 
+export interface AttendanceRecord {
+  id: string;
+  staffName: string;
+  staffRole: string | null;
+  hcfName: string;
+  hcfId: string | null;
+  hcfAddress: string;
+  eventTs: string;
+  gpsLat: number | null;
+  gpsLon: number | null;
+}
+
+export interface AttendanceListResponse {
+  records: AttendanceRecord[];
+  totalRecords: number;
+  totalPages: number;
+  currentPage: number;
+}
+
+export const getAttendanceLogs = async (page = 0, size = 50): Promise<AttendanceListResponse> => {
+  const response = await apiClient.get('/api/cbwtf/attendance', {
+    params: { page, size }
+  });
+  return response.data;
+};
+
+export default cbwtfApi;

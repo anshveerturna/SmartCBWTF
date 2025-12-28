@@ -35,6 +35,35 @@ public class HcfController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
+    /**
+     * List all HCFs with active agreements for current CBWTF.
+     * Used by Android app for attendance marking.
+     * Returns HCFs with GPS coordinates for geofence validation.
+     */
+    @GetMapping
+    @PreAuthorize("hasAnyRole('DRIVER', 'PLANT_OPERATOR', 'CBWTF_ADMIN')")
+    public ResponseEntity<List<MobileHcfDto>> listForAttendance() {
+        UUID facilityId = com.smartcbwtf.config.TenantContext.getTenantId();
+        if (facilityId == null) {
+            throw new IllegalStateException("Tenant ID not found in context");
+        }
+        List<MobileHcfDto> hcfs = hcfService.listActiveHcfsForMobile(facilityId);
+        return ResponseEntity.ok(hcfs);
+    }
+
+    public record MobileHcfDto(
+            String id,
+            String name,
+            String address,
+            String city,
+            String state,
+            String postalCode,
+            String phone,
+            Double latitude,
+            Double longitude,
+            boolean approved) {
+    }
+
     @GetMapping("/pending")
     @PreAuthorize("hasRole('CBWTF_ADMIN')")
     public List<Hcf> pending() {

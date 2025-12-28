@@ -46,7 +46,7 @@ public class CbwtfHcfController {
      * Get HCF detail with agreement, billing config, and summary.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<HcfDetailDTO> getHcfDetail(@PathVariable UUID id) {
+    public ResponseEntity<HcfDetailDTO> getHcfDetail(@PathVariable("id") UUID id) {
         log.info("Controller request: getHcfDetail for ID: {}", id);
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(hcfService.getHcfDetail(id, facilityId));
@@ -58,7 +58,7 @@ public class CbwtfHcfController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<HcfDetailDTO> updateHcf(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody UpdateHcfRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(hcfService.updateHcf(id, facilityId, request));
@@ -71,7 +71,7 @@ public class CbwtfHcfController {
      */
     @PutMapping("/{id}/location")
     public ResponseEntity<HcfDetailDTO> updateLocation(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody UpdateLocationRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(hcfService.updateLocation(id, facilityId, request));
@@ -83,7 +83,7 @@ public class CbwtfHcfController {
      */
     @PostMapping("/{id}/deactivate")
     public ResponseEntity<Void> deactivateHcf(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody DeactivateHcfRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         hcfService.deactivate(id, facilityId, request);
@@ -94,7 +94,7 @@ public class CbwtfHcfController {
      * Get current billing configuration for HCF's agreement.
      */
     @GetMapping("/{id}/billing")
-    public ResponseEntity<HcfDetailDTO.BillingConfigInfo> getBillingConfig(@PathVariable UUID id) {
+    public ResponseEntity<HcfDetailDTO.BillingConfigInfo> getBillingConfig(@PathVariable("id") UUID id) {
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(billingConfigService.getCurrentConfig(id, facilityId));
     }
@@ -106,7 +106,7 @@ public class CbwtfHcfController {
      */
     @PutMapping("/{id}/billing")
     public ResponseEntity<HcfDetailDTO.BillingConfigInfo> updateBillingConfig(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody BillingConfigRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(billingConfigService.createConfig(id, facilityId, request));
@@ -128,7 +128,7 @@ public class CbwtfHcfController {
      */
     @PostMapping("/{id}/approve")
     public ResponseEntity<HcfDetailDTO> approveHcf(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody HcfApprovalRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(hcfService.approveHcf(id, facilityId, request));
@@ -140,7 +140,7 @@ public class CbwtfHcfController {
      */
     @PostMapping("/{id}/reject")
     public ResponseEntity<Void> rejectHcf(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody HcfRejectionRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         hcfService.rejectHcf(id, facilityId, request);
@@ -153,7 +153,7 @@ public class CbwtfHcfController {
      */
     @PostMapping("/{id}/agreements/renew")
     public ResponseEntity<HcfDetailDTO> renewAgreement(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody RenewAgreementRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(hcfService.renewAgreement(id, facilityId, request));
