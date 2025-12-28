@@ -594,4 +594,58 @@ export const getAttendanceLogs = async (page = 0, size = 50): Promise<Attendance
   return response.data;
 };
 
+// ============= QR Authorization =============
+
+export interface QrGenerateRequest {
+  hcfId: string;
+  wasteCategory: 'YELLOW' | 'RED' | 'BLUE' | 'WHITE';
+  validFrom: string;
+  validTo: string;
+}
+
+export interface QrGenerateResponse {
+  qrId: string;
+  qrPayloadJson: string;
+}
+
+export interface QrDetail {
+  id: string;
+  agreementId: string;
+  agreementNumber: string;
+  hcfId: string;
+  hcfName: string;
+  wasteCategory: 'YELLOW' | 'RED' | 'BLUE' | 'WHITE';
+  validFrom: string;
+  validTo: string;
+  status: 'ACTIVE' | 'USED' | 'VERIFIED' | 'EXPIRED' | 'REVOKED' | 'BLOCKED';
+  createdAt: string;
+  usedAt: string | null;
+  verifiedAt: string | null;
+  qrPayloadJson: string;
+}
+
+export const generateQr = async (data: QrGenerateRequest): Promise<QrGenerateResponse> => {
+  const response = await apiClient.post('/api/cbwtf/qr/generate', data);
+  return response.data;
+};
+
+export const getQrDetail = async (id: string): Promise<QrDetail> => {
+  const response = await apiClient.get(`/api/cbwtf/qr/${id}`);
+  return response.data;
+};
+
+export const listQrs = async (hcfId?: string, status?: string): Promise<QrDetail[]> => {
+  const response = await apiClient.get('/api/cbwtf/qr', {
+    params: { hcfId, status }
+  });
+  return response.data;
+};
+
+export const revokeQr = async (id: string, reason?: string): Promise<void> => {
+  await apiClient.post(`/api/cbwtf/qr/${id}/revoke`, null, {
+    params: { reason }
+  });
+};
+
 export default cbwtfApi;
+

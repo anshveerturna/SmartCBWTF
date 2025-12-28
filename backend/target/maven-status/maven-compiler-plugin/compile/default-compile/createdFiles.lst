@@ -24,6 +24,7 @@ com/smartcbwtf/controller/GpsIngestionController$IngestionResponse.class
 com/smartcbwtf/controller/SuperAdminUserController$CreateSuperAdminRequest.class
 com/smartcbwtf/dto/HcfListItemDTO.class
 com/smartcbwtf/service/AnalyticsService.class
+com/smartcbwtf/dto/CbwtfAdminHcfRegistrationRequest.class
 com/smartcbwtf/domain/SubscriptionAudit.class
 com/smartcbwtf/dto/admin/UpdateSubscriptionRequest.class
 com/smartcbwtf/controller/LocationController$LocationUpdateRequest.class
@@ -31,12 +32,14 @@ com/smartcbwtf/domain/Facility$Status.class
 com/smartcbwtf/dto/HcfRejectionRequest.class
 com/smartcbwtf/controller/SuperAdminUserController$SuperAdminUserDTO.class
 com/smartcbwtf/domain/Attendance.class
+com/smartcbwtf/domain/QrAuthorization.class
 com/smartcbwtf/service/GpsIngestionService.class
 com/smartcbwtf/controller/SuperAdminUserController$PasswordResetRequest.class
 com/smartcbwtf/controller/CbwtfAttendanceController$AttendanceDTO.class
 com/smartcbwtf/service/AnalyticsPageService.class
 com/smartcbwtf/service/AgreementExpirationScheduler.class
 com/smartcbwtf/domain/SystemError.class
+com/smartcbwtf/service/QrAuthorizationService$QrGenerateResult.class
 com/smartcbwtf/gps/adapter/GpsVendorAdapter.class
 com/smartcbwtf/dto/InvoiceResponse.class
 com/smartcbwtf/dto/admin/UpdateCBWTFRequest.class
@@ -53,6 +56,7 @@ com/smartcbwtf/service/GpsIngestionHealthService$HealthStatus.class
 com/smartcbwtf/controller/SuperAdminUserController.class
 com/smartcbwtf/dto/BagVerifyResponse.class
 com/smartcbwtf/Application.class
+com/smartcbwtf/dto/QrGenerateRequest.class
 com/smartcbwtf/controller/VehicleController$VehicleDTO.class
 com/smartcbwtf/repository/AgreementRepository.class
 com/smartcbwtf/controller/AlertsController.class
@@ -98,6 +102,7 @@ com/smartcbwtf/controller/BankAccountController$CreateBankAccountRequest.class
 com/smartcbwtf/service/AgreementGuardService.class
 com/smartcbwtf/controller/GpsIngestionController$UnbindRequest.class
 com/smartcbwtf/domain/TenantFeatureFlag.class
+com/smartcbwtf/controller/MobileQrController.class
 com/smartcbwtf/controller/LabelController.class
 com/smartcbwtf/service/CBWTFDashboardService.class
 com/smartcbwtf/repository/FacilityTermsRepository.class
@@ -117,6 +122,7 @@ com/smartcbwtf/controller/AdminMasterDataController.class
 com/smartcbwtf/domain/Facility$Plan.class
 com/smartcbwtf/service/AttendanceService.class
 com/smartcbwtf/domain/AgreementSnapshot.class
+com/smartcbwtf/dto/QrScanRequest.class
 com/smartcbwtf/config/JwtService.class
 com/smartcbwtf/controller/HealthController.class
 com/smartcbwtf/domain/Invoice.class
@@ -144,6 +150,7 @@ com/smartcbwtf/controller/MobileApiController$MeResponse.class
 com/smartcbwtf/controller/BankAccountController.class
 com/smartcbwtf/repository/BankAccountRepository.class
 com/smartcbwtf/domain/SystemConfigAudit.class
+com/smartcbwtf/controller/CbwtfQrController.class
 com/smartcbwtf/service/LabelService.class
 com/smartcbwtf/repository/SystemConfigAuditRepository.class
 com/smartcbwtf/dto/TemplateListItem.class
@@ -154,12 +161,16 @@ com/smartcbwtf/controller/SystemErrorController$SystemErrorDTO.class
 com/smartcbwtf/repository/AgreementNumberSequenceRepository.class
 com/smartcbwtf/controller/SuperAdminUserController$UpdateSuperAdminRequest.class
 com/smartcbwtf/dto/TermsCreateRequest.class
+com/smartcbwtf/repository/QrAuthorizationRepository.class
 com/smartcbwtf/controller/SystemConfigController$BulkUpdateRequest.class
 com/smartcbwtf/controller/BagEventController.class
 com/smartcbwtf/config/FeatureGateInterceptor.class
+com/smartcbwtf/domain/QrAuthorization$Status.class
+com/smartcbwtf/domain/QrAuthorization$WasteCategory.class
 com/smartcbwtf/dto/HcfDetailDTO$BillingConfigInfo.class
 com/smartcbwtf/dto/AlertMissingBagDto.class
 com/smartcbwtf/config/SecurityConfig.class
+com/smartcbwtf/service/QrAuthorizationService$1.class
 com/smartcbwtf/repository/AuditLogRepository.class
 com/smartcbwtf/service/FacilityTemplateService.class
 com/smartcbwtf/service/SystemConfigService.class
@@ -180,6 +191,7 @@ com/smartcbwtf/domain/AuditLog.class
 com/smartcbwtf/controller/SystemConfigController$UpdateConfigRequest.class
 com/smartcbwtf/service/CbwtfHcfService.class
 com/smartcbwtf/domain/SystemConfig$ValueType.class
+com/smartcbwtf/dto/QrDetailDTO.class
 com/smartcbwtf/service/PasswordPolicyValidator.class
 com/smartcbwtf/dto/admin/UserManagementDTO.class
 com/smartcbwtf/controller/GpsIngestionController$BindResponse.class
@@ -189,6 +201,7 @@ com/smartcbwtf/service/BillingConfigService.class
 com/smartcbwtf/dto/UpdateAgreementRequest.class
 com/smartcbwtf/controller/SystemConfigController$ConfigAuditDTO.class
 com/smartcbwtf/dto/TermsResponse.class
+com/smartcbwtf/service/QrSigningService$SignedPayload.class
 com/smartcbwtf/domain/BagEvent.class
 com/smartcbwtf/service/BagEventService$MismatchResult.class
 com/smartcbwtf/domain/FacilityTerms.class
@@ -199,6 +212,7 @@ com/smartcbwtf/domain/SystemError$Status.class
 com/smartcbwtf/service/VehicleService.class
 com/smartcbwtf/service/AuditLogService.class
 com/smartcbwtf/service/BagEventService$VerifyResult.class
+com/smartcbwtf/dto/QrGenerateResponse.class
 com/smartcbwtf/controller/VehicleController$LiveMapDTO.class
 com/smartcbwtf/repository/GpsEventRepository.class
 com/smartcbwtf/service/CBWTFScopedQueryService.class
@@ -225,6 +239,7 @@ com/smartcbwtf/exception/FeatureDisabledException.class
 com/smartcbwtf/config/GlobalExceptionHandler$ApiError.class
 com/smartcbwtf/service/AnalyticsAggregationService.class
 com/smartcbwtf/repository/AppUserRepository.class
+com/smartcbwtf/service/QrAuthorizationService.class
 com/smartcbwtf/service/SystemConfigService$1.class
 com/smartcbwtf/service/AlertsService.class
 com/smartcbwtf/config/AnalyticsDataSeeder.class
@@ -259,7 +274,9 @@ com/smartcbwtf/domain/Agreement.class
 com/smartcbwtf/controller/AdminController.class
 com/smartcbwtf/domain/SystemError$Severity.class
 com/smartcbwtf/repository/SystemConfigRepository.class
+com/smartcbwtf/service/QrSigningService.class
 com/smartcbwtf/repository/SubscriptionAuditRepository.class
+com/smartcbwtf/service/QrAuthorizationService$QrValidationResult.class
 com/smartcbwtf/service/TenantAssertionService$TenantAccessDeniedException.class
 com/smartcbwtf/dto/CategoryBreakdownDTO.class
 com/smartcbwtf/dto/HcfRegistrationResponse$TemplateInfo.class

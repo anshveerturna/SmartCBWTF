@@ -40,6 +40,7 @@ const CbwtfHcfList = lazy(() => import('./pages/cbwtf/HcfList'));
 const CbwtfHcfDetail = lazy(() => import('./pages/cbwtf/HcfDetail'));
 const CbwtfHcfPendingApprovals = lazy(() => import('./pages/cbwtf/HcfPendingApprovals'));
 const CbwtfHcfRegister = lazy(() => import('./pages/cbwtf/HcfRegister'));
+const CbwtfQrLabels = lazy(() => import('./pages/cbwtf/QrLabels'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 // CBWTF Finance pages
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
@@ -150,7 +151,7 @@ const App: React.FC = () => {
                   <Route path="hcfs/pending" element={<CbwtfHcfPendingApprovals />} />
                   <Route path="hcfs/register" element={<CbwtfHcfRegister />} />
                   <Route path="hcfs/:id" element={<CbwtfHcfDetail />} />
-                  <Route path="labels" element={<div>QR Labels (Coming Soon)</div>} />
+                  <Route path="labels" element={<CbwtfQrLabels />} />
                   <Route path="operations" element={<div>Waste Operations (Coming Soon)</div>} />
                   {/* Finance Section */}
                   <Route path="finance/bank-accounts" element={<FinanceBankAccounts />} />
