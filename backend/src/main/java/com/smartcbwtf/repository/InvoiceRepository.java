@@ -16,6 +16,8 @@ import java.util.UUID;
 public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     Optional<Invoice> findByInvoiceNumber(String invoiceNumber);
 
+    Optional<Invoice> findByBillId(UUID billId);
+
     // Sum of all paid invoice amounts for revenue calculation
     @Query("SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.status = 'PAID'")
     Optional<BigDecimal> sumPaidAmount();

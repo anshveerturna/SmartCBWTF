@@ -41,10 +41,13 @@ const CbwtfHcfDetail = lazy(() => import('./pages/cbwtf/HcfDetail'));
 const CbwtfHcfPendingApprovals = lazy(() => import('./pages/cbwtf/HcfPendingApprovals'));
 const CbwtfHcfRegister = lazy(() => import('./pages/cbwtf/HcfRegister'));
 const CbwtfQrLabels = lazy(() => import('./pages/cbwtf/QrLabels'));
+const CbwtfBillingList = lazy(() => import('./pages/cbwtf/BillingList'));
+const CbwtfBillDetail = lazy(() => import('./pages/cbwtf/BillDetail'));
+const CbwtfBillingSettings = lazy(() => import('./pages/cbwtf/BillingSettings'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 // CBWTF Finance pages
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
-const FinanceInvoices = lazy(() => import('./pages/cbwtf/finance/Invoices'));
+const FinanceInvoices = lazy(() => import('./pages/cbwtf/finance/InvoiceList'));
 const FinanceBills = lazy(() => import('./pages/cbwtf/finance/Bills'));
 const FinanceRevenue = lazy(() => import('./pages/cbwtf/finance/Revenue'));
 // Utility pages
@@ -158,6 +161,10 @@ const App: React.FC = () => {
                   <Route path="finance/invoices" element={<FinanceInvoices />} />
                   <Route path="finance/bills" element={<FinanceBills />} />
                   <Route path="finance/revenue" element={<FinanceRevenue />} />
+                  {/* Billing Section */}
+                  <Route path="billing" element={<CbwtfBillingList />} />
+                  <Route path="billing/:billId" element={<CbwtfBillDetail />} />
+                  <Route path="settings/billing" element={<CbwtfBillingSettings />} />
                   <Route path="alerts" element={<div>Alerts (Coming Soon)</div>} />
                   <Route path="settings" element={<div>Settings (Coming Soon)</div>} />
                   <Route path="profile" element={<CbwtfProfile />} />

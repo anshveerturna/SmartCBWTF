@@ -647,5 +647,186 @@ export const revokeQr = async (id: string, reason?: string): Promise<void> => {
   });
 };
 
+// ============= Billing API =============
+
+export interface BillSummary {
+  id: string;
+  hcfName: string;
+  billingMonth: string;
+  totalAmount: number;
+  status: string;
+  invoiceNumber: string | null;
+}
+
+export interface BillDetail {
+  // Bill Identity
+  id: string;
+  billingMonth: string;
+  status: string;
+  
+  // HCF & Agreement Info
+  hcfName: string;
+  agreementCode: string;
+  agreementVersion: number;
+  
+  // Pickup Snapshot
+  pickupEventCount: number;
+  pickupWeightKg: number;
+  pickupEventHash: string;
+  
+  // Rate Snapshot (Frozen at billing time)
+  bedCount: number;
+  baseGramsPerBedPerDay: number;
+  baseRatePerBedPerDay: number;
+  excessRatePerKg: number;
+  excessRateEffectiveFrom: string;
+  
+  // Calculation Breakdown
+  baseAllowanceKg: number;
+  excessWeightKg: number;
+  baseAmount: number;
+  excessAmount: number;
+  subtotal: number;
+  cgst: number;
+  sgst: number;
+  totalAmount: number;
+  
+  // Invoice reference
+  invoiceNumber: string | null;
+}
+
+export interface InvoiceDetail {
+  id: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  financialYear: string;
+  totalAmount: number;
+  pdfUrl: string | null;
+  integrityHash: string;
+}
+
+export interface BillsResponse {
+  content: BillSummary[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface FacilityBillingConfig {
+  excessRatePerKg: number;
+  excessRateEffectiveFrom: string;
+}
+
+export interface ExcessRateHistory {
+  ratePerKg: number;
+  effectiveFrom: string;
+  changedAt: string;
+  changedBy: string | null;
+}
+
+export const listBills = async (page = 0, size = 20): Promise<BillsResponse> => {
+  const response = await apiClient.get('/api/cbwtf/billing/bills', {
+    params: { page, size }
+  });
+  return response.data;
+};
+
+export const getBillsForMonth = async (year: number, month: number): Promise<BillSummary[]> => {
+  const response = await apiClient.get(`/api/cbwtf/billing/bills/month/${year}/${month}`);
+  return response.data;
+};
+
+export const getBillDetail = async (billId: string): Promise<BillDetail> => {
+  const response = await apiClient.get(`/api/cbwtf/billing/bills/${billId}`);
+  return response.data;
+};
+
+export const getInvoice = async (billId: string): Promise<InvoiceDetail> => {
+  const response = await apiClient.get(`/api/cbwtf/billing/bills/${billId}/invoice`);
+  return response.data;
+};
+
+export const downloadInvoicePdf = async (billId: string): Promise<Blob> => {
+  const response = await apiClient.get(`/api/cbwtf/billing/bills/${billId}/invoice/pdf`, {
+    responseType: 'blob'
+  });
+  return response.data;
+};
+
+export const triggerBillGeneration = async (billingMonth: string): Promise<{ billsGenerated: number }> => {
+  const response = await apiClient.post('/api/cbwtf/billing/generate', { billingMonth });
+  return response.data;
+};
+
+export const getFacilityBillingConfig = async (): Promise<FacilityBillingConfig> => {
+  const response = await apiClient.get('/api/cbwtf/billing/config');
+  return response.data;
+};
+
+export const updateExcessRate = async (ratePerKg: number, effectiveFrom: string): Promise<void> => {
+  await apiClient.post('/api/cbwtf/billing/config/excess-rate', {
+    ratePerKg,
+    effectiveFrom
+  });
+};
+
+export const getExcessRateHistory = async (): Promise<ExcessRateHistory[]> => {
+  const response = await apiClient.get('/api/cbwtf/billing/config/excess-rate/history');
+  return response.data;
+};
+
+// ============= Invoice List API =============
+
+export interface InvoiceSummary {
+  id: string;
+  invoiceNumber: string;
+  hcfName: string;
+  billingMonth: string;
+  invoiceDate: string;
+  totalAmount: number;
+}
+
+export interface InvoicesResponse {
+  content: InvoiceSummary[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface InvoiceFullDetail {
+  id: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  financialYear: string;
+  hcfName: string;
+  billingMonth: string;
+  totalAmount: number;
+  pdfUrl: string | null;
+  integrityHash: string;
+  billId: string;
+}
+
+export const listInvoices = async (page = 0, size = 20): Promise<InvoicesResponse> => {
+  const response = await apiClient.get('/api/cbwtf/billing/invoices', {
+    params: { page, size }
+  });
+  return response.data;
+};
+
+export const getInvoiceDetail = async (invoiceId: string): Promise<InvoiceFullDetail> => {
+  const response = await apiClient.get(`/api/cbwtf/billing/invoices/${invoiceId}`);
+  return response.data;
+};
+
+export const downloadInvoiceById = async (invoiceId: string): Promise<Blob> => {
+  const response = await apiClient.get(`/api/cbwtf/billing/invoices/${invoiceId}/pdf`, {
+    responseType: 'blob'
+  });
+  return response.data;
+};
+
 export default cbwtfApi;
+
 

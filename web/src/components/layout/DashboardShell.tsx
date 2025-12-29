@@ -57,7 +57,7 @@ export const DashboardShell: React.FC = () => {
     if (path.includes('/hcfs')) return 'HCF Management';
     if (path.includes('/labels')) return 'QR Labels';
     if (path.includes('/operations')) return 'Waste Operations';
-    if (path.includes('/billing')) return 'Billing & Invoicing';
+    if (path.includes('/billing')) return 'Billing';
     if (path.includes('/alerts')) return 'Alerts';
     if (path.includes('/tenants')) return 'Tenant Management';
     if (path.includes('/settings')) return 'Settings';
