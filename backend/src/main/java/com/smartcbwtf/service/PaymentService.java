@@ -16,13 +16,14 @@ import java.time.LocalDate;
 import java.util.*;
 
 /**
- * Payment Service - Core payment recording and allocation.
+ * Payment Service - Core payment recording, allocation, and reversal.
  * 
  * INVARIANTS:
  * - Payments are IMMUTABLE (no updates, use reversals)
  * - FIFO allocation: oldest invoices paid first
  * - Overpayments go to advance ledger
- * - All amounts are BigDecimal (never double)
+ * - Reversals use COUNTER-ENTRIES, never deletion
+ * - Receipt is generated SYNCHRONOUSLY (fail-closed)
  */
 @Service
 public class PaymentService {
@@ -38,6 +39,7 @@ public class PaymentService {
     private final FacilityRepository facilityRepository;
     private final BankAccountRepository bankAccountRepository;
     private final AlertService alertService;
+    private final ReceiptService receiptService;
 
     public PaymentService(
             PaymentRepository paymentRepository,
@@ -48,7 +50,8 @@ public class PaymentService {
             HcfRepository hcfRepository,
             FacilityRepository facilityRepository,
             BankAccountRepository bankAccountRepository,
-            AlertService alertService) {
+            AlertService alertService,
+            ReceiptService receiptService) {
         this.paymentRepository = paymentRepository;
         this.reversalRepository = reversalRepository;
         this.invoicePaymentRepository = invoicePaymentRepository;
@@ -58,10 +61,12 @@ public class PaymentService {
         this.facilityRepository = facilityRepository;
         this.bankAccountRepository = bankAccountRepository;
         this.alertService = alertService;
+        this.receiptService = receiptService;
     }
 
     /**
-     * Record a new payment and allocate to invoices (FIFO).
+     * Record a new payment with FIFO allocation and synchronous receipt generation.
+     * If receipt generation fails, the entire transaction is rolled back.
      */
     @Transactional
     public PaymentResult recordPayment(RecordPaymentRequest request) {
@@ -106,9 +111,15 @@ public class PaymentService {
         // Allocate to invoices (FIFO)
         AllocationResult allocation = allocateToInvoices(payment, hcf.getId());
 
+        // Generate receipt SYNCHRONOUSLY (fail-closed)
+        // If this fails, the entire transaction is rolled back
+        List<InvoicePayment> allocations = invoicePaymentRepository.findByPaymentId(payment.getId());
+        PaymentReceipt receipt = receiptService.generateReceipt(payment, allocations);
+        log.info("Generated receipt {} for payment {}", receipt.getReceiptNumber(), payment.getId());
+
         // Create alert
         UUID eventId = UUID.randomUUID();
-        if (allocation.totalAllocated.compareTo(request.amount()) < 0) {
+        if (allocation.advanceAmount.compareTo(BigDecimal.ZERO) > 0) {
             alertService.createAlert(eventId, facility.getId(), AlertType.PAYMENT_RECEIVED,
                     AlertSeverity.INFO, "Payment Received (with advance)",
                     String.format("₹%.2f received from %s. ₹%.2f credited to advance.",
@@ -121,7 +132,87 @@ public class PaymentService {
                     "Payment", payment.getId());
         }
 
-        return PaymentResult.success(payment.getId(), allocation);
+        return PaymentResult.success(payment.getId(), receipt.getReceiptNumber(), allocation);
+    }
+
+    /**
+     * Reverse a payment using COUNTER-ENTRIES (never deletion).
+     * 
+     * This creates:
+     * 1. A new reversal payment record
+     * 2. A payment_reversal link
+     * 3. Negative invoice_payment entries (counter-entries)
+     * 4. Negative advance ledger entry (if applicable)
+     */
+    @Transactional
+    public ReversalResult reversePayment(UUID paymentId, String reason, UUID reversedBy) {
+        // Find original payment
+        Payment original = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+
+        // Check not already reversed
+        if (reversalRepository.existsByOriginalPaymentId(paymentId)) {
+            throw new IllegalStateException("Payment already reversed: " + paymentId);
+        }
+
+        // 1. Create reversal payment (same amount, linked to original)
+        Payment reversalPayment = new Payment();
+        reversalPayment.setFacility(original.getFacility());
+        reversalPayment.setHcf(original.getHcf());
+        reversalPayment.setBankAccount(original.getBankAccount());
+        reversalPayment.setPaymentDate(LocalDate.now());
+        reversalPayment.setAmount(original.getAmount());
+        reversalPayment.setMode(original.getMode());
+        reversalPayment.setReferenceNumber("REV-" + original.getId().toString().substring(0, 8));
+        reversalPayment.setNotes("Reversal of payment " + original.getId() + ": " + reason);
+        reversalPayment.setCreatedBy(reversedBy);
+        reversalPayment.setChecksum(calculateChecksum(reversalPayment));
+        reversalPayment = paymentRepository.save(reversalPayment);
+
+        // 2. Create payment_reversal link
+        PaymentReversal reversal = new PaymentReversal();
+        reversal.setOriginalPayment(original);
+        reversal.setReversalPayment(reversalPayment);
+        reversal.setReason(reason);
+        reversal.setCreatedBy(reversedBy);
+        reversalRepository.save(reversal);
+
+        // 3. Create NEGATIVE allocations (counter-entries, NOT deletion!)
+        List<InvoicePayment> originalAllocations = invoicePaymentRepository.findByPaymentId(paymentId);
+        for (InvoicePayment alloc : originalAllocations) {
+            InvoicePayment counterEntry = new InvoicePayment();
+            counterEntry.setInvoice(alloc.getInvoice());
+            counterEntry.setPayment(reversalPayment);
+            counterEntry.setAllocatedAmount(alloc.getAllocatedAmount().negate()); // NEGATIVE
+            invoicePaymentRepository.save(counterEntry);
+            log.debug("Created counter-entry for invoice {}: {}",
+                    alloc.getInvoice().getInvoiceNumber(),
+                    alloc.getAllocatedAmount().negate());
+        }
+
+        // 4. Reverse advance ledger entries (create negative entry)
+        BigDecimal advanceAmount = advanceLedgerRepository.sumByPaymentId(paymentId);
+        if (advanceAmount.compareTo(BigDecimal.ZERO) > 0) {
+            HcfAdvanceLedger reversalLedger = new HcfAdvanceLedger();
+            reversalLedger.setHcf(original.getHcf());
+            reversalLedger.setSourcePayment(reversalPayment);
+            reversalLedger.setAmount(advanceAmount.negate()); // NEGATIVE
+            reversalLedger.setChecksum(calculateAdvanceChecksum(reversalLedger));
+            advanceLedgerRepository.save(reversalLedger);
+            log.info("Created advance ledger counter-entry: {}", advanceAmount.negate());
+        }
+
+        // Create alert
+        UUID eventId = UUID.randomUUID();
+        alertService.createAlert(eventId, original.getFacility().getId(), AlertType.PAYMENT_RECEIVED,
+                AlertSeverity.WARN, "Payment Reversed",
+                String.format("Payment of ₹%.2f from %s has been reversed. Reason: %s",
+                        original.getAmount(), original.getHcf().getName(), reason),
+                "Payment", reversalPayment.getId());
+
+        log.info("Reversed payment {} with reversal {}", paymentId, reversalPayment.getId());
+
+        return new ReversalResult(reversalPayment.getId(), reversal.getId());
     }
 
     /**
@@ -211,8 +302,6 @@ public class PaymentService {
      * Get total outstanding for facility.
      */
     public BigDecimal getTotalOutstanding(UUID facilityId) {
-        // Sum of all invoice totals minus sum of all allocations
-        // This should be computed via query for performance
         return BigDecimal.ZERO; // TODO: implement query
     }
 
@@ -274,14 +363,18 @@ public class PaymentService {
             boolean success,
             String error,
             UUID paymentId,
+            String receiptNumber,
             AllocationResult allocation) {
-        public static PaymentResult success(UUID paymentId, AllocationResult allocation) {
-            return new PaymentResult(true, null, paymentId, allocation);
+        public static PaymentResult success(UUID paymentId, String receiptNumber, AllocationResult allocation) {
+            return new PaymentResult(true, null, paymentId, receiptNumber, allocation);
         }
 
         public static PaymentResult error(String error) {
-            return new PaymentResult(false, error, null, null);
+            return new PaymentResult(false, error, null, null, null);
         }
+    }
+
+    public record ReversalResult(UUID reversalPaymentId, UUID reversalId) {
     }
 
     public record AllocationResult(

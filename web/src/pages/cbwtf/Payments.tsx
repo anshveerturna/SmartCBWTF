@@ -30,6 +30,7 @@ import {
   Tabs,
   Tab,
   IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   Payment as PaymentIcon,
@@ -40,6 +41,8 @@ import {
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   Block as BlockIcon,
+  Download as DownloadIcon,
+  Undo as UndoIcon,
 } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -54,6 +57,7 @@ interface Payment {
   payerName: string | null;
   bankName: string | null;
   createdAt: string;
+  isReversed: boolean;
 }
 
 interface Summary {
@@ -113,6 +117,9 @@ export default function Payments() {
   const [tabIndex, setTabIndex] = useState(0);
   const [recordDialogOpen, setRecordDialogOpen] = useState(false);
   const [addBankDialogOpen, setAddBankDialogOpen] = useState(false);
+  const [reverseDialogOpen, setReverseDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [reverseReason, setReverseReason] = useState('');
   const [formData, setFormData] = useState({
     hcfId: '',
     bankAccountId: '',
@@ -183,6 +190,18 @@ export default function Payments() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bankAccounts'] }),
   });
 
+  const reverseMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => 
+      api.post(`/payments/${id}/reverse`, { reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['paymentsSummary'] });
+      setReverseDialogOpen(false);
+      setSelectedPayment(null);
+      setReverseReason('');
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       hcfId: '',
@@ -199,6 +218,21 @@ export default function Payments() {
   const handleSubmit = () => {
     if (!formData.hcfId || !formData.amount) return;
     recordMutation.mutate(formData);
+  };
+
+  const handleDownloadReceipt = (paymentId: string) => {
+    window.open(`/api/cbwtf/payments/${paymentId}/receipt`, '_blank');
+  };
+
+  const handleReverseClick = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setReverseDialogOpen(true);
+  };
+
+  const handleReverseConfirm = () => {
+    if (selectedPayment && reverseReason.trim()) {
+      reverseMutation.mutate({ id: selectedPayment.id, reason: reverseReason });
+    }
   };
 
   const getModeColor = (mode: string) => {
@@ -316,15 +350,16 @@ export default function Payments() {
                   <TableCell align="right">Amount</TableCell>
                   <TableCell>Mode</TableCell>
                   <TableCell>Reference</TableCell>
-                  <TableCell>Bank</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {payments.map((payment) => (
-                  <TableRow key={payment.id}>
+                  <TableRow key={payment.id} sx={payment.isReversed ? { opacity: 0.6 } : {}}>
                     <TableCell>{new Date(payment.paymentDate).toLocaleDateString('en-IN')}</TableCell>
                     <TableCell>{payment.hcfName}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: payment.isReversed ? 'text.disabled' : 'success.main' }}>
                       {formatCurrency(payment.amount)}
                     </TableCell>
                     <TableCell>
@@ -337,12 +372,34 @@ export default function Payments() {
                     <TableCell sx={{ fontFamily: 'monospace' }}>
                       {payment.referenceNumber || '-'}
                     </TableCell>
-                    <TableCell>{payment.bankName || '-'}</TableCell>
+                    <TableCell>
+                      {payment.isReversed ? (
+                        <Chip label="REVERSED" color="error" size="small" />
+                      ) : (
+                        <Chip label="ACTIVE" color="success" size="small" variant="outlined" />
+                      )}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        <Tooltip title="Download Receipt">
+                          <IconButton size="small" onClick={() => handleDownloadReceipt(payment.id)}>
+                            <DownloadIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {!payment.isReversed && (
+                          <Tooltip title="Reverse Payment">
+                            <IconButton size="small" color="error" onClick={() => handleReverseClick(payment)}>
+                              <UndoIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {payments.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                       <Typography color="text.secondary">No payments recorded yet.</Typography>
                     </TableCell>
                   </TableRow>
@@ -523,6 +580,44 @@ export default function Payments() {
           <Button onClick={() => setAddBankDialogOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={() => createBankMutation.mutate(bankFormData)} disabled={createBankMutation.isPending}>
             {createBankMutation.isPending ? 'Adding...' : 'Add Account'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reverse Payment Dialog */}
+      <Dialog open={reverseDialogOpen} onClose={() => setReverseDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Reverse Payment</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            This action cannot be undone. A reversal creates counter-entries to offset the original payment.
+          </Alert>
+          {selectedPayment && (
+            <Box mb={2}>
+              <Typography variant="body2" color="text.secondary">Payment Details:</Typography>
+              <Typography><strong>{selectedPayment.hcfName}</strong></Typography>
+              <Typography>{formatCurrency(selectedPayment.amount)} on {new Date(selectedPayment.paymentDate).toLocaleDateString('en-IN')}</Typography>
+            </Box>
+          )}
+          <TextField
+            label="Reason for Reversal"
+            fullWidth
+            required
+            value={reverseReason}
+            onChange={(e) => setReverseReason(e.target.value)}
+            placeholder="e.g., Payment returned by bank, duplicate entry..."
+            multiline
+            rows={2}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReverseDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            color="error" 
+            onClick={handleReverseConfirm} 
+            disabled={reverseMutation.isPending || !reverseReason.trim()}
+          >
+            {reverseMutation.isPending ? 'Reversing...' : 'Reverse Payment'}
           </Button>
         </DialogActions>
       </Dialog>
