@@ -227,6 +227,165 @@ export const getVehicleTrail = async (id: string, limit = 50): Promise<GpsLocati
   return response.data;
 };
 
+// ============= Facility Settings Types =============
+
+export interface LegalProfileDTO {
+  legalName?: string;
+  tradeName?: string;
+  authorizationNumber?: string;
+  spcbName?: string;
+  spcbState?: string;
+  gstin?: string;
+  pan?: string;
+  registeredAddress?: string;
+  registeredState?: string;
+  registeredPincode?: string;
+  officialEmail?: string;
+  officialPhone?: string;
+  logoUrl?: string;
+  logoChecksum?: string;
+  signatureUrl?: string;
+  signatureChecksum?: string;
+}
+
+export interface FinancialSettingsDTO {
+  cgstPercent: number;
+  sgstPercent: number;
+  igstPercent: number;
+  gstEnabled: boolean;
+}
+
+export interface PaymentReminderDTO {
+  gracePeriodDays: number;
+  autoAlertEscalation: boolean;
+}
+
+export interface AgreementRulesDTO {
+  defaultAgreementValidityMonths: number;
+  agreementRenewalWindowDays: number;
+  blockOverlappingAgreements: boolean;
+}
+
+export interface OperationalRulesDTO {
+  qrValidityDays: number;
+  allowMultipleActiveQrs: boolean;
+  requireCbwtfVerification: boolean;
+  gpsGeofenceRadiusM: number;
+  maxUnverifiedBags: number;
+  blueWasteMinPercent: number;
+}
+
+export interface ComplianceSettingsDTO {
+  dailyReportTime: string;
+  monthlyReportDay: number;
+  annualFormIvDate?: string;
+  enforceChecksum: boolean;
+}
+
+export interface EmailSettingsDTO {
+  senderName: string;
+  senderEmail: string;
+  ccAdminOnHcfEmails: boolean;
+  emailNotificationsEnabled: boolean;
+  inAppAlertsEnabled: boolean;
+}
+
+export interface LockedFieldsDTO {
+  gstLocked: boolean;
+  complianceLocked: boolean;
+  qrRulesLocked: boolean;
+  firstInvoiceAt?: string;
+  firstQrGeneratedAt?: string;
+  firstComplianceReportAt?: string;
+}
+
+export interface FacilitySettingsDTO {
+  settingsVersion: number;
+  legal: LegalProfileDTO;
+  financial: FinancialSettingsDTO;
+  paymentReminders: PaymentReminderDTO;
+  agreementRules: AgreementRulesDTO;
+  operational: OperationalRulesDTO;
+  compliance: ComplianceSettingsDTO;
+  email: EmailSettingsDTO;
+  lockedFields: LockedFieldsDTO;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SettingsAuditDTO {
+  id: string;
+  section: string;
+  settingKey: string;
+  oldValue: string;
+  newValue: string;
+  changedBy: string;
+  changedByUsername: string;
+  changedAt: string;
+  ipAddress?: string;
+}
+
+export interface SystemReadinessResult {
+  ready: boolean;
+  errors: string[];
+}
+
+// ============= Settings API Functions =============
+
+export const getFacilitySettings = async (): Promise<FacilitySettingsDTO> => {
+  const response = await apiClient.get<FacilitySettingsDTO>('/api/cbwtf/settings');
+  return response.data;
+};
+
+export const checkSystemReadiness = async (): Promise<SystemReadinessResult> => {
+  const response = await apiClient.get<SystemReadinessResult>('/api/cbwtf/settings/readiness');
+  return response.data;
+};
+
+export const updateLegalProfile = async (data: LegalProfileDTO): Promise<void> => {
+  await apiClient.put('/api/cbwtf/settings/legal', data);
+};
+
+export const updateFinancialSettings = async (data: FinancialSettingsDTO): Promise<void> => {
+  await apiClient.put('/api/cbwtf/settings/financial', data);
+};
+
+export const updatePaymentReminders = async (data: PaymentReminderDTO): Promise<void> => {
+  await apiClient.put('/api/cbwtf/settings/payment-reminders', data);
+};
+
+export const updateAgreementRules = async (data: AgreementRulesDTO): Promise<void> => {
+  await apiClient.put('/api/cbwtf/settings/agreement-rules', data);
+};
+
+export const updateOperationalRules = async (data: OperationalRulesDTO): Promise<void> => {
+  await apiClient.put('/api/cbwtf/settings/operational', data);
+};
+
+export const updateComplianceSettings = async (data: ComplianceSettingsDTO): Promise<void> => {
+  await apiClient.put('/api/cbwtf/settings/compliance', data);
+};
+
+export const updateEmailSettings = async (data: EmailSettingsDTO): Promise<void> => {
+  await apiClient.put('/api/cbwtf/settings/email', data);
+};
+
+export const getSettingsAuditHistory = async (
+  section?: string,
+  page = 0,
+  size = 20
+): Promise<{ content: SettingsAuditDTO[]; totalElements: number }> => {
+  const params = new URLSearchParams();
+  if (section) params.append('section', section);
+  params.append('page', page.toString());
+  params.append('size', size.toString());
+  
+  const response = await apiClient.get<{ content: SettingsAuditDTO[]; totalElements: number }>(
+    `/api/cbwtf/settings/audit-history?${params.toString()}`
+  );
+  return response.data;
+};
+
 // ============= Staff Management Types =============
 
 export interface StaffDTO {

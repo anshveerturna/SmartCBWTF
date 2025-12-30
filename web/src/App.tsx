@@ -54,6 +54,7 @@ const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
 const FinanceInvoices = lazy(() => import('./pages/cbwtf/finance/InvoiceList'));
 const FinanceBills = lazy(() => import('./pages/cbwtf/finance/Bills'));
+const CbwtfSettings = lazy(() => import('./pages/cbwtf/Settings'));
 const FinanceRevenue = lazy(() => import('./pages/cbwtf/finance/Revenue'));
 // Utility pages
 const Blocked = lazy(() => import('./pages/Blocked'));
@@ -166,7 +167,7 @@ const App: React.FC = () => {
                   <Route path="finance/invoices" element={<FinanceInvoices />} />
                   <Route path="finance/bills" element={<FinanceBills />} />
                   <Route path="finance/revenue" element={<FinanceRevenue />} />
-                  {/* Billing Section */}
+                  <Route path="settings" element={<CbwtfSettings />} />
                   <Route path="billing" element={<CbwtfBillingList />} />
                   <Route path="billing/:billId" element={<CbwtfBillDetail />} />
                   <Route path="settings/billing" element={<CbwtfBillingSettings />} />

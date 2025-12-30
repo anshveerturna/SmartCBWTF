@@ -32,6 +32,11 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, UUID> 
     long countByFacilityId(UUID facilityId);
 
     /**
+     * Check if any bank account exists for a facility.
+     */
+    boolean existsByFacilityId(UUID facilityId);
+
+    /**
      * Find accounts by facility and status.
      */
     List<BankAccount> findByFacilityIdAndStatus(UUID facilityId, BankAccount.Status status);

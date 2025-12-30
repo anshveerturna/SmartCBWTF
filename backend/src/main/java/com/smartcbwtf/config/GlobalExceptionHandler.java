@@ -66,6 +66,13 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, ex.getMessage(), request, details);
     }
 
+    @ExceptionHandler(com.smartcbwtf.service.FacilitySettingsService.SettingsLockedException.class)
+    public ResponseEntity<ApiError> handleSettingsLocked(
+            com.smartcbwtf.service.FacilitySettingsService.SettingsLockedException ex, HttpServletRequest request) {
+        Map<String, Object> details = Map.of("error", "SETTINGS_LOCKED");
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request, details);
+    }
+
     @ExceptionHandler(com.smartcbwtf.exception.AgreementBlockedException.class)
     public ResponseEntity<ApiError> handleAgreementBlocked(
             com.smartcbwtf.exception.AgreementBlockedException ex, HttpServletRequest request) {
