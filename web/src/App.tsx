@@ -47,6 +47,8 @@ const CbwtfBillingSettings = lazy(() => import('./pages/cbwtf/BillingSettings'))
 const CbwtfComplianceReports = lazy(() => import('./pages/cbwtf/ComplianceReports'));
 const CbwtfAlerts = lazy(() => import('./pages/cbwtf/Alerts'));
 const CbwtfNotificationSettings = lazy(() => import('./pages/cbwtf/NotificationSettings'));
+const CbwtfBankAccounts = lazy(() => import('./pages/cbwtf/BankAccounts'));
+const CbwtfPayments = lazy(() => import('./pages/cbwtf/Payments'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 // CBWTF Finance pages
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
@@ -171,6 +173,9 @@ const App: React.FC = () => {
                   {/* Compliance & Reports */}
                   <Route path="compliance" element={<CbwtfComplianceReports />} />
                   <Route path="alerts" element={<CbwtfAlerts />} />
+                  {/* Phase 10: Payments & Bank Accounts */}
+                  <Route path="payments" element={<CbwtfPayments />} />
+                  <Route path="settings/bank-accounts" element={<CbwtfBankAccounts />} />
                   <Route path="settings/notifications" element={<CbwtfNotificationSettings />} />
                   <Route path="settings" element={<div>Settings (Coming Soon)</div>} />
                   <Route path="profile" element={<CbwtfProfile />} />

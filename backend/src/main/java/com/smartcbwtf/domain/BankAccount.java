@@ -7,10 +7,15 @@ import java.util.UUID;
 /**
  * Bank account entity for CBWTF financial management.
  * Each CBWTF can have multiple bank accounts with one marked as primary.
+ * Cannot be deleted, only disabled.
  */
 @Entity
 @Table(name = "bank_account")
 public class BankAccount {
+
+    public enum Status {
+        ACTIVE, DISABLED
+    }
 
     @Id
     @GeneratedValue
@@ -20,29 +25,36 @@ public class BankAccount {
     @JoinColumn(name = "facility_id", nullable = false)
     private Facility facility;
 
-    @Column(name = "account_name", nullable = false, length = 100)
+    @Column(name = "account_name", nullable = false, length = 255)
     private String accountName;
 
-    @Column(name = "account_number", nullable = false, length = 30)
+    @Column(name = "account_number", nullable = false, length = 50)
     private String accountNumber;
 
-    @Column(name = "ifsc_code", nullable = false, length = 20)
+    @Column(name = "ifsc_code", nullable = false, length = 11)
     private String ifscCode;
 
     @Column(name = "bank_name", nullable = false, length = 100)
     private String bankName;
 
-    @Column(name = "branch_name", length = 100)
-    private String branchName;
+    @Column(name = "upi_id", length = 100)
+    private String upiId;
 
     @Column(name = "is_primary")
     private Boolean isPrimary = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Status status = Status.ACTIVE;
+
     @Column(name = "created_at")
     private Instant createdAt = Instant.now();
 
-    @Column(name = "updated_at")
-    private Instant updatedAt = Instant.now();
+    @Column(name = "created_by")
+    private UUID createdBy;
+
+    @Column(name = "disabled_at")
+    private Instant disabledAt;
 
     // Getters and Setters
     public UUID getId() {
@@ -93,12 +105,12 @@ public class BankAccount {
         this.bankName = bankName;
     }
 
-    public String getBranchName() {
-        return branchName;
+    public String getUpiId() {
+        return upiId;
     }
 
-    public void setBranchName(String branchName) {
-        this.branchName = branchName;
+    public void setUpiId(String upiId) {
+        this.upiId = upiId;
     }
 
     public Boolean getIsPrimary() {
@@ -109,6 +121,14 @@ public class BankAccount {
         this.isPrimary = isPrimary;
     }
 
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -117,16 +137,19 @@ public class BankAccount {
         this.createdAt = createdAt;
     }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
+    public UUID getCreatedBy() {
+        return createdBy;
     }
 
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
+    public void setCreatedBy(UUID createdBy) {
+        this.createdBy = createdBy;
     }
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = Instant.now();
+    public Instant getDisabledAt() {
+        return disabledAt;
+    }
+
+    public void setDisabledAt(Instant disabledAt) {
+        this.disabledAt = disabledAt;
     }
 }

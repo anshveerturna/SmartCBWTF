@@ -52,4 +52,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     // Sum all paid amount for facility (total revenue)
     @Query("SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.facility.id = :facilityId AND i.status = 'PAID'")
     BigDecimal sumPaidAmountByFacilityId(@Param("facilityId") UUID facilityId);
+
+    // Find unpaid invoices for HCF sorted by date (FIFO for payment allocation)
+    @Query("SELECT i FROM Invoice i WHERE i.hcf.id = :hcfId AND i.status != 'PAID' ORDER BY i.invoiceDate ASC")
+    List<Invoice> findUnpaidByHcfIdOrderByDateAsc(@Param("hcfId") UUID hcfId);
 }

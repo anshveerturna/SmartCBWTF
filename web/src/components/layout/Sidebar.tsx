@@ -115,7 +115,7 @@ const getCbwtfAdminItems = (): NavItem[] => [
 
 // Finance sub-navigation for CBWTF Admin
 const getCbwtfFinanceItems = (): NavItem[] => [
-  { path: '/cbwtf/finance/bank-accounts', label: 'Bank Accounts', icon: <PaymentIcon />, roles: ['CBWTF_ADMIN'] },
+  { path: '/cbwtf/payments', label: 'Payments', icon: <PaymentIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/finance/invoices', label: 'Invoices', icon: <BillingIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/billing', label: 'Billing', icon: <StorageIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/finance/revenue', label: 'Revenue', icon: <AnalyticsIcon />, roles: ['CBWTF_ADMIN'] },

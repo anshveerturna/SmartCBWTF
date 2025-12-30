@@ -6,6 +6,7 @@ package com.smartcbwtf.domain;
 public enum AlertType {
     // Financial Alerts
     BILL_GENERATED,
+    PAYMENT_RECEIVED,
     PAYMENT_DUE,
     PAYMENT_REMINDER_SENT,
     PAYMENT_OVERDUE,

@@ -32,6 +32,16 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, UUID> 
     long countByFacilityId(UUID facilityId);
 
     /**
+     * Find accounts by facility and status.
+     */
+    List<BankAccount> findByFacilityIdAndStatus(UUID facilityId, BankAccount.Status status);
+
+    /**
+     * Count active accounts for a facility.
+     */
+    long countByFacilityIdAndStatus(UUID facilityId, BankAccount.Status status);
+
+    /**
      * Clear primary flag for all accounts of a facility.
      */
     @Modifying

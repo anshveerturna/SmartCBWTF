@@ -14,13 +14,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
  * Bank Account management controller for CBWTF Admin.
- * Allows CBWTF admins to manage their facility's bank accounts.
+ * Supports Phase 10 payments integration.
+ * Cannot delete accounts - only disable.
  */
 @RestController
 @RequestMapping("/api/cbwtf/bank-accounts")
@@ -40,14 +42,20 @@ public class BankAccountController {
     // ========== LIST ACCOUNTS ==========
 
     @GetMapping
-    public ResponseEntity<List<BankAccountDTO>> listAccounts() {
+    public ResponseEntity<List<BankAccountDTO>> listAccounts(
+            @RequestParam(name = "status", required = false) String status) {
         UUID facilityId = getCurrentFacilityId();
         if (facilityId == null) {
             return ResponseEntity.badRequest().build();
         }
 
-        List<BankAccount> accounts = bankAccountRepository
-                .findByFacilityIdOrderByIsPrimaryDescCreatedAtDesc(facilityId);
+        List<BankAccount> accounts;
+        if ("ACTIVE".equalsIgnoreCase(status)) {
+            accounts = bankAccountRepository.findByFacilityIdAndStatus(facilityId, BankAccount.Status.ACTIVE);
+        } else {
+            accounts = bankAccountRepository.findByFacilityIdOrderByIsPrimaryDescCreatedAtDesc(facilityId);
+        }
+
         List<BankAccountDTO> result = accounts.stream().map(BankAccountDTO::from).toList();
         return ResponseEntity.ok(result);
     }
@@ -79,8 +87,8 @@ public class BankAccountController {
             return ResponseEntity.badRequest().build();
         }
 
-        // If this is the first account, make it primary
-        boolean isFirst = bankAccountRepository.countByFacilityId(facilityId) == 0;
+        // If this is the first active account, make it primary
+        boolean isFirst = bankAccountRepository.countByFacilityIdAndStatus(facilityId, BankAccount.Status.ACTIVE) == 0;
 
         BankAccount account = new BankAccount();
         account.setFacility(facility);
@@ -88,8 +96,9 @@ public class BankAccountController {
         account.setAccountNumber(request.accountNumber());
         account.setIfscCode(request.ifscCode().toUpperCase());
         account.setBankName(request.bankName());
-        account.setBranchName(request.branchName());
+        account.setUpiId(request.upiId());
         account.setIsPrimary(isFirst);
+        account.setStatus(BankAccount.Status.ACTIVE);
 
         account = bankAccountRepository.save(account);
         log.info("Created bank account {} for facility {}", account.getId(), facilityId);
@@ -108,40 +117,46 @@ public class BankAccountController {
         UUID facilityId = getCurrentFacilityId();
         return bankAccountRepository.findById(id)
                 .filter(a -> a.getFacility().getId().equals(facilityId))
+                .filter(a -> a.getStatus() == BankAccount.Status.ACTIVE) // Can only update active accounts
                 .map(account -> {
                     account.setAccountName(request.accountName());
                     account.setAccountNumber(request.accountNumber());
                     account.setIfscCode(request.ifscCode().toUpperCase());
                     account.setBankName(request.bankName());
-                    account.setBranchName(request.branchName());
+                    account.setUpiId(request.upiId());
                     return ResponseEntity.ok(BankAccountDTO.from(bankAccountRepository.save(account)));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // ========== DELETE ACCOUNT ==========
+    // ========== DISABLE ACCOUNT (No delete allowed) ==========
 
-    @DeleteMapping("/{id}")
+    @PutMapping("/{id}/disable")
     @Transactional
-    public ResponseEntity<Void> deleteAccount(@PathVariable("id") UUID id) {
+    public ResponseEntity<?> disableAccount(@PathVariable("id") UUID id) {
         UUID facilityId = getCurrentFacilityId();
         return bankAccountRepository.findById(id)
                 .filter(a -> a.getFacility().getId().equals(facilityId))
+                .filter(a -> a.getStatus() == BankAccount.Status.ACTIVE)
                 .map(account -> {
                     boolean wasPrimary = Boolean.TRUE.equals(account.getIsPrimary());
-                    bankAccountRepository.delete(account);
 
-                    // If we deleted the primary, set another one as primary
+                    account.setStatus(BankAccount.Status.DISABLED);
+                    account.setDisabledAt(Instant.now());
+                    account.setIsPrimary(false);
+                    bankAccountRepository.save(account);
+
+                    // If we disabled the primary, set another active one as primary
                     if (wasPrimary) {
-                        bankAccountRepository.findByFacilityIdOrderByIsPrimaryDescCreatedAtDesc(facilityId)
+                        bankAccountRepository.findByFacilityIdAndStatus(facilityId, BankAccount.Status.ACTIVE)
                                 .stream().findFirst().ifPresent(a -> {
                                     a.setIsPrimary(true);
                                     bankAccountRepository.save(a);
                                 });
                     }
 
-                    log.info("Deleted bank account {} for facility {}", id, facilityId);
-                    return ResponseEntity.noContent().<Void>build();
+                    log.info("Disabled bank account {} for facility {}", id, facilityId);
+                    return ResponseEntity.ok(Map.of("success", true, "message", "Account disabled"));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -154,6 +169,7 @@ public class BankAccountController {
         UUID facilityId = getCurrentFacilityId();
         return bankAccountRepository.findById(id)
                 .filter(a -> a.getFacility().getId().equals(facilityId))
+                .filter(a -> a.getStatus() == BankAccount.Status.ACTIVE) // Only active accounts can be primary
                 .map(account -> {
                     // Clear all primary flags for this facility
                     bankAccountRepository.clearPrimaryForFacility(facilityId);
@@ -183,9 +199,11 @@ public class BankAccountController {
             String accountNumber,
             String ifscCode,
             String bankName,
-            String branchName,
+            String upiId,
             boolean isPrimary,
-            String createdAt) {
+            String status,
+            String createdAt,
+            String disabledAt) {
         public static BankAccountDTO from(BankAccount account) {
             return new BankAccountDTO(
                     account.getId(),
@@ -193,9 +211,11 @@ public class BankAccountController {
                     account.getAccountNumber(),
                     account.getIfscCode(),
                     account.getBankName(),
-                    account.getBranchName(),
+                    account.getUpiId(),
                     Boolean.TRUE.equals(account.getIsPrimary()),
-                    account.getCreatedAt().toString());
+                    account.getStatus().name(),
+                    account.getCreatedAt().toString(),
+                    account.getDisabledAt() != null ? account.getDisabledAt().toString() : null);
         }
     }
 
@@ -204,7 +224,7 @@ public class BankAccountController {
             @NotBlank String accountNumber,
             @NotBlank String ifscCode,
             @NotBlank String bankName,
-            String branchName) {
+            String upiId) {
     }
 
     public record UpdateBankAccountRequest(
@@ -212,6 +232,6 @@ public class BankAccountController {
             @NotBlank String accountNumber,
             @NotBlank String ifscCode,
             @NotBlank String bankName,
-            String branchName) {
+            String upiId) {
     }
 }

@@ -323,6 +323,7 @@ com/smartcbwtf/dto/admin/TenantAuditDTO.class
 com/smartcbwtf/controller/TemplateController.class
 com/smartcbwtf/controller/CbwtfHcfController.class
 com/smartcbwtf/controller/MobileApiController$GpsEventItem.class
+com/smartcbwtf/repository/PaymentReceiptSequenceRepository.class
 com/smartcbwtf/controller/UserController.class
 com/smartcbwtf/controller/GpsIngestionController$BindRequest.class
 com/smartcbwtf/controller/SystemErrorController$ErrorReportResponse.class
