@@ -44,6 +44,9 @@ const CbwtfQrLabels = lazy(() => import('./pages/cbwtf/QrLabels'));
 const CbwtfBillingList = lazy(() => import('./pages/cbwtf/BillingList'));
 const CbwtfBillDetail = lazy(() => import('./pages/cbwtf/BillDetail'));
 const CbwtfBillingSettings = lazy(() => import('./pages/cbwtf/BillingSettings'));
+const CbwtfComplianceReports = lazy(() => import('./pages/cbwtf/ComplianceReports'));
+const CbwtfAlerts = lazy(() => import('./pages/cbwtf/Alerts'));
+const CbwtfNotificationSettings = lazy(() => import('./pages/cbwtf/NotificationSettings'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 // CBWTF Finance pages
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
@@ -165,7 +168,10 @@ const App: React.FC = () => {
                   <Route path="billing" element={<CbwtfBillingList />} />
                   <Route path="billing/:billId" element={<CbwtfBillDetail />} />
                   <Route path="settings/billing" element={<CbwtfBillingSettings />} />
-                  <Route path="alerts" element={<div>Alerts (Coming Soon)</div>} />
+                  {/* Compliance & Reports */}
+                  <Route path="compliance" element={<CbwtfComplianceReports />} />
+                  <Route path="alerts" element={<CbwtfAlerts />} />
+                  <Route path="settings/notifications" element={<CbwtfNotificationSettings />} />
                   <Route path="settings" element={<div>Settings (Coming Soon)</div>} />
                   <Route path="profile" element={<CbwtfProfile />} />
                 </Route>

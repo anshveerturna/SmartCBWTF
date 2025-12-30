@@ -827,6 +827,82 @@ export const downloadInvoiceById = async (invoiceId: string): Promise<Blob> => {
   return response.data;
 };
 
+// ============= Compliance Reports API =============
+
+export const getComplianceReports = async (type: string, page = 0, size = 20) => {
+  const response = await apiClient.get(`/api/cbwtf/compliance/${type}`, {
+    params: { page, size }
+  });
+  return response.data;
+};
+
+export const downloadComplianceReportPdf = async (type: string, id: string) => {
+  const response = await apiClient.get(`/api/cbwtf/compliance/${type}/${id}/pdf`, {
+    responseType: 'blob'
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${type}_report_${id}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
+export const downloadAnnualReportExcel = async (id: string) => {
+  const response = await apiClient.get(`/api/cbwtf/compliance/annual/${id}/excel`, {
+    responseType: 'blob'
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `form_iv_${id}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
+// ============= Alerts API =============
+
+export const getAlerts = async (page = 0, size = 20, category?: string) => {
+  const response = await apiClient.get('/api/cbwtf/alerts', {
+    params: { page, size, category }
+  });
+  return response.data;
+};
+
+export const getUnreadAlertCount = async () => {
+  const response = await apiClient.get('/api/cbwtf/alerts/unread-count');
+  return response.data;
+};
+
+export const markAlertAsRead = async (id: string) => {
+  const response = await apiClient.put(`/api/cbwtf/alerts/${id}/read`);
+  return response.data;
+};
+
+export const markAllAlertsAsRead = async () => {
+  const response = await apiClient.put('/api/cbwtf/alerts/read-all');
+  return response.data;
+};
+
+// ============= Notification Settings API =============
+
+export const getNotificationSettings = async () => {
+  const response = await apiClient.get('/api/cbwtf/settings/notifications');
+  return response.data;
+};
+
+export const updateNotificationSettings = async (settings: {
+  paymentReminderStartDays?: number;
+  paymentReminderFrequencyDays?: number;
+  maxOverdueReminders?: number;
+  agreementExpiryWarningDays?: number;
+}) => {
+  const response = await apiClient.put('/api/cbwtf/settings/notifications', settings);
+  return response.data;
+};
+
 export default cbwtfApi;
 
 
