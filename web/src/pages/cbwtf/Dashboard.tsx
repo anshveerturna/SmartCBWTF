@@ -254,15 +254,15 @@ const RiskAlertCard: React.FC<{ alerts: RiskAlert[] }> = ({ alerts }) => {
   );
 };
 
-// Chart data
-const categoryData = [
+// Default chart data (used when no data from backend)
+const defaultCategoryData = [
   { name: 'Yellow', value: 45, color: '#FBBF24' },
   { name: 'Red', value: 25, color: '#EF4444' },
   { name: 'Blue', value: 20, color: '#3B82F6' },
   { name: 'White', value: 10, color: '#94A3B8' },
 ];
 
-const trendData = [
+const defaultTrendData = [
   { date: 'Mon', yellow: 120, red: 80, blue: 60, white: 40 },
   { date: 'Tue', yellow: 150, red: 90, blue: 70, white: 35 },
   { date: 'Wed', yellow: 135, red: 85, blue: 75, white: 45 },
@@ -281,6 +281,28 @@ const CbwtfDashboard: React.FC = () => {
     queryFn: cbwtfApi.getDashboard,
     refetchInterval: 60000,
   });
+
+  // Fetch chart data from backend
+  const { data: categoryData } = useQuery({
+    queryKey: ['cbwtf-category-breakdown'],
+    queryFn: cbwtfApi.getCategoryBreakdown,
+    refetchInterval: 60000,
+  });
+
+  const { data: trendData } = useQuery({
+    queryKey: ['cbwtf-weekly-trend'],
+    queryFn: cbwtfApi.getWeeklyTrend,
+    refetchInterval: 60000,
+  });
+
+  const { data: trendComparison } = useQuery({
+    queryKey: ['cbwtf-trend-comparison'],
+    queryFn: cbwtfApi.getTrendComparison,
+    refetchInterval: 60000,
+  });
+
+  const chartCategoryData = categoryData || defaultCategoryData;
+  const chartTrendData = trendData || defaultTrendData;
 
   const formatCurrency = (amount: number) => {
     if (amount >= 100000) {
@@ -393,7 +415,7 @@ const CbwtfDashboard: React.FC = () => {
           value={dashboard?.bagsProcessedToday ?? '-'}
           subtitle={`${dashboard?.bagsProcessedThisWeek ?? 0} this week`}
           icon={<InventoryIcon sx={{ fontSize: 28 }} />}
-          trend={{ value: 12, label: 'vs yesterday' }}
+          trend={trendComparison ? { value: trendComparison.percentChange, label: 'vs yesterday' } : { value: 0, label: 'vs yesterday' }}
           gradient={['#6366F1', '#8B5CF6']}
           glowColor="#6366F1"
           loading={isLoading}
@@ -520,11 +542,11 @@ const CbwtfDashboard: React.FC = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Weekly distribution
             </Typography>
-            <Box sx={{ height: 260 }}>
-              <ResponsiveContainer width="100%" height="100%">
+            <Box sx={{ height: 260, minHeight: 260, position: 'relative' }}>
+              <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
                   <Pie
-                    data={categoryData}
+                    data={chartCategoryData}
                     dataKey="value"
                     nameKey="name"
                     cx="50%"
@@ -534,7 +556,7 @@ const CbwtfDashboard: React.FC = () => {
                     paddingAngle={3}
                     strokeWidth={0}
                   >
-                    {categoryData.map((entry, index) => (
+                    {chartCategoryData.map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`} 
                         fill={entry.color}
@@ -545,11 +567,21 @@ const CbwtfDashboard: React.FC = () => {
                   <Tooltip 
                     contentStyle={{
                       backgroundColor: isDark ? '#1E293B' : '#fff',
-                      border: 'none',
+                      border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
                       borderRadius: 12,
-                      boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+                      boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                      padding: '12px 16px',
                     }}
-                    formatter={(value: number) => [`${value}%`, 'Share']}
+                    itemStyle={{
+                      color: isDark ? '#E2E8F0' : '#1E293B',
+                      fontWeight: 600,
+                    }}
+                    labelStyle={{
+                      color: isDark ? '#94A3B8' : '#64748B',
+                      fontWeight: 500,
+                      marginBottom: 4,
+                    }}
+                    formatter={(value, name) => [`${value ?? 0}%`, name as string]}
                   />
                   <Legend 
                     verticalAlign="bottom" 
@@ -614,9 +646,9 @@ const CbwtfDashboard: React.FC = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Bags processed by category
             </Typography>
-            <Box sx={{ height: 320 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+            <Box sx={{ height: 320, minHeight: 320, position: 'relative' }}>
+              <ResponsiveContainer width="100%" height={320}>
+                <AreaChart data={chartTrendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorYellow" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#FBBF24" stopOpacity={0.4}/>

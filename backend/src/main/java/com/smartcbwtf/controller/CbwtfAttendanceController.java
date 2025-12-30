@@ -35,44 +35,62 @@ public class CbwtfAttendanceController {
          */
         @GetMapping
         public ResponseEntity<AttendanceListResponse> listAttendance(
-                        @RequestParam(defaultValue = "0") int page,
-                        @RequestParam(defaultValue = "50") int size) {
+                        @RequestParam(name = "page", defaultValue = "0") int page,
+                        @RequestParam(name = "size", defaultValue = "50") int size) {
 
-                UUID facilityId = TenantContext.getTenantId();
-                if (facilityId == null) {
-                        throw new IllegalStateException("Tenant ID not found in context");
+                try {
+                        UUID facilityId = TenantContext.getTenantId();
+                        if (facilityId == null) {
+                                // Return empty list instead of throwing exception
+                                return ResponseEntity.ok(new AttendanceListResponse(
+                                                List.of(),
+                                                0,
+                                                0,
+                                                page));
+                        }
+
+                        Pageable pageable = PageRequest.of(page, Math.min(size, 100));
+
+                        // Query attendance by driver's facility (more reliable than
+                        // attendance.facility)
+                        Page<Attendance> attendancePage = attendanceRepository.findByDriverFacilityId(facilityId,
+                                        pageable);
+
+                        List<AttendanceDTO> records = attendancePage.getContent().stream()
+                                        .map(a -> {
+                                                String hcfAddress = "";
+                                                if (a.getHcf() != null && a.getHcf().getAddress() != null) {
+                                                        hcfAddress = a.getHcf().getAddress();
+                                                }
+                                                return new AttendanceDTO(
+                                                                a.getId().toString(),
+                                                                a.getDriver() != null ? a.getDriver().getFullName()
+                                                                                : "Unknown",
+                                                                a.getDriver() != null ? a.getDriver().getRole() : null,
+                                                                a.getHcf() != null ? a.getHcf().getName() : "Unknown",
+                                                                a.getHcf() != null ? a.getHcf().getId().toString()
+                                                                                : null,
+                                                                hcfAddress,
+                                                                a.getEventTs(),
+                                                                a.getGpsLat(),
+                                                                a.getGpsLon());
+                                        })
+                                        .toList();
+
+                        return ResponseEntity.ok(new AttendanceListResponse(
+                                        records,
+                                        attendancePage.getTotalElements(),
+                                        attendancePage.getTotalPages(),
+                                        page));
+                } catch (Exception e) {
+                        // Log the error and return empty list
+                        e.printStackTrace();
+                        return ResponseEntity.ok(new AttendanceListResponse(
+                                        List.of(),
+                                        0,
+                                        0,
+                                        page));
                 }
-
-                Pageable pageable = PageRequest.of(page, Math.min(size, 100));
-
-                // Query attendance by driver's facility (more reliable than
-                // attendance.facility)
-                Page<Attendance> attendancePage = attendanceRepository.findByDriverFacilityId(facilityId, pageable);
-
-                List<AttendanceDTO> records = attendancePage.getContent().stream()
-                                .map(a -> {
-                                        String hcfAddress = "";
-                                        if (a.getHcf() != null && a.getHcf().getAddress() != null) {
-                                                hcfAddress = a.getHcf().getAddress();
-                                        }
-                                        return new AttendanceDTO(
-                                                        a.getId().toString(),
-                                                        a.getDriver() != null ? a.getDriver().getFullName() : "Unknown",
-                                                        a.getDriver() != null ? a.getDriver().getRole() : null,
-                                                        a.getHcf() != null ? a.getHcf().getName() : "Unknown",
-                                                        a.getHcf() != null ? a.getHcf().getId().toString() : null,
-                                                        hcfAddress,
-                                                        a.getEventTs(),
-                                                        a.getGpsLat(),
-                                                        a.getGpsLon());
-                                })
-                                .toList();
-
-                return ResponseEntity.ok(new AttendanceListResponse(
-                                records,
-                                attendancePage.getTotalElements(),
-                                attendancePage.getTotalPages(),
-                                page));
         }
 
         public record AttendanceDTO(

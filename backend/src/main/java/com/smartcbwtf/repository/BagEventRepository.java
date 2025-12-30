@@ -52,6 +52,27 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 	@Query("SELECT e FROM BagEvent e WHERE e.facility.id = :facilityId ORDER BY e.eventTs DESC LIMIT :limit")
 	List<BagEvent> findRecentByFacilityId(@Param("facilityId") UUID facilityId, @Param("limit") int limit);
 
+	// Count by waste category for dashboard charts
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.facility.id = :facilityId AND e.bagLabel IS NOT NULL AND e.bagLabel.category = :category AND e.eventTs >= :since")
+	long countByFacilityIdAndWasteCategoryAndEventTsAfter(
+			@Param("facilityId") UUID facilityId,
+			@Param("category") String category,
+			@Param("since") Instant since);
+
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.facility.id = :facilityId AND e.bagLabel IS NOT NULL AND e.bagLabel.category = :category AND e.eventTs >= :start AND e.eventTs < :end")
+	long countByFacilityIdAndWasteCategoryBetween(
+			@Param("facilityId") UUID facilityId,
+			@Param("category") String category,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.facility.id = :facilityId AND e.eventType = :eventType AND e.eventTs >= :start AND e.eventTs < :end")
+	long countByFacilityIdAndEventTypeBetween(
+			@Param("facilityId") UUID facilityId,
+			@Param("eventType") String eventType,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
 	// =====================================================
 	// ANALYTICS PAGE QUERIES - Scoped by ACTIVE agreements
 	// =====================================================

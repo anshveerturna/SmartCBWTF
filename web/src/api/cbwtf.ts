@@ -81,6 +81,30 @@ export const cbwtfApi = {
     const response = await apiClient.get('/api/cbwtf/dashboard');
     return response.data;
   },
+
+  /**
+   * Get category breakdown for pie chart.
+   */
+  getCategoryBreakdown: async (): Promise<{ name: string; value: number; color: string }[]> => {
+    const response = await apiClient.get('/api/cbwtf/dashboard/category-breakdown');
+    return response.data;
+  },
+
+  /**
+   * Get weekly trend for area chart.
+   */
+  getWeeklyTrend: async (): Promise<{ date: string; yellow: number; red: number; blue: number; white: number }[]> => {
+    const response = await apiClient.get('/api/cbwtf/dashboard/weekly-trend');
+    return response.data;
+  },
+
+  /**
+   * Get trend comparison (today vs yesterday).
+   */
+  getTrendComparison: async (): Promise<{ todayBags: number; yesterdayBags: number; percentChange: number; isPositive: boolean }> => {
+    const response = await apiClient.get('/api/cbwtf/dashboard/trend-comparison');
+    return response.data;
+  },
 };
 
 // ============= Analytics Page Types =============
