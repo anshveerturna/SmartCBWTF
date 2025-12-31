@@ -142,11 +142,25 @@ public class FacilitySettings {
     private Boolean enforceChecksum = true;
 
     // ==================== Section 7: Email & Notification ====================
-    @Column(name = "sender_name", nullable = false, length = 100)
-    private String senderName = "SmartCBWTF";
+    // System-controlled sender identity (IMMUTABLE after first email)
+    @Column(name = "sender_slug", length = 50)
+    private String senderSlug;
 
-    @Column(name = "sender_email", nullable = false)
-    private String senderEmail = "no-reply@smartcbwtf.com";
+    @Column(name = "use_generic_sender", nullable = false)
+    private Boolean useGenericSender = false;
+
+    @Column(name = "notification_email")
+    private String notificationEmail;
+
+    @Column(name = "first_email_sent_at")
+    private Instant firstEmailSentAt;
+
+    // Legacy fields kept for backward compatibility (no longer used)
+    @Column(name = "sender_name", length = 100)
+    private String senderName;
+
+    @Column(name = "sender_email")
+    private String senderEmail;
 
     @Column(name = "cc_admin_on_hcf_emails", nullable = false)
     private Boolean ccAdminOnHcfEmails = true;
@@ -214,6 +228,53 @@ public class FacilitySettings {
             return BigDecimal.ZERO;
         }
         return cgstPercent.add(sgstPercent);
+    }
+
+    // ==================== Sender Identity Methods ====================
+
+    /**
+     * Get the resolved sender email address.
+     * Returns generic sender if useGenericSender is true, else facility-specific.
+     */
+    public String getResolvedSenderEmail() {
+        if (Boolean.TRUE.equals(useGenericSender) || senderSlug == null || senderSlug.isBlank()) {
+            return "no-reply@smartcbwtf.com";
+        }
+        return senderSlug + "@smartcbwtf.com";
+    }
+
+    /**
+     * Get the resolved sender display name.
+     * Format: "SmartCBWTF – {Facility Trade Name}"
+     */
+    public String getResolvedSenderName() {
+        String displayName = getNameForDisplay();
+        if (displayName == null || displayName.isBlank()) {
+            return "SmartCBWTF";
+        }
+        return "SmartCBWTF – " + displayName;
+    }
+
+    /**
+     * Check if sender_slug is locked (after first email sent).
+     */
+    public boolean isSenderSlugLocked() {
+        return firstEmailSentAt != null;
+    }
+
+    /**
+     * Generate sender slug from trade name or code.
+     * Lowercase, alphanumeric + hyphens only, max 50 chars.
+     */
+    public static String generateSenderSlug(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        String slug = name.toLowerCase()
+                .replaceAll("[^a-z0-9-]", "-")
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-$", "");
+        return slug.length() > 50 ? slug.substring(0, 50) : slug;
     }
 
     @PreUpdate
@@ -527,6 +588,40 @@ public class FacilitySettings {
         this.enforceChecksum = enforceChecksum;
     }
 
+    // New sender identity fields
+    public String getSenderSlug() {
+        return senderSlug;
+    }
+
+    public void setSenderSlug(String senderSlug) {
+        this.senderSlug = senderSlug;
+    }
+
+    public Boolean getUseGenericSender() {
+        return useGenericSender;
+    }
+
+    public void setUseGenericSender(Boolean useGenericSender) {
+        this.useGenericSender = useGenericSender;
+    }
+
+    public String getNotificationEmail() {
+        return notificationEmail;
+    }
+
+    public void setNotificationEmail(String notificationEmail) {
+        this.notificationEmail = notificationEmail;
+    }
+
+    public Instant getFirstEmailSentAt() {
+        return firstEmailSentAt;
+    }
+
+    public void setFirstEmailSentAt(Instant firstEmailSentAt) {
+        this.firstEmailSentAt = firstEmailSentAt;
+    }
+
+    // Legacy sender fields (for backward compatibility)
     public String getSenderName() {
         return senderName;
     }

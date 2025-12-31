@@ -47,6 +47,16 @@ UPDATE hcf SET approval_status = 'PENDING' WHERE status IN ('PENDING', 'PENDING_
 UPDATE hcf SET approval_status = 'REJECTED' WHERE status = 'REJECTED';
 UPDATE hcf SET approval_status = 'PENDING' WHERE approval_status IS NULL OR approval_status = '';
 
+-- FIX EXISTING DATA: Ensure BEDDED HCFs have valid number_of_beds
+UPDATE hcf SET number_of_beds = 1 
+WHERE billing_model = 'BEDDED' 
+  AND (number_of_beds IS NULL OR number_of_beds <= 0);
+
+-- FIX EXISTING DATA: Ensure FIXED_MONTHLY HCFs have valid monthly_charges
+UPDATE hcf SET monthly_charges = 1000.00 
+WHERE billing_model = 'FIXED_MONTHLY' 
+  AND (monthly_charges IS NULL OR monthly_charges <= 0);
+
 -- ============================================================================
 -- PART 4: DB-LEVEL CHECK CONSTRAINT (Enterprise Standard)
 -- ============================================================================

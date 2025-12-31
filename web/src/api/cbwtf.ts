@@ -283,10 +283,21 @@ export interface ComplianceSettingsDTO {
 }
 
 export interface EmailSettingsDTO {
-  senderName: string;
-  senderEmail: string;
+  // Read-only: System-computed sender display name
+  resolvedSenderName: string;
+  // Read-only: System-computed sender email address
+  resolvedSenderEmail: string;
+  // Read-only: Whether sender slug is locked
+  senderSlugLocked: boolean;
+  // Editable: Use generic sender (no-reply@smartcbwtf.com)
+  useGenericSender: boolean;
+  // Editable: CBWTF notification receiving email
+  notificationEmail: string | null;
+  // Editable: CC admin on HCF emails
   ccAdminOnHcfEmails: boolean;
+  // Editable: Enable email notifications
   emailNotificationsEnabled: boolean;
+  // Editable: Enable in-app alerts
   inAppAlertsEnabled: boolean;
 }
 

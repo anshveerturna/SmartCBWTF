@@ -195,7 +195,8 @@ export default function Settings() {
     dailyReportTime: '08:00', monthlyReportDay: 1, enforceChecksum: true,
   });
   const [emailForm, setEmailForm] = useState<EmailSettingsDTO>({
-    senderName: '', senderEmail: '', ccAdminOnHcfEmails: true,
+    resolvedSenderName: '', resolvedSenderEmail: '', senderSlugLocked: false,
+    useGenericSender: false, notificationEmail: null, ccAdminOnHcfEmails: true,
     emailNotificationsEnabled: true, inAppAlertsEnabled: true,
   });
 
@@ -362,18 +363,6 @@ export default function Settings() {
                 value={legalForm.registeredAddress || ''}
                 onChange={(e) => setLegalForm({ ...legalForm, registeredAddress: e.target.value })}
                 placeholder="Enter full address"
-                sx={{ maxWidth: 320 }}
-              />
-            </SettingRow>
-
-            <SettingRow label="Official Email" description="Primary contact email for official communications.">
-              <TextField
-                fullWidth
-                size="small"
-                type="email"
-                value={legalForm.officialEmail || ''}
-                onChange={(e) => setLegalForm({ ...legalForm, officialEmail: e.target.value })}
-                placeholder="official@company.com"
                 sx={{ maxWidth: 320 }}
               />
             </SettingRow>
@@ -695,30 +684,45 @@ export default function Settings() {
       case 6: // Email
         return (
           <Box>
-            <SectionHeader title="Email & Notifications" description="Configure sender details and notification preferences." />
+            <SectionHeader title="Email & Notifications" description="Configure notification preferences. Sender identity is system-controlled." />
 
-            <SettingRow label="Sender Name" description="Name displayed in the FROM field of outgoing emails.">
-              <TextField
-                fullWidth
-                size="small"
-                value={emailForm.senderName}
-                onChange={(e) => setEmailForm({ ...emailForm, senderName: e.target.value })}
-                placeholder="Your Facility Name"
-                sx={{ maxWidth: 280 }}
+            {/* Sender Identity - READ ONLY */}
+            <Box sx={{ mb: 3, p: 2, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <LockIcon fontSize="small" />
+                Sender Identity (System-Controlled)
+              </Typography>
+              <SettingRow label="From Name" description="Automatically generated from your facility name.">
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={emailForm.resolvedSenderName || 'SmartCBWTF'}
+                  disabled
+                  sx={{ maxWidth: 280, '& .MuiInputBase-input.Mui-disabled': { color: 'text.primary', WebkitTextFillColor: 'unset' } }}
+                />
+              </SettingRow>
+              <SettingRow label="From Address" description="Automatically generated sender address." noBorder>
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={emailForm.resolvedSenderEmail || 'no-reply@smartcbwtf.com'}
+                  disabled
+                  sx={{ maxWidth: 280, fontFamily: 'monospace', '& .MuiInputBase-input.Mui-disabled': { color: 'text.primary', WebkitTextFillColor: 'unset' } }}
+                />
+              </SettingRow>
+            </Box>
+
+            <SettingRow label="Use Generic Sender" description="Send from no-reply@smartcbwtf.com instead of facility-specific address.">
+              <Switch
+                checked={emailForm.useGenericSender}
+                onChange={(e) => setEmailForm({ ...emailForm, useGenericSender: e.target.checked })}
               />
             </SettingRow>
 
-            <SettingRow label="Sender Email" description="Email address used for sending notifications.">
-              <TextField
-                fullWidth
-                size="small"
-                type="email"
-                value={emailForm.senderEmail}
-                onChange={(e) => setEmailForm({ ...emailForm, senderEmail: e.target.value })}
-                placeholder="noreply@yourfacility.com"
-                sx={{ maxWidth: 280 }}
-              />
-            </SettingRow>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              System notifications (alerts, billing, compliance reports) are sent to your <strong>profile email</strong>. 
+              Update it in <a href="/cbwtf/profile" style={{ color: 'inherit' }}>My Profile</a>.
+            </Alert>
 
             <SettingRow label="CC Admin on HCF Emails" description="Copy admin on all emails sent to HCF contacts.">
               <Switch
