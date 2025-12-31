@@ -26,10 +26,14 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Serve profile photos from the uploads directory
-        String absolutePath = Paths.get(profilePhotosDir).toAbsolutePath().toString();
-
+        String profilePhotosAbsPath = Paths.get(profilePhotosDir).toAbsolutePath().toString();
         registry.addResourceHandler("/uploads/profiles/**")
-                .addResourceLocations("file:" + absolutePath + "/");
+                .addResourceLocations("file:" + profilePhotosAbsPath + "/");
+
+        // Serve branding assets (logos) from the uploads directory
+        String brandingAbsPath = Paths.get("uploads/branding").toAbsolutePath().toString();
+        registry.addResourceHandler("/uploads/branding/**")
+                .addResourceLocations("file:" + brandingAbsPath + "/");
     }
 
     @Override

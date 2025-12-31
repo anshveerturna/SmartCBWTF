@@ -79,6 +79,19 @@ public class Facility {
     @Column(name = "excess_rate_effective_from", nullable = false)
     private java.time.LocalDate excessRateEffectiveFrom = java.time.LocalDate.now();
 
+    // Sender configuration (V43 migration)
+    @Column(name = "sender_slug", length = 100, unique = true)
+    private String senderSlug;
+
+    @Column(name = "use_generic_sender")
+    private Boolean useGenericSender = false;
+
+    @Column(name = "sender_slug_locked")
+    private Boolean senderSlugLocked = false;
+
+    @Column(name = "cbwtf_notification_email")
+    private String cbwtfNotificationEmail;
+
     // Basic getters and setters
     public UUID getId() {
         return id;
@@ -285,6 +298,39 @@ public class Facility {
 
     public void setExcessRateEffectiveFrom(java.time.LocalDate excessRateEffectiveFrom) {
         this.excessRateEffectiveFrom = excessRateEffectiveFrom;
+    }
+
+    // Sender configuration getters/setters
+    public String getSenderSlug() {
+        return senderSlug;
+    }
+
+    public void setSenderSlug(String senderSlug) {
+        this.senderSlug = senderSlug;
+    }
+
+    public Boolean getUseGenericSender() {
+        return useGenericSender;
+    }
+
+    public void setUseGenericSender(Boolean useGenericSender) {
+        this.useGenericSender = useGenericSender;
+    }
+
+    public Boolean getSenderSlugLocked() {
+        return senderSlugLocked;
+    }
+
+    public void setSenderSlugLocked(Boolean senderSlugLocked) {
+        this.senderSlugLocked = senderSlugLocked;
+    }
+
+    public String getCbwtfNotificationEmail() {
+        return cbwtfNotificationEmail;
+    }
+
+    public void setCbwtfNotificationEmail(String cbwtfNotificationEmail) {
+        this.cbwtfNotificationEmail = cbwtfNotificationEmail;
     }
 
     @PreUpdate

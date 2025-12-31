@@ -1086,6 +1086,94 @@ export const updateNotificationSettings = async (settings: {
   return response.data;
 };
 
+// ============= Email Templates API =============
+
+export interface EmailTemplateDTO {
+  id?: string;
+  templateCode: string;
+  subjectTemplate: string;
+  bodyTemplate: string;
+  version?: number;
+  isActive?: boolean;
+  requiredPlaceholders?: string[];
+  availablePlaceholders?: string[];
+}
+
+export const getEmailTemplates = async (): Promise<EmailTemplateDTO[]> => {
+  const response = await apiClient.get('/api/cbwtf/email-templates');
+  return response.data;
+};
+
+export const getEmailTemplate = async (templateCode: string): Promise<EmailTemplateDTO> => {
+  const response = await apiClient.get(`/api/cbwtf/email-templates/${templateCode}`);
+  return response.data;
+};
+
+export const updateEmailTemplate = async (templateCode: string, data: EmailTemplateDTO): Promise<void> => {
+  await apiClient.put(`/api/cbwtf/email-templates/${templateCode}`, data);
+};
+
+export const previewEmailTemplate = async (
+  templateCode: string, 
+  bodyTemplate: string, 
+  sampleData: Record<string, string>
+): Promise<{ html: string }> => {
+  const response = await apiClient.post(`/api/cbwtf/email-templates/${templateCode}/preview`, {
+    bodyTemplate,
+    sampleData
+  });
+  return response.data;
+};
+
+export const resetEmailTemplate = async (templateCode: string): Promise<void> => {
+  await apiClient.post(`/api/cbwtf/email-templates/${templateCode}/reset`);
+};
+
+export const getEmailTemplatePlaceholders = async (templateCode: string): Promise<{
+  required: string[];
+  available: string[];
+}> => {
+  const response = await apiClient.get(`/api/cbwtf/email-templates/${templateCode}/placeholders`);
+  return response.data;
+};
+
+// ============= Branding API =============
+
+export interface BrandingDTO {
+  logoUrl?: string;
+  logoChecksum?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  invoiceFooterText?: string;
+  receiptFooterText?: string;
+  showLogoOnInvoice?: boolean;
+  showLogoOnReceipt?: boolean;
+  showLogoOnEmail?: boolean;
+}
+
+export const getBranding = async (): Promise<BrandingDTO> => {
+  const response = await apiClient.get('/api/cbwtf/branding');
+  return response.data;
+};
+
+export const updateBranding = async (data: BrandingDTO): Promise<void> => {
+  await apiClient.put('/api/cbwtf/branding', data);
+};
+
+export const uploadLogo = async (file: File): Promise<{ logoUrl: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post('/api/cbwtf/branding/logo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};
+
+export const deleteLogo = async (): Promise<void> => {
+  await apiClient.delete('/api/cbwtf/branding/logo');
+};
+
 export default cbwtfApi;
+
 
 
