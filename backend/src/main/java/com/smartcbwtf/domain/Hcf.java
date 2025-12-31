@@ -65,6 +65,25 @@ public class Hcf {
     @Column(name = "identity_hash", length = 64)
     private String identityHash;
 
+    // Billing model - IMMUTABLE after approval
+    @Enumerated(EnumType.STRING)
+    @Column(name = "billing_model", length = 20)
+    private BillingModel billingModel;
+
+    // Approval workflow
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status", nullable = false, length = 20)
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
+
+    @Column(name = "approved_by")
+    private UUID approvedBy;
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
     @ManyToOne
     @JoinColumn(name = "registered_by_user_id")
     private AppUser registeredByUser;
@@ -304,5 +323,47 @@ public class Hcf {
 
     public void setRentAgreementUrl(String rentAgreementUrl) {
         this.rentAgreementUrl = rentAgreementUrl;
+    }
+
+    // Billing model getters/setters
+    public BillingModel getBillingModel() {
+        return billingModel;
+    }
+
+    public void setBillingModel(BillingModel billingModel) {
+        this.billingModel = billingModel;
+    }
+
+    // Approval workflow getters/setters
+    public ApprovalStatus getApprovalStatus() {
+        return approvalStatus;
+    }
+
+    public void setApprovalStatus(ApprovalStatus approvalStatus) {
+        this.approvalStatus = approvalStatus;
+    }
+
+    public UUID getApprovedBy() {
+        return approvedBy;
+    }
+
+    public void setApprovedBy(UUID approvedBy) {
+        this.approvedBy = approvedBy;
+    }
+
+    public Instant getApprovedAt() {
+        return approvedAt;
+    }
+
+    public void setApprovedAt(Instant approvedAt) {
+        this.approvedAt = approvedAt;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 }

@@ -80,6 +80,19 @@ public class Bill {
     @Column(nullable = false, length = 20)
     private String status = Status.FINALIZED.name();
 
+    // Billing model snapshot - frozen at bill creation time
+    @Column(name = "billing_model", length = 20)
+    private String billingModel;
+
+    @Column(name = "snapshot_beds")
+    private Integer snapshotBeds;
+
+    @Column(name = "snapshot_monthly_charge", precision = 12, scale = 2)
+    private BigDecimal snapshotMonthlyCharge;
+
+    @Column(name = "snapshot_rate_per_bed", precision = 12, scale = 2)
+    private BigDecimal snapshotRatePerBed;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -220,5 +233,38 @@ public class Bill {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    // Billing model snapshot getters/setters
+    public String getBillingModel() {
+        return billingModel;
+    }
+
+    public void setBillingModel(String billingModel) {
+        this.billingModel = billingModel;
+    }
+
+    public Integer getSnapshotBeds() {
+        return snapshotBeds;
+    }
+
+    public void setSnapshotBeds(Integer snapshotBeds) {
+        this.snapshotBeds = snapshotBeds;
+    }
+
+    public BigDecimal getSnapshotMonthlyCharge() {
+        return snapshotMonthlyCharge;
+    }
+
+    public void setSnapshotMonthlyCharge(BigDecimal snapshotMonthlyCharge) {
+        this.snapshotMonthlyCharge = snapshotMonthlyCharge;
+    }
+
+    public BigDecimal getSnapshotRatePerBed() {
+        return snapshotRatePerBed;
+    }
+
+    public void setSnapshotRatePerBed(BigDecimal snapshotRatePerBed) {
+        this.snapshotRatePerBed = snapshotRatePerBed;
     }
 }

@@ -1,11 +1,9 @@
 package com.smartcbwtf.controller;
 
-import com.smartcbwtf.dto.HcfApprovalRequest;
-import com.smartcbwtf.dto.HcfApprovalResponse;
-import com.smartcbwtf.dto.HcfRegistrationRequest;
-import com.smartcbwtf.dto.HcfRegistrationResponse;
+import com.smartcbwtf.dto.*;
 import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.service.AgreementService;
+import com.smartcbwtf.service.HcfApprovalService;
 import com.smartcbwtf.service.HcfService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -15,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/hcfs")
@@ -22,10 +21,12 @@ public class HcfController {
 
     private final HcfService hcfService;
     private final AgreementService agreementService;
+    private final HcfApprovalService approvalService;
 
-    public HcfController(HcfService hcfService, AgreementService agreementService) {
+    public HcfController(HcfService hcfService, AgreementService agreementService, HcfApprovalService approvalService) {
         this.hcfService = hcfService;
         this.agreementService = agreementService;
+        this.approvalService = approvalService;
     }
 
     @PostMapping("/register")
@@ -66,14 +67,81 @@ public class HcfController {
 
     @GetMapping("/pending")
     @PreAuthorize("hasRole('CBWTF_ADMIN')")
-    public List<Hcf> pending() {
-        return hcfService.listPending();
+    public List<HcfDetailResponse> pending() {
+        return hcfService.listPending().stream()
+                .map(HcfDetailResponse::from)
+                .collect(Collectors.toList());
     }
 
+    /**
+     * Get HCF details by ID.
+     */
+    @GetMapping("/{hcfId}")
+    @PreAuthorize("hasRole('CBWTF_ADMIN')")
+    public HcfDetailResponse getById(@PathVariable UUID hcfId) {
+        Hcf hcf = hcfService.findById(hcfId);
+        return HcfDetailResponse.from(hcf);
+    }
+
+    /**
+     * Update HCF billing model and fields.
+     * Only allowed if status is PENDING or REJECTED.
+     */
+    @PutMapping("/{hcfId}")
+    @PreAuthorize("hasRole('CBWTF_ADMIN')")
+    public HcfDetailResponse updateHcf(
+            @PathVariable UUID hcfId,
+            @Valid @RequestBody HcfUpdateRequest request) {
+        request.validate();
+        Hcf hcf = approvalService.updatePendingHcf(
+                hcfId,
+                request.billingModel(),
+                request.numberOfBeds(),
+                request.monthlyCharges());
+        return HcfDetailResponse.from(hcf);
+    }
+
+    /**
+     * Approve HCF with agreement terms.
+     * WARNING: Billing model becomes IMMUTABLE after approval.
+     */
     @PostMapping("/{hcfId}/approve")
     @PreAuthorize("hasRole('CBWTF_ADMIN')")
-    public HcfApprovalResponse approve(@PathVariable UUID hcfId, @Valid @RequestBody HcfApprovalRequest request) {
+    public HcfApprovalResponse approveWithAgreement(@PathVariable UUID hcfId,
+            @Valid @RequestBody HcfApprovalRequest request) {
         return agreementService.approveHcf(hcfId, request);
+    }
+
+    /**
+     * Simple approve without agreement (uses approvalService).
+     */
+    @PostMapping("/{hcfId}/simple-approve")
+    @PreAuthorize("hasRole('CBWTF_ADMIN')")
+    public HcfDetailResponse simpleApprove(@PathVariable UUID hcfId) {
+        Hcf hcf = approvalService.approve(hcfId);
+        return HcfDetailResponse.from(hcf);
+    }
+
+    /**
+     * Reject HCF with reason.
+     */
+    @PostMapping("/{hcfId}/reject")
+    @PreAuthorize("hasRole('CBWTF_ADMIN')")
+    public HcfDetailResponse reject(
+            @PathVariable UUID hcfId,
+            @Valid @RequestBody HcfRejectRequest request) {
+        Hcf hcf = approvalService.reject(hcfId, request.reason());
+        return HcfDetailResponse.from(hcf);
+    }
+
+    /**
+     * Resubmit a rejected HCF for approval.
+     */
+    @PostMapping("/{hcfId}/resubmit")
+    @PreAuthorize("hasRole('CBWTF_ADMIN')")
+    public HcfDetailResponse resubmit(@PathVariable UUID hcfId) {
+        Hcf hcf = approvalService.resubmit(hcfId);
+        return HcfDetailResponse.from(hcf);
     }
 
     /**

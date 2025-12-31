@@ -163,6 +163,7 @@ com/smartcbwtf/repository/SettingsAuditLogRepository.class
 com/smartcbwtf/service/GpsDeviceBindingService.class
 com/smartcbwtf/controller/PaymentController$ReversePaymentRequest.class
 com/smartcbwtf/domain/BankAccount$Status.class
+com/smartcbwtf/domain/BillingModel.class
 com/smartcbwtf/domain/BarcodeComplianceReport.class
 com/smartcbwtf/service/AnalyticsAggregationService.class
 com/smartcbwtf/repository/AppUserRepository.class

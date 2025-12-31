@@ -535,4 +535,14 @@ public class HcfService {
     public List<Hcf> listAll() {
         return hcfRepository.findAll();
     }
+
+    /**
+     * Find HCF by ID.
+     * 
+     * @throws IllegalArgumentException if HCF not found
+     */
+    public Hcf findById(UUID hcfId) {
+        return hcfRepository.findById(hcfId)
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found: " + hcfId));
+    }
 }

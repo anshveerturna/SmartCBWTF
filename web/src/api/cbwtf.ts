@@ -509,6 +509,12 @@ export const removeStaffPhoto = async (id: string): Promise<{ message: string }>
 
 // ============= HCF Management Types =============
 
+// Billing model enum
+export type BillingModel = 'BEDDED' | 'FIXED_MONTHLY';
+
+// Approval status enum
+export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
 export interface HcfListItem {
   id: string;
   code: string;
@@ -517,6 +523,12 @@ export interface HcfListItem {
   contactPhone: string | null;
   contactEmail: string | null;
   numberOfBeds: number | null;
+  monthlyCharges: number | null;
+  billingModel: BillingModel | null;
+  approvalStatus: ApprovalStatus;
+  rejectionReason: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
   agreementId: string | null;
   agreementNumber: string | null;
   agreementStatus: string | null;
@@ -525,6 +537,8 @@ export interface HcfListItem {
   agreementEndDate: string | null;
   lastPickupAt: string | null;
   createdAt: string;
+  updatedAt: string | null;
+  status: string | null;
 }
 
 export interface AgreementInfo {
@@ -695,7 +709,32 @@ export const approveHcf = async (id: string, data: HcfApprovalRequest): Promise<
 };
 
 export const rejectHcf = async (id: string, data: HcfRejectionRequest): Promise<void> => {
-  await apiClient.post(`/api/cbwtf/hcfs/${id}/reject`, data);
+  await apiClient.post(`/api/hcfs/${id}/reject`, data);
+};
+
+// Request to update HCF billing model (only for PENDING/REJECTED)
+export interface HcfBillingModelUpdateRequest {
+  billingModel: BillingModel;
+  numberOfBeds: number | null;
+  monthlyCharges: number | null;
+}
+
+// Update HCF billing model before approval
+export const updateHcfBillingModel = async (id: string, data: HcfBillingModelUpdateRequest): Promise<HcfListItem> => {
+  const response = await apiClient.put(`/api/hcfs/${id}`, data);
+  return response.data;
+};
+
+// Simple approve HCF (without agreement creation)
+export const simpleApproveHcf = async (id: string): Promise<HcfListItem> => {
+  const response = await apiClient.post(`/api/hcfs/${id}/simple-approve`);
+  return response.data;
+};
+
+// Resubmit rejected HCF for approval
+export const resubmitHcf = async (id: string): Promise<HcfListItem> => {
+  const response = await apiClient.post(`/api/hcfs/${id}/resubmit`);
+  return response.data;
 };
 
 export interface RenewAgreementRequest {
