@@ -94,6 +94,7 @@ const getSuperAdminSections = (): NavSection[] => [
     title: 'System',
     items: [
       { path: '/superadmin/payment-gateway', label: 'Payment Gateway', icon: <AnalyticsIcon />, roles: ['SUPER_ADMIN'] },
+      { path: '/superadmin/email-templates', label: 'Email Templates', icon: <AlertsIcon />, roles: ['SUPER_ADMIN'] },
       { path: '/superadmin/settings', label: 'Configuration', icon: <SettingsIcon />, roles: ['SUPER_ADMIN'] },
     ],
   },

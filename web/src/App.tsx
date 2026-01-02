@@ -28,6 +28,7 @@ const MasterAuditLogs = lazy(() => import('./pages/superadmin/master/MasterAudit
 const PaymentGateway = lazy(() => import('./pages/superadmin/PaymentGateway'));
 const SystemConfig = lazy(() => import('./pages/superadmin/SystemConfig'));
 const ProfilePage = lazy(() => import('./pages/superadmin/profile/ProfilePage'));
+const EmailTemplates = lazy(() => import('./pages/superadmin/EmailTemplates'));
 const CbwtfDashboard = lazy(() => import('./pages/cbwtf/Dashboard'));
 const CbwtfAnalytics = lazy(() => import('./pages/cbwtf/Analytics'));
 const CbwtfVehicles = lazy(() => import('./pages/cbwtf/Vehicles'));
@@ -134,6 +135,7 @@ const App: React.FC = () => {
                   {/* Payment Gateway & Settings */}
                   <Route path="payment-gateway" element={<PaymentGateway />} />
                   <Route path="settings" element={<SystemConfig />} />
+                  <Route path="email-templates" element={<EmailTemplates />} />
                   <Route path="profile" element={<ProfilePage />} />
                 </Route>
 

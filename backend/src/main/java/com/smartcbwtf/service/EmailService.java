@@ -1,103 +1,106 @@
 package com.smartcbwtf.service;
 
+import com.smartcbwtf.service.GlobalEmailTemplateService.RenderedEmail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class EmailService {
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
-    
+
     @Value("${app.email.enabled:false}")
     private boolean emailEnabled;
-    
+
     @Value("${app.email.from:noreply@smartcbwtf.com}")
     private String fromAddress;
 
+    private final GlobalEmailTemplateService templateService;
+
+    public EmailService(GlobalEmailTemplateService templateService) {
+        this.templateService = templateService;
+    }
+
     /**
-     * Send a simple text email.
+     * Legacy method for sending simple text email.
+     * TODO: Refactor callers to use global templates.
      */
     public void sendEmail(String to, String subject, String body) {
-        if (!emailEnabled) {
-            log.info("[DEV-EMAIL] to={} subject={} body={}", to, subject, body);
-            return;
-        }
-        // TODO: Integrate SMTP/SendGrid/SES in production
-        log.info("[EMAIL] Sending to={} subject={}", to, subject);
+        sendRawEmail(to, subject, body);
     }
-    
+
     /**
-     * Send an email with PDF attachment.
+     * Legacy method for sending email with attachment.
+     * TODO: Refactor callers to use global templates.
      */
     public void sendEmailWithAttachment(String to, String subject, String body, String attachmentPath) {
-        sendEmailWithAttachments(to, subject, body, List.of(attachmentPath));
-    }
-    
-    /**
-     * Send an email with multiple attachments.
-     */
-    public void sendEmailWithAttachments(String to, String subject, String body, List<String> attachmentPaths) {
+        // For now just log it as raw email with attachment info
         if (!emailEnabled) {
-            StringBuilder attachInfo = new StringBuilder();
-            for (String path : attachmentPaths) {
-                File f = new File(path);
-                attachInfo.append(String.format("\n  - %s (exists=%s, size=%d bytes)", 
-                    path, f.exists(), f.exists() ? f.length() : 0));
-            }
-            log.info("[DEV-EMAIL] to={} subject={} body={}\n  attachments:{}", 
-                to, subject, body, attachInfo);
+            log.info("[DEV-EMAIL-ATTACHMENT] to={} subject={} body={} attachment={}", to, subject, body,
+                    attachmentPath);
             return;
         }
-        
-        // TODO: Integrate SMTP/SendGrid/SES with attachment support in production
-        // Example with Spring Mail:
-        // MimeMessage message = mailSender.createMimeMessage();
-        // MimeMessageHelper helper = new MimeMessageHelper(message, true);
-        // helper.setTo(to);
-        // helper.setSubject(subject);
-        // helper.setText(body, true); // true for HTML
-        // for (String attachmentPath : attachmentPaths) {
-        //     File file = new File(attachmentPath);
-        //     helper.addAttachment(file.getName(), file);
-        // }
-        // mailSender.send(message);
-        
-        log.info("[EMAIL] Sending to={} subject={} with {} attachment(s)", 
-            to, subject, attachmentPaths.size());
+        log.info("[EMAIL-ATTACHMENT] Sending to={} subject={} attachment={}", to, subject, attachmentPath);
     }
-    
+
     /**
-     * Send HCF registration confirmation email with agreement PDF.
+     * Send an email using a global template.
      */
-    public void sendHcfRegistrationEmail(String hcfEmail, String hcfName, String agreementNumber, 
-                                         String facilityName, String pdfPath) {
-        String subject = String.format("HCF Registration Confirmation - %s", agreementNumber);
-        
-        String body = String.format("""
-            <html>
-            <body style="font-family: Arial, sans-serif;">
-            <h2>Healthcare Facility Registration Confirmation</h2>
-            <p>Dear %s,</p>
-            <p>Your registration with <strong>%s</strong> has been successfully submitted.</p>
-            <p><strong>Agreement Number:</strong> %s</p>
-            <p>Please find attached your signed agreement document for your records.</p>
-            <h3>Next Steps:</h3>
-            <ul>
-                <li>Our team will review your registration within 2-3 business days</li>
-                <li>You will receive approval notification via email</li>
-                <li>Once approved, you can begin using the biomedical waste collection services</li>
-            </ul>
-            <p>If you have any questions, please contact our support team.</p>
-            <br>
-            <p>Best regards,<br>%s Team</p>
-            </body>
-            </html>
-            """, hcfName, facilityName, agreementNumber, facilityName);
-        
-        sendEmailWithAttachment(hcfEmail, subject, body, pdfPath);
+    public void sendTemplateEmail(String to, String templateCode, Map<String, String> data,
+            List<String> attachmentPaths) {
+        try {
+            // Render template (fail-closed if not found)
+            RenderedEmail rendered = templateService.renderTemplate(templateCode, data);
+
+            log.info("[EMAIL_DISPATCH] Template={} Version={} Checksum={} To={}",
+                    templateCode, rendered.templateVersion(), rendered.templateChecksum(), to);
+
+            if (!emailEnabled) {
+                log.info("[DEV-EMAIL] \nTO: {}\nSUBJECT: {}\nBODY_HTML:\n{}\nATTACHMENTS: {}",
+                        to, rendered.subject(), rendered.bodyHtml(), attachmentPaths);
+                return;
+            }
+
+            // TODO: Integrate SMTP/SendGrid/SES
+            // When integrating, ensure the checksum is logged/durable
+
+            log.info("[EMAIL] Sent successfully to={}", to);
+
+        } catch (Exception e) {
+            log.error("[EMAIL_FAILURE] Failed to send email {} to {}", templateCode, to, e);
+            // Fail closed - do not send partial email
+            throw e;
+        }
+    }
+
+    /**
+     * Send HCF registration confirmation email using generic template system.
+     */
+    public void sendHcfRegistrationEmail(String hcfEmail, String hcfName, String agreementNumber,
+            String facilityName, String pdfPath) {
+        Map<String, String> data = new HashMap<>();
+        data.put("hcfName", hcfName);
+        data.put("facilityName", facilityName);
+        data.put("agreementNumber", agreementNumber);
+        data.put("submittedDate", java.time.LocalDate.now().toString()); // Default for template
+
+        // Use AGREEMENT_SUBMITTED template
+        sendTemplateEmail(hcfEmail, "AGREEMENT_SUBMITTED", data, List.of(pdfPath));
+    }
+
+    // Keep basic raw send for system alerts/dev use if needed, but discourage
+    // direct usage
+    public void sendRawEmail(String to, String subject, String body) {
+        if (!emailEnabled) {
+            log.info("[DEV-EMAIL-RAW] to={} subject={} body={}", to, subject, body);
+            return;
+        }
+        log.info("[EMAIL-RAW] Sending to={} subject={}", to, subject);
     }
 }

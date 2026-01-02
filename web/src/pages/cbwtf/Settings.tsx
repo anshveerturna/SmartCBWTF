@@ -45,10 +45,8 @@ import {
   Timeline as AuditIcon,
   Percent as PercentIcon,
   Palette as BrandingIcon,
-  MailOutline as TemplateIcon,
 } from '@mui/icons-material';
 import BrandingSection from './settings/BrandingSection';
-import EmailTemplateSection from './settings/EmailTemplateSection';
 import dayjs from 'dayjs';
 import {
   getFacilitySettings,
@@ -84,7 +82,6 @@ const TABS = [
   { key: 'compliance', label: 'Compliance', icon: <ComplianceIcon /> },
   { key: 'email', label: 'Notifications', icon: <EmailIcon /> },
   { key: 'branding', label: 'Branding', icon: <BrandingIcon /> },
-  { key: 'emailTemplates', label: 'Email Templates', icon: <TemplateIcon /> },
   { key: 'audit', label: 'Audit History', icon: <AuditIcon /> },
 ];
 
@@ -763,10 +760,7 @@ export default function Settings() {
       case 7: // Branding
         return <BrandingSection onSettingsChange={() => queryClient.invalidateQueries({ queryKey: ['settings-audit'] })} />;
 
-      case 8: // Email Templates
-        return <EmailTemplateSection onSettingsChange={() => queryClient.invalidateQueries({ queryKey: ['settings-audit'] })} />;
-
-      case 9: // Audit History
+      case 8: // Audit History
         return (
           <Box>
             <SectionHeader title="Configuration History" description="Complete audit log of all settings changes with timestamps and user information." />

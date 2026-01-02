@@ -61,6 +61,12 @@ public class EmailDispatchLog {
     @Column(nullable = false, length = 64)
     private String checksum;
 
+    @Column(name = "body_snapshot", columnDefinition = "TEXT")
+    private String bodySnapshot;
+
+    @Column(name = "placeholders_snapshot", columnDefinition = "JSONB")
+    private String placeholdersSnapshot;
+
     @Column(name = "sent_at", nullable = false)
     private Instant sentAt = Instant.now();
 
@@ -183,5 +189,21 @@ public class EmailDispatchLog {
 
     public void setSentAt(Instant sentAt) {
         this.sentAt = sentAt;
+    }
+
+    public String getBodySnapshot() {
+        return bodySnapshot;
+    }
+
+    public void setBodySnapshot(String bodySnapshot) {
+        this.bodySnapshot = bodySnapshot;
+    }
+
+    public String getPlaceholdersSnapshot() {
+        return placeholdersSnapshot;
+    }
+
+    public void setPlaceholdersSnapshot(String placeholdersSnapshot) {
+        this.placeholdersSnapshot = placeholdersSnapshot;
     }
 }

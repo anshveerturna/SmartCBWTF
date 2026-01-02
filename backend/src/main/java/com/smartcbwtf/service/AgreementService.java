@@ -25,11 +25,11 @@ public class AgreementService {
     private final AuditLogService auditLogService;
 
     public AgreementService(AgreementRepository agreementRepository,
-                            FacilityRepository facilityRepository,
-                            HcfRepository hcfRepository,
-                            PdfService pdfService,
-                            EmailService emailService,
-                            AuditLogService auditLogService) {
+            FacilityRepository facilityRepository,
+            HcfRepository hcfRepository,
+            PdfService pdfService,
+            EmailService emailService,
+            AuditLogService auditLogService) {
         this.agreementRepository = agreementRepository;
         this.facilityRepository = facilityRepository;
         this.hcfRepository = hcfRepository;
@@ -63,9 +63,27 @@ public class AgreementService {
 
         auditLogService.log("AGREEMENT", agreement.getId(), "APPROVE", null, null);
 
-        emailService.sendEmail(hcf.getContactEmail(), "Agreement Approved", "Agreement " + agreementNumber + " approved.");
-        if (facility.getContactEmail() != null) {
-            emailService.sendEmail(facility.getContactEmail(), "Agreement Approved", "Agreement " + agreementNumber + " approved.");
+        // Send Global Template Email
+        try {
+            java.util.Map<String, String> emailData = new java.util.HashMap<>();
+            emailData.put("hcfName", hcf.getName());
+            emailData.put("facilityName", facility.getName());
+            emailData.put("agreementNumber", agreementNumber);
+            emailData.put("effectiveDate", agreement.getStartDate().toString());
+            emailData.put("expiryDate", agreement.getEndDate().toString());
+
+            emailService.sendTemplateEmail(hcf.getContactEmail(), "AGREEMENT_APPROVED", emailData, null);
+
+            // Also notify facility if configured (using legacy for now as no template
+            // exists for this internal notif)
+            if (facility.getContactEmail() != null) {
+                emailService.sendEmail(facility.getContactEmail(), "Agreement Approved Notification",
+                        "Agreement " + agreementNumber + " for " + hcf.getName() + " has been approved.");
+            }
+        } catch (Exception e) {
+            // Log but don't fail transaction
+            auditLogService.log("EMAIL", agreement.getId(), "SEND_FAILURE", null,
+                    "Failed to send approval email: " + e.getMessage());
         }
 
         return new HcfApprovalResponse(hcf.getId(), hcf.getStatus(), agreementNumber);
