@@ -344,11 +344,20 @@ class QrScannerFragment : Fragment(R.layout.fragment_qr_scanner) {
         // Show success overlay
         showSuccessOverlay()
 
-        // Update ViewModel
+        // Update ViewModel with scanned QR
         viewModel.onQrScanned(qrCode)
 
-        // Show scan result UI
-        showScanResultUI(qrCode)
+        // Auto-add bag and return to previous screen after brief delay
+        // This removes the need for manual "Add Bag" button press
+        viewLifecycleOwner.lifecycleScope.launch {
+            delay(500L) // Brief delay to show success animation
+            if (viewModel.addBag()) {
+                Toast.makeText(requireContext(), "Bag added to session", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "Bag scanned - connect scale for weight", Toast.LENGTH_SHORT).show()
+            }
+            findNavController().popBackStack()
+        }
     }
 
     private fun triggerHapticFeedback() {

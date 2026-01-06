@@ -2,14 +2,21 @@ package com.smartcbwtf.controller;
 
 import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.Bill;
+import com.smartcbwtf.domain.BillVersion;
 import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.domain.Invoice;
+import com.smartcbwtf.dto.BillAdjustmentRequest;
 import com.smartcbwtf.repository.BillRepository;
+import com.smartcbwtf.repository.BillVersionRepository;
 import com.smartcbwtf.repository.FacilityRepository;
 import com.smartcbwtf.repository.InvoiceRepository;
 import com.smartcbwtf.service.AuditLogService;
+import com.smartcbwtf.service.BillAdjustmentService;
 import com.smartcbwtf.service.BillGenerationService;
+import com.smartcbwtf.service.BillPdfService;
 import com.smartcbwtf.service.InvoicePdfService;
+import com.smartcbwtf.service.TallyExportService;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -22,7 +29,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -45,6 +54,10 @@ public class BillingController {
     private final BillGenerationService billGenerationService;
     private final AuditLogService auditLogService;
     private final InvoicePdfService invoicePdfService;
+    private final BillAdjustmentService billAdjustmentService;
+    private final BillPdfService billPdfService;
+    private final TallyExportService tallyExportService;
+    private final BillVersionRepository billVersionRepository;
 
     public BillingController(
             BillRepository billRepository,
@@ -52,13 +65,21 @@ public class BillingController {
             FacilityRepository facilityRepository,
             BillGenerationService billGenerationService,
             AuditLogService auditLogService,
-            InvoicePdfService invoicePdfService) {
+            InvoicePdfService invoicePdfService,
+            BillAdjustmentService billAdjustmentService,
+            BillPdfService billPdfService,
+            TallyExportService tallyExportService,
+            BillVersionRepository billVersionRepository) {
         this.billRepository = billRepository;
         this.invoiceRepository = invoiceRepository;
         this.facilityRepository = facilityRepository;
         this.billGenerationService = billGenerationService;
         this.auditLogService = auditLogService;
         this.invoicePdfService = invoicePdfService;
+        this.billAdjustmentService = billAdjustmentService;
+        this.billPdfService = billPdfService;
+        this.tallyExportService = tallyExportService;
+        this.billVersionRepository = billVersionRepository;
     }
 
     @GetMapping("/bills")
@@ -79,6 +100,109 @@ public class BillingController {
                 .map(BillDetailDTO::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ============= NEW: Bill Adjustment Endpoints =============
+
+    /**
+     * Apply adjustment (concession) to a finalized bill.
+     * Only CBWTF_ADMIN can apply adjustments.
+     */
+    @PostMapping("/bills/{id}/adjust")
+    public ResponseEntity<?> applyAdjustment(
+            @PathVariable UUID id,
+            @Valid @RequestBody BillAdjustmentRequest request) {
+        UUID userId = TenantContext.getUserId();
+
+        // Verify bill belongs to this facility
+        Bill bill = billRepository.findById(id)
+                .filter(b -> b.getFacility().getId().equals(TenantContext.getTenantId()))
+                .orElse(null);
+        if (bill == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            Bill adjustedBill = billAdjustmentService.applyAdjustment(
+                    id, request.adjustmentAmount(), request.reason(), userId);
+
+            log.info("Bill {} adjusted by user {}: amount={}", id, userId, request.adjustmentAmount());
+            return ResponseEntity.ok(BillDetailDTO.from(adjustedBill));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Get version history for a bill (audit trail).
+     */
+    @GetMapping("/bills/{id}/versions")
+    public ResponseEntity<List<BillVersionDTO>> getBillVersions(@PathVariable UUID id) {
+        // Verify bill belongs to this facility
+        Bill bill = billRepository.findById(id)
+                .filter(b -> b.getFacility().getId().equals(TenantContext.getTenantId()))
+                .orElse(null);
+        if (bill == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<BillVersion> versions = billVersionRepository.findByBillIdOrderByVersionDesc(id);
+        return ResponseEntity.ok(versions.stream().map(BillVersionDTO::from).toList());
+    }
+
+    /**
+     * Download operational bill PDF (NOT invoice).
+     */
+    @GetMapping("/bills/{id}/pdf")
+    public ResponseEntity<byte[]> downloadBillPdf(@PathVariable UUID id) {
+        Bill bill = billRepository.findById(id)
+                .filter(b -> b.getFacility().getId().equals(TenantContext.getTenantId()))
+                .orElse(null);
+        if (bill == null) {
+            return ResponseEntity.notFound().build();
+        }
+        try {
+            byte[] pdf = billPdfService.generatePdf(id);
+            String hcfName = bill.getAgreement() != null && bill.getAgreement().getHcf() != null
+                    ? bill.getAgreement().getHcf().getName().replaceAll("[^a-zA-Z0-9]", "_")
+                    : "HCF";
+            String filename = String.format("bill_%s_%s.pdf", hcfName, bill.getBillingMonth());
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate bill PDF for bill {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Export bills for Tally (Excel format).
+     */
+    @GetMapping("/bills/export/tally")
+    public ResponseEntity<byte[]> exportForTally(
+            @RequestParam int year,
+            @RequestParam int month) {
+        UUID facilityId = TenantContext.getTenantId();
+        YearMonth yearMonth = YearMonth.of(year, month);
+
+        try {
+            byte[] excelBytes = tallyExportService.exportBillsForMonth(facilityId, yearMonth);
+            String filename = String.format("tally_export_%s_%02d.xlsx", year, month);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType
+                            .parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(excelBytes);
+        } catch (Exception e) {
+            log.error("Failed to generate Tally export for {}/{}: {}", year, month, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @GetMapping("/bills/month/{year}/{month}")
@@ -379,5 +503,28 @@ public class BillingController {
 
     public record ExcessRateHistoryDTO(BigDecimal ratePerKg, LocalDate effectiveFrom, String changedAt,
             String changedBy) {
+    }
+
+    // Bill Version DTO for audit trail
+    public record BillVersionDTO(
+            UUID id,
+            Integer version,
+            BigDecimal originalTotal,
+            BigDecimal adjustmentAmount,
+            BigDecimal finalAmount,
+            String adjustmentReason,
+            UUID adjustedBy,
+            Instant adjustedAt) {
+        public static BillVersionDTO from(BillVersion v) {
+            return new BillVersionDTO(
+                    v.getId(),
+                    v.getVersion(),
+                    v.getOriginalTotal(),
+                    v.getAdjustmentAmount(),
+                    v.getFinalAmount(),
+                    v.getAdjustmentReason(),
+                    v.getAdjustedBy(),
+                    v.getAdjustedAt());
+        }
     }
 }

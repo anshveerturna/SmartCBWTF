@@ -27,7 +27,7 @@ import {
   Download as DownloadIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import { listBills, downloadInvoicePdf } from '../../api/cbwtf';
+import { listBills, downloadBillPdf } from '../../api/cbwtf';
 import type { BillSummary } from '../../api/cbwtf';
 
 // Format currency
@@ -65,22 +65,22 @@ export default function BillingList() {
     navigate(`/cbwtf/billing/${billId}`);
   };
 
-  // Handle download invoice
+  // Handle download bill PDF
   const handleDownload = async (bill: BillSummary) => {
     setDownloading(bill.id);
     try {
-      const blob = await downloadInvoicePdf(bill.id);
+      const blob = await downloadBillPdf(bill.id);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `invoice_${bill.invoiceNumber || bill.id}.pdf`;
+      a.download = `bill_${bill.hcfName?.replace(/\s+/g, '_') || bill.id}_${bill.billingMonth}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      setSnackbar({ open: true, message: 'Invoice downloaded', severity: 'success' });
+      setSnackbar({ open: true, message: 'Bill PDF downloaded', severity: 'success' });
     } catch {
-      setSnackbar({ open: true, message: 'Failed to download invoice', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to download bill PDF', severity: 'error' });
     } finally {
       setDownloading(null);
     }
@@ -109,7 +109,7 @@ export default function BillingList() {
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight="bold">
-          Billing
+          Bills
         </Typography>
         <Button
           startIcon={<RefreshIcon />}
@@ -173,7 +173,6 @@ export default function BillingList() {
               <TableCell>Billing Month</TableCell>
               <TableCell align="right">Total Amount</TableCell>
               <TableCell align="center">Status</TableCell>
-              <TableCell>Invoice #</TableCell>
               <TableCell align="center">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -217,21 +216,19 @@ export default function BillingList() {
                         <ViewIcon />
                       </IconButton>
                     </Tooltip>
-                    {bill.invoiceNumber && (
-                      <Tooltip title="Download Invoice">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDownload(bill)}
-                          disabled={downloading === bill.id}
-                        >
-                          {downloading === bill.id ? (
-                            <CircularProgress size={18} />
-                          ) : (
-                            <DownloadIcon />
-                          )}
-                        </IconButton>
-                      </Tooltip>
-                    )}
+                    <Tooltip title="Download Bill PDF">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDownload(bill)}
+                        disabled={downloading === bill.id}
+                      >
+                        {downloading === bill.id ? (
+                          <CircularProgress size={18} />
+                        ) : (
+                          <DownloadIcon />
+                        )}
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))

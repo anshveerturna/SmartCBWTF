@@ -61,7 +61,15 @@ class DefaultHcfRepository @Inject constructor(
             if (!networkMonitor.isOnline()) {
                 throw Exception("No internet connection")
             }
-            api.register(request)
+            try {
+                api.register(request)
+            } catch (e: retrofit2.HttpException) {
+                when (e.code()) {
+                    409 -> throw Exception("Another HCF is already registered at this location. Please move to a different location and try again.")
+                    400 -> throw Exception("Invalid registration data. Please check your inputs.")
+                    else -> throw Exception("Registration failed: ${e.message()}")
+                }
+            }
         }
     
     override suspend fun getLatestTerms(facilityId: String?): TermsResponse = 

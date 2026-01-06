@@ -19,7 +19,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val apiBaseUrl = project.findProperty("API_BASE_URL") as String? ?: "https://api.smartcbwtf.example/"
+        val apiBaseUrl = project.findProperty("API_BASE_URL") as String? ?: "http://10.0.2.2:8080/api/"
         buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
     }
 

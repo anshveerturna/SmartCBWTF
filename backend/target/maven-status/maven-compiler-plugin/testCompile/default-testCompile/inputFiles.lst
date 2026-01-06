@@ -1,5 +1,7 @@
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/test/java/com/smartcbwtf/service/InvoiceSequenceContractTest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/test/java/com/smartcbwtf/service/TenantIsolationContractTest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/test/java/com/smartcbwtf/service/BillingCalculationServiceTest.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/test/java/com/smartcbwtf/service/BillAdjustmentServiceTest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/test/java/com/smartcbwtf/service/BillingLockContractTest.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/test/java/com/smartcbwtf/service/AgreementGuardContractTest.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/test/java/com/smartcbwtf/controller/InvoiceControllerDeprecationTest.java

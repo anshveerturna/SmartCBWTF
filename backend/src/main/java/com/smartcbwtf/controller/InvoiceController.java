@@ -1,55 +1,68 @@
 package com.smartcbwtf.controller;
 
-import com.smartcbwtf.dto.InvoiceGenerateRequest;
-import com.smartcbwtf.dto.InvoiceResponse;
-import com.smartcbwtf.domain.Invoice;
-import com.smartcbwtf.service.InvoiceService;
-import jakarta.validation.Valid;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.File;
-import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 
+/**
+ * Invoice Controller - DEPRECATED.
+ * 
+ * Invoice generation is now handled externally via Tally accounting software.
+ * This controller returns 410 Gone for all endpoints and logs access attempts
+ * to detect old clients or rogue integrations.
+ * 
+ * @deprecated Invoice generation moved to Tally. Use /api/cbwtf/billing/bills/*
+ *             endpoints instead.
+ */
+@Deprecated(forRemoval = true)
 @RestController
 @RequestMapping("/api/invoices")
 public class InvoiceController {
 
-    private final InvoiceService invoiceService;
+    private static final Logger log = LoggerFactory.getLogger(InvoiceController.class);
 
-    public InvoiceController(InvoiceService invoiceService) {
-        this.invoiceService = invoiceService;
-    }
+    private static final Map<String, Object> DEPRECATED_RESPONSE = Map.of(
+            "error", "Invoice generation is handled externally via Tally.",
+            "message", "This API is deprecated. Use /api/cbwtf/billing/bills/* endpoints for operational bills.",
+            "replacement", "/api/cbwtf/billing/bills");
 
     @PostMapping("/generate")
-    @PreAuthorize("hasRole('CBWTF_ADMIN')")
-    public InvoiceResponse generate(@Valid @RequestBody InvoiceGenerateRequest request) {
-        return new InvoiceResponse(invoiceService.generate(request));
+    @Deprecated(forRemoval = true)
+    public ResponseEntity<?> generate(@RequestBody(required = false) Object request) {
+        log.warn("DEPRECATED API accessed: POST /api/invoices/generate - caller should use /api/cbwtf/billing/bills");
+        return ResponseEntity.status(410).body(DEPRECATED_RESPONSE);
     }
 
     @GetMapping("/list")
-    @PreAuthorize("hasRole('CBWTF_ADMIN')")
-    public List<InvoiceResponse> list() {
-        return invoiceService.listAll().stream().map(InvoiceResponse::new).toList();
+    @Deprecated(forRemoval = true)
+    public ResponseEntity<?> list() {
+        log.warn("DEPRECATED API accessed: GET /api/invoices/list - caller should use /api/cbwtf/billing/bills");
+        return ResponseEntity.status(410).body(DEPRECATED_RESPONSE);
     }
 
     @GetMapping("/{id}/pdf")
-    @PreAuthorize("hasRole('CBWTF_ADMIN')")
-    public ResponseEntity<FileSystemResource> pdf(@PathVariable UUID id) {
-        Invoice invoice = invoiceService.get(id);
-        File file = new File(invoice.getPdfUrl());
-        if (!file.exists()) {
-            return ResponseEntity.notFound().build();
-        }
-        FileSystemResource resource = new FileSystemResource(file);
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + file.getName())
-                .body(resource);
+    @Deprecated(forRemoval = true)
+    public ResponseEntity<?> pdf(@PathVariable String id) {
+        log.warn(
+                "DEPRECATED API accessed: GET /api/invoices/{}/pdf - caller should use /api/cbwtf/billing/bills/{}/pdf",
+                id, id);
+        return ResponseEntity.status(410).body(DEPRECATED_RESPONSE);
+    }
+
+    @GetMapping
+    @Deprecated(forRemoval = true)
+    public ResponseEntity<?> getAll() {
+        log.warn("DEPRECATED API accessed: GET /api/invoices - caller should use /api/cbwtf/billing/bills");
+        return ResponseEntity.status(410).body(DEPRECATED_RESPONSE);
+    }
+
+    @GetMapping("/{id}")
+    @Deprecated(forRemoval = true)
+    public ResponseEntity<?> getById(@PathVariable String id) {
+        log.warn("DEPRECATED API accessed: GET /api/invoices/{} - caller should use /api/cbwtf/billing/bills", id);
+        return ResponseEntity.status(410).body(DEPRECATED_RESPONSE);
     }
 }

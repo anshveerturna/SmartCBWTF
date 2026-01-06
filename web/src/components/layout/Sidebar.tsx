@@ -85,7 +85,7 @@ const getSuperAdminSections = (): NavSection[] => [
       { path: '/superadmin/master/qr-labels', label: 'QR Labels', icon: <QrCodeIcon />, roles: ['SUPER_ADMIN'] },
       { path: '/superadmin/master/attendance', label: 'Attendance', icon: <AttendanceIcon />, roles: ['SUPER_ADMIN'] },
       { path: '/superadmin/master/vehicles', label: 'Vehicles', icon: <VehicleIcon />, roles: ['SUPER_ADMIN'] },
-      { path: '/superadmin/master/invoices', label: 'Invoices', icon: <BillingIcon />, roles: ['SUPER_ADMIN'] },
+      { path: '/superadmin/master/bills', label: 'Bills', icon: <BillingIcon />, roles: ['SUPER_ADMIN'] },
       { path: '/superadmin/master/payments', label: 'Payments', icon: <PaymentIcon />, roles: ['SUPER_ADMIN'] },
       { path: '/superadmin/master/audit-logs', label: 'Audit Logs', icon: <HistoryIcon />, roles: ['SUPER_ADMIN'] },
     ],
@@ -117,15 +117,14 @@ const getCbwtfAdminItems = (): NavItem[] => [
 // Finance sub-navigation for CBWTF Admin
 const getCbwtfFinanceItems = (): NavItem[] => [
   { path: '/cbwtf/payments', label: 'Payments', icon: <PaymentIcon />, roles: ['CBWTF_ADMIN'] },
-  { path: '/cbwtf/finance/invoices', label: 'Invoices', icon: <BillingIcon />, roles: ['CBWTF_ADMIN'] },
-  { path: '/cbwtf/billing', label: 'Billing', icon: <StorageIcon />, roles: ['CBWTF_ADMIN'] },
+  { path: '/cbwtf/billing', label: 'Bills', icon: <BillingIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/finance/revenue', label: 'Revenue', icon: <AnalyticsIcon />, roles: ['CBWTF_ADMIN'] },
 ];
 
 const getHcfAdminItems = (): NavItem[] => [
   { path: '/hcf/dashboard', label: 'Dashboard', icon: <DashboardIcon />, roles: ['HCF_ADMIN'] },
   { path: '/hcf/pickups', label: 'Pickup History', icon: <OperationsIcon />, roles: ['HCF_ADMIN'] },
-  { path: '/hcf/invoices', label: 'Invoices', icon: <BillingIcon />, roles: ['HCF_ADMIN'] },
+  { path: '/hcf/bills', label: 'Bills', icon: <BillingIcon />, roles: ['HCF_ADMIN'] },
   { path: '/hcf/agreement', label: 'Agreement', icon: <StorageIcon />, roles: ['HCF_ADMIN'] },
 ];
 

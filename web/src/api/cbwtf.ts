@@ -987,6 +987,17 @@ export const downloadInvoicePdf = async (billId: string): Promise<Blob> => {
   return response.data;
 };
 
+/**
+ * Download operational bill PDF (not invoice).
+ * Use this instead of downloadInvoicePdf for new code.
+ */
+export const downloadBillPdf = async (billId: string): Promise<Blob> => {
+  const response = await apiClient.get(`/api/cbwtf/billing/bills/${billId}/pdf`, {
+    responseType: 'blob'
+  });
+  return response.data;
+};
+
 export const triggerBillGeneration = async (billingMonth: string): Promise<{ billsGenerated: number }> => {
   const response = await apiClient.post('/api/cbwtf/billing/generate', { billingMonth });
   return response.data;

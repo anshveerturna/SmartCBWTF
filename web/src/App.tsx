@@ -22,7 +22,6 @@ const MasterBags = lazy(() => import('./pages/superadmin/master/MasterBags'));
 const MasterQrLabels = lazy(() => import('./pages/superadmin/master/MasterQrLabels'));
 const MasterAttendance = lazy(() => import('./pages/superadmin/master/MasterAttendance'));
 const MasterVehicles = lazy(() => import('./pages/superadmin/master/MasterVehicles'));
-const MasterInvoices = lazy(() => import('./pages/superadmin/master/MasterInvoices'));
 const MasterPayments = lazy(() => import('./pages/superadmin/master/MasterPayments'));
 const MasterAuditLogs = lazy(() => import('./pages/superadmin/master/MasterAuditLogs'));
 const PaymentGateway = lazy(() => import('./pages/superadmin/PaymentGateway'));
@@ -53,7 +52,6 @@ const CbwtfPayments = lazy(() => import('./pages/cbwtf/Payments'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 // CBWTF Finance pages
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
-const FinanceInvoices = lazy(() => import('./pages/cbwtf/finance/InvoiceList'));
 const FinanceBills = lazy(() => import('./pages/cbwtf/finance/Bills'));
 const CbwtfSettings = lazy(() => import('./pages/cbwtf/Settings'));
 const FinanceRevenue = lazy(() => import('./pages/cbwtf/finance/Revenue'));
@@ -129,7 +127,7 @@ const App: React.FC = () => {
                   <Route path="master/qr-labels" element={<MasterQrLabels />} />
                   <Route path="master/attendance" element={<MasterAttendance />} />
                   <Route path="master/vehicles" element={<MasterVehicles />} />
-                  <Route path="master/invoices" element={<MasterInvoices />} />
+                  <Route path="master/bills" element={<CbwtfBillingList />} />
                   <Route path="master/payments" element={<MasterPayments />} />
                   <Route path="master/audit-logs" element={<MasterAuditLogs />} />
                   {/* Payment Gateway & Settings */}
@@ -166,7 +164,6 @@ const App: React.FC = () => {
                   <Route path="operations" element={<div>Waste Operations (Coming Soon)</div>} />
                   {/* Finance Section */}
                   <Route path="finance/bank-accounts" element={<FinanceBankAccounts />} />
-                  <Route path="finance/invoices" element={<FinanceInvoices />} />
                   <Route path="finance/bills" element={<FinanceBills />} />
                   <Route path="finance/revenue" element={<FinanceRevenue />} />
                   <Route path="settings" element={<CbwtfSettings />} />
@@ -198,7 +195,7 @@ const App: React.FC = () => {
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<HcfDashboard />} />
                   <Route path="pickups" element={<div>Pickup History (Coming Soon)</div>} />
-                  <Route path="invoices" element={<div>Invoices (Coming Soon)</div>} />
+                  <Route path="bills" element={<div>Bills (Coming Soon)</div>} />
                   <Route path="agreement" element={<div>Agreement (Coming Soon)</div>} />
                 </Route>
 

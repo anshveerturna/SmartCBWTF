@@ -357,14 +357,14 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <!-- Add Bag Button (Outlined Style) -->
+            <!-- Add Bag Button - HIDDEN (bags are auto-added on QR scan) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAddBag"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="56dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="6dp"
+                android:layout_weight="0"
+                android:visibility="gone"
                 android:text="+ Add Bag"
                 android:textSize="15sp"
                 android:textStyle="bold"
@@ -375,14 +375,13 @@
                 app:strokeWidth="2dp"
                 app:rippleColor="#2000897B" />
 
-            <!-- Submit Button (Primary Filled - Darker Green) -->
+            <!-- Submit Button (Primary Filled - Takes full width now) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSubmitAll"
                 style="@style/Widget.Material3.Button"
                 android:layout_width="0dp"
                 android:layout_height="56dp"
                 android:layout_weight="1"
-                android:layout_marginStart="6dp"
                 android:text="Submit"
                 android:textSize="15sp"
                 android:textStyle="bold"

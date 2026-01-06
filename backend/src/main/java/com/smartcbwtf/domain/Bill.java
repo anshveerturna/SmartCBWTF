@@ -7,11 +7,11 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Bill - Immutable financial calculation result.
+ * Bill - Operational billing calculation result.
  * 
- * IMMUTABLE: NEVER update or delete.
- * Status is always FINALIZED.
- * All amounts derived mathematically from snapshot + pickup events.
+ * Base calculations are IMMUTABLE after finalization.
+ * Adjustments (concessions) can be applied by CBWTF_ADMIN only.
+ * Each adjustment creates a BillVersion audit record.
  */
 @Entity
 @Table(name = "bill", indexes = {
@@ -20,8 +20,15 @@ import java.util.UUID;
 })
 public class Bill {
 
+    /**
+     * Bill status enum.
+     * FINALIZED_WITH_ADJUSTMENT indicates bill is still final, just with a
+     * concession applied.
+     */
     public enum Status {
-        FINALIZED
+        DRAFT,
+        FINALIZED,
+        FINALIZED_WITH_ADJUSTMENT
     }
 
     @Id
@@ -52,7 +59,7 @@ public class Bill {
     @Column(name = "pickup_event_hash", nullable = false, length = 64)
     private String pickupEventHash;
 
-    // Calculated amounts
+    // Calculated amounts (IMMUTABLE after finalization)
     @Column(name = "base_allowance_kg", nullable = false, precision = 12, scale = 3)
     private BigDecimal baseAllowanceKg;
 
@@ -77,7 +84,26 @@ public class Bill {
     @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
-    @Column(nullable = false, length = 20)
+    // Adjustment fields (for concessions)
+    @Column(name = "adjustment_amount", precision = 12, scale = 2)
+    private BigDecimal adjustmentAmount;
+
+    @Column(name = "adjustment_reason", length = 500)
+    private String adjustmentReason;
+
+    @Column(name = "adjusted_by")
+    private UUID adjustedBy;
+
+    @Column(name = "adjusted_at")
+    private Instant adjustedAt;
+
+    @Column(name = "bill_version", nullable = false)
+    private Integer billVersion = 1;
+
+    @Column(name = "final_payable_amount", precision = 12, scale = 2)
+    private BigDecimal finalPayableAmount;
+
+    @Column(nullable = false, length = 30)
     private String status = Status.FINALIZED.name();
 
     // Billing model snapshot - frozen at bill creation time
@@ -168,6 +194,10 @@ public class Bill {
 
     public String getStatus() {
         return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public Instant getCreatedAt() {
@@ -266,5 +296,61 @@ public class Bill {
 
     public void setSnapshotRatePerBed(BigDecimal snapshotRatePerBed) {
         this.snapshotRatePerBed = snapshotRatePerBed;
+    }
+
+    // Adjustment getters/setters
+    public BigDecimal getAdjustmentAmount() {
+        return adjustmentAmount;
+    }
+
+    public void setAdjustmentAmount(BigDecimal adjustmentAmount) {
+        this.adjustmentAmount = adjustmentAmount;
+    }
+
+    public String getAdjustmentReason() {
+        return adjustmentReason;
+    }
+
+    public void setAdjustmentReason(String adjustmentReason) {
+        this.adjustmentReason = adjustmentReason;
+    }
+
+    public UUID getAdjustedBy() {
+        return adjustedBy;
+    }
+
+    public void setAdjustedBy(UUID adjustedBy) {
+        this.adjustedBy = adjustedBy;
+    }
+
+    public Instant getAdjustedAt() {
+        return adjustedAt;
+    }
+
+    public void setAdjustedAt(Instant adjustedAt) {
+        this.adjustedAt = adjustedAt;
+    }
+
+    public Integer getBillVersion() {
+        return billVersion;
+    }
+
+    public void setBillVersion(Integer billVersion) {
+        this.billVersion = billVersion;
+    }
+
+    public BigDecimal getFinalPayableAmount() {
+        return finalPayableAmount;
+    }
+
+    public void setFinalPayableAmount(BigDecimal finalPayableAmount) {
+        this.finalPayableAmount = finalPayableAmount;
+    }
+
+    /**
+     * Check if this bill has an adjustment applied.
+     */
+    public boolean hasAdjustment() {
+        return adjustmentAmount != null && adjustmentAmount.compareTo(BigDecimal.ZERO) != 0;
     }
 }

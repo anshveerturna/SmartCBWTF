@@ -24,9 +24,11 @@ import java.util.*;
  * 3. Create billing snapshot (freeze rates)
  * 4. Aggregate pickup events
  * 5. Calculate bill via BillingCalculationService
- * 6. Persist bill
- * 7. Generate invoice
- * 8. Audit log
+ * 6. Persist bill with status FINALIZED
+ * 7. Audit log
+ * 
+ * NOTE: Invoice generation is NOT performed here. GST invoices are
+ * handled externally via Tally accounting software.
  */
 @Service
 public class BillGenerationService {
@@ -198,10 +200,13 @@ public class BillGenerationService {
         bill.setCgst(calc.cgst());
         bill.setSgst(calc.sgst());
         bill.setTotalAmount(calc.totalAmount());
+        // Set final payable amount (same as total for new bills, adjusted later if
+        // concession applied)
+        bill.setFinalPayableAmount(calc.totalAmount());
+        bill.setStatus(Bill.Status.FINALIZED.name());
         billRepository.save(bill);
 
-        // Generate invoice
-        generateInvoice(bill, facility, monthStart);
+        // NOTE: Invoice generation removed - GST invoices are handled via Tally
 
         auditLogService.log("BILL", bill.getId(), "BILL_GENERATED", triggeredBy,
                 String.format("{\"total\":%.2f,\"events\":%d}", calc.totalAmount(), pickupEventCount));
@@ -214,7 +219,12 @@ public class BillGenerationService {
 
     /**
      * Generate invoice for a bill.
+     * 
+     * @deprecated Invoice generation is now handled externally via Tally.
+     *             This method is kept for reference only and will be removed.
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("unused")
     private void generateInvoice(Bill bill, Facility facility, LocalDate monthStart) {
         String financialYear = getFinancialYear(monthStart);
         int sequence = getNextInvoiceSequence(facility.getId(), financialYear);

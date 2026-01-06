@@ -9,18 +9,25 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Response DTO for HCF details including billing model and approval status.
+ * Response DTO for HCF details including all editable fields.
  */
 public record HcfDetailResponse(
         UUID id,
         String code,
         String name,
+        String doctorName,
         String address,
+        String pincode,
+        String state,
         String contactEmail,
         String contactPhone,
+        String panNo,
+        String gstNo,
+        String aadharNo,
         Integer numberOfBeds,
         BigDecimal monthlyCharges,
         BillingModel billingModel,
+        String otherNotes,
         ApprovalStatus approvalStatus,
         String rejectionReason,
         UUID approvedBy,
@@ -33,12 +40,19 @@ public record HcfDetailResponse(
                 hcf.getId(),
                 hcf.getCode(),
                 hcf.getName(),
+                hcf.getDoctorName(),
                 hcf.getAddress(),
+                hcf.getPincode(),
+                hcf.getState(),
                 hcf.getContactEmail(),
                 hcf.getContactPhone(),
+                hcf.getPanNo(),
+                hcf.getGstNo(),
+                hcf.getAadharNo(),
                 hcf.getNumberOfBeds(),
                 hcf.getMonthlyCharges(),
                 hcf.getBillingModel(),
+                hcf.getOtherNotes(),
                 hcf.getApprovalStatus(),
                 hcf.getRejectionReason(),
                 hcf.getApprovedBy(),

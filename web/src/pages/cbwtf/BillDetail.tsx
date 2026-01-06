@@ -22,7 +22,7 @@ import {
   ArrowBack as BackIcon,
   Download as DownloadIcon,
 } from '@mui/icons-material';
-import { getBillDetail, downloadInvoicePdf } from '../../api/cbwtf';
+import { getBillDetail, downloadBillPdf } from '../../api/cbwtf';
 import { useState } from 'react';
 
 // Format currency
@@ -64,11 +64,11 @@ export default function BillDetail() {
     if (!billId) return;
     setDownloading(true);
     try {
-      const blob = await downloadInvoicePdf(billId);
+      const blob = await downloadBillPdf(billId);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `invoice_${bill?.invoiceNumber || billId}.pdf`;
+      a.download = `bill_${bill?.hcfName?.replace(/\s+/g, '_') || billId}_${bill?.billingMonth || 'bill'}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -106,16 +106,14 @@ export default function BillDetail() {
         <Typography variant="h4" fontWeight="bold" sx={{ flex: 1 }}>
           Bill Details
         </Typography>
-        {bill.invoiceNumber && (
-          <Button
-            variant="contained"
-            startIcon={downloading ? <CircularProgress size={18} color="inherit" /> : <DownloadIcon />}
-            onClick={handleDownload}
-            disabled={downloading}
-          >
-            Download Invoice
-          </Button>
-        )}
+        <Button
+          variant="contained"
+          startIcon={downloading ? <CircularProgress size={18} color="inherit" /> : <DownloadIcon />}
+          onClick={handleDownload}
+          disabled={downloading}
+        >
+          Download Bill PDF
+        </Button>
       </Box>
 
       {/* Bill Identity Header */}
@@ -132,11 +130,6 @@ export default function BillDetail() {
           <Grid size={{ xs: 12, md: 4 }}>
             <Box display="flex" flexDirection="column" alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
               <Chip label={bill.status} color="success" sx={{ mb: 1 }} />
-              {bill.invoiceNumber && (
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Invoice: {bill.invoiceNumber}
-                </Typography>
-              )}
             </Box>
           </Grid>
         </Grid>
@@ -317,8 +310,8 @@ export default function BillDetail() {
 
       {/* Read-only footer */}
       <Alert severity="info" sx={{ mt: 3 }}>
-        This bill is read-only. All amounts are calculated from frozen billing snapshot data.
-        No modifications are allowed after bill generation.
+        This is an operational bill. GST invoice will be issued separately via Tally.
+        Adjustments can be applied by CBWTF Admin if required.
       </Alert>
     </Box>
   );
