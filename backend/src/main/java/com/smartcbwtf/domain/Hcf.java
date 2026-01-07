@@ -84,6 +84,19 @@ public class Hcf {
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 
+    // Bed Access Category - Regulatory classification for portal eligibility
+    @Enumerated(EnumType.STRING)
+    @Column(name = "bed_access_category", length = 20)
+    private HcfBedAccessCategory bedAccessCategory;
+
+    @Column(name = "portal_access_enabled")
+    private boolean portalAccessEnabled = false;
+
+    // Snapshot of category at approval time - for audit trail
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approved_bed_access_category", length = 20)
+    private HcfBedAccessCategory approvedBedAccessCategory;
+
     @ManyToOne
     @JoinColumn(name = "registered_by_user_id")
     private AppUser registeredByUser;
@@ -365,5 +378,53 @@ public class Hcf {
 
     public void setRejectionReason(String rejectionReason) {
         this.rejectionReason = rejectionReason;
+    }
+
+    // Bed Access Category getters/setters
+    public HcfBedAccessCategory getBedAccessCategory() {
+        return bedAccessCategory;
+    }
+
+    public void setBedAccessCategory(HcfBedAccessCategory bedAccessCategory) {
+        this.bedAccessCategory = bedAccessCategory;
+    }
+
+    public boolean isPortalAccessEnabled() {
+        return portalAccessEnabled;
+    }
+
+    public void setPortalAccessEnabled(boolean portalAccessEnabled) {
+        this.portalAccessEnabled = portalAccessEnabled;
+    }
+
+    public HcfBedAccessCategory getApprovedBedAccessCategory() {
+        return approvedBedAccessCategory;
+    }
+
+    public void setApprovedBedAccessCategory(HcfBedAccessCategory approvedBedAccessCategory) {
+        this.approvedBedAccessCategory = approvedBedAccessCategory;
+    }
+
+    /**
+     * Check if this HCF is eligible for portal access.
+     * SINGLE source of truth for portal eligibility.
+     */
+    public boolean isPortalEligible() {
+        return bedAccessCategory != null && bedAccessCategory.isPortalEligible();
+    }
+
+    /**
+     * Recalculate bed access category based on current bed count.
+     */
+    public void recalculateBedAccessCategory() {
+        this.bedAccessCategory = HcfBedAccessCategory.calculate(numberOfBeds, bedded);
+        this.portalAccessEnabled = this.bedAccessCategory.isPortalEligible();
+    }
+
+    /**
+     * Snapshot the current category at approval time.
+     */
+    public void snapshotCategoryOnApproval() {
+        this.approvedBedAccessCategory = this.bedAccessCategory;
     }
 }

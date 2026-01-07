@@ -36,7 +36,8 @@ const CbwtfStaff = lazy(() => import('./pages/cbwtf/Staff'));
 const CbwtfStaffDetail = lazy(() => import('./pages/cbwtf/StaffDetail'));
 const CbwtfAttendance = lazy(() => import('./pages/cbwtf/AttendanceList'));
 const CbwtfProfile = lazy(() => import('./pages/cbwtf/Profile'));
-const CbwtfHcfList = lazy(() => import('./pages/cbwtf/HcfList'));
+const CbwtfHcfListSmall = lazy(() => import('./pages/cbwtf/HcfListSmall'));
+const CbwtfHcfListLarge = lazy(() => import('./pages/cbwtf/HcfListLarge'));
 const CbwtfHcfDetail = lazy(() => import('./pages/cbwtf/HcfDetail'));
 const CbwtfHcfPendingApprovals = lazy(() => import('./pages/cbwtf/HcfPendingApprovals'));
 const CbwtfHcfRegister = lazy(() => import('./pages/cbwtf/HcfRegister'));
@@ -156,7 +157,9 @@ const App: React.FC = () => {
                   <Route path="staff" element={<CbwtfStaff />} />
                   <Route path="staff/:id" element={<CbwtfStaffDetail />} />
                   <Route path="attendance" element={<CbwtfAttendance />} />
-                  <Route path="hcfs" element={<CbwtfHcfList />} />
+                  <Route path="hcfs" element={<Navigate to="small" replace />} />
+                  <Route path="hcfs/small" element={<CbwtfHcfListSmall />} />
+                  <Route path="hcfs/large" element={<CbwtfHcfListLarge />} />
                   <Route path="hcfs/pending" element={<CbwtfHcfPendingApprovals />} />
                   <Route path="hcfs/register" element={<CbwtfHcfRegister />} />
                   <Route path="hcfs/:id" element={<CbwtfHcfDetail />} />

@@ -28,6 +28,11 @@ public class HcfListItemDTO {
     private LocalDate agreementStartDate;
     private LocalDate agreementEndDate;
 
+    // Bed Access Category (regulatory classification)
+    private String bedAccessCategory;
+    private String bedAccessCategoryDisplay;
+    private boolean portalEligible;
+
     // Operational
     private Instant lastPickupAt;
     private Instant createdAt;
@@ -52,6 +57,18 @@ public class HcfListItemDTO {
             dto.duesStatus = agreement.getDuesStatus();
             dto.agreementStartDate = agreement.getStartDate();
             dto.agreementEndDate = agreement.getEndDate();
+        }
+
+        // Bed access category - null-safe mapping
+        if (hcf.getBedAccessCategory() != null) {
+            dto.bedAccessCategory = hcf.getBedAccessCategory().name();
+            dto.bedAccessCategoryDisplay = hcf.getBedAccessCategory().getDisplayName();
+            dto.portalEligible = hcf.isPortalEligible();
+        } else {
+            // Default for legacy HCFs without category set
+            dto.bedAccessCategory = null;
+            dto.bedAccessCategoryDisplay = null;
+            dto.portalEligible = false;
         }
 
         return dto;
@@ -176,5 +193,29 @@ public class HcfListItemDTO {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getBedAccessCategory() {
+        return bedAccessCategory;
+    }
+
+    public void setBedAccessCategory(String bedAccessCategory) {
+        this.bedAccessCategory = bedAccessCategory;
+    }
+
+    public String getBedAccessCategoryDisplay() {
+        return bedAccessCategoryDisplay;
+    }
+
+    public void setBedAccessCategoryDisplay(String bedAccessCategoryDisplay) {
+        this.bedAccessCategoryDisplay = bedAccessCategoryDisplay;
+    }
+
+    public boolean isPortalEligible() {
+        return portalEligible;
+    }
+
+    public void setPortalEligible(boolean portalEligible) {
+        this.portalEligible = portalEligible;
     }
 }

@@ -246,6 +246,7 @@
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/HcfRegistrationResponse.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/AlertService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/GpsIngestionHealthService.java
+/Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/domain/HcfBedAccessCategory.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/dto/AttendanceSyncResponse.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/service/CBWTFScopedQueryService.java
 /Users/anshveerturna/Documents/SmartCBWTF/backend/src/main/java/com/smartcbwtf/repository/BrandingSnapshotRepository.java

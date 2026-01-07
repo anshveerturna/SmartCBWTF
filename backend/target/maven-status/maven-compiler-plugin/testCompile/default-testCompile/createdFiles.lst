@@ -1,4 +1,5 @@
 com/smartcbwtf/service/BillingCalculationServiceTest.class
+com/smartcbwtf/service/BillAdjustmentServiceTest$SuccessfulAdjustmentTests.class
 com/smartcbwtf/service/AgreementGuardContractTest.class
 com/smartcbwtf/service/BillingCalculationServiceTest$EdgeCases.class
 com/smartcbwtf/service/BillingCalculationServiceTest$RoundingTests.class
@@ -8,8 +9,12 @@ com/smartcbwtf/service/BillingCalculationServiceTest$MonthLengthTests.class
 com/smartcbwtf/service/InvoiceSequenceContractTest$DatabaseContractTests.class
 com/smartcbwtf/service/InvoiceSequenceContractTest.class
 com/smartcbwtf/service/InvoiceSequenceContractTest$FormatTests.class
+com/smartcbwtf/controller/InvoiceControllerDeprecationTest.class
 com/smartcbwtf/service/BillingLockContractTest.class
 com/smartcbwtf/service/BillingLockContractTest$DoubleBillingPrevention.class
+com/smartcbwtf/service/BillAdjustmentServiceTest$EdgeCaseTests.class
+com/smartcbwtf/service/BillAdjustmentServiceTest.class
+com/smartcbwtf/service/BillAdjustmentServiceTest$ValidationFailureTests.class
 com/smartcbwtf/service/TenantIsolationContractTest.class
 com/smartcbwtf/service/BillingCalculationServiceTest$MathCorrectness.class
 com/smartcbwtf/service/BillingCalculationServiceTest$BoundaryTests.class

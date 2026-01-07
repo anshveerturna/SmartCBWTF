@@ -550,6 +550,10 @@ export interface HcfListItem {
   createdAt: string;
   updatedAt: string | null;
   status: string | null;
+  // Bed Access Category (regulatory classification)
+  bedAccessCategory: 'BEDS_0_TO_30' | 'ABOVE_30_BEDS' | null;
+  bedAccessCategoryDisplay: string | null;
+  portalEligible: boolean;
 }
 
 export interface AgreementInfo {

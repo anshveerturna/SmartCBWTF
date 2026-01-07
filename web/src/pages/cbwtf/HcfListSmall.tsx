@@ -30,7 +30,7 @@ import {
 import {
   Search as SearchIcon,
   Visibility as ViewIcon,
-  Business as HcfIcon,
+  LocalHospital as HcfIcon,
   Pending as PendingIcon,
 } from '@mui/icons-material';
 import { getHcfList } from '../../api/cbwtf';
@@ -72,21 +72,41 @@ const formatDate = (dateString: string | null) => {
   });
 };
 
-export default function HcfList() {
+/**
+ * HCF List for 0-30 Beds (Small HCFs)
+ * These are CBWTF-managed only - NO portal access per regulatory norms.
+ */
+export default function HcfListSmall() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  const { data: hcfs, isLoading, error } = useQuery({
+  const { data: allHcfs, isLoading, error } = useQuery({
     queryKey: ['cbwtf-hcfs'],
     queryFn: getHcfList,
   });
 
+  // Filter to only show 0-30 beds HCFs
   const filteredHcfs = useMemo(() => {
-    if (!hcfs) return [];
+    if (!allHcfs) return [];
     
-    return hcfs.filter((hcf) => {
+    return allHcfs.filter((hcf) => {
+      // Determine if this is a small HCF (0-30 beds)
+      let isSmallHcf: boolean;
+      
+      if (hcf.bedAccessCategory === 'BEDS_0_TO_30') {
+        // Explicit category set
+        isSmallHcf = true;
+      } else if (hcf.bedAccessCategory === 'ABOVE_30_BEDS') {
+        // Explicit category set as large
+        isSmallHcf = false;
+      } else {
+        // Category is null/undefined - fall back to bed count
+        isSmallHcf = hcf.numberOfBeds === null || hcf.numberOfBeds <= 30;
+      }
+      
+      if (!isSmallHcf) return false;
+
       // Search filter
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
@@ -99,13 +119,9 @@ export default function HcfList() {
       const matchesStatus =
         statusFilter === 'all' || hcf.agreementStatus === statusFilter;
 
-      // Category filter (bed access category)
-      const matchesCategory =
-        categoryFilter === 'all' || hcf.bedAccessCategory === categoryFilter;
-
-      return matchesSearch && matchesStatus && matchesCategory;
+      return matchesSearch && matchesStatus;
     });
-  }, [hcfs, searchQuery, statusFilter, categoryFilter]);
+  }, [allHcfs, searchQuery, statusFilter]);
 
   if (isLoading) {
     return (
@@ -130,7 +146,7 @@ export default function HcfList() {
         <Box display="flex" alignItems="center" gap={2}>
           <HcfIcon sx={{ fontSize: 32, color: 'primary.main' }} />
           <Typography variant="h4" fontWeight="bold">
-            HCF Management
+            HCFs (0–30 Beds)
           </Typography>
         </Box>
         <Stack direction="row" spacing={2}>
@@ -183,18 +199,6 @@ export default function HcfList() {
                 <MenuItem value="DISPUTED">Disputed</MenuItem>
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel>HCF Category</InputLabel>
-              <Select
-                value={categoryFilter}
-                label="HCF Category"
-                onChange={(e) => setCategoryFilter(e.target.value)}
-              >
-                <MenuItem value="all">All Categories</MenuItem>
-                <MenuItem value="BEDS_0_TO_30">0–30 Beds</MenuItem>
-                <MenuItem value="ABOVE_30_BEDS">Above 30 Beds</MenuItem>
-              </Select>
-            </FormControl>
           </Stack>
         </CardContent>
       </Card>
@@ -208,7 +212,6 @@ export default function HcfList() {
               <TableCell sx={{ fontWeight: 'bold' }}>Code</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Agreement #</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Category</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Dues</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Beds</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Last Pickup</TableCell>
@@ -218,11 +221,11 @@ export default function HcfList() {
           <TableBody>
             {filteredHcfs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                   <Typography color="text.secondary">
-                    {searchQuery || statusFilter !== 'all' || categoryFilter !== 'all'
+                    {searchQuery || statusFilter !== 'all'
                       ? 'No HCFs match your filters'
-                      : 'No HCFs found'}
+                      : 'No HCFs with 0–30 beds found'}
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -265,17 +268,7 @@ export default function HcfList() {
                       variant="outlined"
                     />
                   </TableCell>
-                  <TableCell>
-                    <Tooltip title={hcf.portalEligible ? 'Portal Eligible' : 'CBWTF Managed Only'}>
-                      <Chip
-                        label={hcf.bedAccessCategoryDisplay || (hcf.bedAccessCategory === 'ABOVE_30_BEDS' ? 'Above 30 Beds' : '0–30 Beds')}
-                        color={hcf.portalEligible ? 'primary' : 'default'}
-                        size="small"
-                        variant={hcf.portalEligible ? 'filled' : 'outlined'}
-                      />
-                    </Tooltip>
-                  </TableCell>
-                  <TableCell>{hcf.numberOfBeds || '-'}</TableCell>
+                  <TableCell>{hcf.numberOfBeds || '0'}</TableCell>
                   <TableCell>
                     {hcf.lastPickupAt ? formatDate(hcf.lastPickupAt) : '-'}
                   </TableCell>
@@ -300,19 +293,19 @@ export default function HcfList() {
       </TableContainer>
 
       {/* Summary */}
-      {hcfs && hcfs.length > 0 && (
+      {allHcfs && allHcfs.length > 0 && (
         <Box mt={2} display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="body2" color="text.secondary">
-            Showing {filteredHcfs.length} of {hcfs.length} HCFs
+            Showing {filteredHcfs.length} HCFs with 0–30 beds
           </Typography>
           <Stack direction="row" spacing={2}>
             <Typography component="div" variant="body2" color="text.secondary">
               <Chip label="Active" color="success" size="small" sx={{ mr: 0.5 }} />
-              {hcfs.filter((h) => h.agreementStatus === 'ACTIVE').length}
+              {filteredHcfs.filter((h) => h.agreementStatus === 'ACTIVE').length}
             </Typography>
             <Typography component="div" variant="body2" color="text.secondary">
-              <Chip label="Expired" color="error" size="small" sx={{ mr: 0.5 }} />
-              {hcfs.filter((h) => h.agreementStatus !== 'ACTIVE').length}
+              <Chip label="Inactive" color="default" size="small" sx={{ mr: 0.5 }} />
+              {filteredHcfs.filter((h) => h.agreementStatus !== 'ACTIVE').length}
             </Typography>
           </Stack>
         </Box>

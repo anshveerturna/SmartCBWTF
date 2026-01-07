@@ -7,6 +7,7 @@ com/smartcbwtf/controller/SuperAdminAuditController$AuditLogDTO.class
 com/smartcbwtf/domain/BrandingSnapshot.class
 com/smartcbwtf/domain/FacilityTemplate.class
 com/smartcbwtf/service/AgreementCodeGeneratorService.class
+com/smartcbwtf/service/BillAdjustmentService.class
 com/smartcbwtf/config/TenantContext.class
 com/smartcbwtf/controller/CBWTFDashboardController.class
 com/smartcbwtf/dto/CBWTFDashboardDTO$RiskAlert.class
@@ -64,6 +65,7 @@ com/smartcbwtf/service/InvoiceService.class
 com/smartcbwtf/domain/GpsIngestionLog.class
 com/smartcbwtf/domain/FacilitySettings.class
 com/smartcbwtf/domain/MonthlyComplianceReport.class
+com/smartcbwtf/domain/BillVersion.class
 com/smartcbwtf/controller/BankAccountController$CreateBankAccountRequest.class
 com/smartcbwtf/service/AgreementGuardService.class
 com/smartcbwtf/controller/GpsIngestionController$UnbindRequest.class
@@ -93,6 +95,7 @@ com/smartcbwtf/controller/GpsIngestionController.class
 com/smartcbwtf/controller/GpsHealthController.class
 com/smartcbwtf/repository/GpsDeviceBindingRepository.class
 com/smartcbwtf/service/TenantAssertionService.class
+com/smartcbwtf/repository/BillVersionRepository.class
 com/smartcbwtf/repository/PaymentRepository.class
 com/smartcbwtf/repository/FacilityBrandingRepository.class
 com/smartcbwtf/repository/HcfAdvanceLedgerRepository.class
@@ -110,6 +113,7 @@ com/smartcbwtf/service/LabelService.class
 com/smartcbwtf/domain/ReportGenerationLockId.class
 com/smartcbwtf/repository/SystemConfigAuditRepository.class
 com/smartcbwtf/service/BillGenerationService.class
+com/smartcbwtf/controller/BillingController$BillVersionDTO.class
 com/smartcbwtf/controller/SystemErrorController$SystemErrorDTO.class
 com/smartcbwtf/controller/SuperAdminUserController$UpdateSuperAdminRequest.class
 com/smartcbwtf/dto/TermsCreateRequest.class
@@ -240,6 +244,7 @@ com/smartcbwtf/repository/GpsIngestionLogRepository.class
 com/smartcbwtf/dto/CBWTFDashboardDTO$RecentBagEvent.class
 com/smartcbwtf/controller/SuperAdminUserController$CreateSuperAdminRequest.class
 com/smartcbwtf/dto/HcfListItemDTO.class
+com/smartcbwtf/service/BillPdfService.class
 com/smartcbwtf/domain/MonthlyComplianceReport$DataCompleteness.class
 com/smartcbwtf/domain/SubscriptionAudit.class
 com/smartcbwtf/dto/admin/UpdateSubscriptionRequest.class
@@ -251,6 +256,7 @@ com/smartcbwtf/controller/SuperAdminUserController$SuperAdminUserDTO.class
 com/smartcbwtf/domain/Attendance.class
 com/smartcbwtf/domain/QrAuthorization.class
 com/smartcbwtf/dto/settings/SettingsAuditDTO.class
+com/smartcbwtf/service/TallyExportService.class
 com/smartcbwtf/dto/InvoiceResponse.class
 com/smartcbwtf/domain/PaymentReversal.class
 com/smartcbwtf/dto/admin/UpdateCBWTFRequest.class
@@ -278,6 +284,7 @@ com/smartcbwtf/controller/CbwtfAttendanceController$AttendanceListResponse.class
 com/smartcbwtf/domain/EmailDispatchLog$Status.class
 com/smartcbwtf/dto/AnalyticsPageDTO$WasteByCategoryResponse.class
 com/smartcbwtf/exception/AgreementNotActiveException.class
+com/smartcbwtf/dto/BillAdjustmentRequest.class
 com/smartcbwtf/domain/AgreementBillingConfig.class
 com/smartcbwtf/repository/FacilityTemplateRepository.class
 com/smartcbwtf/domain/MonthlyWasteSnapshot.class
@@ -299,6 +306,7 @@ com/smartcbwtf/annotation/RequireFeature.class
 com/smartcbwtf/domain/AgreementSnapshot$SnapshotReason.class
 com/smartcbwtf/exception/IllegalTransitionException.class
 com/smartcbwtf/domain/UserGpsEvent.class
+com/smartcbwtf/domain/HcfBedAccessCategory.class
 com/smartcbwtf/domain/TenantFeatureFlag.class
 com/smartcbwtf/controller/MobileQrController.class
 com/smartcbwtf/controller/CBWTFDashboardController$CategoryBreakdown.class
