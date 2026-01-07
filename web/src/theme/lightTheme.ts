@@ -52,13 +52,13 @@ const lightComponents = {
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         },
       },
-      contained: {
+      containedPrimary: {
         background: 'linear-gradient(135deg, #00695C 0%, #004D40 100%)',
         '&:hover': {
           background: 'linear-gradient(135deg, #00796B 0%, #00695C 100%)',
         },
       },
-      outlined: {
+      outlinedPrimary: {
         borderColor: '#00695C',
         color: '#00695C',
         '&:hover': {

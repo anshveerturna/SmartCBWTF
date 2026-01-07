@@ -1238,7 +1238,138 @@ export const deleteLogo = async (): Promise<void> => {
   await apiClient.delete('/api/cbwtf/branding/logo');
 };
 
+// ============= Consumables API =============
+
+export interface ConsumableCategoryDTO {
+  id: string;
+  name: string;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  itemCount: number;
+}
+
+export interface ConsumablePricingHistoryItem {
+  id: string;
+  pricePerUnit: number;
+  gstRate: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ConsumableItemDTO {
+  id: string;
+  consumableCode: string;
+  name: string;
+  description: string | null;
+  hsnCode: string | null;
+  unitOfMeasure: string;
+  imageUrl: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  categoryId: string;
+  categoryName: string;
+  activePrice: number | null;
+  activeGstRate: number | null;
+  priceEffectiveFrom: string | null;
+  referenceType: string | null;
+  referenceQuantity: number | null;
+  referenceDisplayText: string | null;
+  pricingHistory: ConsumablePricingHistoryItem[] | null;
+}
+
+export interface CreateConsumableRequest {
+  categoryId: string;
+  consumableCode: string;
+  name: string;
+  description?: string;
+  hsnCode?: string;
+  unitOfMeasure: string;
+  initialPrice?: number;
+  gstRate?: number;
+  priceEffectiveFrom?: string;
+  referenceType?: 'PER_100_BEDS_PER_YEAR' | 'PER_MONTH' | 'FIXED';
+  referenceQuantity?: number;
+}
+
+export interface UpdateConsumableRequest {
+  categoryId?: string;
+  name?: string;
+  description?: string;
+  hsnCode?: string;
+  unitOfMeasure?: string;
+}
+
+export interface AddPricingRequest {
+  pricePerUnit: number;
+  gstRate?: number;
+  effectiveFrom: string;
+}
+
+export const listConsumables = async (includeInactive = false): Promise<ConsumableItemDTO[]> => {
+  const response = await apiClient.get('/api/cbwtf/consumables', {
+    params: { includeInactive }
+  });
+  return response.data;
+};
+
+export const getConsumable = async (id: string): Promise<ConsumableItemDTO> => {
+  const response = await apiClient.get(`/api/cbwtf/consumables/${id}`);
+  return response.data;
+};
+
+export const createConsumable = async (data: CreateConsumableRequest): Promise<ConsumableItemDTO> => {
+  const response = await apiClient.post('/api/cbwtf/consumables', data);
+  return response.data;
+};
+
+export const updateConsumable = async (id: string, data: UpdateConsumableRequest): Promise<ConsumableItemDTO> => {
+  const response = await apiClient.put(`/api/cbwtf/consumables/${id}`, data);
+  return response.data;
+};
+
+export const addConsumablePricing = async (id: string, data: AddPricingRequest): Promise<ConsumableItemDTO> => {
+  const response = await apiClient.post(`/api/cbwtf/consumables/${id}/pricing`, data);
+  return response.data;
+};
+
+export const getConsumablePricingHistory = async (id: string): Promise<ConsumablePricingHistoryItem[]> => {
+  const response = await apiClient.get(`/api/cbwtf/consumables/${id}/pricing`);
+  return response.data;
+};
+
+export const uploadConsumableImage = async (id: string, file: File): Promise<ConsumableItemDTO> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post(`/api/cbwtf/consumables/${id}/image`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};
+
+export const deleteConsumableImage = async (id: string): Promise<ConsumableItemDTO> => {
+  const response = await apiClient.delete(`/api/cbwtf/consumables/${id}/image`);
+  return response.data;
+};
+
+export const deactivateConsumable = async (id: string): Promise<void> => {
+  await apiClient.patch(`/api/cbwtf/consumables/${id}/deactivate`);
+};
+
+export const activateConsumable = async (id: string): Promise<void> => {
+  await apiClient.patch(`/api/cbwtf/consumables/${id}/activate`);
+};
+
+export const listConsumableCategories = async (): Promise<ConsumableCategoryDTO[]> => {
+  const response = await apiClient.get('/api/cbwtf/consumables/categories');
+  return response.data;
+};
+
 export default cbwtfApi;
+
 
 
 

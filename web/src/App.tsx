@@ -42,6 +42,9 @@ const CbwtfHcfDetail = lazy(() => import('./pages/cbwtf/HcfDetail'));
 const CbwtfHcfPendingApprovals = lazy(() => import('./pages/cbwtf/HcfPendingApprovals'));
 const CbwtfHcfRegister = lazy(() => import('./pages/cbwtf/HcfRegister'));
 const CbwtfQrLabels = lazy(() => import('./pages/cbwtf/QrLabels'));
+const CbwtfConsumables = lazy(() => import('./pages/cbwtf/Consumables'));
+const CbwtfConsumableNew = lazy(() => import('./pages/cbwtf/ConsumableNew'));
+const CbwtfConsumableDetail = lazy(() => import('./pages/cbwtf/ConsumableDetail'));
 const CbwtfBillingList = lazy(() => import('./pages/cbwtf/BillingList'));
 const CbwtfBillDetail = lazy(() => import('./pages/cbwtf/BillDetail'));
 const CbwtfBillingSettings = lazy(() => import('./pages/cbwtf/BillingSettings'));
@@ -164,6 +167,9 @@ const App: React.FC = () => {
                   <Route path="hcfs/register" element={<CbwtfHcfRegister />} />
                   <Route path="hcfs/:id" element={<CbwtfHcfDetail />} />
                   <Route path="labels" element={<CbwtfQrLabels />} />
+                  <Route path="consumables" element={<CbwtfConsumables />} />
+                  <Route path="consumables/new" element={<CbwtfConsumableNew />} />
+                  <Route path="consumables/:id" element={<CbwtfConsumableDetail />} />
                   <Route path="operations" element={<div>Waste Operations (Coming Soon)</div>} />
                   {/* Finance Section */}
                   <Route path="finance/bank-accounts" element={<FinanceBankAccounts />} />

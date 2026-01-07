@@ -233,6 +233,7 @@ com/smartcbwtf/service/PdfService.class
 com/smartcbwtf/dto/AttendanceSyncItem.class
 com/smartcbwtf/repository/InvoiceRepository.class
 com/smartcbwtf/repository/AnnualComplianceReportRepository.class
+com/smartcbwtf/dto/CreateConsumableRequest.class
 com/smartcbwtf/dto/DeactivateHcfRequest.class
 com/smartcbwtf/repository/MonthlyWasteSnapshotRepository.class
 com/smartcbwtf/dto/admin/OnboardTenantRequest.class
@@ -308,6 +309,7 @@ com/smartcbwtf/exception/IllegalTransitionException.class
 com/smartcbwtf/domain/UserGpsEvent.class
 com/smartcbwtf/domain/HcfBedAccessCategory.class
 com/smartcbwtf/domain/TenantFeatureFlag.class
+com/smartcbwtf/domain/ConsumablePricing.class
 com/smartcbwtf/controller/MobileQrController.class
 com/smartcbwtf/controller/CBWTFDashboardController$CategoryBreakdown.class
 com/smartcbwtf/repository/FacilityTermsRepository.class
@@ -324,6 +326,7 @@ com/smartcbwtf/domain/Facility$Plan.class
 com/smartcbwtf/service/AttendanceService.class
 com/smartcbwtf/controller/SuperAdminEmailTemplateController$ValidateTemplateRequest.class
 com/smartcbwtf/domain/AgreementSnapshot.class
+com/smartcbwtf/domain/ConsumableItem.class
 com/smartcbwtf/config/JwtService.class
 com/smartcbwtf/domain/Invoice.class
 com/smartcbwtf/domain/HcfAuditLog.class
@@ -406,6 +409,7 @@ com/smartcbwtf/dto/RenewAgreementRequest.class
 com/smartcbwtf/service/AgreementTransitionService.class
 com/smartcbwtf/domain/enums/TemplateCode.class
 com/smartcbwtf/controller/PaymentController$AllocationDTO.class
+com/smartcbwtf/controller/CbwtfConsumableController.class
 com/smartcbwtf/service/PaymentService$RecordPaymentRequest.class
 com/smartcbwtf/service/EmailService.class
 com/smartcbwtf/config/GlobalExceptionHandler.class

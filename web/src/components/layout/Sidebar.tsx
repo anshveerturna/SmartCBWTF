@@ -109,6 +109,7 @@ const getCbwtfAdminItems = (): NavItem[] => [
   { path: '/cbwtf/hcfs/small', label: 'HCFs (0–30 Beds)', icon: <HcfIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/hcfs/large', label: 'HCFs (Above 30 Beds)', icon: <HcfIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/labels', label: 'QR Labels', icon: <QrCodeIcon />, roles: ['CBWTF_ADMIN'] },
+  { path: '/cbwtf/consumables', label: 'Consumables', icon: <InventoryIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/operations', label: 'Waste Operations', icon: <OperationsIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/compliance', label: 'Compliance & Reports', icon: <AnalyticsIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/alerts', label: 'Alerts', icon: <AlertsIcon />, roles: ['CBWTF_ADMIN'] },

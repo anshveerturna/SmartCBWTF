@@ -46,6 +46,7 @@ public class SecurityConfig {
                                 "/api/hcfs/register",
                                 "/api/terms/latest", // Public endpoint for mobile app to fetch T&C
                                 "/uploads/**", // Profile photos and other uploaded files
+                                "/api/cbwtf/consumables/*/image/view", // Public consumable images
                                 "/error" // Allow error dispatching
                         ).permitAll()
                         .anyRequest().authenticated())
