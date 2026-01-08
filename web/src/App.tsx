@@ -53,6 +53,7 @@ const CbwtfAlerts = lazy(() => import('./pages/cbwtf/Alerts'));
 const CbwtfNotificationSettings = lazy(() => import('./pages/cbwtf/NotificationSettings'));
 const CbwtfBankAccounts = lazy(() => import('./pages/cbwtf/BankAccounts'));
 const CbwtfPayments = lazy(() => import('./pages/cbwtf/Payments'));
+const CbwtfRoutePlanning = lazy(() => import('./pages/cbwtf/RoutePlanning'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 // CBWTF Finance pages
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
@@ -170,7 +171,7 @@ const App: React.FC = () => {
                   <Route path="consumables" element={<CbwtfConsumables />} />
                   <Route path="consumables/new" element={<CbwtfConsumableNew />} />
                   <Route path="consumables/:id" element={<CbwtfConsumableDetail />} />
-                  <Route path="operations" element={<div>Waste Operations (Coming Soon)</div>} />
+                  <Route path="routes" element={<CbwtfRoutePlanning />} />
                   {/* Finance Section */}
                   <Route path="finance/bank-accounts" element={<FinanceBankAccounts />} />
                   <Route path="finance/bills" element={<FinanceBills />} />

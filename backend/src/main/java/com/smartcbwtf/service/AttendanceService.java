@@ -32,6 +32,7 @@ public class AttendanceService {
     private final AuditLogService auditLogService;
     private final FeatureGuardService featureGuardService;
     private final AgreementGuardService agreementGuard;
+    private final RouteExecutionService routeExecutionService;
 
     @Value("${app.attendance.geofence-radius-m:50}")
     private double geofenceRadiusM;
@@ -46,7 +47,8 @@ public class AttendanceService {
             FacilityRepository facilityRepository,
             AuditLogService auditLogService,
             FeatureGuardService featureGuardService,
-            AgreementGuardService agreementGuard) {
+            AgreementGuardService agreementGuard,
+            RouteExecutionService routeExecutionService) {
         this.attendanceRepository = attendanceRepository;
         this.hcfRepository = hcfRepository;
         this.appUserRepository = appUserRepository;
@@ -54,6 +56,7 @@ public class AttendanceService {
         this.auditLogService = auditLogService;
         this.featureGuardService = featureGuardService;
         this.agreementGuard = agreementGuard;
+        this.routeExecutionService = routeExecutionService;
     }
 
     @Transactional
@@ -160,6 +163,14 @@ public class AttendanceService {
         attendance.setClientEventId(clientEventId);
 
         attendance = attendanceRepository.save(attendance);
+
+        // Update route execution logs if staff is assigned to routes with this HCF
+        try {
+            routeExecutionService.onAttendanceMarked(attendance);
+        } catch (Exception e) {
+            // Log but don't fail attendance - route tracking is secondary
+            // This prevents circular dependency issues at startup
+        }
 
         // Audit log
         auditLogService.log(

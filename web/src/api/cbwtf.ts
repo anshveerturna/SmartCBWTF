@@ -1370,6 +1370,292 @@ export const listConsumableCategories = async (): Promise<ConsumableCategoryDTO[
 
 export default cbwtfApi;
 
+// ============= Route Planning Types =============
 
+export type RouteStatus = 'DRAFT' | 'ACTIVE' | 'TEMPORARILY_SUSPENDED';
 
+export interface RouteDTO {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  status: RouteStatus;
+  isActive: boolean;
+  waypointCount: number;
+  assignedStaffName: string | null;
+  assignedStaffId: string | null;
+  completionDays: number | null;
+  cycleStartDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
+export interface RouteWaypointDTO {
+  id: string;
+  sequenceOrder: number;
+  estimatedStopMinutes: number;
+  hcfId: string;
+  hcfCode: string;
+  hcfName: string;
+  hcfAddress: string;
+  gpsLat: number | null;
+  gpsLon: number | null;
+}
+
+export interface RouteAssignmentDTO {
+  id: string;
+  staffId: string | null;
+  staffName: string | null;
+  staffPhone: string | null;
+  vehicleId: string | null;
+  vehicleRegistration: string | null;
+  assignedFrom: string;
+  assignedTo: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface RouteDetailDTO {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  status: RouteStatus;
+  isActive: boolean;
+  waypoints: RouteWaypointDTO[];
+  currentAssignment: RouteAssignmentDTO | null;
+  assignmentHistory: RouteAssignmentDTO[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HcfGeoPointDTO {
+  id: string;
+  code: string;
+  name: string;
+  address: string;
+  gpsLat: number | null;
+  gpsLon: number | null;
+  status: string;
+  routeIds: string[];
+}
+
+export interface WaypointCoordinate {
+  order: number;
+  hcfId: string;
+  hcfName: string;
+  lat: number | null;
+  lon: number | null;
+}
+
+export interface RouteWithWaypointsDTO {
+  id: string;
+  name: string;
+  color: string;
+  status: RouteStatus;
+  isActive: boolean;
+  assignedStaffName: string | null;
+  coordinates: WaypointCoordinate[];
+}
+
+export interface RouteMapDataDTO {
+  hcfs: HcfGeoPointDTO[];
+  routes: RouteWithWaypointsDTO[];
+}
+
+export interface CreateRouteRequest {
+  name: string;
+  description?: string;
+  color?: string;
+  completionDays?: number;
+}
+
+export interface UpdateRouteRequest {
+  name?: string;
+  description?: string;
+  color?: string;
+  status?: RouteStatus;
+  completionDays?: number;
+}
+
+export interface SetWaypointsRequest {
+  hcfIds: string[];
+}
+
+export interface AssignRouteRequest {
+  staffId: string;
+  vehicleId?: string;
+}
+
+// ============= Route Planning API Functions =============
+
+export const createRoute = async (request: CreateRouteRequest): Promise<RouteDTO> => {
+  const response = await apiClient.post('/api/cbwtf/routes', request);
+  return response.data;
+};
+
+export const listRoutes = async (): Promise<RouteDTO[]> => {
+  const response = await apiClient.get('/api/cbwtf/routes');
+  return response.data;
+};
+
+export const getRoute = async (id: string): Promise<RouteDetailDTO> => {
+  const response = await apiClient.get(`/api/cbwtf/routes/${id}`);
+  return response.data;
+};
+
+export const updateRoute = async (id: string, request: UpdateRouteRequest): Promise<RouteDTO> => {
+  const response = await apiClient.put(`/api/cbwtf/routes/${id}`, request);
+  return response.data;
+};
+
+export const setRouteStatus = async (id: string, status: RouteStatus): Promise<RouteDTO> => {
+  const response = await apiClient.patch(`/api/cbwtf/routes/${id}/status`, { status });
+  return response.data;
+};
+
+export const setRouteWaypoints = async (id: string, request: SetWaypointsRequest): Promise<RouteWaypointDTO[]> => {
+  const response = await apiClient.put(`/api/cbwtf/routes/${id}/waypoints`, request);
+  return response.data;
+};
+
+export const assignRoute = async (id: string, request: AssignRouteRequest): Promise<RouteAssignmentDTO> => {
+  const response = await apiClient.post(`/api/cbwtf/routes/${id}/assign`, request);
+  return response.data;
+};
+
+export const unassignRoute = async (id: string): Promise<void> => {
+  await apiClient.delete(`/api/cbwtf/routes/${id}/assign`);
+};
+
+export const getRouteMapData = async (routeId?: string, activeOnly?: boolean): Promise<RouteMapDataDTO> => {
+  const params = new URLSearchParams();
+  if (routeId) params.append('routeId', routeId);
+  if (activeOnly !== undefined) params.append('activeOnly', String(activeOnly));
+  
+  const url = params.toString() ? `/api/cbwtf/routes/map-data?${params}` : '/api/cbwtf/routes/map-data';
+  const response = await apiClient.get(url);
+  return response.data;
+};
+
+// ============= Staff Selection API =============
+
+export interface StaffOption {
+  id: string;
+  name: string;
+}
+
+export const getStaffForSelection = async (): Promise<StaffOption[]> => {
+  // Fetch staff/drivers for route assignment (paginated response)
+  const response = await apiClient.get('/api/cbwtf/staff?size=100');
+  // Handle both Page<Staff> (with content) and List<Staff> responses
+  const staffList = Array.isArray(response.data) ? response.data : (response.data.content || []);
+  return staffList.map((s: { id: string; fullName?: string; name?: string; username?: string }) => ({
+    id: s.id,
+    name: s.fullName || s.name || s.username || 'Unknown Staff',
+  }));
+};
+
+// ============= Route Execution Types =============
+
+export interface RouteExecutionLogDTO {
+  logId: string;
+  waypointId: string;
+  hcfId: string;
+  hcfName: string;
+  hcfCode: string;
+  sequenceOrder: number;
+  status: 'PENDING' | 'COMPLETED' | 'MISSED';
+  visitedAt: string | null;
+  staffName: string | null;
+}
+
+export interface RouteCycleDTO {
+  cycleId: string;
+  cycleNumber: number;
+  cycleStart: string;
+  cycleEnd: string;
+  totalWaypoints: number;
+  completedWaypoints: number;
+  missedWaypoints: number;
+  completionPercentage: number;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'INCOMPLETE';
+  staffName: string | null;
+  completedAt: string | null;
+}
+
+export interface RouteExecutionDTO {
+  routeId: string;
+  routeName: string;
+  completionDays: number | null;
+  activeCycle: RouteCycleDTO | null;
+  executionLogs: RouteExecutionLogDTO[];
+}
+
+export interface RouteCycleHistoryDTO {
+  cycleId: string;
+  routeId: string;
+  routeName: string;
+  cycleNumber: number;
+  cycleStart: string;
+  cycleEnd: string;
+  totalWaypoints: number;
+  completedWaypoints: number;
+  missedWaypoints: number;
+  completionPercentage: number;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'INCOMPLETE';
+  staffId: string | null;
+  staffName: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+export interface RouteAlertDTO {
+  alertId: string;
+  routeId: string;
+  routeName: string;
+  routeColor: string;
+  cycleId: string;
+  cycleNumber: number;
+  cycleStart: string;
+  cycleEnd: string;
+  alertType: 'ROUTE_INCOMPLETE' | 'WAYPOINT_MISSED' | 'ROUTE_NOT_STARTED';
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  title: string;
+  message: string | null;
+  missedHcfCount: number;
+  staffId: string | null;
+  staffName: string | null;
+  isResolved: boolean;
+  resolvedByName: string | null;
+  resolvedAt: string | null;
+  resolutionNotes: string | null;
+  createdAt: string;
+}
+
+// ============= Route Execution API Functions =============
+
+export const getRouteExecution = async (routeId: string): Promise<RouteExecutionDTO> => {
+  const response = await apiClient.get(`/api/cbwtf/routes/${routeId}/execution`);
+  return response.data;
+};
+
+export const getRouteCycleHistory = async (routeId: string, page = 0, size = 10): Promise<RouteCycleHistoryDTO[]> => {
+  const response = await apiClient.get(`/api/cbwtf/routes/${routeId}/history?page=${page}&size=${size}`);
+  return response.data;
+};
+
+export const getRouteAlerts = async (): Promise<RouteAlertDTO[]> => {
+  const response = await apiClient.get('/api/cbwtf/routes/alerts');
+  return response.data;
+};
+
+export const getRouteAlertCount = async (): Promise<{ count: number }> => {
+  const response = await apiClient.get('/api/cbwtf/routes/alerts/count');
+  return response.data;
+};
+
+export const resolveRouteAlert = async (alertId: string, notes?: string): Promise<RouteAlertDTO> => {
+  const response = await apiClient.post(`/api/cbwtf/routes/alerts/${alertId}/resolve`, { notes });
+  return response.data;
+};
