@@ -4,18 +4,8 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.smartcbwtf.mobile",
-  "variantName": "debug",
-  "elements": [
-    {
-      "type": "SINGLE",
-      "filters": [],
-      "attributes": [],
-      "versionCode": 1,
-      "versionName": "1.0",
-      "outputFile": "app-debug.apk"
-    }
-  ],
-  "elementType": "File",
+  "applicationId": "unknown",
+  "variantName": "unknown",
+  "elements": [],
   "minSdkVersionForDexing": 24
 }

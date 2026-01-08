@@ -78,7 +78,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     }
 
     private fun setupActions() {
-        val cards = listOf(binding.cardPickup, binding.cardVerify, binding.cardRegister, binding.cardAttendance)
+        val cards = listOf(binding.cardPickup, binding.cardVerify, binding.cardRegister, binding.cardAttendance, binding.cardMyRoute)
         cards.forEach { card ->
             card.setOnTouchListener { v, event ->
                 when (event.action) {
@@ -107,6 +107,10 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
 
         binding.cardAttendance.setOnClickListener {
             checkLocationPermissionAndMarkAttendance()
+        }
+
+        binding.cardMyRoute.setOnClickListener {
+            findNavController().navigate(R.id.action_homeFragment_to_myRouteFragment)
         }
 
         binding.btnSettings.setOnClickListener {

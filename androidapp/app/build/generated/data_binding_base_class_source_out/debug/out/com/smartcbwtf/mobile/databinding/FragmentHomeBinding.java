@@ -40,6 +40,9 @@ public final class FragmentHomeBinding implements ViewBinding {
   public final MaterialCardView cardGreeting;
 
   @NonNull
+  public final MaterialCardView cardMyRoute;
+
+  @NonNull
   public final MaterialCardView cardPickup;
 
   @NonNull
@@ -82,6 +85,12 @@ public final class FragmentHomeBinding implements ViewBinding {
   public final TextView textGreetingTitle;
 
   @NonNull
+  public final TextView textMyRouteSubtitle;
+
+  @NonNull
+  public final TextView textMyRouteTitle;
+
+  @NonNull
   public final TextView textPendingValue;
 
   @NonNull
@@ -108,23 +117,26 @@ public final class FragmentHomeBinding implements ViewBinding {
   private FragmentHomeBinding(@NonNull NestedScrollView rootView,
       @NonNull LinearLayout actionCardsContainer, @NonNull ShapeableImageView avatarView,
       @NonNull MaterialButton btnSettings, @NonNull MaterialCardView cardAttendance,
-      @NonNull MaterialCardView cardGreeting, @NonNull MaterialCardView cardPickup,
-      @NonNull MaterialCardView cardRegister, @NonNull MaterialCardView cardStatus,
-      @NonNull MaterialCardView cardVerify, @NonNull LinearLayout headerContainer,
-      @NonNull ImageView iconPending, @NonNull ImageView iconSync, @NonNull ImageView imgLogo,
-      @NonNull TextView textAppName, @NonNull TextView textAppSubtitle,
-      @NonNull TextView textAttendanceSubtitle, @NonNull TextView textAttendanceTitle,
-      @NonNull TextView textGreetingSubtitle, @NonNull TextView textGreetingTitle,
-      @NonNull TextView textPendingValue, @NonNull TextView textPickupSubtitle,
-      @NonNull TextView textPickupTitle, @NonNull TextView textRegisterSubtitle,
-      @NonNull TextView textRegisterTitle, @NonNull TextView textSyncValue,
-      @NonNull TextView textVerifySubtitle, @NonNull TextView textVerifyTitle) {
+      @NonNull MaterialCardView cardGreeting, @NonNull MaterialCardView cardMyRoute,
+      @NonNull MaterialCardView cardPickup, @NonNull MaterialCardView cardRegister,
+      @NonNull MaterialCardView cardStatus, @NonNull MaterialCardView cardVerify,
+      @NonNull LinearLayout headerContainer, @NonNull ImageView iconPending,
+      @NonNull ImageView iconSync, @NonNull ImageView imgLogo, @NonNull TextView textAppName,
+      @NonNull TextView textAppSubtitle, @NonNull TextView textAttendanceSubtitle,
+      @NonNull TextView textAttendanceTitle, @NonNull TextView textGreetingSubtitle,
+      @NonNull TextView textGreetingTitle, @NonNull TextView textMyRouteSubtitle,
+      @NonNull TextView textMyRouteTitle, @NonNull TextView textPendingValue,
+      @NonNull TextView textPickupSubtitle, @NonNull TextView textPickupTitle,
+      @NonNull TextView textRegisterSubtitle, @NonNull TextView textRegisterTitle,
+      @NonNull TextView textSyncValue, @NonNull TextView textVerifySubtitle,
+      @NonNull TextView textVerifyTitle) {
     this.rootView = rootView;
     this.actionCardsContainer = actionCardsContainer;
     this.avatarView = avatarView;
     this.btnSettings = btnSettings;
     this.cardAttendance = cardAttendance;
     this.cardGreeting = cardGreeting;
+    this.cardMyRoute = cardMyRoute;
     this.cardPickup = cardPickup;
     this.cardRegister = cardRegister;
     this.cardStatus = cardStatus;
@@ -139,6 +151,8 @@ public final class FragmentHomeBinding implements ViewBinding {
     this.textAttendanceTitle = textAttendanceTitle;
     this.textGreetingSubtitle = textGreetingSubtitle;
     this.textGreetingTitle = textGreetingTitle;
+    this.textMyRouteSubtitle = textMyRouteSubtitle;
+    this.textMyRouteTitle = textMyRouteTitle;
     this.textPendingValue = textPendingValue;
     this.textPickupSubtitle = textPickupSubtitle;
     this.textPickupTitle = textPickupTitle;
@@ -203,6 +217,12 @@ public final class FragmentHomeBinding implements ViewBinding {
       id = R.id.cardGreeting;
       MaterialCardView cardGreeting = ViewBindings.findChildViewById(rootView, id);
       if (cardGreeting == null) {
+        break missingId;
+      }
+
+      id = R.id.cardMyRoute;
+      MaterialCardView cardMyRoute = ViewBindings.findChildViewById(rootView, id);
+      if (cardMyRoute == null) {
         break missingId;
       }
 
@@ -290,6 +310,18 @@ public final class FragmentHomeBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.textMyRouteSubtitle;
+      TextView textMyRouteSubtitle = ViewBindings.findChildViewById(rootView, id);
+      if (textMyRouteSubtitle == null) {
+        break missingId;
+      }
+
+      id = R.id.textMyRouteTitle;
+      TextView textMyRouteTitle = ViewBindings.findChildViewById(rootView, id);
+      if (textMyRouteTitle == null) {
+        break missingId;
+      }
+
       id = R.id.textPendingValue;
       TextView textPendingValue = ViewBindings.findChildViewById(rootView, id);
       if (textPendingValue == null) {
@@ -339,11 +371,12 @@ public final class FragmentHomeBinding implements ViewBinding {
       }
 
       return new FragmentHomeBinding((NestedScrollView) rootView, actionCardsContainer, avatarView,
-          btnSettings, cardAttendance, cardGreeting, cardPickup, cardRegister, cardStatus,
-          cardVerify, headerContainer, iconPending, iconSync, imgLogo, textAppName, textAppSubtitle,
-          textAttendanceSubtitle, textAttendanceTitle, textGreetingSubtitle, textGreetingTitle,
-          textPendingValue, textPickupSubtitle, textPickupTitle, textRegisterSubtitle,
-          textRegisterTitle, textSyncValue, textVerifySubtitle, textVerifyTitle);
+          btnSettings, cardAttendance, cardGreeting, cardMyRoute, cardPickup, cardRegister,
+          cardStatus, cardVerify, headerContainer, iconPending, iconSync, imgLogo, textAppName,
+          textAppSubtitle, textAttendanceSubtitle, textAttendanceTitle, textGreetingSubtitle,
+          textGreetingTitle, textMyRouteSubtitle, textMyRouteTitle, textPendingValue,
+          textPickupSubtitle, textPickupTitle, textRegisterSubtitle, textRegisterTitle,
+          textSyncValue, textVerifySubtitle, textVerifyTitle);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

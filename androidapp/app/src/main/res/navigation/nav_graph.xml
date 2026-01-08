@@ -123,7 +123,16 @@
         <action
             android:id="@+id/action_homeFragment_to_attendanceFragment"
             app:destination="@id/attendanceFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_myRouteFragment"
+            app:destination="@id/myRouteFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/myRouteFragment"
+        android:name="com.smartcbwtf.mobile.ui.MyRouteFragment"
+        android:label="My Route"
+        tools:layout="@layout/fragment_my_route" />
 
     <fragment
         android:id="@+id/attendanceFragment"

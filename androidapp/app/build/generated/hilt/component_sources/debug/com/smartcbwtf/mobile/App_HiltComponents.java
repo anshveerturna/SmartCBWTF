@@ -16,6 +16,7 @@ import com.smartcbwtf.mobile.ui.HcfRegistrationFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.HomeFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.LocationDisclosureFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.LoginFragment_GeneratedInjector;
+import com.smartcbwtf.mobile.ui.MyRouteFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.PermissionsFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.ProfileFragment_GeneratedInjector;
 import com.smartcbwtf.mobile.ui.ScanWeighFragment_GeneratedInjector;
@@ -28,6 +29,7 @@ import com.smartcbwtf.mobile.viewmodel.AttendanceViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.AuthViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.HomeViewModel_HiltModules;
+import com.smartcbwtf.mobile.viewmodel.MyRouteViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.ProfileViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel_HiltModules;
 import com.smartcbwtf.mobile.viewmodel.SettingsViewModel_HiltModules;
@@ -207,6 +209,7 @@ public final class App_HiltComponents {
           HiltWrapper_ActivityRetainedComponentManager_LifecycleModule.class,
           HiltWrapper_SavedStateHandleModule.class,
           HomeViewModel_HiltModules.KeyModule.class,
+          MyRouteViewModel_HiltModules.KeyModule.class,
           ProfileViewModel_HiltModules.KeyModule.class,
           ScanWeighViewModel_HiltModules.KeyModule.class,
           SettingsViewModel_HiltModules.KeyModule.class,
@@ -253,6 +256,7 @@ public final class App_HiltComponents {
           HcfRegistrationViewModel_HiltModules.BindsModule.class,
           HiltWrapper_HiltViewModelFactory_ViewModelModule.class,
           HomeViewModel_HiltModules.BindsModule.class,
+          MyRouteViewModel_HiltModules.BindsModule.class,
           ProfileViewModel_HiltModules.BindsModule.class,
           ScanWeighViewModel_HiltModules.BindsModule.class,
           SettingsViewModel_HiltModules.BindsModule.class,
@@ -288,6 +292,7 @@ public final class App_HiltComponents {
       HomeFragment_GeneratedInjector,
       LocationDisclosureFragment_GeneratedInjector,
       LoginFragment_GeneratedInjector,
+      MyRouteFragment_GeneratedInjector,
       PermissionsFragment_GeneratedInjector,
       ProfileFragment_GeneratedInjector,
       ScanWeighFragment_GeneratedInjector,

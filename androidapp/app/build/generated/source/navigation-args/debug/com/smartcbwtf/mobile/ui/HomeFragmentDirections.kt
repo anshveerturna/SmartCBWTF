@@ -79,5 +79,8 @@ public class HomeFragmentDirections private constructor() {
 
     public fun actionHomeFragmentToAttendanceFragment(latitude: Float = 0.0F, longitude: Float =
         0.0F): NavDirections = ActionHomeFragmentToAttendanceFragment(latitude, longitude)
+
+    public fun actionHomeFragmentToMyRouteFragment(): NavDirections =
+        ActionOnlyNavDirections(R.id.action_homeFragment_to_myRouteFragment)
   }
 }

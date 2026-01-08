@@ -78,4 +78,9 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideLocationApi(retrofit: Retrofit): LocationApi = retrofit.create(LocationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideRouteApi(retrofit: Retrofit): com.smartcbwtf.mobile.network.api.RouteApi = 
+        retrofit.create(com.smartcbwtf.mobile.network.api.RouteApi::class.java)
 }

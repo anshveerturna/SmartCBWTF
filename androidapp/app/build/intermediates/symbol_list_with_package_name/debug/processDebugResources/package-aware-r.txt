@@ -3144,6 +3144,7 @@ drawable bg_badge_error
 drawable bg_badge_warning
 drawable bg_bottom_sheet_handle
 drawable bg_circle_button_dark
+drawable bg_circle_primary
 drawable bg_gradient_pickup
 drawable bg_hcf_selected
 drawable bg_hint_pill
@@ -3220,6 +3221,7 @@ drawable ic_clock_black_24dp
 drawable ic_email
 drawable ic_error
 drawable ic_error_24
+drawable ic_error_outline
 drawable ic_file
 drawable ic_flashlight_off
 drawable ic_flashlight_on
@@ -3253,6 +3255,7 @@ drawable ic_qr_scan
 drawable ic_refresh
 drawable ic_register_hcf
 drawable ic_register_outline
+drawable ic_route_outline
 drawable ic_scale
 drawable ic_scale_weight
 drawable ic_search_black_24
@@ -3405,6 +3408,7 @@ id action_divider
 id action_homeFragment_to_attendanceFragment
 id action_homeFragment_to_hcfRegistrationFragment
 id action_homeFragment_to_loginFragment
+id action_homeFragment_to_myRouteFragment
 id action_homeFragment_to_profileFragment
 id action_homeFragment_to_scanWeighFragment
 id action_homeFragment_to_settingsFragment
@@ -3501,11 +3505,13 @@ id cardHcfItem
 id cardInfo
 id cardLocationStatus
 id cardLogin
+id cardMyRoute
 id cardPermissions
 id cardPickup
 id cardQrScan
 id cardRegister
 id cardRentAgreement
+id cardRouteHeader
 id cardScanSuccess
 id cardSessionSummary
 id cardStatus
@@ -3544,6 +3550,7 @@ id confirm_button
 id constraint
 id container
 id content
+id contentContainer
 id contentPanel
 id contiguous
 id continuousVelocity
@@ -3602,6 +3609,7 @@ id end
 id endToStart
 id enterAlways
 id enterAlwaysCollapsed
+id errorContainer
 id errorText
 id escape
 id etAadharNo
@@ -3719,6 +3727,7 @@ id line3
 id linear
 id listMode
 id list_item
+id loadingContainer
 id loadingOverlay
 id locale
 id locationDisclosureFragment
@@ -3790,6 +3799,7 @@ id mtrl_picker_text_input_range_start
 id mtrl_picker_title_text
 id mtrl_view_tag_bottom_padding
 id multiply
+id myRouteFragment
 id nav_controller_view_tag
 id nav_graph
 id nav_host_fragment
@@ -3806,6 +3816,7 @@ id neverCompleteToEnd
 id neverCompleteToStart
 id newPasswordInput
 id newPasswordLayout
+id noRouteContainer
 id noScroll
 id noState
 id none
@@ -3875,6 +3886,7 @@ id ratio
 id rbOwned
 id rbRented
 id rectangles
+id recyclerWaypoints
 id report_drawn
 id requirementsText
 id restart
@@ -3987,21 +3999,32 @@ id textAttendanceSubtitle
 id textAttendanceTitle
 id textEnd
 id textError
+id textErrorMessage
 id textFacility
+id textFacilityName
 id textFullName
 id textGreetingSubtitle
 id textGreetingTitle
+id textHcfAddress
+id textHcfCode
+id textHcfName
 id textLabel
+id textMyRouteSubtitle
+id textMyRouteTitle
 id textPendingValue
 id textPickupSubtitle
 id textPickupTitle
 id textRegisterSubtitle
 id textRegisterTitle
 id textRole
+id textRouteName
+id textSequenceNumber
 id textSpacerNoButtons
 id textSpacerNoTitle
 id textStart
+id textStopsCount
 id textSyncValue
+id textTimeframe
 id textTop
 id textValue
 id textVerifySubtitle
@@ -4102,6 +4125,7 @@ id up
 id useLogo
 id vertical_only
 id viewHeader
+id viewRouteColor
 id view_offset_helper
 id view_transition
 id view_tree_lifecycle_owner
@@ -4274,6 +4298,7 @@ layout fragment_hcf_registration
 layout fragment_home
 layout fragment_location_disclosure
 layout fragment_login
+layout fragment_my_route
 layout fragment_permissions
 layout fragment_profile
 layout fragment_qr_scanner
@@ -4285,6 +4310,7 @@ layout ime_base_split_test_activity
 layout ime_secondary_split_test_activity
 layout item_hcf_selection
 layout item_profile_field
+layout item_waypoint
 layout m3_alert_dialog
 layout m3_alert_dialog_actions
 layout m3_alert_dialog_title
