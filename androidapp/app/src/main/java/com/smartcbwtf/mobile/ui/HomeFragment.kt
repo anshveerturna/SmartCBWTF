@@ -31,6 +31,8 @@ import com.smartcbwtf.mobile.viewmodel.HomeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import coil.imageLoader
+import coil.request.ImageRequest
 
 @AndroidEntryPoint
 class HomeFragment : Fragment(R.layout.fragment_home) {
@@ -209,8 +211,6 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             }
             popup.show()
         }
-
-        binding.textGreetingTitle.text = "Hello, Operator"
     }
 
     private fun bindStatus() {
@@ -253,6 +253,49 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                         } else {
                             binding.textSyncValue.text = "Just now"
                             binding.textSyncValue.setTextColor(resources.getColor(R.color.text_title, null))
+                        }
+                    }
+                }
+
+                // Observe greeting name
+                launch {
+                    homeViewModel.greetingName.collect { name ->
+                        binding.textGreetingTitle.text = "Hello, $name"
+                    }
+                }
+
+                // Observe profile photo for avatar
+                launch {
+                    homeViewModel.profilePhotoUrl.collect { photoUrl ->
+                        Log.d("HomeFragment", "Profile photo URL: $photoUrl")
+                        if (!photoUrl.isNullOrBlank()) {
+                            val baseUrl = "http://10.0.2.2:8080" // For emulator
+                            val fullUrl = if (photoUrl.startsWith("http")) photoUrl else "$baseUrl$photoUrl"
+                            Log.d("HomeFragment", "Loading avatar from: $fullUrl")
+                            
+                            // Clear tint and padding before loading
+                            binding.avatarView.imageTintList = null
+                            binding.avatarView.setPadding(0, 0, 0, 0)
+                            binding.avatarView.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                            
+                            requireContext().imageLoader.enqueue(
+                                ImageRequest.Builder(requireContext())
+                                    .data(fullUrl)
+                                    .target(
+                                        onSuccess = { result ->
+                                            binding.avatarView.setImageDrawable(result)
+                                            Log.d("HomeFragment", "Avatar loaded successfully")
+                                        },
+                                        onError = { _ ->
+                                            Log.e("HomeFragment", "Failed to load avatar")
+                                            binding.avatarView.setImageResource(R.drawable.ic_avatar_placeholder)
+                                        }
+                                    )
+                                    .build()
+                            )
+                        } else {
+                            Log.d("HomeFragment", "No profile photo URL, using placeholder")
+                            binding.avatarView.setImageResource(R.drawable.ic_avatar_placeholder)
                         }
                     }
                 }

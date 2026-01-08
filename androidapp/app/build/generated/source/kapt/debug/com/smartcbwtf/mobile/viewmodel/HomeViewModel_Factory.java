@@ -3,6 +3,7 @@ package com.smartcbwtf.mobile.viewmodel;
 import androidx.work.WorkManager;
 import com.smartcbwtf.mobile.repository.AuthRepository;
 import com.smartcbwtf.mobile.repository.BagEventRepository;
+import com.smartcbwtf.mobile.repository.ProfileRepository;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
 import dagger.internal.QualifierMetadata;
@@ -29,29 +30,35 @@ public final class HomeViewModel_Factory implements Factory<HomeViewModel> {
 
   private final Provider<BagEventRepository> bagEventRepositoryProvider;
 
+  private final Provider<ProfileRepository> profileRepositoryProvider;
+
   private final Provider<WorkManager> workManagerProvider;
 
   public HomeViewModel_Factory(Provider<AuthRepository> authRepositoryProvider,
       Provider<BagEventRepository> bagEventRepositoryProvider,
+      Provider<ProfileRepository> profileRepositoryProvider,
       Provider<WorkManager> workManagerProvider) {
     this.authRepositoryProvider = authRepositoryProvider;
     this.bagEventRepositoryProvider = bagEventRepositoryProvider;
+    this.profileRepositoryProvider = profileRepositoryProvider;
     this.workManagerProvider = workManagerProvider;
   }
 
   @Override
   public HomeViewModel get() {
-    return newInstance(authRepositoryProvider.get(), bagEventRepositoryProvider.get(), workManagerProvider.get());
+    return newInstance(authRepositoryProvider.get(), bagEventRepositoryProvider.get(), profileRepositoryProvider.get(), workManagerProvider.get());
   }
 
   public static HomeViewModel_Factory create(Provider<AuthRepository> authRepositoryProvider,
       Provider<BagEventRepository> bagEventRepositoryProvider,
+      Provider<ProfileRepository> profileRepositoryProvider,
       Provider<WorkManager> workManagerProvider) {
-    return new HomeViewModel_Factory(authRepositoryProvider, bagEventRepositoryProvider, workManagerProvider);
+    return new HomeViewModel_Factory(authRepositoryProvider, bagEventRepositoryProvider, profileRepositoryProvider, workManagerProvider);
   }
 
   public static HomeViewModel newInstance(AuthRepository authRepository,
-      BagEventRepository bagEventRepository, WorkManager workManager) {
-    return new HomeViewModel(authRepository, bagEventRepository, workManager);
+      BagEventRepository bagEventRepository, ProfileRepository profileRepository,
+      WorkManager workManager) {
+    return new HomeViewModel(authRepository, bagEventRepository, profileRepository, workManager);
   }
 }

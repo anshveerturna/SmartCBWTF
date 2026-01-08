@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import coil.imageLoader
+import coil.request.ImageRequest
 
 /**
  * Read-only Profile screen.
@@ -130,8 +132,8 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
             val baseUrl = "http://10.0.2.2:8080" // For emulator; update for production
             val fullUrl = if (photoUrl.startsWith("http")) photoUrl else "$baseUrl$photoUrl"
             
-            coil.ImageLoader(requireContext()).enqueue(
-                coil.request.ImageRequest.Builder(requireContext())
+            requireContext().imageLoader.enqueue(
+                ImageRequest.Builder(requireContext())
                     .data(fullUrl)
                     .target(binding.imgProfilePhoto)
                     .placeholder(R.drawable.ic_person)
