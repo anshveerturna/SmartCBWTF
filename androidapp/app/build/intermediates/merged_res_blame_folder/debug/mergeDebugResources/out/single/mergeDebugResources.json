@@ -12,12 +12,12 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_verify_outline.xml"
     },
     {
-        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/layout_fragment_qr_scanner.xml.flat",
-        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/layout/fragment_qr_scanner.xml"
-    },
-    {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_bg_hint_pill.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/bg_hint_pill.xml"
+    },
+    {
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/layout_fragment_qr_scanner.xml.flat",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/layout/fragment_qr_scanner.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/layout_fragment_scan_weigh.xml.flat",
@@ -48,12 +48,12 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_camera.xml"
     },
     {
-        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/xml_network_security_config.xml.flat",
-        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/xml/network_security_config.xml"
-    },
-    {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_email.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_email.xml"
+    },
+    {
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/xml_network_security_config.xml.flat",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/xml/network_security_config.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_error.xml.flat",
@@ -72,10 +72,6 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_attendance_outline.xml"
     },
     {
-        "merged": "com.smartcbwtf.mobile.app-debug-67:/layout_fragment_home.xml.flat",
-        "source": "com.smartcbwtf.mobile.app-main-69:/layout/fragment_home.xml"
-    },
-    {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_bluetooth_connected.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_bluetooth_connected.xml"
     },
@@ -90,6 +86,10 @@
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_profile_menu.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_profile_menu.xml"
+    },
+    {
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_route_outline.xml.flat",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_route_outline.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/menu_menu_profile.xml.flat",
@@ -160,8 +160,8 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_logout_menu.xml"
     },
     {
-        "merged": "com.smartcbwtf.mobile.app-debug-67:/drawable_bg_circle_primary.xml.flat",
-        "source": "com.smartcbwtf.mobile.app-main-69:/drawable/bg_circle_primary.xml"
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/layout_fragment_my_route.xml.flat",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/layout/fragment_my_route.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/layout_fragment_start_pickup.xml.flat",
@@ -172,12 +172,12 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_lock.xml"
     },
     {
-        "merged": "com.smartcbwtf.mobile.app-debug-67:/navigation_nav_graph.xml.flat",
-        "source": "com.smartcbwtf.mobile.app-main-69:/navigation/nav_graph.xml"
-    },
-    {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_phone.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_phone.xml"
+    },
+    {
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/layout_item_waypoint.xml.flat",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/layout/item_waypoint.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_bg_logo_container.xml.flat",
@@ -196,12 +196,12 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_qr_scan.xml"
     },
     {
-        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_location_off.xml.flat",
-        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_location_off.xml"
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_bg_circle_primary.xml.flat",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/bg_circle_primary.xml"
     },
     {
-        "merged": "com.smartcbwtf.mobile.app-debug-67:/drawable_ic_error_outline.xml.flat",
-        "source": "com.smartcbwtf.mobile.app-main-69:/drawable/ic_error_outline.xml"
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_location_off.xml.flat",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_location_off.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_bg_icon_container_translucent.xml.flat",
@@ -312,10 +312,6 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_sync_status.xml"
     },
     {
-        "merged": "com.smartcbwtf.mobile.app-debug-67:/drawable_ic_route_outline.xml.flat",
-        "source": "com.smartcbwtf.mobile.app-main-69:/drawable/ic_route_outline.xml"
-    },
-    {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_error_24.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_error_24.xml"
     },
@@ -372,16 +368,16 @@
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/bg_avatar_circle.xml"
     },
     {
+        "merged": "com.smartcbwtf.mobile.app-debug-67:/drawable_ic_cancel_circle.xml.flat",
+        "source": "com.smartcbwtf.mobile.app-main-69:/drawable/ic_cancel_circle.xml"
+    },
+    {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_bg_hcf_selected.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/bg_hcf_selected.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_bg_status_dot_green.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/bg_status_dot_green.xml"
-    },
-    {
-        "merged": "com.smartcbwtf.mobile.app-debug-67:/layout_fragment_my_route.xml.flat",
-        "source": "com.smartcbwtf.mobile.app-main-69:/layout/fragment_my_route.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_gps.xml.flat",
@@ -398,6 +394,10 @@
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_refresh.xml.flat",
         "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_refresh.xml"
+    },
+    {
+        "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/drawable_ic_error_outline.xml.flat",
+        "source": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-main-69:/drawable/ic_error_outline.xml"
     },
     {
         "merged": "/Users/anshveerturna/.gradle/daemon/8.14.3/com.smartcbwtf.mobile.app-debug-67:/layout_item_hcf_selection.xml.flat",

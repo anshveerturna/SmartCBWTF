@@ -13,9 +13,10 @@ public record MobileWaypointDTO(
         String hcfName,
         String hcfAddress,
         Double gpsLat,
-        Double gpsLon) {
+        Double gpsLon,
+        Boolean attendanceMarked) {
 
-    public static MobileWaypointDTO from(RouteWaypoint waypoint) {
+    public static MobileWaypointDTO from(RouteWaypoint waypoint, boolean attendanceMarked) {
         var hcf = waypoint.getHcf();
         return new MobileWaypointDTO(
                 waypoint.getId().toString(),
@@ -25,6 +26,7 @@ public record MobileWaypointDTO(
                 hcf.getName(),
                 hcf.getAddress(),
                 hcf.getGpsLat(),
-                hcf.getGpsLon());
+                hcf.getGpsLon(),
+                attendanceMarked);
     }
 }

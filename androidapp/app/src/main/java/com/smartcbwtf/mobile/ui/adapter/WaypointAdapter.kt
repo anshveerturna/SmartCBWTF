@@ -5,6 +5,7 @@ import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -35,6 +36,7 @@ class WaypointAdapter(
         private val textHcfName: TextView = itemView.findViewById(R.id.textHcfName)
         private val textHcfCode: TextView = itemView.findViewById(R.id.textHcfCode)
         private val textHcfAddress: TextView = itemView.findViewById(R.id.textHcfAddress)
+        private val imgAttendanceStatus: ImageView = itemView.findViewById(R.id.imgAttendanceStatus)
 
         fun bind(waypoint: MobileWaypointDTO) {
             textSequenceNumber.text = waypoint.sequenceOrder.toString()
@@ -53,6 +55,15 @@ class WaypointAdapter(
                 }
             }
 
+            // Show attendance status icon
+            if (waypoint.attendanceMarked == true) {
+                imgAttendanceStatus.setImageResource(R.drawable.ic_check_circle)
+                imgAttendanceStatus.contentDescription = "Attendance marked"
+            } else {
+                imgAttendanceStatus.setImageResource(R.drawable.ic_cancel_circle)
+                imgAttendanceStatus.contentDescription = "Attendance pending"
+            }
+
             itemView.setOnClickListener {
                 onWaypointClick?.invoke(waypoint)
             }
@@ -69,3 +80,4 @@ class WaypointAdapter(
         }
     }
 }
+

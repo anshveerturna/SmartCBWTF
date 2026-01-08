@@ -4,6 +4,7 @@ package com.smartcbwtf.mobile.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -20,6 +21,9 @@ public final class ItemWaypointBinding implements ViewBinding {
   private final LinearLayout rootView;
 
   @NonNull
+  public final ImageView imgAttendanceStatus;
+
+  @NonNull
   public final TextView textHcfAddress;
 
   @NonNull
@@ -31,10 +35,12 @@ public final class ItemWaypointBinding implements ViewBinding {
   @NonNull
   public final TextView textSequenceNumber;
 
-  private ItemWaypointBinding(@NonNull LinearLayout rootView, @NonNull TextView textHcfAddress,
+  private ItemWaypointBinding(@NonNull LinearLayout rootView,
+      @NonNull ImageView imgAttendanceStatus, @NonNull TextView textHcfAddress,
       @NonNull TextView textHcfCode, @NonNull TextView textHcfName,
       @NonNull TextView textSequenceNumber) {
     this.rootView = rootView;
+    this.imgAttendanceStatus = imgAttendanceStatus;
     this.textHcfAddress = textHcfAddress;
     this.textHcfCode = textHcfCode;
     this.textHcfName = textHcfName;
@@ -68,6 +74,12 @@ public final class ItemWaypointBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.imgAttendanceStatus;
+      ImageView imgAttendanceStatus = ViewBindings.findChildViewById(rootView, id);
+      if (imgAttendanceStatus == null) {
+        break missingId;
+      }
+
       id = R.id.textHcfAddress;
       TextView textHcfAddress = ViewBindings.findChildViewById(rootView, id);
       if (textHcfAddress == null) {
@@ -92,8 +104,8 @@ public final class ItemWaypointBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ItemWaypointBinding((LinearLayout) rootView, textHcfAddress, textHcfCode,
-          textHcfName, textSequenceNumber);
+      return new ItemWaypointBinding((LinearLayout) rootView, imgAttendanceStatus, textHcfAddress,
+          textHcfCode, textHcfName, textSequenceNumber);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

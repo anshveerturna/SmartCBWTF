@@ -54,11 +54,11 @@
             android:ellipsize="end" />
     </LinearLayout>
 
-    <!-- Chevron -->
+    <!-- Attendance Status Icon -->
     <ImageView
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:src="@drawable/ic_chevron_right"
-        android:contentDescription="View"
-        android:tint="#9CA3AF" />
+        android:id="@+id/imgAttendanceStatus"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:contentDescription="Attendance Status"
+        android:src="@drawable/ic_check_circle" />
 </LinearLayout>

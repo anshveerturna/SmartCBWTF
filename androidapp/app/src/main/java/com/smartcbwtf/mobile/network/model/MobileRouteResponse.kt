@@ -23,5 +23,6 @@ data class MobileWaypointDTO(
     val hcfName: String,
     val hcfAddress: String?,
     val gpsLat: Double?,
-    val gpsLon: Double?
+    val gpsLon: Double?,
+    val attendanceMarked: Boolean?
 )

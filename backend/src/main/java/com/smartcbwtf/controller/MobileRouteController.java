@@ -3,6 +3,7 @@ package com.smartcbwtf.controller;
 import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.dto.mobile.MobileRouteDTO;
 import com.smartcbwtf.dto.mobile.MobileWaypointDTO;
+import com.smartcbwtf.repository.AttendanceRepository;
 import com.smartcbwtf.repository.RouteAssignmentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,8 +11,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Comparator;
-import java.util.UUID;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.*;
 
 /**
  * Controller for mobile-specific route operations.
@@ -24,9 +27,12 @@ public class MobileRouteController {
     private static final Logger log = LoggerFactory.getLogger(MobileRouteController.class);
 
     private final RouteAssignmentRepository assignmentRepository;
+    private final AttendanceRepository attendanceRepository;
 
-    public MobileRouteController(RouteAssignmentRepository assignmentRepository) {
+    public MobileRouteController(RouteAssignmentRepository assignmentRepository,
+            AttendanceRepository attendanceRepository) {
         this.assignmentRepository = assignmentRepository;
+        this.attendanceRepository = attendanceRepository;
     }
 
     /**
@@ -57,11 +63,38 @@ public class MobileRouteController {
         var route = assignment.getRoute();
         var facility = route.getFacility();
 
-        // Build waypoints DTO list, sorted by sequence order
-        var waypoints = route.getWaypoints().stream()
+        // Determine the current cycle's time range
+        LocalDate cycleStart = route.getCycleStartDate() != null ? route.getCycleStartDate() : LocalDate.now();
+        int completionDays = route.getCompletionDays() != null ? route.getCompletionDays() : 1;
+        LocalDate cycleEnd = cycleStart.plusDays(completionDays);
+
+        ZoneId zone = ZoneId.systemDefault();
+        Instant cycleStartInstant = cycleStart.atStartOfDay(zone).toInstant();
+        Instant cycleEndInstant = cycleEnd.atStartOfDay(zone).toInstant();
+
+        // Collect all HCF IDs from waypoints
+        var activeWaypoints = route.getWaypoints().stream()
                 .filter(w -> Boolean.TRUE.equals(w.getIsActive()))
                 .sorted(Comparator.comparing(w -> w.getSequenceOrder()))
-                .map(MobileWaypointDTO::from)
+                .toList();
+
+        // Get set of HCF IDs that have attendance marked within this cycle
+        Set<UUID> attendedHcfIds = new HashSet<>();
+        for (var waypoint : activeWaypoints) {
+            UUID hcfId = waypoint.getHcf().getId();
+            var attendances = attendanceRepository.findByHcfIdAndEventTsBetween(hcfId, cycleStartInstant,
+                    cycleEndInstant);
+            // Check if any attendance was by this staff member
+            boolean attended = attendances.stream()
+                    .anyMatch(a -> a.getDriver() != null && staffId.equals(a.getDriver().getId()));
+            if (attended) {
+                attendedHcfIds.add(hcfId);
+            }
+        }
+
+        // Build waypoints DTO list with attendance status
+        var waypoints = activeWaypoints.stream()
+                .map(w -> MobileWaypointDTO.from(w, attendedHcfIds.contains(w.getHcf().getId())))
                 .toList();
 
         var dto = new MobileRouteDTO(
@@ -72,8 +105,8 @@ public class MobileRouteController {
                 facility.getName(),
                 waypoints);
 
-        log.info("Returning route '{}' with {} waypoints for staff {}",
-                route.getName(), waypoints.size(), staffId);
+        log.info("Returning route '{}' with {} waypoints ({} attended) for staff {}",
+                route.getName(), waypoints.size(), attendedHcfIds.size(), staffId);
 
         return ResponseEntity.ok(dto);
     }
