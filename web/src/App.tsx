@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CssBaseline, Box, CircularProgress } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeContextProvider } from './theme';
-import { AuthProvider, ProtectedRoute, RoleGuard, SUPER_ADMIN_ONLY, CBWTF_ADMIN_ONLY, HCF_ADMIN_ONLY } from './auth';
+import { AuthProvider, ProtectedRoute, RoleGuard, SUPER_ADMIN_ONLY, CBWTF_ADMIN_ONLY, HCF_ADMIN_ONLY, TOP_MANAGEMENT_ADMIN_ONLY } from './auth';
 import { DashboardShell } from './components/layout';
 
 // Lazy-loaded pages
@@ -55,6 +55,12 @@ const CbwtfBankAccounts = lazy(() => import('./pages/cbwtf/BankAccounts'));
 const CbwtfPayments = lazy(() => import('./pages/cbwtf/Payments'));
 const CbwtfRoutePlanning = lazy(() => import('./pages/cbwtf/RoutePlanning'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
+const HcfQrLabels = lazy(() => import('./pages/hcf/QrLabels'));
+const HcfDailyWaste = lazy(() => import('./pages/hcf/DailyWaste'));
+const HcfReports = lazy(() => import('./pages/hcf/Reports'));
+const HcfConsumablesOrder = lazy(() => import('./pages/hcf/ConsumablesOrder'));
+// Management pages
+const ManagementDuesApprovals = lazy(() => import('./pages/management/DuesApprovals'));
 // CBWTF Finance pages
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
 const FinanceBills = lazy(() => import('./pages/cbwtf/finance/Bills'));
@@ -204,9 +210,28 @@ const App: React.FC = () => {
                 >
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<HcfDashboard />} />
+                  <Route path="qr-labels" element={<HcfQrLabels />} />
+                  <Route path="waste/daily" element={<HcfDailyWaste />} />
+                  <Route path="reports" element={<HcfReports />} />
+                  <Route path="consumables/order" element={<HcfConsumablesOrder />} />
                   <Route path="pickups" element={<div>Pickup History (Coming Soon)</div>} />
                   <Route path="bills" element={<div>Bills (Coming Soon)</div>} />
                   <Route path="agreement" element={<div>Agreement (Coming Soon)</div>} />
+                </Route>
+
+                {/* Top Management Portal - Hard isolation */}
+                <Route
+                  path="/management/*"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard allowedRoles={TOP_MANAGEMENT_ADMIN_ONLY}>
+                        <DashboardShell />
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<Navigate to="dues-approvals" replace />} />
+                  <Route path="dues-approvals" element={<ManagementDuesApprovals />} />
                 </Route>
 
                 {/* Default redirect */}

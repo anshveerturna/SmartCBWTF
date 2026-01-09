@@ -31,6 +31,7 @@ import {
   Edit as EditIcon,
 } from '@mui/icons-material';
 
+import apiClient from '../../api/client';
 import {
   getHcfDetail,
   updateHcfLocation,
@@ -127,6 +128,217 @@ const formatCurrency = (amount: number | null | undefined) => {
   }).format(amount);
 };
 
+// Portal Access Card for 30+ bed HCFs
+interface PortalAdminInfo {
+  eligible: boolean;
+  hasAdmin?: boolean;
+  username?: string;
+  fullName?: string;
+  active?: boolean;
+  reason?: string;
+}
+
+interface CreateAdminResponse {
+  success: boolean;
+  username: string;
+  tempPassword: string;
+  message: string;
+}
+
+function PortalAccessCard({ hcfId }: { hcfId: string }) {
+  const queryClient = useQueryClient();
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState<{ username: string; password: string } | null>(null);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false, message: '', severity: 'success'
+  });
+
+  const { data: adminInfo, isLoading, isError, error } = useQuery({
+    queryKey: ['hcf-portal-admin', hcfId],
+    queryFn: async () => {
+      const res = await apiClient.get<PortalAdminInfo>(`/api/cbwtf/hcfs/${hcfId}/portal-admin`);
+      return res.data;
+    },
+    retry: 1
+  });
+
+  const createAdminMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiClient.post<CreateAdminResponse>(`/api/cbwtf/hcfs/${hcfId}/portal-admin/create`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      setCreatedCredentials({ username: data.username, password: data.tempPassword });
+      setSnackbar({ open: true, message: 'HCF Admin created successfully!', severity: 'success' });
+      queryClient.invalidateQueries({ queryKey: ['hcf-portal-admin', hcfId] });
+    },
+    onError: (err: any) => {
+      const message = err.response?.data?.message || err.message || 'Failed to create admin';
+      setSnackbar({ open: true, message, severity: 'error' });
+    }
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiClient.post(`/api/cbwtf/hcfs/${hcfId}/portal-admin/reset-password`, { newPassword });
+      return res.data;
+    },
+    onSuccess: () => {
+      setNewPassword('');
+      setConfirmPassword('');
+      setSnackbar({ open: true, message: 'Password updated successfully', severity: 'success' });
+      queryClient.invalidateQueries({ queryKey: ['hcf-portal-admin', hcfId] });
+    },
+    onError: (err: any) => {
+      const message = err.response?.data?.message || err.message || 'Failed to update password';
+      setSnackbar({ open: true, message, severity: 'error' });
+    }
+  });
+
+  const passwordsMatch = newPassword === confirmPassword && newPassword.length >= 8;
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent>
+          <Box display="flex" justifyContent="center" py={2}>
+            <CircularProgress size={24} />
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+         <CardContent>
+            <Alert severity="error">
+              Failed to load Portal Access: {error instanceof Error ? error.message : 'Unknown error'}
+            </Alert>
+         </CardContent>
+      </Card>
+    );
+  }
+
+  if (!adminInfo?.eligible) {
+    return (
+       <Card>
+         <CardContent>
+            <Alert severity="warning">
+              HCF is not eligible for portal access (requires 30+ beds).
+            </Alert>
+         </CardContent>
+      </Card>
+    ); 
+  }
+
+  return (
+    <Card>
+      <CardContent>
+        <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <Typography variant="h6" fontWeight="bold">
+            🔐 Portal Access
+          </Typography>
+          <Chip label="30+ Beds" size="small" color="primary" variant="outlined" />
+        </Box>
+
+        {/* Show newly created credentials */}
+        {createdCredentials && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" fontWeight="bold">Admin Created!</Typography>
+            <Typography variant="body2">Username: <strong>{createdCredentials.username}</strong></Typography>
+            <Typography variant="body2">Temp Password: <strong style={{ fontFamily: 'monospace' }}>{createdCredentials.password}</strong></Typography>
+            <Typography variant="caption" color="text.secondary">Save this password now - it won't be shown again!</Typography>
+          </Alert>
+        )}
+
+        {adminInfo.hasAdmin ? (
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">Username (Agreement Number)</Typography>
+              <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'background.default' }}>
+                <Typography fontFamily="monospace" fontWeight={500}>
+                  {adminInfo.username}
+                </Typography>
+              </Paper>
+            </Box>
+
+            <Box>
+              <Typography variant="caption" color="text.secondary">Reset Password</Typography>
+              <Stack spacing={1} sx={{ mt: 0.5 }}>
+                <TextField
+                  size="small"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="New password (min 8 chars)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  size="small"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Confirm password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  fullWidth
+                  error={confirmPassword.length > 0 && newPassword !== confirmPassword}
+                  helperText={confirmPassword.length > 0 && newPassword !== confirmPassword ? 'Passwords do not match' : ''}
+                />
+                <Box display="flex" gap={1}>
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => resetPasswordMutation.mutate()}
+                    disabled={!passwordsMatch || resetPasswordMutation.isPending}
+                  >
+                    {resetPasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+                  </Button>
+                </Box>
+              </Stack>
+            </Box>
+          </Stack>
+        ) : (
+          <Stack spacing={2}>
+            <Alert severity="info">
+              No HCF admin user exists for this facility yet.
+            </Alert>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => createAdminMutation.mutate()}
+              disabled={createAdminMutation.isPending}
+              fullWidth
+            >
+              {createAdminMutation.isPending ? 'Creating...' : 'Create HCF Admin'}
+            </Button>
+            <Typography variant="caption" color="text.secondary">
+              Username will be set to the Agreement Number. A temporary password will be generated.
+            </Typography>
+          </Stack>
+        )}
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+        </Snackbar>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function HcfDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -207,7 +419,11 @@ export default function HcfDetailPage() {
     <Box sx={{ p: 3 }}>
       {/* Header */}
       <Box display="flex" alignItems="center" gap={2} mb={3}>
-        <IconButton onClick={() => navigate('/cbwtf/hcfs')}>
+        <IconButton onClick={() => {
+          // Navigate back to the correct HCF list based on bed count
+          const isLargeHcf = hcf?.numberOfBeds !== null && hcf?.numberOfBeds !== undefined && hcf.numberOfBeds > 30;
+          navigate(isLargeHcf ? '/cbwtf/hcfs/large' : '/cbwtf/hcfs/small');
+        }}>
           <BackIcon />
         </IconButton>
         <HcfIcon sx={{ fontSize: 32, color: 'primary.main' }} />
@@ -703,6 +919,11 @@ export default function HcfDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Portal Access Card - Only for 30+ beds (portal eligible) */}
+            {hcf.numberOfBeds && hcf.numberOfBeds > 30 && (
+              <PortalAccessCard hcfId={id!} />
+            )}
            </Stack>
         </Grid>
 

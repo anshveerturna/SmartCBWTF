@@ -203,4 +203,36 @@ public class CbwtfHcfController {
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(hcfService.renewAgreement(id, facilityId, request));
     }
+
+    /**
+     * Get HCF portal admin user info.
+     * Only for HCFs with 30+ beds (portal eligible).
+     */
+    @GetMapping("/{id}/portal-admin")
+    public ResponseEntity<?> getPortalAdmin(@PathVariable("id") UUID id) {
+        UUID facilityId = TenantContext.getTenantId();
+        return ResponseEntity.ok(hcfService.getPortalAdminInfo(id, facilityId));
+    }
+
+    @PostMapping("/{id}/portal-admin/create")
+    public ResponseEntity<?> createPortalAdmin(@PathVariable("id") UUID id) {
+        UUID facilityId = TenantContext.getTenantId();
+        return ResponseEntity.ok(hcfService.createPortalAdmin(id, facilityId));
+    }
+
+    /**
+     * Reset HCF portal admin password.
+     * Only for HCFs with 30+ beds (portal eligible).
+     */
+    @PostMapping("/{id}/portal-admin/reset-password")
+    public ResponseEntity<?> resetPortalAdminPassword(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody ResetPasswordRequest request) {
+        UUID facilityId = TenantContext.getTenantId();
+        return ResponseEntity.ok(hcfService.resetPortalAdminPassword(id, facilityId, request.newPassword));
+    }
+
+    public static class ResetPasswordRequest {
+        public String newPassword;
+    }
 }

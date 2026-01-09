@@ -155,7 +155,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
   };
 
   const renderNavItem = (item: NavItem) => {
-    const isActive = location.pathname === item.path;
+    // Special handling for HCF routes to match detail pages
+    let isActive = location.pathname === item.path;
+    
+    // For HCF list routes, also match when viewing HCF detail pages
+    // HCF detail pages are /cbwtf/hcfs/{uuid} and we need to check referring context
+    // Since we don't have HCF bed count here, match /hcfs/ prefix but not /hcfs/small or /hcfs/large
+    if (!isActive && item.path === '/cbwtf/hcfs/small') {
+      // This is complex - for now, don't auto-match detail pages since we can't know bed count
+      // The back navigation was already fixed to go to correct list
+    }
+    if (!isActive && item.path === '/cbwtf/hcfs/large') {
+      // Same as above
+    }
+    
+    // For other routes, use startsWith for nested page matching
+    if (!isActive && location.pathname.startsWith(item.path) && item.path !== '/cbwtf/hcfs/small' && item.path !== '/cbwtf/hcfs/large') {
+      isActive = true;
+    }
     return (
       <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
         <ListItemButton

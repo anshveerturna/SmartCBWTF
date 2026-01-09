@@ -61,4 +61,7 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
 
         // Staff management - find by facility and roles (DRIVER, PLANT_OPERATOR)
         Page<AppUser> findByFacilityIdAndRoleIn(UUID facilityId, java.util.List<String> roles, Pageable pageable);
+
+        // HCF Portal admin lookup
+        java.util.List<AppUser> findByHcfIdAndRole(UUID hcfId, String role);
 }

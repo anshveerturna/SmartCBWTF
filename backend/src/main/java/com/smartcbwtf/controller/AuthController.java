@@ -6,6 +6,7 @@ import com.smartcbwtf.dto.AuthLoginRequest;
 import com.smartcbwtf.dto.AuthLoginResponse;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.service.AuditLogService;
+import com.smartcbwtf.service.HcfAccessGuard;
 import com.smartcbwtf.service.SystemConfigService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -36,15 +37,17 @@ public class AuthController {
     private final AppUserRepository appUserRepository;
     private final AuditLogService auditLogService;
     private final SystemConfigService systemConfigService;
+    private final HcfAccessGuard hcfAccessGuard;
 
     public AuthController(AuthenticationManager authenticationManager, JwtService jwtService,
             AppUserRepository appUserRepository, AuditLogService auditLogService,
-            SystemConfigService systemConfigService) {
+            SystemConfigService systemConfigService, HcfAccessGuard hcfAccessGuard) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.appUserRepository = appUserRepository;
         this.auditLogService = auditLogService;
         this.systemConfigService = systemConfigService;
+        this.hcfAccessGuard = hcfAccessGuard;
     }
 
     @PostMapping("/login")
@@ -84,6 +87,21 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
 
             AppUser user = appUserRepository.findByUsername(authentication.getName()).orElseThrow();
+
+            // HCF_ADMIN: Validate bed count and approval status BEFORE completing login
+            if ("HCF_ADMIN".equals(user.getRole())) {
+                HcfAccessGuard.AccessCheckResult accessResult = hcfAccessGuard.checkPortalAccess(
+                        user.getHcf() != null ? user.getHcf().getId() : null);
+                if (!accessResult.isAllowed()) {
+                    log.warn("HCF Admin login denied: user={}, errorCode={}",
+                            user.getUsername(), accessResult.getErrorCode());
+                    auditLogService.log("APP_USER", user.getId(), "LOGIN_DENIED_HCF_ACCESS",
+                            user.getId(), accessResult.getErrorCode());
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                            "error", accessResult.getErrorCode(),
+                            "message", accessResult.getMessage()));
+                }
+            }
 
             // Successful login - reset failed attempts and record login
             user.recordSuccessfulLogin();

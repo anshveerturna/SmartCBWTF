@@ -5,12 +5,14 @@ import com.smartcbwtf.dto.*;
 import com.smartcbwtf.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -31,6 +33,8 @@ public class CbwtfHcfService {
     private final AgreementValidationService agreementValidationService;
     private final AgreementNumberGeneratorService agreementNumberGenerator;
     private final HCFIdentityService hcfIdentityService;
+    private final AppUserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public CbwtfHcfService(
             HcfRepository hcfRepository,
@@ -40,7 +44,9 @@ public class CbwtfHcfService {
             AuditLogService auditLogService,
             AgreementValidationService agreementValidationService,
             AgreementNumberGeneratorService agreementNumberGenerator,
-            HCFIdentityService hcfIdentityService) {
+            HCFIdentityService hcfIdentityService,
+            AppUserRepository userRepository,
+            PasswordEncoder passwordEncoder) {
         this.hcfRepository = hcfRepository;
         this.agreementRepository = agreementRepository;
         this.billingConfigRepository = billingConfigRepository;
@@ -49,6 +55,8 @@ public class CbwtfHcfService {
         this.agreementValidationService = agreementValidationService;
         this.agreementNumberGenerator = agreementNumberGenerator;
         this.hcfIdentityService = hcfIdentityService;
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -440,6 +448,23 @@ public class CbwtfHcfService {
         config.setCreatedBy(UUID.randomUUID()); // TODO: Get from security context
         billingConfigRepository.save(config);
 
+        // Create HCF portal admin user for 30+ bed HCFs
+        if (hcf.isPortalEligible()) {
+            String generatedPassword = generateRandomPassword();
+            AppUser hcfAdmin = new AppUser();
+            hcfAdmin.setUsername(agreement.getAgreementNumber());
+            hcfAdmin.setPasswordHash(passwordEncoder.encode(generatedPassword));
+            hcfAdmin.setRole("HCF_ADMIN");
+            hcfAdmin.setHcf(hcf);
+            hcfAdmin.setFullName(hcf.getName() + " Admin");
+            hcfAdmin.setEmail(hcf.getContactEmail());
+            hcfAdmin.setActive(true);
+            hcfAdmin.setCreatedAt(Instant.now());
+            hcfAdmin.setUpdatedAt(Instant.now());
+            userRepository.save(hcfAdmin);
+            log.info("Created HCF_ADMIN user on approval: username={}", agreement.getAgreementNumber());
+        }
+
         // Audit log
         auditLogService.log("HCF", hcfId, "HCF_APPROVED", null,
                 "Agreement " + agreement.getAgreementNumber() + " created");
@@ -637,15 +662,47 @@ public class CbwtfHcfService {
         config.setCreatedBy(adminUserId);
         billingConfigRepository.save(config);
 
+        // 7.5 Create HCF portal admin user for 30+ bed HCFs
+        String generatedPassword = null;
+        if (hcf.isPortalEligible()) {
+            generatedPassword = generateRandomPassword();
+            AppUser hcfAdmin = new AppUser();
+            hcfAdmin.setUsername(agreement.getAgreementNumber()); // Agreement number as username
+            hcfAdmin.setPasswordHash(passwordEncoder.encode(generatedPassword));
+            hcfAdmin.setRole("HCF_ADMIN");
+            hcfAdmin.setHcf(hcf);
+            hcfAdmin.setFullName(hcf.getName() + " Admin");
+            hcfAdmin.setEmail(hcf.getContactEmail());
+            hcfAdmin.setActive(true);
+            hcfAdmin.setCreatedAt(Instant.now());
+            hcfAdmin.setUpdatedAt(Instant.now());
+            userRepository.save(hcfAdmin);
+            log.info("Created HCF_ADMIN user for portal: username={}", agreement.getAgreementNumber());
+        }
+
         // 8. Audit log with distinct event type
         String auditDetails = String.format(
-                "Admin registered HCF. Agreement: %s, Source: CBWTF_PORTAL, Admin: %s",
-                agreement.getAgreementNumber(), adminUserId);
+                "Admin registered HCF. Agreement: %s, Source: CBWTF_PORTAL, Admin: %s%s",
+                agreement.getAgreementNumber(), adminUserId,
+                generatedPassword != null ? ", Portal user created" : "");
         auditLogService.log("HCF", hcf.getId(), "HCF_REGISTERED_BY_ADMIN", adminUserId, auditDetails);
         log.info("HCF {} registered by admin {}, agreement {} created",
                 hcf.getId(), adminUserId, agreement.getAgreementNumber());
 
         return getHcfDetail(hcf.getId(), facilityId);
+    }
+
+    /**
+     * Generate a random password for HCF portal users.
+     */
+    private String generateRandomPassword() {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+        StringBuilder sb = new StringBuilder();
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        for (int i = 0; i < 12; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 
     /**
@@ -693,5 +750,147 @@ public class CbwtfHcfService {
             log.error("Failed to upload rent agreement", e);
             throw new RuntimeException("Failed to save file", e);
         }
+    }
+
+    /**
+     * Get HCF portal admin user info.
+     * Only for HCFs with 30+ beds (portal eligible).
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getPortalAdminInfo(UUID hcfId, UUID facilityId) {
+        // Verify HCF belongs to facility
+        Agreement agreement = agreementRepository.findAllByHcfIdAndFacilityId(hcfId, facilityId)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found or not associated with this facility"));
+
+        Hcf hcf = agreement.getHcf();
+
+        // Check if portal eligible (30+ beds)
+        if (!hcf.isPortalEligible()) {
+            return Map.of(
+                    "eligible", false,
+                    "reason", "HCF has less than 30 beds or is not approved");
+        }
+
+        // Find HCF_ADMIN user for this HCF
+        return userRepository.findByHcfIdAndRole(hcfId, "HCF_ADMIN")
+                .stream()
+                .findFirst()
+                .map(user -> Map.<String, Object>of(
+                        "eligible", true,
+                        "hasAdmin", true,
+                        "username", user.getUsername(),
+                        "fullName", user.getFullName() != null ? user.getFullName() : "",
+                        "active", user.isActive()))
+                .orElse(Map.of(
+                        "eligible", true,
+                        "hasAdmin", false,
+                        "message", "No HCF_ADMIN user exists for this HCF"));
+    }
+
+    /**
+     * Create HCF portal admin user for an existing eligible HCF.
+     * Only for HCFs with 30+ beds that don't already have an admin.
+     * Username = Agreement Number
+     */
+    @Transactional
+    public Map<String, Object> createPortalAdmin(UUID hcfId, UUID facilityId) {
+        // Verify HCF belongs to facility
+        Agreement agreement = agreementRepository.findAllByHcfIdAndFacilityId(hcfId, facilityId)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found or not associated with this facility"));
+
+        Hcf hcf = agreement.getHcf();
+
+        // Check if portal eligible (30+ beds)
+        if (!hcf.isPortalEligible()) {
+            throw new IllegalStateException("HCF is not portal eligible (requires 30+ beds and approved status)");
+        }
+
+        // Check if admin already exists
+        boolean adminExists = userRepository.findByHcfIdAndRole(hcfId, "HCF_ADMIN")
+                .stream()
+                .findFirst()
+                .isPresent();
+
+        if (adminExists) {
+            throw new IllegalStateException("HCF admin already exists for this HCF");
+        }
+
+        // Generate password
+        String generatedPassword = generateRandomPassword();
+
+        // Create HCF_ADMIN user
+        AppUser hcfAdmin = new AppUser();
+        hcfAdmin.setUsername(agreement.getAgreementNumber()); // Agreement number as username
+        hcfAdmin.setPasswordHash(passwordEncoder.encode(generatedPassword));
+        hcfAdmin.setRole("HCF_ADMIN");
+        hcfAdmin.setHcf(hcf);
+        hcfAdmin.setFullName(hcf.getName() + " Admin");
+        hcfAdmin.setEmail(hcf.getContactEmail());
+        hcfAdmin.setActive(true);
+        hcfAdmin.setCreatedAt(Instant.now());
+        hcfAdmin.setUpdatedAt(Instant.now());
+        userRepository.save(hcfAdmin);
+
+        // Audit log
+        auditLogService.log("USER", hcfAdmin.getId(), "HCF_ADMIN_CREATED", null,
+                "Created HCF portal admin for HCF: " + hcf.getName() + ", username: " + agreement.getAgreementNumber());
+        log.info("Created HCF_ADMIN user for existing HCF: username={}, hcfId={}", agreement.getAgreementNumber(),
+                hcfId);
+
+        return Map.of(
+                "success", true,
+                "username", agreement.getAgreementNumber(),
+                "tempPassword", generatedPassword,
+                "message", "HCF admin created successfully");
+    }
+
+    /**
+     * Reset HCF portal admin password.
+     * Only for HCFs with 30+ beds (portal eligible).
+     */
+    @Transactional
+    public Map<String, Object> resetPortalAdminPassword(UUID hcfId, UUID facilityId, String newPassword) {
+        // Verify HCF belongs to facility
+        Agreement agreement = agreementRepository.findAllByHcfIdAndFacilityId(hcfId, facilityId)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found or not associated with this facility"));
+
+        Hcf hcf = agreement.getHcf();
+
+        // Check if portal eligible (30+ beds)
+        if (!hcf.isPortalEligible()) {
+            throw new IllegalStateException("HCF is not portal eligible (requires 30+ beds and approved status)");
+        }
+
+        // Find HCF_ADMIN user for this HCF
+        AppUser adminUser = userRepository.findByHcfIdAndRole(hcfId, "HCF_ADMIN")
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No HCF_ADMIN user exists for this HCF"));
+
+        // Validate password
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters");
+        }
+
+        // Update password
+        adminUser.setPasswordHash(passwordEncoder.encode(newPassword));
+        adminUser.setUpdatedAt(Instant.now());
+        userRepository.save(adminUser);
+
+        // Audit log
+        auditLogService.log("USER", adminUser.getId(), "HCF_ADMIN_PASSWORD_RESET", null,
+                "Password reset by CBWTF admin for HCF portal user: " + adminUser.getUsername());
+        log.info("Password reset for HCF_ADMIN user {} of HCF {}", adminUser.getUsername(), hcfId);
+
+        return Map.of(
+                "success", true,
+                "username", adminUser.getUsername(),
+                "message", "Password updated successfully");
     }
 }

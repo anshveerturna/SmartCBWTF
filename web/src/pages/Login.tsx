@@ -43,6 +43,8 @@ const getRoleRedirectPath = (role: UserRole): string => {
       return '/cbwtf/dashboard';
     case 'HCF_ADMIN':
       return '/hcf/dashboard';
+    case 'TOP_MANAGEMENT_ADMIN':
+      return '/management/dues-approvals';
     default:
       return '/';
   }

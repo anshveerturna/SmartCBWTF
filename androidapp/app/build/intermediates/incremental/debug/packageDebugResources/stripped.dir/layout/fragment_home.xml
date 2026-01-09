@@ -72,8 +72,8 @@
 
                 <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/avatarView"
-                    android:layout_width="128dp"
-                    android:layout_height="128dp"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
                     android:contentDescription="Profile"
                     android:padding="12dp"
                     android:clickable="true"
