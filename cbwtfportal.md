@@ -784,3 +784,5 @@ No audit logs
 👉 Then it would be BAD.
 
 But you have the hard parts done.
+
+kill -9 58003 && mvn spring-boot:run 2>&1 | head -100

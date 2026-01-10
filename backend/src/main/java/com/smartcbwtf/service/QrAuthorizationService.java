@@ -74,8 +74,6 @@ public class QrAuthorizationService {
             Instant validTo,
             UUID createdBy) {
 
-        UUID facilityId = TenantContext.getTenantId();
-
         // Validate HCF exists and belongs to facility
         Hcf hcf = hcfRepository.findById(hcfId)
                 .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
@@ -85,9 +83,17 @@ public class QrAuthorizationService {
                 .stream().findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("No active agreement for this HCF"));
 
-        // Verify agreement belongs to this facility
-        if (!agreement.getFacility().getId().equals(facilityId)) {
-            throw new SecurityException("Agreement does not belong to this facility");
+        // Get facility ID - for CBWTF context use TenantContext, for HCF context derive
+        // from agreement
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            // HCF Admin context - get facility from agreement
+            facilityId = agreement.getFacility().getId();
+        } else {
+            // CBWTF Admin context - verify agreement belongs to this facility
+            if (!agreement.getFacility().getId().equals(facilityId)) {
+                throw new SecurityException("Agreement does not belong to this facility");
+            }
         }
 
         // Validate category
@@ -103,10 +109,9 @@ public class QrAuthorizationService {
             throw new IllegalArgumentException("QR validity cannot extend beyond agreement end date");
         }
 
-        // Check for overlapping QR
-        if (qrRepository.existsOverlapping(agreement.getId(), wasteCategory, validFrom, validTo)) {
-            throw new IllegalArgumentException("Overlapping QR already exists for this period and category");
-        }
+        // Note: Overlapping QR check removed to allow multiple QR labels for same
+        // category/period
+        // Each QR label is unique and used independently for waste collection
 
         // Generate ID first (before creating entity)
         UUID qrId = UUID.randomUUID();
@@ -307,6 +312,17 @@ public class QrAuthorizationService {
     public List<QrAuthorization> listQrs(UUID hcfId, String status) {
         UUID facilityId = TenantContext.getTenantId();
 
+        // For HCF users, facilityId will be null - query by hcfId instead
+        if (facilityId == null && hcfId != null) {
+            // HCF user context - query by hcfId only
+            if (status != null) {
+                return qrRepository.findByHcfIdAndStatusOrderByCreatedAtDesc(hcfId, status);
+            } else {
+                return qrRepository.findByHcfIdOrderByCreatedAtDesc(hcfId);
+            }
+        }
+
+        // CBWTF context - query by facilityId
         if (hcfId != null && status != null) {
             return qrRepository.findByFacilityIdAndHcfIdOrderByCreatedAtDesc(facilityId, hcfId)
                     .stream()
@@ -320,7 +336,6 @@ public class QrAuthorizationService {
             return qrRepository.findByFacilityIdOrderByCreatedAtDesc(facilityId);
         }
     }
-
     // ============= Scheduled Jobs =============
 
     /**

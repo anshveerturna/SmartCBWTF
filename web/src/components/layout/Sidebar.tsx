@@ -127,7 +127,7 @@ const getCbwtfFinanceItems = (): NavItem[] => [
 const getHcfAdminItems = (): NavItem[] => [
   { path: '/hcf/dashboard', label: 'Dashboard', icon: <DashboardIcon />, roles: ['HCF_ADMIN'] },
   { path: '/hcf/pickups', label: 'Pickup History', icon: <OperationsIcon />, roles: ['HCF_ADMIN'] },
-  { path: '/hcf/bills', label: 'Bills', icon: <BillingIcon />, roles: ['HCF_ADMIN'] },
+  { path: '/hcf/qr-labels', label: 'QR Labels', icon: <QrCodeIcon />, roles: ['HCF_ADMIN'] },
   { path: '/hcf/agreement', label: 'Agreement', icon: <StorageIcon />, roles: ['HCF_ADMIN'] },
 ];
 
