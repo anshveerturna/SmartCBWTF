@@ -73,6 +73,23 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 			@Param("start") Instant start,
 			@Param("end") Instant end);
 
+	// HCF Dashboard Queries
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.hcf.id = :hcfId AND e.eventTs >= :start AND e.eventTs < :end")
+	long countByHcfIdAndEventTsBetween(
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	List<BagEvent> findTop10ByHcfIdOrderByEventTsDesc(UUID hcfId);
+
+	@Query("SELECT COALESCE(SUM(e.weightKg), 0) FROM BagEvent e WHERE e.hcf.id = :hcfId AND e.eventTs >= :start AND e.eventTs < :end")
+	java.math.BigDecimal sumWeightByHcfIdAndEventTsBetween(
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	List<BagEvent> findByHcfIdAndEventTsAfter(UUID hcfId, Instant since);
+
 	// =====================================================
 	// ANALYTICS PAGE QUERIES - Scoped by ACTIVE agreements
 	// =====================================================
