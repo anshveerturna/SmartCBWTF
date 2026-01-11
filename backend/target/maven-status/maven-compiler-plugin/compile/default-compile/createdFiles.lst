@@ -48,6 +48,7 @@ com/smartcbwtf/domain/BarcodeComplianceReport$DataCompleteness.class
 com/smartcbwtf/controller/SuperAdminUserController.class
 com/smartcbwtf/dto/BagVerifyResponse.class
 com/smartcbwtf/Application.class
+com/smartcbwtf/controller/HcfProfileController$PasswordChangeRequest.class
 com/smartcbwtf/repository/AgreementRepository.class
 com/smartcbwtf/repository/RouteRepository.class
 com/smartcbwtf/controller/AlertsController.class
@@ -58,6 +59,7 @@ com/smartcbwtf/repository/BagEventRepository.class
 com/smartcbwtf/service/BillingCalculationService$BillCalculation.class
 com/smartcbwtf/dto/UpdateHcfRequest.class
 com/smartcbwtf/config/TenantContext$TenantInfo.class
+com/smartcbwtf/controller/HcfProfileController$ProfileUpdateRequest.class
 com/smartcbwtf/dto/InvoiceGenerateRequest.class
 com/smartcbwtf/repository/RouteWaypointRepository.class
 com/smartcbwtf/controller/ManagementDuesApprovalController$BulkApproveRequest.class
@@ -168,6 +170,7 @@ com/smartcbwtf/dto/admin/UserManagementDTO.class
 com/smartcbwtf/repository/ConsumableItemRepository.class
 com/smartcbwtf/controller/HcfDuesClearanceController.class
 com/smartcbwtf/service/QrSigningService$SignedPayload.class
+com/smartcbwtf/controller/HcfDashboardController.class
 com/smartcbwtf/service/BagEventService$MismatchResult.class
 com/smartcbwtf/service/GlobalEmailTemplateService$TemplateNotFoundException.class
 com/smartcbwtf/domain/SystemConfig.class
@@ -244,6 +247,7 @@ com/smartcbwtf/repository/VehicleRepository.class
 com/smartcbwtf/service/EmailReminderScheduler.class
 com/smartcbwtf/controller/MobileApiController$GpsPingRequest.class
 com/smartcbwtf/config/VehicleGpsDataSeeder.class
+com/smartcbwtf/controller/CbwtfConsumableOrderController.class
 com/smartcbwtf/service/DailyReportGenerationService.class
 com/smartcbwtf/controller/NotificationSettingsController$SettingsDTO.class
 com/smartcbwtf/domain/SystemError$Source.class
@@ -319,10 +323,12 @@ com/smartcbwtf/controller/ComplianceReportController$AnnualReportDTO.class
 com/smartcbwtf/domain/MonthlyComplianceReport$Status.class
 com/smartcbwtf/dto/QrGenerateRequest.class
 com/smartcbwtf/controller/VehicleController$VehicleDTO.class
+com/smartcbwtf/controller/CbwtfConsumableOrderController$NotesRequest.class
 com/smartcbwtf/domain/HcfReportAccessLog$Action.class
 com/smartcbwtf/dto/UserProfileResponse.class
 com/smartcbwtf/service/GpsIngestionHealthService.class
 com/smartcbwtf/repository/RouteExecutionLogRepository.class
+com/smartcbwtf/controller/HcfDashboardController$DashboardStats.class
 com/smartcbwtf/controller/VehicleController$GpsLocationDTO.class
 com/smartcbwtf/domain/SettingsAuditLog.class
 com/smartcbwtf/gps/adapter/WheelseyeAdapter.class
@@ -387,6 +393,7 @@ com/smartcbwtf/domain/AlertSeverity.class
 com/smartcbwtf/dto/LabelIssueResponse.class
 com/smartcbwtf/controller/SystemErrorController$ResolveErrorRequest.class
 com/smartcbwtf/repository/UserLocationRepository.class
+com/smartcbwtf/controller/HcfProfileController.class
 com/smartcbwtf/repository/ReportGenerationLockRepository.class
 com/smartcbwtf/aspect/FeatureGuardAspect.class
 com/smartcbwtf/dto/AnalyticsPageDTO$HcfOption.class
@@ -403,9 +410,11 @@ com/smartcbwtf/dto/route/RouteExecutionDTO.class
 com/smartcbwtf/domain/HcfReportAccessLog.class
 com/smartcbwtf/controller/BillingController.class
 com/smartcbwtf/domain/DuesClearanceRequest$Status.class
+com/smartcbwtf/controller/HcfAgreementController.class
 com/smartcbwtf/dto/TemplateListItem.class
 com/smartcbwtf/controller/SystemErrorController$UpdateStatusRequest.class
 com/smartcbwtf/dto/route/HcfGeoPointDTO.class
+com/smartcbwtf/controller/HcfProfileController$HcfProfileDTO.class
 com/smartcbwtf/domain/Vehicle.class
 com/smartcbwtf/dto/BagEventSyncRequest.class
 com/smartcbwtf/controller/BillingController$BillDetailDTO.class
@@ -433,6 +442,7 @@ com/smartcbwtf/controller/SystemConfigController$UpdateConfigRequest.class
 com/smartcbwtf/dto/mobile/MobileRouteDTO.class
 com/smartcbwtf/domain/Alert.class
 com/smartcbwtf/domain/SystemConfig$ValueType.class
+com/smartcbwtf/controller/HcfProfileController$ActivityLogDTO.class
 com/smartcbwtf/controller/GpsIngestionController$BindResponse.class
 com/smartcbwtf/repository/UserGpsEventRepository.class
 com/smartcbwtf/service/TemplateValidationService.class
@@ -544,12 +554,14 @@ com/smartcbwtf/controller/TemplateController.class
 com/smartcbwtf/repository/ViolationReportRepository.class
 com/smartcbwtf/controller/CbwtfHcfController.class
 com/smartcbwtf/domain/RouteAlert$AlertType.class
+com/smartcbwtf/controller/HcfAgreementController$HcfAgreementDTO.class
 com/smartcbwtf/controller/MobileApiController$GpsEventItem.class
 com/smartcbwtf/repository/PaymentReceiptSequenceRepository.class
 com/smartcbwtf/controller/UserController.class
 com/smartcbwtf/controller/GpsIngestionController$BindRequest.class
 com/smartcbwtf/controller/SystemErrorController$ErrorReportResponse.class
 com/smartcbwtf/domain/Agreement$Status.class
+com/smartcbwtf/controller/HcfDashboardController$RecentPickup.class
 com/smartcbwtf/dto/admin/PlatformStatsDTO.class
 com/smartcbwtf/service/ComplianceReportScheduler.class
 com/smartcbwtf/config/JwtAuthFilter.class

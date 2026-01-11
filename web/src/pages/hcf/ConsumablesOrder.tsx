@@ -22,6 +22,7 @@ import {
   Tabs,
   Tab,
   Badge,
+  Collapse,
 } from '@mui/material';
 import {
   ShoppingCart,
@@ -31,6 +32,9 @@ import {
   CheckCircle,
   LocalShipping,
   Receipt,
+  ExpandMore,
+  ExpandLess,
+  Inventory,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
@@ -68,6 +72,7 @@ const ConsumablesOrder: React.FC = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [notes, setNotes] = useState('');
   const [success, setSuccess] = useState<string | null>(null);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
   // Fetch catalog
   const { data: catalogData, isLoading: catalogLoading } = useQuery({
@@ -85,6 +90,30 @@ const ConsumablesOrder: React.FC = () => {
       const res = await apiClient.get('/api/hcf/consumables/orders');
       return res.data as { orders: Order[]; total: number };
     },
+  });
+
+  // Fetch order details when expanded
+  const { data: orderDetails } = useQuery({
+    queryKey: ['hcf-order-detail', expandedOrder],
+    queryFn: async () => {
+      if (!expandedOrder) return null;
+      const res = await apiClient.get(`/api/hcf/consumables/orders/${expandedOrder}`);
+      return res.data as {
+        id: string;
+        orderNumber: string;
+        status: string;
+        items: Array<{
+          name: string;
+          quantity: number;
+          unit: string;
+          pricePerUnit: number;
+          gstRate: number;
+          lineTotal: number;
+          imageUrl?: string;
+        }>;
+      };
+    },
+    enabled: !!expandedOrder,
   });
 
   // Place order mutation
@@ -275,7 +304,10 @@ const ConsumablesOrder: React.FC = () => {
                       <Box key={item.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
                         <Box>
                           <Typography variant="body2" fontWeight={500}>{item.name}</Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                            {item.code}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
                             ₹{item.price} × {item.quantity}
                           </Typography>
                         </Box>
@@ -349,6 +381,7 @@ const ConsumablesOrder: React.FC = () => {
                 <Table size="small">
                   <TableHead>
                     <TableRow>
+                      <TableCell width={50}></TableCell>
                       <TableCell>Order #</TableCell>
                       <TableCell>Items</TableCell>
                       <TableCell>Total</TableCell>
@@ -358,17 +391,77 @@ const ConsumablesOrder: React.FC = () => {
                   </TableHead>
                   <TableBody>
                     {ordersData?.orders?.map((order) => (
-                      <TableRow key={order.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={500}>
-                            {order.orderNumber}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{order.itemCount} items</TableCell>
-                        <TableCell>₹{order.totalAmount.toLocaleString()}</TableCell>
-                        <TableCell>{getStatusChip(order.status)}</TableCell>
-                        <TableCell>{new Date(order.orderedAt).toLocaleDateString()}</TableCell>
-                      </TableRow>
+                      <React.Fragment key={order.id}>
+                        <TableRow hover>
+                          <TableCell>
+                            <IconButton size="small" onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}>
+                              {expandedOrder === order.id ? <ExpandLess /> : <ExpandMore />}
+                            </IconButton>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight={500} sx={{ fontFamily: 'monospace' }}>
+                              {order.orderNumber}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{order.itemCount} items</TableCell>
+                          <TableCell>₹{order.totalAmount.toLocaleString()}</TableCell>
+                          <TableCell>{getStatusChip(order.status)}</TableCell>
+                          <TableCell>{new Date(order.orderedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</TableCell>
+                        </TableRow>
+                        {/* Expanded Row */}
+                        <TableRow>
+                          <TableCell colSpan={6} sx={{ py: 0, borderBottom: expandedOrder === order.id ? undefined : 'none' }}>
+                            <Collapse in={expandedOrder === order.id}>
+                              <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1, my: 1 }}>
+                                <Typography variant="subtitle2" sx={{ mb: 2 }}>Order Items</Typography>
+                                {orderDetails?.items ? (
+                                  <Table size="small">
+                                    <TableHead>
+                                      <TableRow>
+                                        <TableCell width={60}>Image</TableCell>
+                                        <TableCell>Item</TableCell>
+                                        <TableCell align="center">Qty</TableCell>
+                                        <TableCell>Unit</TableCell>
+                                        <TableCell align="right">Price</TableCell>
+                                        <TableCell align="right">GST</TableCell>
+                                        <TableCell align="right">Total</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {orderDetails.items.map((item, idx) => (
+                                        <TableRow key={idx}>
+                                          <TableCell>
+                                            {item.imageUrl ? (
+                                              <Box
+                                                component="img"
+                                                src={`http://localhost:8080${item.imageUrl}`}
+                                                alt={item.name}
+                                                sx={{ width: 45, height: 45, objectFit: 'cover', borderRadius: 1 }}
+                                              />
+                                            ) : (
+                                              <Box sx={{ width: 45, height: 45, bgcolor: 'background.paper', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Inventory sx={{ color: 'text.disabled', fontSize: 18 }} />
+                                              </Box>
+                                            )}
+                                          </TableCell>
+                                          <TableCell>{item.name}</TableCell>
+                                          <TableCell align="center">{item.quantity}</TableCell>
+                                          <TableCell>{item.unit}</TableCell>
+                                          <TableCell align="right">₹{item.pricePerUnit}</TableCell>
+                                          <TableCell align="right">{item.gstRate}%</TableCell>
+                                          <TableCell align="right">₹{item.lineTotal?.toLocaleString()}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                ) : (
+                                  <CircularProgress size={20} />
+                                )}
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      </React.Fragment>
                     ))}
                   </TableBody>
                 </Table>

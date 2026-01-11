@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -274,7 +275,8 @@ public class HcfConsumableOrderController {
      * Get order details.
      */
     @GetMapping("/orders/{id}")
-    public ResponseEntity<?> getOrderDetails(@PathVariable UUID id) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getOrderDetails(@PathVariable("id") UUID id) {
         UUID hcfId = TenantContext.getHcfId();
         accessGuard.assertPortalAccess(hcfId);
 
@@ -292,12 +294,19 @@ public class HcfConsumableOrderController {
                     result.put("cbwtfNotes", order.getCbwtfNotes());
                     result.put("orderedAt", order.getOrderedAt().toString());
 
-                    result.put("items", order.getItems().stream().map(item -> Map.of(
-                            "name", item.getItemName(),
-                            "quantity", item.getQuantity(),
-                            "unit", item.getUnitOfMeasure(),
-                            "pricePerUnit", item.getPricePerUnit(),
-                            "lineTotal", item.getLineTotal())).toList());
+                    result.put("items", order.getItems().stream().map(item -> {
+                        Map<String, Object> itemMap = new HashMap<>();
+                        itemMap.put("name", item.getItemName());
+                        itemMap.put("quantity", item.getQuantity());
+                        itemMap.put("unit", item.getUnitOfMeasure());
+                        itemMap.put("pricePerUnit", item.getPricePerUnit());
+                        itemMap.put("gstRate", item.getGstRate());
+                        itemMap.put("lineTotal", item.getLineTotal());
+                        if (item.getConsumableItem() != null && item.getConsumableItem().getImageUrl() != null) {
+                            itemMap.put("imageUrl", item.getConsumableItem().getImageUrl());
+                        }
+                        return itemMap;
+                    }).toList());
 
                     return ResponseEntity.ok(result);
                 })
