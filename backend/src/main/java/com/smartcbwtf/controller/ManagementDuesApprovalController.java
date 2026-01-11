@@ -55,8 +55,13 @@ public class ManagementDuesApprovalController {
     public ResponseEntity<?> listPending(
             @RequestParam(name = "status", required = false, defaultValue = "SUBMITTED") String status) {
 
+        log.info("Management listPending called with status: {}", status);
+
         List<DuesClearanceRequest> requests = status.equals("ALL") ? clearanceRepo.findAll()
                 : clearanceRepo.findByManagementStatusOrderByRequestedAtDesc(status);
+
+        log.info("Found {} requests for status {}", requests.size(), status);
+        requests.forEach(r -> log.info("Found Request ID: {} with Status: {}", r.getId(), r.getManagementStatus()));
 
         return ResponseEntity.ok(Map.of(
                 "requests", requests.stream().map(req -> {
@@ -73,6 +78,11 @@ public class ManagementDuesApprovalController {
                     item.put("outstandingDues", req.getOutstandingDues());
                     if (req.getCbwtfSubmittedAt() != null) {
                         item.put("submittedAt", req.getCbwtfSubmittedAt().toString());
+                    }
+                    if (req.getAgreement() != null) {
+                        item.put("agreementNumber", req.getAgreement().getAgreementNumber());
+                    } else {
+                        item.put("agreementNumber", null);
                     }
                     item.put("cbwtfNotes", req.getCbwtfNotes());
                     return item;

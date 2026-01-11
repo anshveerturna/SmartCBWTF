@@ -138,7 +138,11 @@ public class CbwtfDuesClearanceController {
                 map.put("id", req.getId());
                 map.put("hcfName", req.getHcf().getName());
                 map.put("hcfCode", req.getHcf().getCode());
-                map.put("agreementNumber", req.getAgreement().getAgreementNumber());
+                if (req.getAgreement() != null) {
+                        map.put("agreementNumber", req.getAgreement().getAgreementNumber());
+                } else {
+                        map.put("agreementNumber", null);
+                }
                 map.put("requestedAt", req.getRequestedAt());
                 map.put("status", req.getManagementStatus());
                 map.put("amountCleared", req.getAmountCleared());

@@ -172,6 +172,32 @@ public class HcfComplianceController {
                 "Request submitted successfully! Please ensure all your dues are cleared. If verified, your request will be approved shortly."));
     }
 
+    @PostMapping("/cancel-request")
+    @Transactional
+    public ResponseEntity<?> cancelDuesRequest() {
+        UUID hcfId = TenantContext.getHcfId();
+        Hcf hcf = hcfRepository.findById(hcfId).orElseThrow();
+
+        // Find and delete any pending requests to be safe
+        // Use existing safe method and filter in memory
+        List<DuesClearanceRequest> allRequests = duesRequestRepository.findByHcfIdOrderByRequestedAtDesc(hcfId);
+
+        List<DuesClearanceRequest> pendingRequests = allRequests.stream()
+                .filter(req -> "PENDING".equals(req.getManagementStatus())
+                        || "SUBMITTED".equals(req.getManagementStatus()))
+                .toList();
+
+        if (!pendingRequests.isEmpty()) {
+            duesRequestRepository.deleteAll(pendingRequests);
+        }
+
+        // Reset HCF Status
+        hcf.setDuesClearStatus(DuesClearStatus.PENDING);
+        hcfRepository.save(hcf);
+
+        return ResponseEntity.ok(Map.of("message", "Request cancelled successfully."));
+    }
+
     @GetMapping("/monthly")
     public ResponseEntity<?> getMonthlyData(
             @RequestParam(name = "year") int year,

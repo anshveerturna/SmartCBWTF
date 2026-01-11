@@ -137,7 +137,7 @@ export default function DuesVerification() {
                 <TableHead>
                   <TableRow>
                      <TableCell>HCF</TableCell>
-                     <TableCell>Agreement</TableCell>
+                     <TableCell>Agreement No.</TableCell>
                      <TableCell>Requested At</TableCell>
                      <TableCell align="right">Actions</TableCell>
                   </TableRow>

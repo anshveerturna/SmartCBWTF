@@ -83,6 +83,15 @@ export default function ComplianceReports() {
     }
   });
 
+  // 4. Cancel Request Mutation (Reset)
+  const cancelRequestMutation = useMutation({
+    mutationFn: () => apiClient.post('/api/hcf/compliance/cancel-request'),
+    onSuccess: () => {
+      refetchStatus();
+      queryClient.invalidateQueries({ queryKey: ['hcf-dues-status'] });
+    }
+  });
+
   // 4. Monthly/Yearly Data (Placeholder execution as it depends on status)
   const isDuesCleared = duesStatus?.status === 'CLEARED';
 
@@ -104,7 +113,21 @@ export default function ComplianceReports() {
     // Already requested - pending approval
     if (duesStatus?.status === 'REQUESTED') {
       return (
-        <Alert severity="warning" sx={{ mb: 3 }} icon={<PendingIcon />}>
+        <Alert 
+          severity="warning" 
+          sx={{ mb: 3 }} 
+          icon={<PendingIcon />}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => cancelRequestMutation.mutate()}
+              disabled={cancelRequestMutation.isPending}
+            >
+              Cancel Request
+            </Button>
+          }
+        >
           <Typography variant="subtitle2" fontWeight={600}>Access Request Pending</Typography>
           <Typography variant="body2">
             Your request is awaiting verification by CBWTF and approval from management.

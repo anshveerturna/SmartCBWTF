@@ -38,6 +38,7 @@ interface ClearanceRequest {
   hcfName: string;
   hcfCode: string;
   facilityName: string;
+  agreementNumber?: string;
   status: string;
   requestedAt: string;
   submittedAt?: string;
@@ -56,16 +57,15 @@ const DuesApprovals: React.FC = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['management-dues-approvals'],
     queryFn: async () => {
-      const res = await apiClient.get('/api/top-mgmt/approvals');
-      // Backend returns list directly, so map it
-      return { requests: res.data as ClearanceRequest[], total: res.data.length };
+      const res = await apiClient.get('/api/management/dues-approvals');
+      return res.data;
     },
   });
 
   // Approve mutation
   const approveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await apiClient.post(`/api/top-mgmt/approvals/${id}/approve`);
+      const res = await apiClient.post(`/api/management/dues-approvals/${id}/approve`);
       return res.data;
     },
     onSuccess: () => {
@@ -76,7 +76,7 @@ const DuesApprovals: React.FC = () => {
   // Reject mutation
   const rejectMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      const res = await apiClient.post(`/api/top-mgmt/approvals/${id}/reject`, { reason });
+      const res = await apiClient.post(`/api/management/dues-approvals/${id}/reject`, { reason });
       return res.data;
     },
     onSuccess: () => {
@@ -89,7 +89,7 @@ const DuesApprovals: React.FC = () => {
   // Bulk approve mutation
   const bulkApproveMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const res = await apiClient.post('/api/top-mgmt/approvals/approve-all'); // simplified bulk endpoint (approves all SUBMITTED)
+      const res = await apiClient.post('/api/management/dues-approvals/bulk-approve', { ids });
       return res.data;
     },
     onSuccess: () => {
@@ -100,7 +100,7 @@ const DuesApprovals: React.FC = () => {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked && data?.requests) {
-      setSelected(new Set(data.requests.map(r => r.id)));
+      setSelected(new Set(data.requests.map((r: ClearanceRequest) => r.id)));
     } else {
       setSelected(new Set());
     }
@@ -188,7 +188,8 @@ const DuesApprovals: React.FC = () => {
                       />
                     </TableCell>
                     <TableCell>HCF</TableCell>
-                    <TableCell>CBWTF</TableCell>
+                    <TableCell>Facility</TableCell>
+                    <TableCell>Agreement No.</TableCell>
                     <TableCell align="right">Amount</TableCell>
                     <TableCell>Submitted</TableCell>
                     <TableCell>Notes</TableCell>
@@ -196,7 +197,7 @@ const DuesApprovals: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data?.requests?.map((req) => (
+                  {data?.requests?.map((req: ClearanceRequest) => (
                     <TableRow key={req.id} hover selected={selected.has(req.id)}>
                       <TableCell padding="checkbox">
                         <Checkbox
@@ -219,6 +220,11 @@ const DuesApprovals: React.FC = () => {
                           <Business fontSize="small" color="action" />
                           {req.facilityName}
                         </Box>
+                      </TableCell>
+                      <TableCell>
+                         <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                           {req.agreementNumber || '-'}
+                         </Typography>
                       </TableCell>
                       <TableCell align="right">
                         <Chip
