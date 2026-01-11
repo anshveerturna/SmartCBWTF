@@ -59,6 +59,7 @@ const HcfQrLabels = lazy(() => import('./pages/hcf/QrLabels'));
 const HcfDailyWaste = lazy(() => import('./pages/hcf/DailyWaste'));
 const HcfReports = lazy(() => import('./pages/hcf/Reports'));
 const HcfConsumablesOrder = lazy(() => import('./pages/hcf/ConsumablesOrder'));
+const HcfAgreement = lazy(() => import('./pages/hcf/Agreement'));
 // Management pages
 const ManagementDuesApprovals = lazy(() => import('./pages/management/DuesApprovals'));
 // CBWTF Finance pages
@@ -216,7 +217,7 @@ const App: React.FC = () => {
                   <Route path="consumables/order" element={<HcfConsumablesOrder />} />
                   <Route path="pickups" element={<div>Pickup History (Coming Soon)</div>} />
                   <Route path="bills" element={<div>Bills (Coming Soon)</div>} />
-                  <Route path="agreement" element={<div>Agreement (Coming Soon)</div>} />
+                  <Route path="agreement" element={<HcfAgreement />} />
                 </Route>
 
                 {/* Top Management Portal - Hard isolation */}
