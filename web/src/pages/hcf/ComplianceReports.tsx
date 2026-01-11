@@ -17,7 +17,11 @@ import {
   TableHead,
   TableRow,
   Chip,
-  CircularProgress
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -56,8 +60,36 @@ interface DuesStatus {
 export default function ComplianceReports() {
   const [tabIndex, setTabIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-  // Removed unused monthly/yearly state for now
+  
+  // Monthly Report State
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [downloading, setDownloading] = useState(false);
+
   const queryClient = useQueryClient();
+
+  const handleDownloadReport = async () => {
+    try {
+      setDownloading(true);
+      const res = await apiClient.get('/api/hcf/compliance/monthly-report/pdf', {
+        params: { year: selectedYear, month: selectedMonth },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Monthly_Compliance_Report_${selectedYear}_${selectedMonth}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error('Failed to download report', err);
+      alert('Failed to generate report. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // 1. Fetch Dues Status
   const { data: duesStatus, refetch: refetchStatus } = useQuery<DuesStatus>({
@@ -328,19 +360,64 @@ export default function ComplianceReports() {
             filter: isDuesCleared ? 'none' : 'grayscale(100%)'
           }}>
              {/* Simple Placeholder for Monthly/Yearly View - can be expanded */}
-             <Card sx={{ p: 5, textAlign: 'center' }}>
-                <Typography variant="h5" gutterBottom>
-                  {tabIndex === 1 ? 'Monthly Compliance Report' : 'Yearly Compliance Report'}
+              <Card sx={{ p: 4 }}>
+                <Typography variant="h6" gutterBottom align="left">Monthly Compliance Report</Typography>
+                <Typography variant="body2" color="text.secondary" align="left" sx={{ mb: 4 }}>
+                   Select a month and year to download the detailed compliance report including waste breakdown and pickup logs.
                 </Typography>
-                <Typography color="text.secondary" sx={{ mb: 3 }}>
-                   Detailed analytics and download options are available here.
-                </Typography>
-                {isDuesCleared && (
-                   <Button variant="outlined" startIcon={<DownloadIcon />}>
-                      Download Report
-                   </Button>
-                )}
-             </Card>
+
+                <Grid container spacing={2} alignItems="center">
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Year</InputLabel>
+                      <Select
+                        value={selectedYear}
+                        label="Year"
+                        onChange={(e) => setSelectedYear(Number(e.target.value))}
+                        disabled={!isDuesCleared}
+                      >
+                        {[2024, 2025, 2026].map(y => (
+                          <MenuItem key={y} value={y}>{y}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Month</InputLabel>
+                      <Select
+                        value={selectedMonth}
+                        label="Month"
+                        onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                        disabled={!isDuesCleared}
+                      >
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                           <MenuItem key={m} value={m}>
+                             {format(new Date(2024, m - 1, 1), 'MMMM')}
+                           </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Button 
+                      variant="contained" 
+                      startIcon={downloading ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
+                      onClick={handleDownloadReport}
+                      disabled={!isDuesCleared || downloading}
+                      fullWidth
+                    >
+                       {downloading ? 'Generatng PDF...' : 'Download PDF Report'}
+                    </Button>
+                  </Grid>
+                </Grid>
+
+                 {!isDuesCleared && (
+                   <Alert severity="info" sx={{ mt: 4 }}>
+                     Reports are locked because dues clearance is pending.
+                   </Alert>
+                 )}
+              </Card>
           </Box>
         </Box>
       )}

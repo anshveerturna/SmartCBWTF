@@ -32,14 +32,18 @@ public class HcfComplianceController {
             BagEventRepository bagEventRepository,
             BagLabelRepository bagLabelRepository,
             DuesClearanceRequestRepository duesRequestRepository,
-            HcfAccessGuard accessGuard) {
+            HcfAccessGuard accessGuard,
+            com.smartcbwtf.service.PdfService pdfService) {
         this.hcfRepository = hcfRepository;
         this.agreementRepository = agreementRepository;
         this.bagEventRepository = bagEventRepository;
         this.bagLabelRepository = bagLabelRepository;
         this.duesRequestRepository = duesRequestRepository;
         this.accessGuard = accessGuard;
+        this.pdfService = pdfService;
     }
+
+    private final com.smartcbwtf.service.PdfService pdfService;
 
     // ==========================================
     // DAILY DATA (Always Accessible)
@@ -217,6 +221,40 @@ public class HcfComplianceController {
         return ResponseEntity.ok(Map.of(
                 "period", ym.toString(),
                 "totalWeight", totalWeight));
+    }
+
+    @GetMapping("/monthly-report/pdf")
+    public ResponseEntity<?> downloadMonthlyReportPdf(
+            @RequestParam(name = "year") int year,
+            @RequestParam(name = "month") int month) {
+
+        checkAccess();
+        UUID hcfId = TenantContext.getHcfId();
+        Hcf hcf = hcfRepository.findById(hcfId).orElseThrow();
+
+        // Find Active Agreement for Facility details
+        Agreement agreement = agreementRepository.findByHcfIdAndStatus(hcfId, "ACTIVE").stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No active agreement found. Cannot generate report."));
+        Facility facility = agreement.getFacility();
+
+        YearMonth ym = YearMonth.of(year, month);
+        Instant start = ym.atDay(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+        Instant end = ym.plusMonths(1).atDay(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+
+        // Fetch detailed events
+        List<BagEvent> events = bagEventRepository.findByHcfIdAndEventTsBetween(hcfId, start, end);
+
+        // Generate PDF
+        byte[] pdfBytes = pdfService.generateMonthlyCompliancePdf(hcf, facility, ym.atDay(1), events);
+
+        String filename = "Monthly_Compliance_Report_" + hcf.getCode() + "_" + ym + ".pdf";
+
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + filename + "\"")
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
     }
 
     @GetMapping("/yearly")
