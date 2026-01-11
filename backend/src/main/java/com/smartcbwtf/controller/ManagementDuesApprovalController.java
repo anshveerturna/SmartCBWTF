@@ -41,11 +41,15 @@ public class ManagementDuesApprovalController {
     private final DuesClearanceRequestRepository clearanceRepo;
     private final AuditLogService auditLogService;
 
+    private final com.smartcbwtf.repository.HcfRepository hcfRepository;
+
     public ManagementDuesApprovalController(
             DuesClearanceRequestRepository clearanceRepo,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            com.smartcbwtf.repository.HcfRepository hcfRepository) {
         this.clearanceRepo = clearanceRepo;
         this.auditLogService = auditLogService;
+        this.hcfRepository = hcfRepository;
     }
 
     /**
@@ -151,6 +155,11 @@ public class ManagementDuesApprovalController {
 
         clearanceRepo.save(request);
 
+        // Update HCF Status to CLEARED
+        com.smartcbwtf.domain.Hcf hcf = request.getHcf();
+        hcf.setDuesClearStatus(com.smartcbwtf.domain.DuesClearStatus.CLEARED);
+        hcfRepository.save(hcf);
+
         auditLogService.log("DUES_CLEARANCE", request.getId(), "APPROVED_BY_MANAGEMENT",
                 userId, "Report access granted");
 
@@ -235,6 +244,11 @@ public class ManagementDuesApprovalController {
                 request.setApprovedAt(Instant.now());
                 request.grantReportAccess();
                 clearanceRepo.save(request);
+
+                // Update HCF Status to CLEARED
+                com.smartcbwtf.domain.Hcf hcf = request.getHcf();
+                hcf.setDuesClearStatus(com.smartcbwtf.domain.DuesClearStatus.CLEARED);
+                hcfRepository.save(hcf);
 
                 auditLogService.log("DUES_CLEARANCE", request.getId(),
                         "BULK_APPROVED_BY_MANAGEMENT", userId, null);
