@@ -60,6 +60,13 @@ public class DuesClearanceRequest {
     @Column(name = "request_notes")
     private String requestNotes;
 
+    // Granular Access Control
+    @Column(name = "request_month")
+    private Integer requestMonth;
+
+    @Column(name = "request_year")
+    private Integer requestYear;
+
     // CBWTF verification step
     @Column(name = "cbwtf_submitted_at")
     private Instant cbwtfSubmittedAt;
@@ -161,6 +168,22 @@ public class DuesClearanceRequest {
 
     public void setRequestNotes(String requestNotes) {
         this.requestNotes = requestNotes;
+    }
+
+    public Integer getRequestMonth() {
+        return requestMonth;
+    }
+
+    public void setRequestMonth(Integer requestMonth) {
+        this.requestMonth = requestMonth;
+    }
+
+    public Integer getRequestYear() {
+        return requestYear;
+    }
+
+    public void setRequestYear(Integer requestYear) {
+        this.requestYear = requestYear;
     }
 
     public Instant getCbwtfSubmittedAt() {

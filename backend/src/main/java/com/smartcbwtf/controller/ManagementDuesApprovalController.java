@@ -89,6 +89,8 @@ public class ManagementDuesApprovalController {
                         item.put("agreementNumber", null);
                     }
                     item.put("cbwtfNotes", req.getCbwtfNotes());
+                    item.put("requestMonth", req.getRequestMonth());
+                    item.put("requestYear", req.getRequestYear());
                     return item;
                 }).toList(),
                 "total", requests.size()));
@@ -115,6 +117,8 @@ public class ManagementDuesApprovalController {
                     result.put("amountCleared", req.getAmountCleared());
                     result.put("outstandingDues", req.getOutstandingDues());
                     result.put("cbwtfNotes", req.getCbwtfNotes());
+                    result.put("requestMonth", req.getRequestMonth());
+                    result.put("requestYear", req.getRequestYear());
                     if (req.getCbwtfSubmittedAt() != null) {
                         result.put("submittedAt", req.getCbwtfSubmittedAt().toString());
                     }

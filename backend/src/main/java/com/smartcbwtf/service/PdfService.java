@@ -9,6 +9,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.springframework.stereotype.Service;
 
@@ -49,20 +50,10 @@ public class PdfService {
         return generateAgreementPdf(agreement, null, null);
     }
 
-    /**
-     * Generate agreement PDF using facility-specific template if available.
-     * Template placeholders are replaced with actual values.
-     * 
-     * @param agreement       The agreement entity
-     * @param template        The facility template (optional, uses default if null)
-     * @param templateContent The template HTML content (optional)
-     * @return Path to the generated PDF
-     */
     public String generateAgreementPdf(Agreement agreement, FacilityTemplate template, String templateContent) {
         Facility facility = agreement.getFacility();
         Hcf hcf = agreement.getHcf();
 
-        // Create facility-specific subdirectory
         Path facilityDir = agreementsDir.resolve(facility.getCode());
         try {
             Files.createDirectories(facilityDir);
@@ -73,33 +64,25 @@ public class PdfService {
         String filename = agreement.getAgreementNumber() + ".pdf";
         Path path = facilityDir.resolve(filename);
 
-        // Build template variables
         Map<String, String> variables = buildTemplateVariables(agreement, hcf, facility);
 
         try {
             if (template != null && templateContent != null && "HTML".equals(template.getTemplateType())) {
-                // Use HTML template with variable substitution
                 String processedHtml = processTemplate(templateContent, variables);
                 renderHtmlToPdf(processedHtml, path);
             } else {
-                // Use default PDF generation
                 renderAgreementPdf(path, agreement, hcf, facility, variables);
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to write agreement PDF", e);
         }
 
-        // Return relative URL path
         return "/files/agreements/" + facility.getCode() + "/" + filename;
     }
 
-    /**
-     * Build template variables map from agreement, HCF, and facility data.
-     */
     private Map<String, String> buildTemplateVariables(Agreement agreement, Hcf hcf, Facility facility) {
         Map<String, String> vars = new HashMap<>();
 
-        // HCF fields
         vars.put("HCF_NAME", nullSafe(hcf.getName()));
         vars.put("HCF_ADDRESS", nullSafe(hcf.getAddress()));
         vars.put("DOCTOR_NAME", nullSafe(hcf.getDoctorName()));
@@ -115,13 +98,11 @@ public class PdfService {
         vars.put("PCB_AUTHORIZATION_NO", nullSafe(hcf.getPcbAuthorizationNo(), "N/A"));
         vars.put("OTHER_NOTES", nullSafe(hcf.getOtherNotes(), ""));
 
-        // Agreement fields
         vars.put("AGREEMENT_NUMBER", agreement.getAgreementNumber());
         vars.put("AGREEMENT_DATE", formatDate(LocalDate.now()));
         vars.put("START_DATE", formatDate(agreement.getStartDate()));
         vars.put("END_DATE", agreement.getEndDate() != null ? formatDate(agreement.getEndDate()) : "N/A");
 
-        // Terms acceptance
         vars.put("TERMS_ACCEPTED_LINE",
                 Boolean.TRUE.equals(agreement.getTermsAccepted()) ? "Terms & Conditions: Accepted"
                         : "Terms & Conditions: Not Accepted");
@@ -129,7 +110,6 @@ public class PdfService {
         vars.put("TERMS_ACCEPTED_AT",
                 agreement.getTermsAcceptedAt() != null ? formatInstant(agreement.getTermsAcceptedAt()) : "N/A");
 
-        // Facility fields
         vars.put("FACILITY_NAME", nullSafe(facility.getName()));
         vars.put("FACILITY_ADDRESS", nullSafe(facility.getAddress()));
         vars.put("FACILITY_CODE", nullSafe(facility.getCode()));
@@ -139,9 +119,6 @@ public class PdfService {
         return vars;
     }
 
-    /**
-     * Process HTML template by replacing {{VARIABLE}} placeholders.
-     */
     private String processTemplate(String template, Map<String, String> variables) {
         String result = template;
         for (Map.Entry<String, String> entry : variables.entrySet()) {
@@ -150,13 +127,7 @@ public class PdfService {
         return result;
     }
 
-    /**
-     * Render HTML to PDF using simple text extraction.
-     * For production, consider using OpenHTMLToPDF or Flying Saucer.
-     */
     private void renderHtmlToPdf(String html, Path outputPath) throws IOException {
-        // Simple HTML to text conversion for now
-        // In production, use OpenHTMLToPDF for proper HTML rendering
         String text = html.replaceAll("<[^>]+>", "\n")
                 .replaceAll("&amp;", "&")
                 .replaceAll("&nbsp;", " ")
@@ -169,9 +140,6 @@ public class PdfService {
         renderSimplePdf(outputPath, "AGREEMENT", lines);
     }
 
-    /**
-     * Render agreement PDF with proper formatting matching physical form.
-     */
     private void renderAgreementPdf(Path path, Agreement agreement, Hcf hcf, Facility facility,
             Map<String, String> vars) throws IOException {
         try (PDDocument document = new PDDocument()) {
@@ -183,7 +151,6 @@ public class PdfService {
                 float margin = 50;
                 float lineHeight = 14;
 
-                // Header
                 cs.beginText();
                 cs.setFont(FONT_BOLD, 12);
                 cs.newLineAtOffset(margin, y);
@@ -196,7 +163,6 @@ public class PdfService {
 
                 y -= 30;
 
-                // Agreement Number box
                 cs.beginText();
                 cs.setFont(FONT_BOLD, 14);
                 cs.newLineAtOffset(margin, y);
@@ -211,7 +177,6 @@ public class PdfService {
 
                 y -= 25;
 
-                // Title
                 cs.beginText();
                 cs.setFont(FONT_BOLD, 11);
                 cs.newLineAtOffset(margin, y);
@@ -220,7 +185,6 @@ public class PdfService {
 
                 y -= 25;
 
-                // HCF Details Section
                 cs.beginText();
                 cs.setFont(FONT_BOLD, 10);
                 cs.newLineAtOffset(margin, y);
@@ -229,14 +193,12 @@ public class PdfService {
 
                 y -= 5;
 
-                // Draw box around HCF details
                 cs.setLineWidth(0.5f);
                 cs.addRect(margin - 5, y - 180, 500, 185);
                 cs.stroke();
 
                 y -= lineHeight;
 
-                // HCF fields
                 String[][] hcfFields = {
                         { "HCF Name", vars.get("HCF_NAME") },
                         { "HCF Address", vars.get("HCF_ADDRESS") },
@@ -266,7 +228,6 @@ public class PdfService {
 
                 y -= 20;
 
-                // Agreement dates
                 cs.beginText();
                 cs.setFont(FONT_BOLD, 10);
                 cs.newLineAtOffset(margin, y);
@@ -277,7 +238,6 @@ public class PdfService {
 
                 y -= 25;
 
-                // Terms acceptance
                 cs.beginText();
                 cs.setFont(FONT_BOLD, 10);
                 cs.newLineAtOffset(margin, y);
@@ -295,7 +255,6 @@ public class PdfService {
 
                 y -= 40;
 
-                // Signature lines
                 cs.setLineWidth(0.5f);
                 cs.moveTo(margin, y);
                 cs.lineTo(margin + 150, y);
@@ -325,7 +284,6 @@ public class PdfService {
                 cs.showText("AUTHORIZED SIGNATORY");
                 cs.endText();
 
-                // Footer with generation info
                 cs.beginText();
                 cs.setFont(FONT_REGULAR, 7);
                 cs.newLineAtOffset(margin, 30);
@@ -438,15 +396,18 @@ public class PdfService {
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
 
-            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
-                float y = 780;
-                float margin = 40;
-                float lineHeight = 16;
-                float tableWidth = 500;
+            // Calculate Totals for Chart
+            Map<String, java.math.BigDecimal> totals = new HashMap<>();
+            events.forEach(e -> {
+                String cat = (e.getBagLabel() != null) ? e.getBagLabel().getCategory() : "UNKNOWN";
+                totals.merge(cat, e.getWeightKg(), java.math.BigDecimal::add);
+            });
 
-                // -----------------------------------------------------------------
+            float y = 780;
+            float margin = 40;
+
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
                 // HEADER
-                // -----------------------------------------------------------------
                 cs.beginText();
                 cs.setFont(FONT_BOLD, 18);
                 cs.newLineAtOffset(margin, y);
@@ -461,7 +422,6 @@ public class PdfService {
                 cs.endText();
                 y -= 30;
 
-                // Report Title
                 cs.beginText();
                 cs.setFont(FONT_BOLD, 14);
                 cs.newLineAtOffset(margin, y);
@@ -469,104 +429,50 @@ public class PdfService {
                 cs.endText();
                 y -= 25;
 
-                // Metadata Box
                 cs.setFont(FONT_BOLD, 10);
                 cs.beginText();
                 cs.newLineAtOffset(margin, y);
-                cs.showText("HCF Name: ");
-                cs.setFont(FONT_REGULAR, 10);
-                cs.showText(hcf.getName());
-                cs.newLineAtOffset(0, -lineHeight);
-                cs.setFont(FONT_BOLD, 10);
-                cs.showText("HCF Code: ");
-                cs.setFont(FONT_REGULAR, 10);
-                cs.showText(hcf.getCode());
-                cs.newLineAtOffset(0, -lineHeight);
-                cs.setFont(FONT_BOLD, 10);
-                cs.showText("Report Month: ");
-                cs.setFont(FONT_REGULAR, 10);
-                cs.showText(month.getMonth().toString() + " " + month.getYear());
+                cs.showText("HCF: " + hcf.getName() + " (" + hcf.getCode() + ")");
+                cs.newLineAtOffset(300, 0);
+                cs.showText("Period: " + month.getMonth().toString() + " " + month.getYear());
                 cs.endText();
-                y -= 60;
+                y -= 50;
 
-                // -----------------------------------------------------------------
-                // SUMMARY TABLE
-                // -----------------------------------------------------------------
+                // Chart on Right
+                float chartHeight = 150;
+                drawBarChart(cs, 300, y - chartHeight + 20, 200, chartHeight, totals);
+
+                // Summary Table on Left
                 cs.beginText();
                 cs.setFont(FONT_BOLD, 12);
                 cs.newLineAtOffset(margin, y);
-                cs.showText("Waste Summary by Category");
+                cs.showText("Waste Summary");
                 cs.endText();
                 y -= 20;
 
-                // Aggregate Data
-                Map<String, java.math.BigDecimal> totals = new HashMap<>();
-                events.forEach(e -> {
-                    String cat = (e.getBagLabel() != null) ? e.getBagLabel().getCategory() : "UNKNOWN";
-                    totals.merge(cat, e.getWeightKg(), java.math.BigDecimal::add);
-                });
-
-                // Write Summary Table Header
-                float[] colWidths = { 150, 150 };
+                float[] sumColWidths = { 100, 100 };
                 float rowHeight = 20;
-                drawTableOk(cs, margin, y, colWidths, rowHeight, "Category", "Total Weight (kg)");
+                drawTableOk(cs, margin, y, sumColWidths, rowHeight, FONT_BOLD, 10, "Category", "Total (kg)");
                 y -= rowHeight;
 
-                // Write Summary Rows
-                cs.setFont(FONT_REGULAR, 10);
                 for (Map.Entry<String, java.math.BigDecimal> entry : totals.entrySet()) {
-                    drawTableOk(cs, margin, y, colWidths, rowHeight, entry.getKey(),
+                    drawTableOk(cs, margin, y, sumColWidths, rowHeight, FONT_REGULAR, 10, entry.getKey(),
                             String.format("%.2f", entry.getValue()));
                     y -= rowHeight;
                 }
-
-                y -= 40;
-
-                // -----------------------------------------------------------------
-                // DETAILED HISTORY TABLE
-                // -----------------------------------------------------------------
-                if (y < 200) { // New page if low
-                    cs.close();
-                    page = new PDPage(PDRectangle.A4);
-                    document.addPage(page);
-                    // Reset y for new page (re-open content stream handled by loop logic usually,
-                    // but here simple if)
-                    // To keep simple, we assume summary fits. For detail we need standard paging
-                    // logic.
-                    // IMPORTANT: The existing PDFService doesn't have robust paging helper.
-                    // I will implement a simplified detail list, truncated if too long, or simple
-                    // paging.
-                }
-
-                // For simplicity in this edit, I will render Detail Table using a helper that
-                // handles paging context
-                // But I cannot easily pass 'document' and 'page' ref in strict local scope.
-                // I will assume for now it fits or I will re-implement simple paging logic
-                // right here.
             }
 
-            // Re-open for details with paging
-            try (PDPageContentStream cs = new PDPageContentStream(document,
-                    document.getPage(document.getNumberOfPages() - 1), PDPageContentStream.AppendMode.APPEND, true,
-                    true)) {
+            // DETAILED HISTORY ITEMS
+            PDPage detailsPage = new PDPage(PDRectangle.A4);
+            document.addPage(detailsPage);
 
-                float margin = 40;
-                float y = 500; // rough guess, actually need to track Y better.
-                // Since strict tracking is hard without class fields, I'll restart writing
-                // detail on a NEW PAGE to be safe.
-            }
+            PDPageContentStream cs = new PDPageContentStream(document, detailsPage);
 
-            // Actually, let's create a Helper class or method for drawing tables that
-            // handles page breaks
-            // For now, I'll append a new page for detailed logs to avoid collision
-            PDPage detailPage = new PDPage(PDRectangle.A4);
-            document.addPage(detailPage);
-
-            try (PDPageContentStream cs = new PDPageContentStream(document, detailPage)) {
-                float y = 750;
-                float margin = 40;
-                float[] colWidths = { 100, 120, 100, 100, 80 }; // Date, Time, Category, QR, Weight
-                float rowHeight = 20;
+            try {
+                y = 750;
+                margin = 40;
+                float[] colWidths = { 70, 50, 70, 250, 60 };
+                float rowHeight = 18;
 
                 cs.beginText();
                 cs.setFont(FONT_BOLD, 12);
@@ -574,23 +480,24 @@ public class PdfService {
                 cs.showText("Detailed Waste Pickup History");
                 cs.endText();
 
-                // Header
-                drawTableOk(cs, margin, y, colWidths, rowHeight, "Date", "Time", "Category", "QR Code", "Weight");
+                drawTableOk(cs, margin, y, colWidths, rowHeight, FONT_BOLD, 9, "Date", "Time", "Category", "QR Code",
+                        "Weight (kg)");
                 y -= rowHeight;
 
-                cs.setFont(FONT_REGULAR, 9);
                 DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
 
                 for (com.smartcbwtf.domain.BagEvent e : events) {
-                    if (y < 50) {
+                    if (y < 60) {
                         cs.close();
-                        PDPage nextPage = new PDPage(PDRectangle.A4);
-                        document.addPage(nextPage);
-                        // Re-initialize for new page loop?
-                        // In this structure, I can't easily swap 'cs' variable.
-                        // Limitation of simple linear code.
-                        // I will LIMIT rows to 200 for now to prevent crash, or break.
-                        break;
+                        detailsPage = new PDPage(PDRectangle.A4);
+                        document.addPage(detailsPage);
+                        cs = new PDPageContentStream(document, detailsPage);
+
+                        y = 750;
+                        margin = 40;
+                        drawTableOk(cs, margin, y, colWidths, rowHeight, FONT_BOLD, 9, "Date", "Time", "Category",
+                                "QR Code", "Weight (kg)");
+                        y -= rowHeight;
                     }
 
                     String dateStr = formatDate(LocalDate.ofInstant(e.getEventTs(), ZoneId.of("Asia/Kolkata")));
@@ -599,12 +506,16 @@ public class PdfService {
                     String qr = (e.getBagLabel() != null) ? e.getBagLabel().getQrCode() : "-";
                     String wt = (e.getWeightKg() != null) ? String.valueOf(e.getWeightKg()) : "0";
 
-                    drawTableOk(cs, margin, y, colWidths, rowHeight, dateStr, timeStr, cat, qr, wt);
+                    if (qr.length() > 35)
+                        qr = qr.substring(0, 32) + "...";
+
+                    drawTableOk(cs, margin, y, colWidths, rowHeight, FONT_REGULAR, 9, dateStr, timeStr, cat, qr, wt);
                     y -= rowHeight;
                 }
+            } finally {
+                cs.close();
             }
 
-            // Save to byte array
             java.io.ByteArrayOutputStream shout = new java.io.ByteArrayOutputStream();
             document.save(shout);
             return shout.toByteArray();
@@ -613,19 +524,86 @@ public class PdfService {
         }
     }
 
-    // Simple table row drawer
+    private void drawBarChart(PDPageContentStream cs, float x, float y, float width, float height,
+            Map<String, java.math.BigDecimal> data) throws IOException {
+        if (data.isEmpty())
+            return;
+
+        cs.setNonStrokingColor(250 / 255f, 250 / 255f, 250 / 255f);
+        cs.addRect(x, y, width, height);
+        cs.fill();
+        cs.setStrokingColor(200 / 255f, 200 / 255f, 200 / 255f);
+        cs.addRect(x, y, width, height);
+        cs.stroke();
+
+        cs.setStrokingColor(0, 0, 0);
+
+        java.math.BigDecimal maxVal = data.values().stream().max(java.math.BigDecimal::compareTo)
+                .orElse(java.math.BigDecimal.ONE);
+        if (maxVal.compareTo(java.math.BigDecimal.ZERO) == 0)
+            maxVal = java.math.BigDecimal.ONE;
+
+        float barSlotWidth = (width - 20) / data.size();
+        float barWidth = Math.min(barSlotWidth - 10, 40);
+        float spacing = (barSlotWidth - barWidth) / 2;
+
+        float currentX = x + 10;
+
+        for (Map.Entry<String, java.math.BigDecimal> entry : data.entrySet()) {
+            float val = entry.getValue().floatValue();
+            float barHeight = (val / maxVal.floatValue()) * (height - 30);
+
+            switch (entry.getKey().toUpperCase()) {
+                case "RED":
+                    cs.setNonStrokingColor(220 / 255f, 38 / 255f, 38 / 255f);
+                    break;
+                case "YELLOW":
+                    cs.setNonStrokingColor(217 / 255f, 119 / 255f, 6 / 255f);
+                    break;
+                case "BLUE":
+                    cs.setNonStrokingColor(37 / 255f, 99 / 255f, 235 / 255f);
+                    break;
+                case "WHITE":
+                    cs.setNonStrokingColor(255 / 255f, 255 / 255f, 255 / 255f);
+                    break;
+                default:
+                    cs.setNonStrokingColor(107 / 255f, 114 / 255f, 128 / 255f);
+                    break;
+            }
+
+            cs.addRect(currentX + spacing, y + 20, barWidth, barHeight);
+            cs.fill();
+
+            cs.setStrokingColor(50 / 255f, 50 / 255f, 50 / 255f);
+            cs.setLineWidth(0.5f);
+            cs.addRect(currentX + spacing, y + 20, barWidth, barHeight);
+            cs.stroke();
+
+            cs.setNonStrokingColor(0, 0, 0);
+            cs.beginText();
+            cs.setFont(FONT_REGULAR, 8);
+            cs.newLineAtOffset(currentX + spacing, y + 8);
+            String label = entry.getKey();
+            if (label.length() > 5)
+                label = label.substring(0, 3) + ".";
+            cs.showText(label);
+            cs.endText();
+
+            currentX += barSlotWidth;
+        }
+    }
+
     private void drawTableOk(PDPageContentStream cs, float x, float y, float[] colWidths, float height,
-            String... values) throws IOException {
+            PDFont font, int fontSize, String... values) throws IOException {
         float currentX = x;
         for (int i = 0; i < values.length && i < colWidths.length; i++) {
-            // Border
             cs.setLineWidth(0.5f);
+            cs.setStrokingColor(0, 0, 0); // Ensure black border
             cs.addRect(currentX, y - height + 5, colWidths[i], height);
             cs.stroke();
 
-            // Text
             cs.beginText();
-            // Assume font set externally
+            cs.setFont(font, fontSize); // Explicitly set font here!
             cs.newLineAtOffset(currentX + 4, y - height + 10);
             cs.showText(values[i] != null ? values[i] : "");
             cs.endText();

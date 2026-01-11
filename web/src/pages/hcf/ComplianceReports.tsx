@@ -29,10 +29,12 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
   Download as DownloadIcon,
   Lock as LockIcon,
-  Pending as PendingIcon
+  Pending as PendingIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon
 } from '@mui/icons-material';
 import apiClient from '../../api/client';
-import { format } from 'date-fns';
+import { format, isFuture, startOfMonth } from 'date-fns';
 
 interface PickupEvent {
   timestamp: string;
@@ -49,12 +51,14 @@ interface DailyData {
   pickups: PickupEvent[];
 }
 
+interface MonthlyData {
+  period: string;
+  totalWeight: number;
+  accessStatus: 'NONE' | 'PENDING' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+}
+
 interface DuesStatus {
   status: 'PENDING' | 'REQUESTED' | 'CLEARED';
-  lastRequestStatus?: string;
-  lastRequestDate?: string;
-  rejectionReason?: string;
-  outstandingDues?: number;
 }
 
 export default function ComplianceReports() {
@@ -68,6 +72,44 @@ export default function ComplianceReports() {
 
   const queryClient = useQueryClient();
 
+  // 1. Fetch Dues Status (Global)
+  const { data: duesStatus } = useQuery<DuesStatus>({
+    queryKey: ['hcf-dues-status'],
+    queryFn: () => apiClient.get('/api/hcf/compliance/status').then((res: any) => res.data),
+  });
+
+  // 2. Fetch Daily Data
+  const { data: dailyData, isLoading: loadingDaily } = useQuery<DailyData>({
+    queryKey: ['hcf-daily-compliance', selectedDate],
+    queryFn: () => apiClient.get('/api/hcf/compliance/daily', {
+      params: { date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined }
+    }).then((res: any) => res.data),
+    enabled: !!selectedDate && tabIndex === 0
+  });
+
+  // 3. Fetch Monthly Data & Access Status
+  const { data: monthlyData, isLoading: loadingMonthly, refetch: refetchMonthly } = useQuery<MonthlyData>({
+    queryKey: ['hcf-monthly-compliance', selectedYear, selectedMonth],
+    queryFn: () => apiClient.get('/api/hcf/compliance/monthly', {
+        params: { year: selectedYear, month: selectedMonth }
+    }).then((res: any) => res.data),
+    enabled: tabIndex === 1,
+    retry: false
+  });
+
+  // 4. Request Access Mutation
+  const requestAccessMutation = useMutation({
+    mutationFn: (payload: { month: number, year: number }) => apiClient.post('/api/hcf/compliance/request-access', payload),
+    onSuccess: () => {
+      refetchMonthly();
+      queryClient.invalidateQueries({ queryKey: ['hcf-dues-status'] }); // Optional update
+    },
+    onError: (err: any) => {
+        alert(err.response?.data?.message || 'Failed to request access.');
+    }
+  });
+
+  // 5. Download Report
   const handleDownloadReport = async () => {
     try {
       setDownloading(true);
@@ -91,136 +133,70 @@ export default function ComplianceReports() {
     }
   };
 
-  // 1. Fetch Dues Status
-  const { data: duesStatus, refetch: refetchStatus } = useQuery<DuesStatus>({
-    queryKey: ['hcf-dues-status'],
-    queryFn: () => apiClient.get('/api/hcf/compliance/status').then((res: any) => res.data),
-  });
+  const isFutureMonth = isFuture(startOfMonth(new Date(selectedYear, selectedMonth - 1)));
+  
+  // Render Access Control UI for Monthly Tab
+  const renderAccessControl = () => {
+      if (loadingMonthly) return <CircularProgress size={24} />;
+      if (isFutureMonth) return <Alert severity="info">Compliance reports for future months are not available.</Alert>;
+      
+      const status = monthlyData?.accessStatus || 'NONE';
 
-  // 2. Fetch Daily Data
-  const { data: dailyData, isLoading: loadingDaily } = useQuery<DailyData>({
-    queryKey: ['hcf-daily-compliance', selectedDate],
-    queryFn: () => apiClient.get('/api/hcf/compliance/daily', {
-      params: { date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined }
-    }).then((res: any) => res.data),
-    enabled: !!selectedDate
-  });
-
-  // 3. Request Access Mutation
-  const requestAccessMutation = useMutation({
-    mutationFn: () => apiClient.post('/api/hcf/compliance/request-access'),
-    onSuccess: () => {
-      refetchStatus();
-      queryClient.invalidateQueries({ queryKey: ['hcf-dues-status'] });
-    }
-  });
-
-  // 4. Cancel Request Mutation (Reset)
-  const cancelRequestMutation = useMutation({
-    mutationFn: () => apiClient.post('/api/hcf/compliance/cancel-request'),
-    onSuccess: () => {
-      refetchStatus();
-      queryClient.invalidateQueries({ queryKey: ['hcf-dues-status'] });
-    }
-  });
-
-  // 4. Monthly/Yearly Data (Placeholder execution as it depends on status)
-  const isDuesCleared = duesStatus?.status === 'CLEARED';
-
-  const renderStatusBanner = () => {
-    if (isDuesCleared) return null;
-
-    // Success state - after successful request submission
-    if (requestAccessMutation.isSuccess) {
-      return (
-        <Alert severity="success" sx={{ mb: 3 }} icon={<PendingIcon />}>
-          <Typography variant="subtitle2" fontWeight={600}>Request Submitted Successfully!</Typography>
-          <Typography variant="body2">
-            Please ensure all your dues are cleared. If verified by CBWTF, your request will be approved shortly.
-          </Typography>
-        </Alert>
-      );
-    }
-
-    // Already requested - pending approval
-    if (duesStatus?.status === 'REQUESTED') {
-      return (
-        <Alert 
-          severity="warning" 
-          sx={{ mb: 3 }} 
-          icon={<PendingIcon />}
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              onClick={() => cancelRequestMutation.mutate()}
-              disabled={cancelRequestMutation.isPending}
-            >
-              Cancel Request
-            </Button>
-          }
-        >
-          <Typography variant="subtitle2" fontWeight={600}>Access Request Pending</Typography>
-          <Typography variant="body2">
-            Your request is awaiting verification by CBWTF and approval from management.
-          </Typography>
-        </Alert>
-      );
-    }
-
-    // Last request was rejected - show error with reason
-    if (duesStatus?.lastRequestStatus === 'REJECTED') {
-      return (
-        <Alert 
-          severity="error" 
-          sx={{ mb: 3 }}
-          action={
+      if (status === 'APPROVED') {
+          return (
             <Button 
-              variant="outlined" 
-              size="small" 
-              color="inherit"
-              onClick={() => requestAccessMutation.mutate()}
-              disabled={requestAccessMutation.isPending}
+                variant="contained" 
+                color="success"
+                startIcon={downloading ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
+                onClick={handleDownloadReport}
+                disabled={downloading}
+                fullWidth
             >
-              Request Again
+                {downloading ? 'Downloading...' : 'Download PDF Report'}
             </Button>
-          }
-        >
-          <Typography variant="subtitle2" fontWeight={600}>Access Request Rejected</Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            {duesStatus.rejectionReason || 'Please clear your pending dues and try again.'}
-          </Typography>
-          {duesStatus.outstandingDues && (
-             <Typography variant="body2" fontWeight={600} sx={{ mt: 1 }}>
-               Outstanding Dues: ₹{duesStatus.outstandingDues.toLocaleString()}
-             </Typography>
-          )}
-        </Alert>
-      );
-    }
+          );
+      }
 
-    // Default - can request access
-    return (
-      <Alert 
-        severity="info" 
-        sx={{ mb: 3 }}
-        action={
-          <Button 
-            variant="contained" 
-            size="small" 
-            onClick={() => requestAccessMutation.mutate()}
-            disabled={requestAccessMutation.isPending}
-          >
-            {requestAccessMutation.isPending ? 'Submitting...' : 'Request Access'}
-          </Button>
-        }
-      >
-        <Typography variant="subtitle2" fontWeight={600}>Monthly & Yearly Reports Locked</Typography>
-        <Typography variant="body2">
-          Request access to view monthly and yearly compliance reports. Ensure your dues are cleared.
-        </Typography>
-      </Alert>
-    );
+      if (status === 'PENDING' || status === 'SUBMITTED') {
+          return (
+              <Alert severity="warning" icon={<PendingIcon />}>
+                  Access Request Pending. Awaiting approval from CBWTF.
+              </Alert>
+          );
+      }
+
+      if (status === 'REJECTED') {
+          return (
+              <Box>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    Access Request Rejected. Please clear dues and try again.
+                </Alert>
+                <Button 
+                    variant="contained" 
+                    onClick={() => requestAccessMutation.mutate({ month: selectedMonth, year: selectedYear })}
+                    disabled={requestAccessMutation.isPending}
+                >
+                    Request Access Again
+                </Button>
+              </Box>
+          );
+      }
+
+      return (
+          <Box>
+            <Alert severity="info" sx={{ mb: 2 }} icon={<LockIcon />}>
+                Access to this monthly report is locked. Please request access.
+            </Alert>
+            <Button 
+                variant="contained" 
+                color="primary"
+                onClick={() => requestAccessMutation.mutate({ month: selectedMonth, year: selectedYear })}
+                disabled={requestAccessMutation.isPending}
+            >
+                {requestAccessMutation.isPending ? 'Requesting...' : 'Request Access'}
+            </Button>
+          </Box>
+      );
   };
 
   return (
@@ -230,15 +206,15 @@ export default function ComplianceReports() {
           Compliance Reports
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          View daily waste collection, QR generation, and pickup history.
+          View daily waste collection, QR generation, and download detailed reports.
         </Typography>
       </Box>
 
       {/* Tabs */}
       <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} sx={{ mb: 3 }}>
         <Tab label="Daily Report" />
-        <Tab label="Monthly Report" icon={!isDuesCleared ? <LockIcon fontSize="small" /> : undefined} iconPosition="end" />
-        <Tab label="Yearly Report" icon={!isDuesCleared ? <LockIcon fontSize="small" /> : undefined} iconPosition="end" />
+        <Tab label="Monthly Report" />
+        <Tab label="Yearly Report" />
       </Tabs>
 
       {/* DAILY TAB */}
@@ -349,77 +325,68 @@ export default function ComplianceReports() {
         </Grid>
       )}
 
-      {/* MONTHLY & YEARLY TABS (LOCKED) */}
-      {(tabIndex === 1 || tabIndex === 2) && (
+      {/* MONTHLY TAB */}
+      {tabIndex === 1 && (
         <Box>
-          {renderStatusBanner()}
-          
-          <Box sx={{ 
-            opacity: isDuesCleared ? 1 : 0.4, 
-            pointerEvents: isDuesCleared ? 'auto' : 'none',
-            filter: isDuesCleared ? 'none' : 'grayscale(100%)'
-          }}>
-             {/* Simple Placeholder for Monthly/Yearly View - can be expanded */}
-              <Card sx={{ p: 4 }}>
-                <Typography variant="h6" gutterBottom align="left">Monthly Compliance Report</Typography>
-                <Typography variant="body2" color="text.secondary" align="left" sx={{ mb: 4 }}>
-                   Select a month and year to download the detailed compliance report including waste breakdown and pickup logs.
+            <Card sx={{ p: 4, mb: 3 }}>
+                <Typography variant="h6" gutterBottom>Monthly Compliance Report</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+                    Select a month and year to download the detailed compliance report in PDF format.
                 </Typography>
 
                 <Grid container spacing={2} alignItems="center">
-                  <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                     <FormControl fullWidth size="small">
-                      <InputLabel>Year</InputLabel>
-                      <Select
+                        <InputLabel>Year</InputLabel>
+                        <Select
                         value={selectedYear}
                         label="Year"
                         onChange={(e) => setSelectedYear(Number(e.target.value))}
-                        disabled={!isDuesCleared}
-                      >
+                        >
                         {[2024, 2025, 2026].map(y => (
-                          <MenuItem key={y} value={y}>{y}</MenuItem>
+                            <MenuItem key={y} value={y}>{y}</MenuItem>
                         ))}
-                      </Select>
+                        </Select>
                     </FormControl>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 3 }}>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 3 }}>
                     <FormControl fullWidth size="small">
-                      <InputLabel>Month</InputLabel>
-                      <Select
+                        <InputLabel>Month</InputLabel>
+                        <Select
                         value={selectedMonth}
                         label="Month"
                         onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                        disabled={!isDuesCleared}
-                      >
+                        >
                         {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                           <MenuItem key={m} value={m}>
-                             {format(new Date(2024, m - 1, 1), 'MMMM')}
-                           </MenuItem>
+                            <MenuItem key={m} value={m}>
+                                {format(new Date(2024, m - 1, 1), 'MMMM')}
+                            </MenuItem>
                         ))}
-                      </Select>
+                        </Select>
                     </FormControl>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Button 
-                      variant="contained" 
-                      startIcon={downloading ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
-                      onClick={handleDownloadReport}
-                      disabled={!isDuesCleared || downloading}
-                      fullWidth
-                    >
-                       {downloading ? 'Generatng PDF...' : 'Download PDF Report'}
-                    </Button>
-                  </Grid>
+                    </Grid>
+                    
+                    <Grid size={{ xs: 12, md: 6 }}>
+                         {/* Dynamic Action Button/Status */}
+                         {renderAccessControl()}
+                    </Grid>
                 </Grid>
-
-                 {!isDuesCleared && (
-                   <Alert severity="info" sx={{ mt: 4 }}>
-                     Reports are locked because dues clearance is pending.
-                   </Alert>
-                 )}
-              </Card>
-          </Box>
+                
+                {monthlyData && (
+                    <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid #eee' }}>
+                        <Typography variant="overline" color="text.secondary">Available Data Preview</Typography>
+                        <Typography variant="h4" fontWeight={600}>
+                            {monthlyData.totalWeight.toFixed(2)} <span style={{ fontSize: '1rem' }}>kg Total</span>
+                        </Typography>
+                    </Box>
+                )}
+            </Card>
         </Box>
+      )}
+
+      {/* YEARLY TAB (Placeholder) */}
+      {tabIndex === 2 && (
+          <Alert severity="info" icon={<LockIcon />}>Yearly reports coming soon.</Alert>
       )}
     </Box>
   );

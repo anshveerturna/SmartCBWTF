@@ -129,51 +129,67 @@ public class HcfComplianceController {
 
     @PostMapping("/request-access")
     @Transactional
-    public ResponseEntity<?> requestDuesClearance() {
+    public ResponseEntity<?> requestDuesClearance(@RequestBody Map<String, Integer> payload) {
         UUID hcfId = TenantContext.getHcfId();
         Hcf hcf = hcfRepository.findById(hcfId).orElseThrow();
         UUID userId = TenantContext.get().userId();
 
-        // Check if already cleared
-        if (hcf.getDuesClearStatus() == DuesClearStatus.CLEARED) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "ALREADY_CLEARED",
-                    "message", "Dues are already cleared. You have access to reports."));
+        Integer month = payload.get("month");
+        Integer year = payload.get("year");
+
+        if (month == null || year == null) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "MISSING_PERIOD", "message", "Month and Year are required."));
         }
 
-        // Check for pending request
-        boolean hasPending = duesRequestRepository.existsByHcfIdAndManagementStatusIn(
-                hcfId, List.of("PENDING", "SUBMITTED"));
+        // Check if report access is already granted (via approved request)
+        boolean isApproved = duesRequestRepository.findByHcfIdOrderByRequestedAtDesc(hcfId).stream()
+                .anyMatch(r -> "APPROVED".equals(r.getManagementStatus())
+                        && Objects.equals(r.getRequestMonth(), month)
+                        && Objects.equals(r.getRequestYear(), year));
+
+        if (isApproved) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "ALREADY_APPROVED", "message", "Access already granted for this period."));
+        }
+
+        // Check for pending request for THIS period
+        boolean hasPending = duesRequestRepository.findByHcfIdOrderByRequestedAtDesc(hcfId).stream()
+                .anyMatch(
+                        r -> ("PENDING".equals(r.getManagementStatus()) || "SUBMITTED".equals(r.getManagementStatus()))
+                                && Objects.equals(r.getRequestMonth(), month)
+                                && Objects.equals(r.getRequestYear(), year));
 
         if (hasPending) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "REQUEST_PENDING",
-                    "message", "A request is already pending. Please wait for approval."));
+                    "message", "A request for this month is already pending."));
         }
 
-        // Find Active Agreement - this is the source of truth for facility
+        // Find Active Agreement
         Agreement agreement = agreementRepository.findByHcfIdAndStatus(hcfId, "ACTIVE").stream()
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No active agreement found. Please contact support."));
+                .orElseThrow(() -> new IllegalStateException("No active agreement found."));
 
-        // Create Request - get facility from agreement (not from user)
+        // Create Request
         DuesClearanceRequest request = new DuesClearanceRequest();
         request.setHcf(hcf);
-        request.setFacility(agreement.getFacility()); // Get facility from agreement
+        request.setFacility(agreement.getFacility());
         request.setAgreement(agreement);
         request.setRequestedBy(userId);
         request.setManagementStatusEnum(DuesClearanceRequest.Status.PENDING);
+        request.setRequestMonth(month);
+        request.setRequestYear(year);
 
         duesRequestRepository.save(request);
 
-        // Update HCF Status
-        hcf.setDuesClearStatus(DuesClearStatus.REQUESTED);
-        hcfRepository.save(hcf);
+        // We do NOT update HCF global status anymore for granular requests
+        // hcf.setDuesClearStatus(DuesClearStatus.REQUESTED);
+        // hcfRepository.save(hcf);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
-                "message",
-                "Request submitted successfully! Please ensure all your dues are cleared. If verified, your request will be approved shortly."));
+                "message", "Request submitted for " + month + "/" + year));
     }
 
     @PostMapping("/cancel-request")
@@ -207,7 +223,7 @@ public class HcfComplianceController {
             @RequestParam(name = "year") int year,
             @RequestParam(name = "month") int month) {
 
-        checkAccess();
+        // checkAccess(); // Removed global check to allow granular status check
         UUID hcfId = TenantContext.getHcfId();
 
         YearMonth ym = YearMonth.of(year, month);
@@ -218,9 +234,17 @@ public class HcfComplianceController {
 
         // Breakdown logic similar to daily can be added here
 
+        // Check Access Status for this specific month
+        Optional<DuesClearanceRequest> req = duesRequestRepository.findByHcfIdOrderByRequestedAtDesc(hcfId).stream()
+                .filter(r -> Objects.equals(r.getRequestMonth(), month) && Objects.equals(r.getRequestYear(), year))
+                .findFirst();
+
+        String accessStatus = req.map(DuesClearanceRequest::getManagementStatus).orElse("NONE");
+
         return ResponseEntity.ok(Map.of(
                 "period", ym.toString(),
-                "totalWeight", totalWeight));
+                "totalWeight", totalWeight,
+                "accessStatus", accessStatus));
     }
 
     @GetMapping("/monthly-report/pdf")
@@ -228,8 +252,19 @@ public class HcfComplianceController {
             @RequestParam(name = "year") int year,
             @RequestParam(name = "month") int month) {
 
-        checkAccess();
+        // granular check
         UUID hcfId = TenantContext.getHcfId();
+        boolean isApproved = duesRequestRepository.findByHcfIdOrderByRequestedAtDesc(hcfId).stream()
+                .anyMatch(r -> "APPROVED".equals(r.getManagementStatus())
+                        && Objects.equals(r.getRequestMonth(), month)
+                        && Objects.equals(r.getRequestYear(), year));
+
+        if (!isApproved) {
+            // Fallback: Check global Access?
+            // User requested explicit restriction. So NO fallback for now.
+            throw new AccessDeniedException("Access not granted for " + month + "/" + year);
+        }
+
         Hcf hcf = hcfRepository.findById(hcfId).orElseThrow();
 
         // Find Active Agreement for Facility details
