@@ -39,6 +39,7 @@ const roleColors: Record<string, string> = {
   DRIVER: '#f59e0b',
   PLANT_OPERATOR: '#8b5cf6',
   ACCOUNTANT: '#06b6d4',
+  TOP_MANAGEMENT: '#7c3aed',
 };
 
 export default function AllUsers() {
@@ -243,6 +244,7 @@ export default function AllUsers() {
                 <MenuItem value="DRIVER">Driver</MenuItem>
                 <MenuItem value="PLANT_OPERATOR">Plant Operator</MenuItem>
                 <MenuItem value="ACCOUNTANT">Accountant</MenuItem>
+                <MenuItem value="TOP_MANAGEMENT">Top Management</MenuItem>
               </Select>
             </FormControl>
             <FormControl size="small" sx={{ minWidth: 110 }}>

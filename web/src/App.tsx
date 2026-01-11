@@ -62,6 +62,8 @@ const HcfReports = lazy(() => import('./pages/hcf/Reports'));
 const HcfConsumablesOrder = lazy(() => import('./pages/hcf/ConsumablesOrder'));
 const HcfAgreement = lazy(() => import('./pages/hcf/Agreement'));
 const HcfProfile = lazy(() => import('./pages/hcf/Profile'));
+const HcfComplianceReports = lazy(() => import('./pages/hcf/ComplianceReports'));
+const CbwtfDuesVerification = lazy(() => import('./pages/cbwtf/DuesVerification'));
 // Management pages
 const ManagementDuesApprovals = lazy(() => import('./pages/management/DuesApprovals'));
 // CBWTF Finance pages
@@ -192,6 +194,7 @@ const App: React.FC = () => {
                   <Route path="settings/billing" element={<CbwtfBillingSettings />} />
                   {/* Compliance & Reports */}
                   <Route path="compliance" element={<CbwtfComplianceReports />} />
+                  <Route path="dues-verification" element={<CbwtfDuesVerification />} />
                   <Route path="alerts" element={<CbwtfAlerts />} />
                   {/* Phase 10: Payments & Bank Accounts */}
                   <Route path="payments" element={<CbwtfPayments />} />
@@ -218,7 +221,7 @@ const App: React.FC = () => {
                   <Route path="waste/daily" element={<HcfDailyWaste />} />
                   <Route path="reports" element={<HcfReports />} />
                   <Route path="consumables/order" element={<HcfConsumablesOrder />} />
-                  <Route path="pickups" element={<div>Pickup History (Coming Soon)</div>} />
+                  <Route path="compliance" element={<HcfComplianceReports />} />
                   <Route path="bills" element={<div>Bills (Coming Soon)</div>} />
                   <Route path="agreement" element={<HcfAgreement />} />
                   <Route path="profile" element={<HcfProfile />} />

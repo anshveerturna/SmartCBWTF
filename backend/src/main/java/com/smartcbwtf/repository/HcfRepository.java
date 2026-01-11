@@ -11,7 +11,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.smartcbwtf.domain.DuesClearStatus;
+
 public interface HcfRepository extends JpaRepository<Hcf, UUID> {
+
+    // For monthly reset scheduler
+    List<Hcf> findByDuesClearStatusNot(DuesClearStatus status);
+
     Optional<Hcf> findByCode(String code);
 
     // ============================================================================

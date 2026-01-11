@@ -70,6 +70,9 @@ public class DuesClearanceRequest {
     @Column(name = "amount_cleared", precision = 12, scale = 2)
     private BigDecimal amountCleared;
 
+    @Column(name = "outstanding_dues", precision = 12, scale = 2)
+    private BigDecimal outstandingDues;
+
     @Column(name = "cbwtf_notes")
     private String cbwtfNotes;
 
@@ -182,6 +185,14 @@ public class DuesClearanceRequest {
 
     public void setAmountCleared(BigDecimal amountCleared) {
         this.amountCleared = amountCleared;
+    }
+
+    public BigDecimal getOutstandingDues() {
+        return outstandingDues;
+    }
+
+    public void setOutstandingDues(BigDecimal outstandingDues) {
+        this.outstandingDues = outstandingDues;
     }
 
     public String getCbwtfNotes() {

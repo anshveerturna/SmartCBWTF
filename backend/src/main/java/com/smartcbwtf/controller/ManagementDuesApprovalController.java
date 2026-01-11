@@ -33,7 +33,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/management/dues-approvals")
-@PreAuthorize("hasRole('TOP_MANAGEMENT_ADMIN')")
+@PreAuthorize("hasRole('TOP_MANAGEMENT')")
 public class ManagementDuesApprovalController {
 
     private static final Logger log = LoggerFactory.getLogger(ManagementDuesApprovalController.class);
@@ -53,7 +53,7 @@ public class ManagementDuesApprovalController {
      */
     @GetMapping
     public ResponseEntity<?> listPending(
-            @RequestParam(required = false, defaultValue = "SUBMITTED") String status) {
+            @RequestParam(name = "status", required = false, defaultValue = "SUBMITTED") String status) {
 
         List<DuesClearanceRequest> requests = status.equals("ALL") ? clearanceRepo.findAll()
                 : clearanceRepo.findByManagementStatusOrderByRequestedAtDesc(status);
@@ -70,6 +70,7 @@ public class ManagementDuesApprovalController {
                     item.put("status", req.getManagementStatus());
                     item.put("requestedAt", req.getRequestedAt().toString());
                     item.put("amountCleared", req.getAmountCleared());
+                    item.put("outstandingDues", req.getOutstandingDues());
                     if (req.getCbwtfSubmittedAt() != null) {
                         item.put("submittedAt", req.getCbwtfSubmittedAt().toString());
                     }
@@ -83,7 +84,7 @@ public class ManagementDuesApprovalController {
      * Get request details.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<?> getDetails(@PathVariable UUID id) {
+    public ResponseEntity<?> getDetails(@PathVariable("id") UUID id) {
         return clearanceRepo.findById(id)
                 .map(req -> {
                     Map<String, Object> result = new HashMap<>();
@@ -98,6 +99,7 @@ public class ManagementDuesApprovalController {
                     result.put("requestedAt", req.getRequestedAt().toString());
                     result.put("requestNotes", req.getRequestNotes());
                     result.put("amountCleared", req.getAmountCleared());
+                    result.put("outstandingDues", req.getOutstandingDues());
                     result.put("cbwtfNotes", req.getCbwtfNotes());
                     if (req.getCbwtfSubmittedAt() != null) {
                         result.put("submittedAt", req.getCbwtfSubmittedAt().toString());
@@ -116,7 +118,7 @@ public class ManagementDuesApprovalController {
      * This grants the HCF access to monthly/yearly reports.
      */
     @PostMapping("/{id}/approve")
-    public ResponseEntity<?> approve(@PathVariable UUID id) {
+    public ResponseEntity<?> approve(@PathVariable("id") UUID id) {
         UUID userId = TenantContext.getUserId();
 
         DuesClearanceRequest request = clearanceRepo.findById(id).orElse(null);
@@ -155,7 +157,7 @@ public class ManagementDuesApprovalController {
      */
     @PostMapping("/{id}/reject")
     public ResponseEntity<?> reject(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody RejectRequest body) {
 
         UUID userId = TenantContext.getUserId();

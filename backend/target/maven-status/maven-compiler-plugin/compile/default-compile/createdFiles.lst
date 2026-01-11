@@ -62,7 +62,6 @@ com/smartcbwtf/config/TenantContext$TenantInfo.class
 com/smartcbwtf/controller/HcfProfileController$ProfileUpdateRequest.class
 com/smartcbwtf/dto/InvoiceGenerateRequest.class
 com/smartcbwtf/repository/RouteWaypointRepository.class
-com/smartcbwtf/controller/ManagementDuesApprovalController$BulkApproveRequest.class
 com/smartcbwtf/domain/enums/RouteStatus.class
 com/smartcbwtf/domain/BarcodeComplianceReport$Status.class
 com/smartcbwtf/dto/route/RouteMapDataDTO.class
@@ -95,7 +94,6 @@ com/smartcbwtf/domain/GpsEvent.class
 com/smartcbwtf/controller/AlertController$AlertDTO.class
 com/smartcbwtf/service/StaffService$UpdateCredentialsRequest.class
 com/smartcbwtf/service/ConsumableService.class
-com/smartcbwtf/controller/ManagementDuesApprovalController.class
 com/smartcbwtf/controller/ComplianceReportController$MonthlyReportDTO.class
 com/smartcbwtf/domain/DailyComplianceReport$Status.class
 com/smartcbwtf/dto/QrScanRequest.class
@@ -216,7 +214,6 @@ com/smartcbwtf/dto/AlertMismatchedBagDto.class
 com/smartcbwtf/controller/UserController$ChangePasswordRequest.class
 com/smartcbwtf/service/FacilitySettingsService$SettingsLockedException.class
 com/smartcbwtf/service/StaffService$StaffDetailDTO.class
-com/smartcbwtf/controller/CbwtfDuesClearanceController$SubmitRequest.class
 com/smartcbwtf/domain/ConsumableCategory.class
 com/smartcbwtf/dto/TermsListItem.class
 com/smartcbwtf/domain/AgreementNumberSequence.class
@@ -400,7 +397,6 @@ com/smartcbwtf/dto/AnalyticsPageDTO$HcfOption.class
 com/smartcbwtf/controller/SystemErrorController.class
 com/smartcbwtf/service/GlobalEmailTemplateService$RenderedEmail.class
 com/smartcbwtf/service/SystemErrorService.class
-com/smartcbwtf/controller/ManagementDuesApprovalController$RejectRequest.class
 com/smartcbwtf/controller/HcfConsumableOrderController$PlaceOrderRequest.class
 com/smartcbwtf/repository/SystemErrorRepository.class
 com/smartcbwtf/service/InvoicePdfService.class
@@ -478,7 +474,6 @@ com/smartcbwtf/dto/HcfRejectRequest.class
 com/smartcbwtf/controller/HcfDuesClearanceController$DuesRequestBody.class
 com/smartcbwtf/domain/ViolationReport$DataCompleteness.class
 com/smartcbwtf/repository/AgreementBillingConfigRepository.class
-com/smartcbwtf/controller/CbwtfDuesClearanceController.class
 com/smartcbwtf/service/StaffService.class
 com/smartcbwtf/domain/DailyComplianceReport.class
 com/smartcbwtf/controller/AnalyticsController.class

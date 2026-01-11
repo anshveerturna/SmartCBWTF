@@ -1,0 +1,227 @@
+package com.smartcbwtf.controller;
+
+import com.smartcbwtf.config.TenantContext;
+import com.smartcbwtf.domain.*;
+import com.smartcbwtf.repository.*;
+import com.smartcbwtf.service.HcfAccessGuard;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.*;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api/hcf/compliance")
+@PreAuthorize("hasRole('HCF_ADMIN')")
+public class HcfComplianceController {
+
+    private final HcfRepository hcfRepository;
+    private final AgreementRepository agreementRepository;
+    private final BagEventRepository bagEventRepository;
+    private final BagLabelRepository bagLabelRepository;
+    private final DuesClearanceRequestRepository duesRequestRepository;
+    private final HcfAccessGuard accessGuard;
+
+    public HcfComplianceController(
+            HcfRepository hcfRepository,
+            AgreementRepository agreementRepository,
+            BagEventRepository bagEventRepository,
+            BagLabelRepository bagLabelRepository,
+            DuesClearanceRequestRepository duesRequestRepository,
+            HcfAccessGuard accessGuard) {
+        this.hcfRepository = hcfRepository;
+        this.agreementRepository = agreementRepository;
+        this.bagEventRepository = bagEventRepository;
+        this.bagLabelRepository = bagLabelRepository;
+        this.duesRequestRepository = duesRequestRepository;
+        this.accessGuard = accessGuard;
+    }
+
+    // ==========================================
+    // DAILY DATA (Always Accessible)
+    // ==========================================
+
+    @GetMapping("/daily")
+    public ResponseEntity<Map<String, Object>> getDailyData(
+            @RequestParam(name = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        UUID hcfId = TenantContext.getHcfId();
+        accessGuard.assertPortalAccess(hcfId);
+
+        LocalDate targetDate = date != null ? date : LocalDate.now();
+        Instant startOfDay = targetDate.atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+        Instant endOfDay = targetDate.plusDays(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+
+        // 1. Waste Collected by Category
+        List<BagEvent> dailyEvents = bagEventRepository.findByHcfIdAndEventTsBetween(hcfId, startOfDay, endOfDay);
+
+        Map<String, BigDecimal> categoryWeights = new HashMap<>();
+        BigDecimal totalWeight = BigDecimal.ZERO;
+
+        for (BagEvent event : dailyEvents) {
+            String category = event.getBagLabel().getCategory();
+            BigDecimal weight = event.getWeightKg();
+
+            categoryWeights.merge(category, weight, BigDecimal::add);
+            totalWeight = totalWeight.add(weight);
+        }
+
+        // 2. QR Labels Generated (Issued)
+        // Assuming "issued_at" tracks generation. This might need BagLabelRepository
+        // method.
+        // For now, returning placeholder or simple count if method exists.
+        long qrGenerated = bagLabelRepository.countByHcfIdAndIssuedAtBetween(hcfId, startOfDay, endOfDay);
+
+        // 3. Pickup History (Events)
+        List<Map<String, Object>> pickupHistory = dailyEvents.stream()
+                .map(e -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("timestamp", e.getEventTs());
+                    map.put("category", e.getBagLabel().getCategory());
+                    map.put("weight", e.getWeightKg());
+                    map.put("bagSerial", e.getBagLabel().getSerialNo());
+                    return map;
+                })
+                .sorted((a, b) -> ((Instant) b.get("timestamp")).compareTo((Instant) a.get("timestamp")))
+                .toList();
+
+        return ResponseEntity.ok(Map.of(
+                "date", targetDate,
+                "totalWeight", totalWeight,
+                "categoryWeights", categoryWeights,
+                "qrGenerated", qrGenerated,
+                "pickups", pickupHistory));
+    }
+
+    // ==========================================
+    // DUES CLEARANCE STATUS & REQUEST
+    // ==========================================
+
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> getDuesStatus() {
+        UUID hcfId = TenantContext.getHcfId();
+        Hcf hcf = hcfRepository.findById(hcfId).orElseThrow();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", hcf.getDuesClearStatus());
+
+        // Helper to check if pending request exists
+        Optional<DuesClearanceRequest> lastRequest = duesRequestRepository
+                .findTopByHcfIdOrderByRequestedAtDesc(hcfId);
+
+        lastRequest.ifPresent(req -> {
+            response.put("lastRequestStatus", req.getManagementStatus());
+            response.put("lastRequestDate", req.getRequestedAt());
+            response.put("rejectionReason", req.getRejectionReason());
+            response.put("outstandingDues", req.getOutstandingDues());
+        });
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/request-access")
+    @Transactional
+    public ResponseEntity<?> requestDuesClearance() {
+        UUID hcfId = TenantContext.getHcfId();
+        Hcf hcf = hcfRepository.findById(hcfId).orElseThrow();
+        UUID userId = TenantContext.get().userId();
+
+        // Check if already cleared
+        if (hcf.getDuesClearStatus() == DuesClearStatus.CLEARED) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "ALREADY_CLEARED",
+                    "message", "Dues are already cleared. You have access to reports."));
+        }
+
+        // Check for pending request
+        boolean hasPending = duesRequestRepository.existsByHcfIdAndManagementStatusIn(
+                hcfId, List.of("PENDING", "SUBMITTED"));
+
+        if (hasPending) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "REQUEST_PENDING",
+                    "message", "A request is already pending. Please wait for approval."));
+        }
+
+        // Find Active Agreement - this is the source of truth for facility
+        Agreement agreement = agreementRepository.findByHcfIdAndStatus(hcfId, "ACTIVE").stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No active agreement found. Please contact support."));
+
+        // Create Request - get facility from agreement (not from user)
+        DuesClearanceRequest request = new DuesClearanceRequest();
+        request.setHcf(hcf);
+        request.setFacility(agreement.getFacility()); // Get facility from agreement
+        request.setAgreement(agreement);
+        request.setRequestedBy(userId);
+        request.setManagementStatusEnum(DuesClearanceRequest.Status.PENDING);
+
+        duesRequestRepository.save(request);
+
+        // Update HCF Status
+        hcf.setDuesClearStatus(DuesClearStatus.REQUESTED);
+        hcfRepository.save(hcf);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message",
+                "Request submitted successfully! Please ensure all your dues are cleared. If verified, your request will be approved shortly."));
+    }
+
+    @GetMapping("/monthly")
+    public ResponseEntity<?> getMonthlyData(
+            @RequestParam(name = "year") int year,
+            @RequestParam(name = "month") int month) {
+
+        checkAccess();
+        UUID hcfId = TenantContext.getHcfId();
+
+        YearMonth ym = YearMonth.of(year, month);
+        Instant start = ym.atDay(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+        Instant end = ym.plusMonths(1).atDay(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+
+        BigDecimal totalWeight = bagEventRepository.sumWeightByHcfIdAndEventTsBetween(hcfId, start, end);
+
+        // Breakdown logic similar to daily can be added here
+
+        return ResponseEntity.ok(Map.of(
+                "period", ym.toString(),
+                "totalWeight", totalWeight));
+    }
+
+    @GetMapping("/yearly")
+    public ResponseEntity<?> getYearlyData(@RequestParam(name = "year") int year) {
+        checkAccess();
+        UUID hcfId = TenantContext.getHcfId();
+
+        YearMonth ym = YearMonth.of(year, 1);
+        Instant start = ym.atDay(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+        Instant end = ym.plusYears(1).atDay(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+
+        BigDecimal totalWeight = bagEventRepository.sumWeightByHcfIdAndEventTsBetween(hcfId, start, end);
+
+        return ResponseEntity.ok(Map.of(
+                "period", String.valueOf(year),
+                "totalWeight", totalWeight));
+    }
+
+    private void checkAccess() {
+        UUID hcfId = TenantContext.getHcfId();
+        Hcf hcf = hcfRepository.findById(hcfId).orElseThrow();
+        if (hcf.getDuesClearStatus() != DuesClearStatus.CLEARED) {
+            throw new AccessDeniedException("Dues not cleared. Please request access.");
+        }
+    }
+
+    // Custom Exception for cleaner response
+    @ResponseStatus(org.springframework.http.HttpStatus.FORBIDDEN)
+    public static class AccessDeniedException extends RuntimeException {
+        public AccessDeniedException(String message) {
+            super(message);
+        }
+    }
+}

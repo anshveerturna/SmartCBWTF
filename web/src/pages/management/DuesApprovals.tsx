@@ -56,15 +56,16 @@ const DuesApprovals: React.FC = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['management-dues-approvals'],
     queryFn: async () => {
-      const res = await apiClient.get('/api/management/dues-approvals');
-      return res.data as { requests: ClearanceRequest[]; total: number };
+      const res = await apiClient.get('/api/top-mgmt/approvals');
+      // Backend returns list directly, so map it
+      return { requests: res.data as ClearanceRequest[], total: res.data.length };
     },
   });
 
   // Approve mutation
   const approveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await apiClient.post(`/api/management/dues-approvals/${id}/approve`);
+      const res = await apiClient.post(`/api/top-mgmt/approvals/${id}/approve`);
       return res.data;
     },
     onSuccess: () => {
@@ -75,7 +76,7 @@ const DuesApprovals: React.FC = () => {
   // Reject mutation
   const rejectMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      const res = await apiClient.post(`/api/management/dues-approvals/${id}/reject`, { reason });
+      const res = await apiClient.post(`/api/top-mgmt/approvals/${id}/reject`, { reason });
       return res.data;
     },
     onSuccess: () => {
@@ -88,7 +89,7 @@ const DuesApprovals: React.FC = () => {
   // Bulk approve mutation
   const bulkApproveMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const res = await apiClient.post('/api/management/dues-approvals/bulk-approve', { ids });
+      const res = await apiClient.post('/api/top-mgmt/approvals/approve-all'); // simplified bulk endpoint (approves all SUBMITTED)
       return res.data;
     },
     onSuccess: () => {
@@ -181,14 +182,14 @@ const DuesApprovals: React.FC = () => {
                   <TableRow>
                     <TableCell padding="checkbox">
                       <Checkbox
-                        checked={selected.size === data?.requests?.length && data?.requests?.length > 0}
-                        indeterminate={selected.size > 0 && selected.size < (data?.requests?.length || 0)}
+                        checked={!!data?.requests?.length && selected.size === data?.requests?.length}
+                        indeterminate={!!data?.requests?.length && selected.size > 0 && selected.size < data?.requests?.length}
                         onChange={(e) => handleSelectAll(e.target.checked)}
                       />
                     </TableCell>
                     <TableCell>HCF</TableCell>
                     <TableCell>CBWTF</TableCell>
-                    <TableCell>Amount</TableCell>
+                    <TableCell align="right">Amount</TableCell>
                     <TableCell>Submitted</TableCell>
                     <TableCell>Notes</TableCell>
                     <TableCell align="right">Actions</TableCell>
@@ -219,7 +220,7 @@ const DuesApprovals: React.FC = () => {
                           {req.facilityName}
                         </Box>
                       </TableCell>
-                      <TableCell>
+                      <TableCell align="right">
                         <Chip
                           label={req.amountCleared ? `₹${req.amountCleared.toLocaleString()}` : '-'}
                           size="small"

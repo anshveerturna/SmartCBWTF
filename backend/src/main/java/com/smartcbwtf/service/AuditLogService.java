@@ -28,8 +28,8 @@ public class AuditLogService {
     /**
      * Log with data hash for tamper-evident audit trail.
      */
-    public void logWithData(String entityType, UUID entityId, String action, 
-                            UUID actorUserId, String dataJson, String dataHash) {
+    public void logWithData(String entityType, UUID entityId, String action,
+            UUID actorUserId, String dataJson, String dataHash) {
         AuditLog log = new AuditLog();
         log.setEntityType(entityType);
         log.setEntityId(entityId);
@@ -37,6 +37,18 @@ public class AuditLogService {
         log.setActorUserId(actorUserId);
         log.setDataJson(dataJson);
         log.setDataHash(dataHash);
+        auditLogRepository.save(log);
+    }
+
+    /**
+     * Log system event (no actor).
+     */
+    public void logSystemEvent(String entityType, UUID entityId, String action) {
+        AuditLog log = new AuditLog();
+        log.setEntityType(entityType);
+        log.setEntityId(entityId);
+        log.setAction(action);
+        log.setActorUserId(null); // System action
         auditLogRepository.save(log);
     }
 }

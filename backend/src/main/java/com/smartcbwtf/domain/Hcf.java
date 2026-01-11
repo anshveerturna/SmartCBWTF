@@ -97,6 +97,11 @@ public class Hcf {
     @Column(name = "approved_bed_access_category", length = 20)
     private HcfBedAccessCategory approvedBedAccessCategory;
 
+    // Dues Clearance Status for Report Access
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dues_clear_status", length = 20)
+    private DuesClearStatus duesClearStatus = DuesClearStatus.PENDING;
+
     @ManyToOne
     @JoinColumn(name = "registered_by_user_id")
     private AppUser registeredByUser;
@@ -403,6 +408,14 @@ public class Hcf {
 
     public void setApprovedBedAccessCategory(HcfBedAccessCategory approvedBedAccessCategory) {
         this.approvedBedAccessCategory = approvedBedAccessCategory;
+    }
+
+    public DuesClearStatus getDuesClearStatus() {
+        return duesClearStatus;
+    }
+
+    public void setDuesClearStatus(DuesClearStatus duesClearStatus) {
+        this.duesClearStatus = duesClearStatus;
     }
 
     /**

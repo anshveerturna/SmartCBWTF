@@ -32,6 +32,8 @@ import {
   Inventory as InventoryIcon,
   EventAvailable as AttendanceIcon,
   Route as RouteIcon,
+  FactCheck as FactCheckIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../auth';
 import type { UserRole } from '../../types/api';
@@ -114,6 +116,7 @@ const getCbwtfAdminItems = (): NavItem[] => [
   { path: '/cbwtf/consumable-orders', label: 'Consumable Orders', icon: <InventoryIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/routes', label: 'Routes & Planning', icon: <RouteIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/compliance', label: 'Compliance & Reports', icon: <AnalyticsIcon />, roles: ['CBWTF_ADMIN'] },
+  { path: '/cbwtf/dues-verification', label: 'Dues Verification', icon: <FactCheckIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/alerts', label: 'Alerts', icon: <AlertsIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/settings', label: 'Settings', icon: <SettingsIcon />, roles: ['CBWTF_ADMIN'] },
 ];
@@ -127,10 +130,14 @@ const getCbwtfFinanceItems = (): NavItem[] => [
 
 const getHcfAdminItems = (): NavItem[] => [
   { path: '/hcf/dashboard', label: 'Dashboard', icon: <DashboardIcon />, roles: ['HCF_ADMIN'] },
-  { path: '/hcf/pickups', label: 'Pickup History', icon: <OperationsIcon />, roles: ['HCF_ADMIN'] },
+  { path: '/hcf/compliance', label: 'Compliance Reports', icon: <AnalyticsIcon />, roles: ['HCF_ADMIN'] },
   { path: '/hcf/qr-labels', label: 'QR Labels', icon: <QrCodeIcon />, roles: ['HCF_ADMIN'] },
   { path: '/hcf/consumables/order', label: 'Order Consumables', icon: <InventoryIcon />, roles: ['HCF_ADMIN'] },
   { path: '/hcf/agreement', label: 'Agreement', icon: <StorageIcon />, roles: ['HCF_ADMIN'] },
+];
+
+const getTopManagementItems = (): NavItem[] => [
+  { path: '/management/dues-approvals', label: 'Dues Approvals', icon: <CheckCircleIcon />, roles: ['TOP_MANAGEMENT'] },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
@@ -305,6 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
           </>
         )}
         {user?.role === 'HCF_ADMIN' && renderFlatNav(getHcfAdminItems())}
+        {user?.role === 'TOP_MANAGEMENT' && renderFlatNav(getTopManagementItems())}
       </Box>
 
       {/* Footer */}

@@ -189,6 +189,7 @@ export default function CreateUser() {
                   <MenuItem value="DRIVER">Driver</MenuItem>
                   <MenuItem value="PLANT_OPERATOR">Plant Operator</MenuItem>
                   <MenuItem value="ACCOUNTANT">Accountant</MenuItem>
+                  <MenuItem value="TOP_MANAGEMENT">Top Management</MenuItem>
                 </Select>
               </FormControl>
             </Grid>

@@ -32,4 +32,7 @@ public interface BagLabelRepository extends JpaRepository<BagLabel, UUID> {
     long countByFacilityId(UUID facilityId);
 
     long countByFacilityIdAndStatus(UUID facilityId, String status);
+
+    // HCF Portal queries
+    long countByHcfIdAndIssuedAtBetween(UUID hcfId, java.time.Instant start, java.time.Instant end);
 }

@@ -40,7 +40,7 @@ export type UserRole =
   | 'SUPER_ADMIN'
   | 'CBWTF_ADMIN'
   | 'HCF_ADMIN'
-  | 'TOP_MANAGEMENT_ADMIN'
+  | 'TOP_MANAGEMENT'
   | 'DRIVER'
   | 'PLANT_OPERATOR';
 
