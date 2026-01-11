@@ -54,12 +54,14 @@ const CbwtfNotificationSettings = lazy(() => import('./pages/cbwtf/NotificationS
 const CbwtfBankAccounts = lazy(() => import('./pages/cbwtf/BankAccounts'));
 const CbwtfPayments = lazy(() => import('./pages/cbwtf/Payments'));
 const CbwtfRoutePlanning = lazy(() => import('./pages/cbwtf/RoutePlanning'));
+const CbwtfConsumableOrders = lazy(() => import('./pages/cbwtf/ConsumableOrders'));
 const HcfDashboard = lazy(() => import('./pages/hcf/Dashboard'));
 const HcfQrLabels = lazy(() => import('./pages/hcf/QrLabels'));
 const HcfDailyWaste = lazy(() => import('./pages/hcf/DailyWaste'));
 const HcfReports = lazy(() => import('./pages/hcf/Reports'));
 const HcfConsumablesOrder = lazy(() => import('./pages/hcf/ConsumablesOrder'));
 const HcfAgreement = lazy(() => import('./pages/hcf/Agreement'));
+const HcfProfile = lazy(() => import('./pages/hcf/Profile'));
 // Management pages
 const ManagementDuesApprovals = lazy(() => import('./pages/management/DuesApprovals'));
 // CBWTF Finance pages
@@ -178,6 +180,7 @@ const App: React.FC = () => {
                   <Route path="consumables" element={<CbwtfConsumables />} />
                   <Route path="consumables/new" element={<CbwtfConsumableNew />} />
                   <Route path="consumables/:id" element={<CbwtfConsumableDetail />} />
+                  <Route path="consumable-orders" element={<CbwtfConsumableOrders />} />
                   <Route path="routes" element={<CbwtfRoutePlanning />} />
                   {/* Finance Section */}
                   <Route path="finance/bank-accounts" element={<FinanceBankAccounts />} />
@@ -218,6 +221,7 @@ const App: React.FC = () => {
                   <Route path="pickups" element={<div>Pickup History (Coming Soon)</div>} />
                   <Route path="bills" element={<div>Bills (Coming Soon)</div>} />
                   <Route path="agreement" element={<HcfAgreement />} />
+                  <Route path="profile" element={<HcfProfile />} />
                 </Route>
 
                 {/* Top Management Portal - Hard isolation */}

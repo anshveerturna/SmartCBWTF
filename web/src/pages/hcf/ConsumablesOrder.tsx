@@ -164,9 +164,12 @@ const ConsumablesOrder: React.FC = () => {
         <Tab label="Catalog" />
         <Tab 
           label={
-            <Badge badgeContent={ordersData?.total || 0} color="primary">
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               Order History
-            </Badge>
+              {ordersData?.total ? (
+                <Chip label={ordersData.total} size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
+              ) : null}
+            </Box>
           } 
         />
       </Tabs>
@@ -183,27 +186,72 @@ const ConsumablesOrder: React.FC = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                     <CircularProgress />
                   </Box>
+                ) : catalogData?.items?.length === 0 ? (
+                  <Paper sx={{ p: 4, textAlign: 'center', bgcolor: alpha('#6366F1', 0.05) }}>
+                    <Typography color="text.secondary">No consumables available</Typography>
+                  </Paper>
                 ) : (
-                  <Grid container spacing={2}>
-                    {catalogData?.items?.map((item) => (
-                      <Grid size={{ xs: 12, sm: 6 }} key={item.id}>
-                        <Paper sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Box>
-                            <Typography variant="subtitle1" fontWeight={500}>{item.name}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {item.category} • {item.unit}
-                            </Typography>
-                            <Typography variant="body2" color="primary" sx={{ mt: 0.5 }}>
-                              ₹{item.price?.toFixed(2)} + {item.gstRate}% GST
-                            </Typography>
-                          </Box>
-                          <IconButton color="primary" onClick={() => addToCart(item)}>
-                            <Add />
-                          </IconButton>
-                        </Paper>
-                      </Grid>
-                    ))}
-                  </Grid>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell width={60}>Image</TableCell>
+                          <TableCell>Code</TableCell>
+                          <TableCell>Name</TableCell>
+                          <TableCell>Category</TableCell>
+                          <TableCell>Unit</TableCell>
+                          <TableCell align="right">Price</TableCell>
+                          <TableCell align="center">Add</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {catalogData?.items?.map((item) => (
+                          <TableRow key={item.id} hover>
+                            <TableCell>
+                              {item.imageUrl ? (
+                                <Box
+                                  component="img"
+                                  src={`http://localhost:8080${item.imageUrl}`}
+                                  alt={item.name}
+                                  sx={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 1 }}
+                                />
+                              ) : (
+                                <Box sx={{ width: 50, height: 50, bgcolor: 'action.hover', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <ShoppingCart sx={{ color: 'text.disabled', fontSize: 20 }} />
+                                </Box>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                                {item.code}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight={500}>{item.name}</Typography>
+                              {item.description && (
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                  {item.description.length > 50 ? item.description.substring(0, 50) + '...' : item.description}
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Chip label={item.category} size="small" variant="outlined" />
+                            </TableCell>
+                            <TableCell>{item.unit}</TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" fontWeight={500}>₹{item.price?.toFixed(2)}</Typography>
+                              <Typography variant="caption" color="text.secondary">+{item.gstRate}% GST</Typography>
+                            </TableCell>
+                            <TableCell align="center">
+                              <IconButton color="primary" size="small" onClick={() => addToCart(item)}>
+                                <Add />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 )}
               </CardContent>
             </Card>

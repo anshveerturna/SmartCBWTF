@@ -19,4 +19,6 @@ public interface ConsumableOrderRepository extends JpaRepository<ConsumableOrder
     List<ConsumableOrder> findByFacilityIdAndStatusOrderByOrderedAtDesc(UUID facilityId, String status);
 
     long countByFacilityId(UUID facilityId);
+
+    long countByFacilityIdAndStatus(UUID facilityId, String status);
 }

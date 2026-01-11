@@ -111,6 +111,7 @@ const getCbwtfAdminItems = (): NavItem[] => [
   { path: '/cbwtf/hcfs/large', label: 'HCFs (Above 30 Beds)', icon: <HcfIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/labels', label: 'QR Labels', icon: <QrCodeIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/consumables', label: 'Consumables', icon: <InventoryIcon />, roles: ['CBWTF_ADMIN'] },
+  { path: '/cbwtf/consumable-orders', label: 'Consumable Orders', icon: <InventoryIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/routes', label: 'Routes & Planning', icon: <RouteIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/compliance', label: 'Compliance & Reports', icon: <AnalyticsIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/alerts', label: 'Alerts', icon: <AlertsIcon />, roles: ['CBWTF_ADMIN'] },
@@ -128,6 +129,7 @@ const getHcfAdminItems = (): NavItem[] => [
   { path: '/hcf/dashboard', label: 'Dashboard', icon: <DashboardIcon />, roles: ['HCF_ADMIN'] },
   { path: '/hcf/pickups', label: 'Pickup History', icon: <OperationsIcon />, roles: ['HCF_ADMIN'] },
   { path: '/hcf/qr-labels', label: 'QR Labels', icon: <QrCodeIcon />, roles: ['HCF_ADMIN'] },
+  { path: '/hcf/consumables/order', label: 'Order Consumables', icon: <InventoryIcon />, roles: ['HCF_ADMIN'] },
   { path: '/hcf/agreement', label: 'Agreement', icon: <StorageIcon />, roles: ['HCF_ADMIN'] },
 ];
 

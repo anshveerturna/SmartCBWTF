@@ -33,18 +33,21 @@ public class HcfConsumableOrderController {
     private final ConsumablePricingRepository pricingRepo;
     private final AgreementRepository agreementRepo;
     private final HcfAccessGuard accessGuard;
+    private final com.smartcbwtf.service.EmailService emailService;
 
     public HcfConsumableOrderController(
             ConsumableOrderRepository orderRepo,
             ConsumableItemRepository itemRepo,
             ConsumablePricingRepository pricingRepo,
             AgreementRepository agreementRepo,
-            HcfAccessGuard accessGuard) {
+            HcfAccessGuard accessGuard,
+            com.smartcbwtf.service.EmailService emailService) {
         this.orderRepo = orderRepo;
         this.itemRepo = itemRepo;
         this.pricingRepo = pricingRepo;
         this.agreementRepo = agreementRepo;
         this.accessGuard = accessGuard;
+        this.emailService = emailService;
     }
 
     private UUID getFacilityIdForHcf(UUID hcfId) {
@@ -164,6 +167,9 @@ public class HcfConsumableOrderController {
         log.info("HCF {} placed order {} with {} items, total: {}",
                 hcfId, orderNumber, order.getItems().size(), order.getTotalAmount());
 
+        // Send email notifications
+        sendOrderConfirmationEmails(order, agreement.getHcf(), facility);
+
         return ResponseEntity.ok(Map.of(
                 "id", order.getId().toString(),
                 "orderNumber", order.getOrderNumber(),
@@ -172,11 +178,71 @@ public class HcfConsumableOrderController {
                 "message", "Order placed successfully"));
     }
 
+    private void sendOrderConfirmationEmails(ConsumableOrder order, Hcf hcf, Facility facility) {
+        try {
+            String itemsHtml = order.getItems().stream()
+                    .map(i -> String.format("• %s (Qty: %d) - ₹%.2f",
+                            i.getItemName(), i.getQuantity(), i.getLineTotal()))
+                    .collect(java.util.stream.Collectors.joining("<br>"));
+
+            // Email to HCF (order confirmation)
+            String hcfEmail = hcf.getContactEmail();
+            if (hcfEmail != null && !hcfEmail.isEmpty()) {
+                String hcfSubject = "Order Confirmation - " + order.getOrderNumber();
+                String hcfBody = String.format(
+                        "<h2>Order Confirmed</h2>" +
+                                "<p>Dear %s,</p>" +
+                                "<p>Your consumable order has been placed successfully.</p>" +
+                                "<p><strong>Order Number:</strong> %s<br>" +
+                                "<strong>CBWTF:</strong> %s<br>" +
+                                "<strong>Order Date:</strong> %s</p>" +
+                                "<h3>Order Items:</h3><p>%s</p>" +
+                                "<p><strong>Total Amount:</strong> ₹%.2f (incl. GST)</p>" +
+                                "<p>You will be notified once the order is confirmed and dispatched.</p>" +
+                                "<p>Thank you,<br>SmartCBWTF Team</p>",
+                        hcf.getName(), order.getOrderNumber(), facility.getName(),
+                        java.time.LocalDateTime.now()
+                                .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")),
+                        itemsHtml, order.getTotalAmount());
+                emailService.sendEmail(hcfEmail, hcfSubject, hcfBody);
+                log.info("Order confirmation email sent to HCF: {}", hcfEmail);
+            }
+
+            // Email to CBWTF (new order notification)
+            String cbwtfEmail = facility.getContactEmail();
+            if (cbwtfEmail != null && !cbwtfEmail.isEmpty()) {
+                String cbwtfSubject = "New Consumable Order - " + order.getOrderNumber();
+                String cbwtfBody = String.format(
+                        "<h2>New Consumable Order Received</h2>" +
+                                "<p><strong>Order Number:</strong> %s<br>" +
+                                "<strong>From HCF:</strong> %s (%s)<br>" +
+                                "<strong>Order Date:</strong> %s</p>" +
+                                "<h3>Order Items:</h3><p>%s</p>" +
+                                "<p><strong>Total Amount:</strong> ₹%.2f (incl. GST)</p>" +
+                                "%s" +
+                                "<p>Please log in to the portal to confirm and process this order.</p>",
+                        order.getOrderNumber(), hcf.getName(), hcf.getCode(),
+                        java.time.LocalDateTime.now()
+                                .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")),
+                        itemsHtml, order.getTotalAmount(),
+                        order.getHcfNotes() != null
+                                ? "<p><strong>Customer Notes:</strong> " + order.getHcfNotes() + "</p>"
+                                : "");
+                emailService.sendEmail(cbwtfEmail, cbwtfSubject, cbwtfBody);
+                log.info("New order notification email sent to CBWTF: {}", cbwtfEmail);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to send order confirmation emails: {}", e.getMessage());
+            // Don't fail the order just because emails couldn't be sent
+        }
+    }
+
     /**
      * Get order history.
      */
     @GetMapping("/orders")
-    public ResponseEntity<?> getOrders(@RequestParam(required = false) String status) {
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<?> getOrders(@RequestParam(name = "status", required = false) String status) {
         UUID hcfId = TenantContext.getHcfId();
         accessGuard.assertPortalAccess(hcfId);
 
