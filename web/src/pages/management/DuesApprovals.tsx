@@ -205,62 +205,67 @@ const DuesApprovals: React.FC = () => {
                           onChange={(e) => handleSelect(req.id, e.target.checked)}
                         />
                       </TableCell>
+
                       <TableCell>
                         <Box>
-                          <Typography variant="body2" fontWeight={500}>
+                          <Typography variant="subtitle2" fontWeight={600} sx={{ color: 'text.primary' }}>
                             {req.hcfName}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
                             {req.hcfCode}
                           </Typography>
                         </Box>
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Business fontSize="small" color="action" />
-                          {req.facilityName}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Business fontSize="small" sx={{ color: 'primary.main', opacity: 0.7 }} />
+                          <Typography variant="body2">{req.facilityName}</Typography>
                         </Box>
                       </TableCell>
                       <TableCell>
-                         <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                         <Typography variant="body2" sx={{ fontFamily: 'monospace', bgcolor: alpha('#fff', 0.05), py: 0.5, px: 1, borderRadius: 1, display: 'inline-block' }}>
                            {req.agreementNumber || '-'}
                          </Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Chip
-                          label={req.amountCleared ? `₹${req.amountCleared.toLocaleString()}` : '-'}
-                          size="small"
-                          color="success"
-                          variant="outlined"
-                        />
+                        <Typography variant="subtitle2" fontWeight={700} sx={{ color: 'success.light' }}>
+                           {req.amountCleared ? `₹${req.amountCleared.toLocaleString()}` : '-'}
+                        </Typography>
                       </TableCell>
                       <TableCell>
-                        {req.submittedAt ? new Date(req.submittedAt).toLocaleDateString() : '-'}
+                        <Typography variant="body2" color="text.secondary">
+                          {req.submittedAt ? new Date(req.submittedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                        </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 150, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {req.cbwtfNotes || '-'}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Button
-                          size="small"
-                          color="success"
-                          startIcon={approveMutation.isPending ? <CircularProgress size={14} /> : <CheckCircle />}
-                          onClick={() => approveMutation.mutate(req.id)}
-                          disabled={approveMutation.isPending}
-                          sx={{ mr: 1 }}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="small"
-                          color="error"
-                          startIcon={<Cancel />}
-                          onClick={() => openRejectDialog(req.id)}
-                        >
-                          Reject
-                        </Button>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="success"
+                            startIcon={approveMutation.isPending ? <CircularProgress size={14} /> : <CheckCircle />}
+                            onClick={() => approveMutation.mutate(req.id)}
+                            disabled={approveMutation.isPending}
+                            sx={{ textTransform: 'none', fontWeight: 600 }}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            startIcon={<Cancel />}
+                            onClick={() => openRejectDialog(req.id)}
+                            sx={{ textTransform: 'none', fontWeight: 600 }}
+                          >
+                            Reject
+                          </Button>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))}
