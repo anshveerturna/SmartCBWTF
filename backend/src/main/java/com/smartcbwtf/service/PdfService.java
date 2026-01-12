@@ -172,7 +172,27 @@ public class PdfService {
 
             if (logoBytes != null) {
                 PDImageXObject logo = PDImageXObject.createFromByteArray(doc, logoBytes, "logo");
-                cs.drawImage(logo, MARGIN_LEFT, y - 5, 30, 30); // Adjust size/pos
+                float imgW = logo.getWidth();
+                float imgH = logo.getHeight();
+                float scale = 1.0f;
+
+                // Target height 50 (larger)
+                float targetH = 50;
+                scale = targetH / imgH;
+
+                // Also check width constraint (e.g. don't exceed 150)
+                if (imgW * scale > 150) {
+                    scale = 150 / imgW;
+                }
+
+                float finalW = imgW * scale;
+                float finalH = imgH * scale;
+
+                // Center vertical relative to text block: text top is y+15, text bottom y-5?
+                // Approx y center is y+5.
+                // Draw image bottom-left such that it centers on y+5.
+                // y_draw = (y+5) - (finalH/2);
+                cs.drawImage(logo, MARGIN_LEFT, y + 5 - (finalH / 2), finalW, finalH);
             }
         } catch (Exception e) {
             // Logo load failed, fallback to text specific spacing or just ignore
@@ -183,14 +203,14 @@ public class PdfService {
         cs.beginText();
         cs.setFont(FONT_BOLD, 14);
         cs.setNonStrokingColor(COL_PRIMARY);
-        cs.newLineAtOffset(MARGIN_LEFT + 40, y + 10); // Moved right for logo
+        cs.newLineAtOffset(MARGIN_LEFT + 65, y + 10); // Moved right (40->65) to clear 50px logo
         cs.showText("SmartCBWTF");
         cs.endText();
 
         cs.beginText();
         cs.setFont(FONT_REGULAR, 9);
         cs.setNonStrokingColor(COL_LIGHT_TEXT);
-        cs.newLineAtOffset(MARGIN_LEFT + 40, y - 2);
+        cs.newLineAtOffset(MARGIN_LEFT + 65, y - 2);
         cs.showText("Bio-Medical Waste Compliance Platform");
         cs.endText();
 
