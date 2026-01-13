@@ -616,8 +616,8 @@ function StatsSection() {
               transition={{ delay: i * 0.1 }}
               className="text-center"
             >
-              <p className="text-4xl lg:text-5xl font-bold text-[#047857] mb-2">{stat.value}</p>
-              <p className="text-sm text-neutral-400">{stat.label}</p>
+              <p className="text-4xl lg:text-5xl font-bold !text-[#34d399] mb-2">{stat.value}</p>
+              <p className="text-sm !text-neutral-300 font-medium">{stat.label}</p>
             </motion.div>
           ))}
         </div>
