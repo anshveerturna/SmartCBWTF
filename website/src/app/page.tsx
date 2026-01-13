@@ -9,6 +9,7 @@ export default function Home() {
   return (
     <main className="overflow-hidden">
       <HeroSection />
+      <TrustedSection />
       <ScreenshotGallery />
       <FeaturesSection />
       <HowItWorksSection />
@@ -19,6 +20,8 @@ export default function Home() {
     </main>
   );
 }
+
+import TrustedClients from "@/components/TrustedClients";
 
 /* ===== Hero Section ===== */
 function HeroSection() {
@@ -112,6 +115,10 @@ function HeroSection() {
       </div>
     </section>
   );
+}
+
+function TrustedSection() {
+  return <TrustedClients />;
 }
 
 /* ===== Screenshot Gallery ===== */

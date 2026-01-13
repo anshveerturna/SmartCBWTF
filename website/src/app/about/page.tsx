@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import TrustedClients from "@/components/TrustedClients";
 
 export default function AboutPage() {
   return (
@@ -53,6 +54,8 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+
+      <TrustedClients />
 
       {/* Mission Section */}
       <section className="section-spacing bg-[#f5f0e8]">
