@@ -6,34 +6,50 @@ import Link from "next/link";
 
 export default function AboutPage() {
   return (
-    <div className="bg-[#FAF7F2]">
+    <div className="bg-[#FAF7F2] text-neutral-900">
       {/* Hero */}
       <section className="pt-32 lg:pt-40 pb-20">
         <div className="container-tight">
-          <div className="max-w-3xl">
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-sm font-semibold text-[#047857] uppercase tracking-wider mb-4"
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-sm font-semibold text-[#047857] uppercase tracking-wider mb-4"
+              >
+                About Us
+              </motion.p>
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-balance mb-6 text-neutral-900"
+              >
+                Making compliance effortless
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-xl text-[#525252] leading-relaxed"
+              >
+                SmartCBWTF is building the infrastructure for regulatory-compliant biomedical waste management. We believe that compliance shouldn't be a burden—it should be built into every workflow.
+              </motion.p>
+            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 }}
+              className="flex justify-center"
             >
-              About Us
-            </motion.p>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-balance mb-6"
-            >
-              Making compliance effortless
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-xl text-[#525252] leading-relaxed"
-            >
-              SmartCBWTF is building the infrastructure for regulatory-compliant biomedical waste management. We believe that compliance shouldn't be a burden—it should be built into every workflow.
-            </motion.p>
+              <Image
+                src="/about-hero.png"
+                alt="About illustration"
+                width={400}
+                height={400}
+                className="w-full max-w-sm"
+              />
+            </motion.div>
           </div>
         </div>
       </section>
@@ -41,13 +57,13 @@ export default function AboutPage() {
       {/* Mission Section */}
       <section className="section-spacing bg-[#f5f0e8]">
         <div className="container-tight">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="max-w-3xl mx-auto">
             <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="mb-6">Our mission</h2>
+              <h2 className="mb-6 text-neutral-900">Our mission</h2>
               <p className="text-lg text-[#525252] leading-relaxed mb-6">
                 We started SmartCBWTF because we saw a critical gap in the biomedical waste industry. CBWTFs were struggling with manual processes, revenue leakage, and the constant pressure of regulatory compliance.
               </p>
@@ -58,23 +74,6 @@ export default function AboutPage() {
                 We're building the operating system that CBWTFs and healthcare facilities deserve: modern, reliable, and built for compliance from day one.
               </p>
             </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="relative"
-            >
-              <div className="screenshot-frame">
-                <Image
-                  src="/screenshots/platform-1.png"
-                  alt="SmartCBWTF Dashboard"
-                  width={600}
-                  height={400}
-                  className="rounded-lg"
-                />
-              </div>
-            </motion.div>
           </div>
         </div>
       </section>
@@ -83,7 +82,7 @@ export default function AboutPage() {
       <section className="section-spacing">
         <div className="container-tight">
           <div className="max-w-3xl mx-auto text-center mb-16">
-            <h2 className="mb-4">What we believe</h2>
+            <h2 className="mb-4 text-neutral-900">What we believe</h2>
             <p className="text-lg text-[#525252]">
               The principles that guide how we build SmartCBWTF
             </p>
@@ -135,7 +134,7 @@ export default function AboutPage() {
       {/* CTA */}
       <section className="py-20 bg-[#1a1a1a] text-white">
         <div className="container-tight text-center">
-          <h2 className="text-white mb-6">Join us in modernizing waste compliance</h2>
+          <h2 className="text-white mb-6" style={{ color: 'white' }}>Join us in modernizing waste compliance</h2>
           <p className="text-neutral-400 mb-8 max-w-xl mx-auto">
             Whether you're a CBWTF operator or a healthcare facility, we'd love to show you what's possible.
           </p>

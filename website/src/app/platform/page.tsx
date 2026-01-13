@@ -92,7 +92,7 @@ export default function PlatformPage() {
                 {[
                   { title: "CBWTF Admin Portal", desc: "Full operational control—routes, HCFs, billing, staff, compliance" },
                   { title: "HCF Admin Portal", desc: "Self-service waste tracking, labels, reports, consumable orders" },
-                  { title: "Top Management Portal", desc: "Approval workflows, financial oversight, multi-facility analytics" },
+                  { title: "Management Portal", desc: "Approval workflows, financial oversight, multi-facility analytics" },
                 ].map((portal, i) => (
                   <motion.div
                     key={portal.title}

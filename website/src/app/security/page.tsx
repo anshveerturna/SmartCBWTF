@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 const securityFeatures = [
   {
@@ -43,34 +44,50 @@ const securityFeatures = [
 
 export default function SecurityPage() {
   return (
-    <div className="bg-[#FAF7F2]">
+    <div className="bg-[#FAF7F2] text-neutral-900">
       {/* Hero */}
       <section className="pt-32 lg:pt-40 pb-20">
         <div className="container-tight">
-          <div className="max-w-3xl">
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-sm font-semibold text-[#047857] uppercase tracking-wider mb-4"
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-sm font-semibold text-[#047857] uppercase tracking-wider mb-4"
+              >
+                Security
+              </motion.p>
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-balance mb-6 text-neutral-900"
+              >
+                Enterprise-grade security
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-xl text-[#525252] leading-relaxed"
+              >
+                Built with security at every layer. From infrastructure to application, SmartCBWTF protects sensitive healthcare and compliance data with industry-leading practices.
+              </motion.p>
+            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 }}
+              className="flex justify-center"
             >
-              Security
-            </motion.p>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-balance mb-6"
-            >
-              Enterprise-grade security
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-xl text-[#525252] leading-relaxed"
-            >
-              Built with security at every layer. From infrastructure to application, SmartCBWTF protects sensitive healthcare and compliance data with industry-leading practices.
-            </motion.p>
+              <Image
+                src="/security-hero.png"
+                alt="Security illustration"
+                width={400}
+                height={400}
+                className="w-full max-w-sm"
+              />
+            </motion.div>
           </div>
         </div>
       </section>
@@ -79,7 +96,7 @@ export default function SecurityPage() {
       <section className="section-spacing bg-[#f5f0e8]">
         <div className="container-tight">
           <div className="space-y-16">
-            {securityFeatures.map((section, sectionIndex) => (
+            {securityFeatures.map((section) => (
               <motion.div
                 key={section.category}
                 initial={{ opacity: 0 }}
@@ -122,7 +139,7 @@ export default function SecurityPage() {
       {/* Trust Section */}
       <section className="section-spacing">
         <div className="container-tight text-center">
-          <h2 className="mb-6">Security you can trust</h2>
+          <h2 className="mb-6 text-neutral-900">Security you can trust</h2>
           <p className="text-lg text-[#525252] max-w-2xl mx-auto mb-12">
             We take security seriously. Our platform is continuously monitored and updated to protect against emerging threats.
           </p>

@@ -375,7 +375,7 @@ function PortalsSection() {
       image: "/screenshots/platform-25.png",
     },
     {
-      title: "Top Management",
+      title: "Management",
       description: "Executive oversight with approval workflows, financial dashboards, and compliance verification.",
       features: ["Approval Workflows", "Financial Oversight", "Audit Reports", "Multi-facility View"],
       image: "/screenshots/platform-3.png",

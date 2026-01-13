@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 
 const complianceAreas = [
@@ -38,34 +39,50 @@ const complianceAreas = [
 
 export default function CompliancePage() {
   return (
-    <div className="bg-[#FAF7F2]">
+    <div className="bg-[#FAF7F2] text-neutral-900">
       {/* Hero */}
       <section className="pt-32 lg:pt-40 pb-20">
         <div className="container-tight">
-          <div className="max-w-3xl">
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-sm font-semibold text-[#047857] uppercase tracking-wider mb-4"
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-sm font-semibold text-[#047857] uppercase tracking-wider mb-4"
+              >
+                Compliance
+              </motion.p>
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-balance mb-6 text-neutral-900"
+              >
+                Built for CPCB regulations
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-xl text-[#525252] leading-relaxed"
+              >
+                Every feature in SmartCBWTF is designed from the ground up to meet Bio-Medical Waste Management Rules, 2016. Complete audit trails, immutable records, and auto-generated compliance documentation.
+              </motion.p>
+            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 }}
+              className="flex justify-center"
             >
-              Compliance
-            </motion.p>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-balance mb-6"
-            >
-              Built for CPCB regulations
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-xl text-[#525252] leading-relaxed"
-            >
-              Every feature in SmartCBWTF is designed from the ground up to meet Bio-Medical Waste Management Rules, 2016. Complete audit trails, immutable records, and auto-generated compliance documentation.
-            </motion.p>
+              <Image
+                src="/compliance-hero.png"
+                alt="Compliance illustration"
+                width={400}
+                height={400}
+                className="w-full max-w-sm"
+              />
+            </motion.div>
           </div>
         </div>
       </section>
@@ -110,7 +127,7 @@ export default function CompliancePage() {
       <section className="section-spacing">
         <div className="container-tight">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="mb-6">Aligned with regulatory frameworks</h2>
+            <h2 className="mb-6 text-neutral-900">Aligned with regulatory frameworks</h2>
             <p className="text-lg text-[#525252] mb-12">
               SmartCBWTF is designed to ensure compliance with all applicable biomedical waste management regulations.
             </p>
@@ -144,7 +161,7 @@ export default function CompliancePage() {
           <p className="text-sm text-neutral-500 mb-8 max-w-2xl mx-auto">
             This information is provided for general awareness. Consult with regulatory authorities for specific compliance requirements applicable to your facility.
           </p>
-          <h2 className="text-white mb-6">Need compliance guidance?</h2>
+          <h2 className="text-white mb-6" style={{ color: 'white' }}>Need compliance guidance?</h2>
           <p className="text-neutral-400 mb-8 max-w-xl mx-auto">
             Our team can help you understand how SmartCBWTF ensures regulatory compliance for your operations.
           </p>
