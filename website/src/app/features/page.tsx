@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import Image from "next/image";
 
-const roles = ["CBWTF Admin", "HCF Admin", "Management"];
+const roles = ["CBWTF Admin", "HCF Admin", "Management", "Android App"];
 
 const features = {
   "CBWTF Admin": [
@@ -30,6 +30,14 @@ const features = {
     { title: "Approval Workflows", desc: "Review and approve dues adjustments, write-offs, and exceptions", image: "/screenshots/platform-22.png" },
     { title: "Financial Oversight", desc: "Revenue reconciliation, outstanding dues, and collection efficiency", image: "/screenshots/platform-7.png" },
     { title: "Audit Verification", desc: "Verify compliance reports and review immutable audit trails", image: "/screenshots/platform-25.png" },
+  ],
+  "Android App": [
+    { title: "Pickup Waste", desc: "Scan QR codes and capture weight via Bluetooth scale integration", image: "/screenshots/app-3.png" },
+    { title: "Secure Login", desc: "Biometric and credential-based authentication for authorized staff access", image: "/screenshots/app-secure-login.png" },
+    { title: "Verify at CBWTF", desc: "Verify waste receipt at the facility with automated reconciliation", image: "/screenshots/app-verify-cbwtf.png" },
+    { title: "My Route", desc: "View assigned HCFs in optimized order for efficient collection", image: "/screenshots/app-my-route.png" },
+    { title: "HCF Registration", desc: "Onboard new healthcare facilities directly from the field", image: "/screenshots/app-hcf-registration.png" },
+    { title: "Attendance", desc: "Geofenced driver chart-in/out for accurate shift tracking", image: "/screenshots/app-attendance.png" },
   ],
 };
 
@@ -95,7 +103,11 @@ export default function FeaturesPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            className={`grid gap-6 ${
+              activeRole === "Android App" 
+                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" 
+                : "grid-cols-1 md:grid-cols-2"
+            }`}
           >
             {features[activeRole as keyof typeof features].map((feature, i) => (
               <motion.div
@@ -103,17 +115,21 @@ export default function FeaturesPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow group"
+                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow group flex flex-col"
               >
-                <div className="aspect-video relative overflow-hidden bg-[#1a1a1a]">
+                <div className={`relative overflow-hidden bg-[#1a1a1a] ${
+                  activeRole === "Android App" ? "aspect-[9/16]" : "aspect-video"
+                }`}>
                   <Image
                     src={feature.image}
                     alt={feature.title}
                     fill
-                    className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                    className={`object-cover ${
+                      activeRole === "Android App" ? "object-top" : "object-top group-hover:scale-105 transition-transform duration-500"
+                    }`}
                   />
                 </div>
-                <div className="p-6">
+                <div className="p-6 flex-1">
                   <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">{feature.title}</h3>
                   <p className="text-[#525252]">{feature.desc}</p>
                 </div>
