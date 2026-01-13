@@ -41,13 +41,12 @@ export default function TrustedClients() {
               transition={{ delay: i * 0.1 }}
               className="flex flex-col items-center gap-6 group"
             >
-              <div className="relative h-24 w-auto grayscale-0 transition-transform duration-300 group-hover:scale-105">
+              <div className="relative h-24 w-48 grayscale-0 transition-transform duration-300 group-hover:scale-105">
                 <Image
                   src={client.logo}
                   alt={`${client.name} logo`}
-                  height={96}
-                  width={200}
-                  className="object-contain h-full w-auto"
+                  fill
+                  className="object-contain"
                 />
               </div>
               <p className="text-lg font-medium text-neutral-800 transition-opacity duration-300">

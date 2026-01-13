@@ -487,7 +487,7 @@ function AndroidAppSection() {
                   alt="SmartCBWTF Android App - Home Dashboard"
                   width={280}
                   height={560}
-                  className="rounded-3xl shadow-2xl"
+                  className="rounded-3xl shadow-2xl w-auto h-auto"
                 />
               </div>
               
@@ -498,7 +498,7 @@ function AndroidAppSection() {
                   alt="SmartCBWTF Android App - Scan & Weigh"
                   width={240}
                   height={480}
-                  className="rounded-3xl shadow-xl"
+                  className="rounded-3xl shadow-xl w-auto h-auto"
                 />
               </div>
             </div>
