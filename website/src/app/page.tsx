@@ -367,7 +367,13 @@ function HowItWorksSection() {
         {/* Steps with connecting line */}
         <div className="relative">
           {/* Connecting line (desktop) */}
-          <div className="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-[#047857]/20 -translate-y-1/2" />
+          <motion.div 
+            initial={{ width: 0 }}
+            whileInView={{ width: "100%" }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, ease: "easeInOut" }}
+            className="hidden lg:block absolute top-1/2 left-0 h-0.5 bg-[#047857]/20 -translate-y-1/2" 
+          />
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
             {steps.map((step, i) => (
@@ -375,17 +381,21 @@ function HowItWorksSection() {
                 key={step.title}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -8, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="relative bg-white rounded-2xl p-6 text-center shadow-sm"
+                className="relative bg-white rounded-2xl p-6 text-center shadow-sm cursor-default border border-transparent hover:border-[#047857]/10"
               >
                 {/* Step number */}
-                <div className="w-12 h-12 rounded-full bg-[#047857] text-white font-bold text-lg flex items-center justify-center mx-auto mb-4 relative z-10">
+                <motion.div 
+                  whileHover={{ scale: 1.1 }}
+                  className="w-12 h-12 rounded-full bg-[#047857] text-white font-bold text-lg flex items-center justify-center mx-auto mb-4 relative z-10"
+                >
                   {step.num}
-                </div>
+                </motion.div>
                 
                 {/* Icon */}
-                <div className="w-16 h-16 rounded-xl bg-[#047857]/10 flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-xl bg-[#047857]/10 flex items-center justify-center mx-auto mb-4 text-[#047857]">
                   {step.icon}
                 </div>
                 

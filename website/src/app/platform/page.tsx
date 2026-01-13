@@ -235,8 +235,8 @@ export default function PlatformPage() {
       <section className="py-20 lg:py-28 bg-[#1a1a1a] text-white">
         <div className="container-tight">
           <div className="max-w-3xl mx-auto text-center mb-16">
-            <h2 className="text-white mb-4" style={{ color: 'white' }}>Enterprise-grade foundation</h2>
-            <p className="text-neutral-400 text-lg">
+            <h2 className="!text-white mb-4 font-bold">Enterprise-grade foundation</h2>
+            <p className="!text-neutral-300 text-lg">
               Built with security, scalability, and compliance at its core
             </p>
           </div>
@@ -253,15 +253,15 @@ export default function PlatformPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="bg-neutral-800 rounded-2xl p-6"
+                className="bg-neutral-800 rounded-2xl p-6 border border-neutral-700"
               >
                 <div className="w-10 h-10 rounded-lg bg-[#047857] flex items-center justify-center mb-4">
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-neutral-400">{feature.desc}</p>
+                <h3 className="text-lg font-semibold !text-white mb-2">{feature.title}</h3>
+                <p className="!text-neutral-200">{feature.desc}</p>
               </motion.div>
             ))}
           </div>
