@@ -113,26 +113,52 @@ COMMENT ON TABLE invoice_sequence IS 'Gap-proof invoice numbering per facility p
 -- 5. INVOICE
 -- Legal GST document derived from bill
 -- Invoice totals MUST EXACTLY MATCH bill totals
+-- NOTE: V1 created an older invoice table - we replace it with the billing-grade version
+-- keeping legacy columns for backward compatibility with existing code
+DROP TABLE IF EXISTS invoice CASCADE;
 CREATE TABLE invoice (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    bill_id UUID NOT NULL UNIQUE REFERENCES bill(id),
+    
+    -- New billing system references
+    bill_id UUID UNIQUE REFERENCES bill(id),
+    
+    -- Facility reference (required)
     facility_id UUID NOT NULL REFERENCES facility(id),
     
-    -- GST-compliant numbering: FACILITY_CODE/YYYY-YY/NNNNNN
-    invoice_number VARCHAR(50) NOT NULL UNIQUE,
-    invoice_date DATE NOT NULL,
-    financial_year VARCHAR(10) NOT NULL,
+    -- Legacy references (for backward compatibility)
+    hcf_id UUID REFERENCES hcf(id),
+    agreement_id UUID REFERENCES agreement(id),
     
-    -- Amount (must match bill.total_amount)
+    -- GST-compliant numbering: FACILITY_CODE/YYYY-YY/NNNNNN
+    invoice_number VARCHAR(100) NOT NULL UNIQUE,
+    invoice_date DATE,
+    financial_year VARCHAR(10),
+    
+    -- Legacy period fields
+    period_start DATE,
+    period_end DATE,
+    
+    -- Legacy bed/rate fields
+    beds INTEGER,
+    per_bed_per_day_rate NUMERIC(12,2),
+    
+    -- Amount fields
+    base_amount NUMERIC(12,2),
+    tax_amount NUMERIC(12,2),
     total_amount NUMERIC(12,2) NOT NULL,
     
     -- Integrity hash: SHA256(bill_id + total_amount + invoice_number)
-    integrity_hash VARCHAR(64) NOT NULL,
+    integrity_hash VARCHAR(64),
     
     -- PDF storage
     pdf_url TEXT,
     
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    -- Status
+    status VARCHAR(32),
+    
+    -- Timestamps
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_invoice_facility ON invoice(facility_id, financial_year);

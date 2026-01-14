@@ -62,6 +62,7 @@ com/smartcbwtf/config/TenantContext$TenantInfo.class
 com/smartcbwtf/controller/HcfProfileController$ProfileUpdateRequest.class
 com/smartcbwtf/dto/InvoiceGenerateRequest.class
 com/smartcbwtf/repository/RouteWaypointRepository.class
+com/smartcbwtf/controller/ManagementDuesApprovalController$BulkApproveRequest.class
 com/smartcbwtf/domain/enums/RouteStatus.class
 com/smartcbwtf/domain/BarcodeComplianceReport$Status.class
 com/smartcbwtf/dto/route/RouteMapDataDTO.class
@@ -94,6 +95,7 @@ com/smartcbwtf/domain/GpsEvent.class
 com/smartcbwtf/controller/AlertController$AlertDTO.class
 com/smartcbwtf/service/StaffService$UpdateCredentialsRequest.class
 com/smartcbwtf/service/ConsumableService.class
+com/smartcbwtf/controller/ManagementDuesApprovalController.class
 com/smartcbwtf/controller/ComplianceReportController$MonthlyReportDTO.class
 com/smartcbwtf/domain/DailyComplianceReport$Status.class
 com/smartcbwtf/dto/QrScanRequest.class
@@ -107,6 +109,7 @@ com/smartcbwtf/repository/GpsVendorIntegrationRepository.class
 com/smartcbwtf/controller/HcfQrLabelController.class
 com/smartcbwtf/service/AppUserDetailsService.class
 com/smartcbwtf/controller/GpsIngestionController.class
+com/smartcbwtf/domain/DuesClearStatus.class
 com/smartcbwtf/controller/GpsHealthController.class
 com/smartcbwtf/dto/route/RouteCycleHistoryDTO.class
 com/smartcbwtf/repository/GpsDeviceBindingRepository.class
@@ -119,6 +122,7 @@ com/smartcbwtf/repository/HcfAdvanceLedgerRepository.class
 com/smartcbwtf/domain/EmailTemplate.class
 com/smartcbwtf/service/SubscriptionService.class
 com/smartcbwtf/dto/AttendanceSyncResponse.class
+com/smartcbwtf/controller/HcfComplianceController.class
 com/smartcbwtf/domain/Facility.class
 com/smartcbwtf/controller/MobileApiController$MeResponse.class
 com/smartcbwtf/controller/BankAccountController.class
@@ -219,6 +223,7 @@ com/smartcbwtf/dto/TermsListItem.class
 com/smartcbwtf/domain/AgreementNumberSequence.class
 com/smartcbwtf/controller/HcfWasteController.class
 com/smartcbwtf/domain/AnnualComplianceReport$DataCompleteness.class
+com/smartcbwtf/service/scheduler/DuesResetScheduler.class
 com/smartcbwtf/domain/enums/TemplateCategory.class
 com/smartcbwtf/dto/TrendDataPointDTO.class
 com/smartcbwtf/repository/DailyWasteSnapshotRepository.class
@@ -291,6 +296,7 @@ com/smartcbwtf/service/RouteWaypointService.class
 com/smartcbwtf/controller/SuperAdminUserController$CreateSuperAdminRequest.class
 com/smartcbwtf/dto/HcfListItemDTO.class
 com/smartcbwtf/service/BillPdfService.class
+com/smartcbwtf/controller/TopManagementController.class
 com/smartcbwtf/domain/MonthlyComplianceReport$DataCompleteness.class
 com/smartcbwtf/domain/SubscriptionAudit.class
 com/smartcbwtf/dto/admin/UpdateSubscriptionRequest.class
@@ -303,6 +309,7 @@ com/smartcbwtf/domain/Attendance.class
 com/smartcbwtf/service/RouteAssignmentService.class
 com/smartcbwtf/domain/QrAuthorization.class
 com/smartcbwtf/dto/route/RouteAssignmentDTO.class
+com/smartcbwtf/controller/HcfComplianceController$AccessDeniedException.class
 com/smartcbwtf/dto/settings/SettingsAuditDTO.class
 com/smartcbwtf/service/TallyExportService.class
 com/smartcbwtf/dto/InvoiceResponse.class
@@ -397,6 +404,7 @@ com/smartcbwtf/dto/AnalyticsPageDTO$HcfOption.class
 com/smartcbwtf/controller/SystemErrorController.class
 com/smartcbwtf/service/GlobalEmailTemplateService$RenderedEmail.class
 com/smartcbwtf/service/SystemErrorService.class
+com/smartcbwtf/controller/ManagementDuesApprovalController$RejectRequest.class
 com/smartcbwtf/controller/HcfConsumableOrderController$PlaceOrderRequest.class
 com/smartcbwtf/repository/SystemErrorRepository.class
 com/smartcbwtf/service/InvoicePdfService.class
@@ -474,6 +482,7 @@ com/smartcbwtf/dto/HcfRejectRequest.class
 com/smartcbwtf/controller/HcfDuesClearanceController$DuesRequestBody.class
 com/smartcbwtf/domain/ViolationReport$DataCompleteness.class
 com/smartcbwtf/repository/AgreementBillingConfigRepository.class
+com/smartcbwtf/controller/CbwtfDuesClearanceController.class
 com/smartcbwtf/service/StaffService.class
 com/smartcbwtf/domain/DailyComplianceReport.class
 com/smartcbwtf/controller/AnalyticsController.class
