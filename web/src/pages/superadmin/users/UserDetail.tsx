@@ -148,7 +148,7 @@ export default function UserDetail() {
 
       <Grid container spacing={3}>
         {/* Basic Info */}
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid item xs={12} md={8}>
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight={600} gutterBottom>User Information</Typography>
@@ -175,7 +175,7 @@ export default function UserDetail() {
         </Grid>
 
         {/* Actions */}
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid item xs={12} md={4}>
           <Stack spacing={2}>
             {/* CBWTF Info */}
             <Card>

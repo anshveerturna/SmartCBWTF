@@ -127,7 +127,7 @@ export default function CreateUser() {
             User Details
           </Typography>
           <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <TextField
                 label="Username"
                 value={formData.username}
@@ -138,7 +138,7 @@ export default function CreateUser() {
                 required
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <TextField
                 label="Full Name"
                 value={formData.fullName}
@@ -149,7 +149,7 @@ export default function CreateUser() {
                 required
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <TextField
                 label="Email"
                 type="email"
@@ -161,7 +161,7 @@ export default function CreateUser() {
                 required
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <TextField
                 label="Phone"
                 value={formData.phone}
@@ -175,7 +175,7 @@ export default function CreateUser() {
           <Divider sx={{ my: 4 }}>Role & Assignment</Divider>
 
           <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid item xs={12} md={4}>
               <FormControl fullWidth error={!!errors.role}>
                 <InputLabel>Role</InputLabel>
                 <Select
@@ -194,7 +194,7 @@ export default function CreateUser() {
               </FormControl>
             </Grid>
             {showCbwtfSelector && (
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid item xs={12} md={4}>
                 <FormControl fullWidth error={!!errors.cbwtfId}>
                   <InputLabel>CBWTF</InputLabel>
                   <Select
@@ -218,7 +218,7 @@ export default function CreateUser() {
               </Grid>
             )}
             {showHcfSelector && (
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid item xs={12} md={4}>
                 <FormControl fullWidth>
                   <InputLabel>HCF</InputLabel>
                   <Select

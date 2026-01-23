@@ -440,7 +440,7 @@ export default function HcfDetailPage() {
 
       <Grid container spacing={3}>
         {/* Left Column: Profile & Location */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Stack spacing={3}>
             {/* Profile Card - Read Only */}
             <Card>
@@ -466,43 +466,43 @@ export default function HcfDetailPage() {
                       Basic Information
                     </Typography>
                     <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                      <Grid size={{ xs: 12 }}>
+                      <Grid item xs={12}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Name</Typography>
                           <Typography fontWeight={500}>{hcf.name}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 12 }}>
+                      <Grid item xs={12}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Address</Typography>
                           <Typography>{hcf.address}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">State</Typography>
                           <Typography>{hcf.state || '-'}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Pincode</Typography>
                           <Typography fontFamily="monospace">{hcf.pincode || '-'}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Doctor/Owner Name</Typography>
                           <Typography>{hcf.doctorName || '-'}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Contact Phone</Typography>
                           <Typography fontFamily="monospace">{hcf.contactPhone || '-'}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Email</Typography>
                           <Typography>{hcf.contactEmail || '-'}</Typography>
@@ -517,19 +517,19 @@ export default function HcfDetailPage() {
                       Government IDs
                     </Typography>
                     <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">PAN Number</Typography>
                           <Typography fontFamily="monospace">{hcf.panNo || '-'}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">GST Number</Typography>
                           <Typography fontFamily="monospace">{hcf.gstNo || '-'}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Aadhar Number</Typography>
                           <Typography fontFamily="monospace">{hcf.aadharNo || '-'}</Typography>
@@ -545,7 +545,7 @@ export default function HcfDetailPage() {
                       Facility Details
                     </Typography>
                     <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Ownership Type</Typography>
                           <Box>
@@ -558,7 +558,7 @@ export default function HcfDetailPage() {
                           </Box>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         {(hcf.ownershipType === 'RENTED' || hcf.rentAgreementUrl) && (
                           <Box>
                             <Typography variant="caption" color="text.secondary">
@@ -586,7 +586,7 @@ export default function HcfDetailPage() {
                           </Box>
                         )}
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Facility Type</Typography>
                           <Box>
@@ -599,13 +599,13 @@ export default function HcfDetailPage() {
                           </Box>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Number of Beds</Typography>
                           <Typography>{hcf.numberOfBeds || '-'}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Monthly Charges</Typography>
                           <Typography fontWeight={500}>{formatCurrency(hcf.monthlyCharges)}</Typography>
@@ -620,20 +620,20 @@ export default function HcfDetailPage() {
                       GPS Location
                     </Typography>
                     <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Latitude</Typography>
                           <Typography fontFamily="monospace">{hcf.registrationGpsLat || hcf.gpsLat || '-'}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Longitude</Typography>
                           <Typography fontFamily="monospace">{hcf.registrationGpsLon || hcf.gpsLon || '-'}</Typography>
                         </Box>
                       </Grid>
                       {hcf.registrationGpsAccuracy && (
-                        <Grid size={{ xs: 6 }}>
+                        <Grid item xs={6}>
                           <Box>
                             <Typography variant="caption" color="text.secondary">Accuracy</Typography>
                             <Typography fontFamily="monospace">{hcf.registrationGpsAccuracy.toFixed(2)}m</Typography>
@@ -660,13 +660,13 @@ export default function HcfDetailPage() {
                   {/* Registration Info */}
                   <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
                     <Grid container spacing={2}>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Registered By</Typography>
                           <Typography variant="body2">{hcf.registeredByUsername || 'System'}</Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 6 }}>
+                      <Grid item xs={6}>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Created At</Typography>
                           <Typography variant="body2">
@@ -757,7 +757,7 @@ export default function HcfDetailPage() {
         </Grid>
 
         {/* Right Column: Agreement, Registration, Billing */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
            <Stack spacing={3}>
             {/* Agreement Card */}
             <Card>
@@ -928,7 +928,7 @@ export default function HcfDetailPage() {
         </Grid>
 
         {/* Operational Summary (Bottom) */}
-        <Grid size={{ xs: 12 }}>
+        <Grid item xs={12}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={1} mb={2}>
@@ -938,7 +938,7 @@ export default function HcfDetailPage() {
                 </Typography>
               </Box>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 6, md: 3 }}>
+                <Grid item xs={6} md={3}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="h4" color="primary">
                       {hcf.summary?.totalPickups || 0}
@@ -948,7 +948,7 @@ export default function HcfDetailPage() {
                     </Typography>
                   </Paper>
                 </Grid>
-                <Grid size={{ xs: 6, md: 3 }}>
+                <Grid item xs={6} md={3}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="h4" color="primary">
                       {hcf.summary?.totalAttendanceMarks || 0}
@@ -958,7 +958,7 @@ export default function HcfDetailPage() {
                     </Typography>
                   </Paper>
                 </Grid>
-                <Grid size={{ xs: 6, md: 3 }}>
+                <Grid item xs={6} md={3}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="h4" color="primary">
                       {hcf.summary?.totalWasteKg?.toFixed(1) || '0'}
@@ -968,7 +968,7 @@ export default function HcfDetailPage() {
                     </Typography>
                   </Paper>
                 </Grid>
-                <Grid size={{ xs: 6, md: 3 }}>
+                <Grid item xs={6} md={3}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="body1" color="primary">
                       {hcf.summary?.lastPickupAt ? formatDate(hcf.summary.lastPickupAt) : '-'}
@@ -989,7 +989,7 @@ export default function HcfDetailPage() {
         <DialogTitle>Set HCF Location</DialogTitle>
         <DialogContent>
            <Grid container spacing={2} sx={{ mb: 2, mt: 1 }}>
-             <Grid size={{ xs: 6 }}>
+             <Grid item xs={6}>
                <TextField
                  label="Latitude"
                  type="number"
@@ -1003,7 +1003,7 @@ export default function HcfDetailPage() {
                  }}
                />
              </Grid>
-             <Grid size={{ xs: 6 }}>
+             <Grid item xs={6}>
                <TextField
                  label="Longitude"
                  type="number"

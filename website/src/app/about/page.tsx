@@ -44,7 +44,7 @@ export default function AboutPage() {
               className="flex justify-center"
             >
               <Image
-                src="/about-hero.png"
+                src="/about-hero.webp"
                 alt="About illustration"
                 width={400}
                 height={400}

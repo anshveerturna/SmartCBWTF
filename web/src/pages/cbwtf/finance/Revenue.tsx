@@ -10,7 +10,7 @@ export default function Revenue() {
       </Box>
 
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid item xs={12} md={4}>
           <Card sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff' }}>
             <CardContent>
               <WalletIcon sx={{ fontSize: 40, opacity: 0.8 }} />
@@ -19,7 +19,7 @@ export default function Revenue() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid item xs={12} md={4}>
           <Card sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: '#fff' }}>
             <CardContent>
               <RevenueIcon sx={{ fontSize: 40, opacity: 0.8 }} />
@@ -28,7 +28,7 @@ export default function Revenue() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid item xs={12} md={4}>
           <Card sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: '#fff' }}>
             <CardContent>
               <WalletIcon sx={{ fontSize: 40, opacity: 0.8 }} />

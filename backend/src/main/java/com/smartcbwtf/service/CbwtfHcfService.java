@@ -405,7 +405,7 @@ public class CbwtfHcfService {
      * Creates agreement + default billing config.
      */
     @Transactional
-    public HcfDetailDTO approveHcf(UUID hcfId, UUID facilityId, HcfApprovalRequest request) {
+    public HcfDetailDTO approveHcf(UUID hcfId, UUID facilityId, CbwtfHcfApprovalRequest request) {
         Hcf hcf = hcfRepository.findById(hcfId)
                 .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
 

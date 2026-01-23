@@ -25,13 +25,15 @@ android {
 
     buildTypes {
         debug {
+            // Use production API for testing. Change to localhost for local dev.
             val apiBaseUrl = project.findProperty("API_BASE_URL") as String?
-            ?: "http://10.0.2.2:8080/api/"
+                ?: "https://api.smartcbwtf.com/api/"
             buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
         }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            buildConfigField("String", "BASE_URL", "\"https://api.smartcbwtf.com/api/\"")
         }
     }
 

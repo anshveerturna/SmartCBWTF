@@ -26,8 +26,40 @@ public class TermsController {
     }
 
     /**
+     * Default Terms HTML content when no database terms exist.
+     */
+    private static final String DEFAULT_TERMS_HTML = """
+        <h2>BIO MEDICAL WASTE COLLECTION & DISPOSAL SERVICES</h2>
+        <h3>TERMS &amp; CONDITIONS</h3>
+        
+        <h4>1. TERMS OF PAYMENT</h4>
+        <ol>
+        <li>All payment will be made advance of the month. In case payments are not received within month, service will be suspended.</li>
+        <li>Payment should be transfer by NEFT/RTGS/IMPS/Cheque &amp; online. (No Cash)</li>
+        <li>GST on BMW Services is 5% will be charged extra as per Govt. rule.</li>
+        </ol>
+        
+        <h4>2. RESPONSIBILITIES OF THE SERVICE PROVIDER</h4>
+        <ol>
+        <li>The Service Provider shall comply with provisions as stipulated in Schedule-1 of the BMW Rule 2025.</li>
+        <li>The Service Provider shall collect the segregated bio-medical waste from the designated collection point.</li>
+        <li>The Service Provider shall transport the segregated waste in closed container vehicle to its treatment facility.</li>
+        </ol>
+        
+        <h4>3. RESPONSIBILITIES OF THE WASTE GENERATOR</h4>
+        <ol>
+        <li>The Waste Generator shall segregate the Bio-Medical waste at the point of generation in accordance with the BMW Rules 2025.</li>
+        <li>The Waste Generator shall collect, pack, label and handover the segregated BMW in non-chlorinated bags.</li>
+        <li>The Waste Generator shall take all necessary steps to ensure that the waste is handled without causing any adverse effect to human health and environment.</li>
+        </ol>
+        
+        <h4>DECLARATION</h4>
+        <p>I/We have read and understood the entire contents of this agreement and give my/our free consent to the terms and conditions set out herein above.</p>
+        """;
+
+    /**
      * Get the latest active Terms for a facility.
-     * Returns fallback default if no facility-specific terms.
+     * Returns fallback default if no facility-specific terms exist in database.
      */
     @GetMapping("/terms/latest")
     public ResponseEntity<TermsResponse> getLatestTerms(
@@ -36,7 +68,19 @@ public class TermsController {
         // Service handles null facilityId by returning global default
         return termsService.getLatestTerms(facilityId)
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElseGet(() -> {
+                    // Return hardcoded default when no terms exist in database
+                    TermsResponse defaultTerms = new TermsResponse(
+                            null,                           // id
+                            null,                           // facilityId
+                            null,                           // facilityName
+                            "2025-01-01-default",           // version
+                            java.time.LocalDate.of(2025, 1, 1), // effectiveFrom
+                            DEFAULT_TERMS_HTML,             // textHtml
+                            true                            // active
+                    );
+                    return ResponseEntity.ok(defaultTerms);
+                });
     }
 
     /**

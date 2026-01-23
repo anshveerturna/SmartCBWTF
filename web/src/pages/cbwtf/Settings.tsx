@@ -226,7 +226,7 @@ export default function Settings() {
   }, [settings]);
 
   // Mutations
-  const createMutation = (mutationFn: (data: unknown) => Promise<void>, sectionName: string) =>
+  const createMutation = <T,>(mutationFn: (data: T) => Promise<void>, sectionName: string) =>
     useMutation({
       mutationFn,
       onSuccess: () => {

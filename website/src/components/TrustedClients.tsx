@@ -7,13 +7,13 @@ export default function TrustedClients() {
   const clients = [
     {
       name: "Global Environmental Solution",
-      logo: "/clients/rudra-waste-logo.png",
+      logo: "/clients/rudra-waste-logo.webp",
       width: 160, 
       height: 80,
     },
     {
       name: "Rudra Waste Management",
-      logo: "/clients/global-env-sol-logo.png",
+      logo: "/clients/global-env-sol-logo.webp",
       width: 160,
       height: 80,
     },

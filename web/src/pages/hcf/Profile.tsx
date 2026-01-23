@@ -200,7 +200,7 @@ const HcfProfilePage: React.FC = () => {
       <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
         <Grid container spacing={4}>
           {/* Photo Section */}
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid item xs={12} md={4}>
             <Box sx={{ textAlign: 'center' }}>
               <Box sx={{ position: 'relative', display: 'inline-block' }}>
                 <Avatar
@@ -271,7 +271,7 @@ const HcfProfilePage: React.FC = () => {
           </Grid>
 
           {/* Profile Info */}
-          <Grid size={{ xs: 12, md: 8 }}>
+          <Grid item xs={12} md={8}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
               <PersonIcon sx={{ mr: 1 }} />
               <Typography variant="h6">Profile Information</Typography>
@@ -292,7 +292,7 @@ const HcfProfilePage: React.FC = () => {
                 disabled
               />
               <Grid container spacing={2}>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Email"
@@ -300,7 +300,7 @@ const HcfProfilePage: React.FC = () => {
                     disabled
                   />
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Phone"
@@ -328,7 +328,7 @@ const HcfProfilePage: React.FC = () => {
               Account Information (Read Only)
             </Typography>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Last Login"
@@ -336,7 +336,7 @@ const HcfProfilePage: React.FC = () => {
                   disabled
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Created At"

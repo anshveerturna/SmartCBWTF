@@ -174,7 +174,7 @@ public class CbwtfHcfController {
     @PostMapping("/{id}/approve")
     public ResponseEntity<HcfDetailDTO> approveHcf(
             @PathVariable("id") UUID id,
-            @Valid @RequestBody HcfApprovalRequest request) {
+            @Valid @RequestBody CbwtfHcfApprovalRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(hcfService.approveHcf(id, facilityId, request));
     }

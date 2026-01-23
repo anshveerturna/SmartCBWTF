@@ -8,7 +8,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     // Redirect to the actual web portal
-    window.location.href = "http://localhost:5173";
+    window.location.replace("https://portal.smartcbwtf.com");
   }, []);
 
   return (

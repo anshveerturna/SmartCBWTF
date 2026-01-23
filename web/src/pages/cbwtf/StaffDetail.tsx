@@ -339,7 +339,7 @@ export default function StaffDetail() {
 
       <Grid container spacing={3}>
         {/* Profile Card - New Design with Avatar and Inline Editing */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Card sx={{ borderRadius: 2, height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -519,7 +519,7 @@ export default function StaffDetail() {
         </Grid>
 
         {/* GPS Status Card */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Card sx={{ borderRadius: 2, height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -612,7 +612,7 @@ export default function StaffDetail() {
         </Grid>
 
         {/* Last Attendance Card */}
-        <Grid size={{ xs: 12 }}>
+        <Grid item xs={12}>
           <Card sx={{ borderRadius: 2, background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.05) 0%, transparent 100%)' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'success.main' }}>
@@ -674,7 +674,7 @@ export default function StaffDetail() {
         </Grid>
 
         {/* App Credentials Card */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Card sx={{ borderRadius: 2, height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -279,7 +279,7 @@ const QrLabels: React.FC = () => {
             <QrCode /> Generate New Labels
           </Typography>
           <Grid container spacing={3} alignItems="flex-end">
-            <Grid size={{ xs: 12, sm: 3 }}>
+            <Grid item xs={12} sm={3}>
               <FormControl fullWidth>
                 <InputLabel>Waste Category</InputLabel>
                 <Select
@@ -306,7 +306,7 @@ const QrLabels: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
+            <Grid item xs={12} sm={3}>
               <TextField
                 label="Valid From"
                 type="date"
@@ -317,7 +317,7 @@ const QrLabels: React.FC = () => {
                 inputProps={{ min: formatDateForInput(new Date()) }}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
+            <Grid item xs={12} sm={3}>
               <TextField
                 label="Valid To"
                 type="date"
@@ -328,7 +328,7 @@ const QrLabels: React.FC = () => {
                 inputProps={{ min: validFrom }}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
+            <Grid item xs={12} sm={3}>
               <Button
                 variant="contained"
                 fullWidth

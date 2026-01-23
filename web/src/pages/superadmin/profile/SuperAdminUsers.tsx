@@ -305,11 +305,11 @@ const SuperAdminUsers: React.FC = () => {
             <TextField fullWidth label="Full Name" value={createForm.fullName}
               onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })} />
             <Grid container spacing={2}>
-              <Grid size={6}>
+              <Grid item xs={6}>
                 <TextField fullWidth label="Email" value={createForm.email}
                   onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} />
               </Grid>
-              <Grid size={6}>
+              <Grid item xs={6}>
                 <TextField fullWidth label="Phone" value={createForm.phone}
                   onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} />
               </Grid>
@@ -333,11 +333,11 @@ const SuperAdminUsers: React.FC = () => {
             <TextField fullWidth label="Full Name" value={editForm.fullName}
               onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} />
             <Grid container spacing={2}>
-              <Grid size={6}>
+              <Grid item xs={6}>
                 <TextField fullWidth label="Email" value={editForm.email}
                   onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
               </Grid>
-              <Grid size={6}>
+              <Grid item xs={6}>
                 <TextField fullWidth label="Phone" value={editForm.phone}
                   onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
               </Grid>

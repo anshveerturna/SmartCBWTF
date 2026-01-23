@@ -119,15 +119,15 @@ export default function BillDetail() {
       {/* Bill Identity Header */}
       <Paper sx={{ p: 3, mb: 3, bgcolor: 'primary.main', color: 'white' }}>
         <Grid container spacing={3}>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid item xs={12} md={4}>
             <Typography variant="overline" sx={{ opacity: 0.8 }}>HCF Name</Typography>
             <Typography variant="h5" fontWeight="bold">{bill.hcfName}</Typography>
           </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid item xs={12} md={4}>
             <Typography variant="overline" sx={{ opacity: 0.8 }}>Billing Month</Typography>
             <Typography variant="h5" fontWeight="bold">{formatMonth(bill.billingMonth)}</Typography>
           </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid item xs={12} md={4}>
             <Box display="flex" flexDirection="column" alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
               <Chip label={bill.status} color="success" sx={{ mb: 1 }} />
             </Box>
@@ -137,7 +137,7 @@ export default function BillDetail() {
 
       <Grid container spacing={3}>
         {/* Agreement Info */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -161,7 +161,7 @@ export default function BillDetail() {
         </Grid>
 
         {/* Pickup Snapshot */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -195,7 +195,7 @@ export default function BillDetail() {
         </Grid>
 
         {/* Rate Snapshot (Frozen) */}
-        <Grid size={{ xs: 12 }}>
+        <Grid item xs={12}>
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -203,23 +203,23 @@ export default function BillDetail() {
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Grid container spacing={2}>
-                <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+                <Grid item xs={6} sm={4} md={2}>
                   <Typography variant="caption" color="text.secondary">Beds</Typography>
                   <Typography variant="h6">{bill.bedCount}</Typography>
                 </Grid>
-                <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+                <Grid item xs={6} sm={4} md={2}>
                   <Typography variant="caption" color="text.secondary">Base grams/bed/day</Typography>
                   <Typography variant="h6">{bill.baseGramsPerBedPerDay.toFixed(2)}</Typography>
                 </Grid>
-                <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+                <Grid item xs={6} sm={4} md={2}>
                   <Typography variant="caption" color="text.secondary">Base rate/bed/day</Typography>
                   <Typography variant="h6">{formatCurrency(bill.baseRatePerBedPerDay)}</Typography>
                 </Grid>
-                <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+                <Grid item xs={6} sm={4} md={3}>
                   <Typography variant="caption" color="text.secondary">Excess rate/kg</Typography>
                   <Typography variant="h6">{formatCurrency(bill.excessRatePerKg)}</Typography>
                 </Grid>
-                <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+                <Grid item xs={6} sm={4} md={3}>
                   <Typography variant="caption" color="text.secondary">Excess Rate Effective From</Typography>
                   <Typography variant="h6">{formatDate(bill.excessRateEffectiveFrom)}</Typography>
                 </Grid>
@@ -229,7 +229,7 @@ export default function BillDetail() {
         </Grid>
 
         {/* Calculation Breakdown */}
-        <Grid size={{ xs: 12 }}>
+        <Grid item xs={12}>
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -238,7 +238,7 @@ export default function BillDetail() {
               <Divider sx={{ mb: 2 }} />
               <Grid container spacing={4}>
                 {/* Weight Breakdown */}
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid item xs={12} md={4}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Weight Analysis
                   </Typography>
@@ -265,7 +265,7 @@ export default function BillDetail() {
                 </Grid>
 
                 {/* Amount Breakdown */}
-                <Grid size={{ xs: 12, md: 8 }}>
+                <Grid item xs={12} md={8}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Amount Breakdown
                   </Typography>

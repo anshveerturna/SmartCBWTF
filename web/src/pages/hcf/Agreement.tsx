@@ -179,7 +179,7 @@ const Agreement: React.FC = () => {
 
       <Grid container spacing={3}>
         {/* Agreement Overview Card */}
-        <Grid size={{ xs: 12, lg: 6 }}>
+        <Grid item xs={12} lg={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
@@ -201,7 +201,7 @@ const Agreement: React.FC = () => {
         </Grid>
 
         {/* Contract Period Card */}
-        <Grid size={{ xs: 12, lg: 6 }}>
+        <Grid item xs={12} lg={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
@@ -227,7 +227,7 @@ const Agreement: React.FC = () => {
         </Grid>
 
         {/* CBWTF Details Card */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
@@ -245,7 +245,7 @@ const Agreement: React.FC = () => {
         </Grid>
 
         {/* HCF Details Card */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
@@ -263,7 +263,7 @@ const Agreement: React.FC = () => {
         </Grid>
 
         {/* Billing Information Card */}
-        <Grid size={{ xs: 12 }}>
+        <Grid item xs={12}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
@@ -272,7 +272,7 @@ const Agreement: React.FC = () => {
               </Box>
               
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12, sm: 4 }}>
+                <Grid item xs={12} sm={4}>
                   <Paper sx={{ p: 3, textAlign: 'center', bgcolor: alpha('#6366F1', 0.05) }}>
                     <Typography variant="h4" fontWeight={700} color="primary.main">
                       ₹{agreement.perBedPerDayRate?.toFixed(2) || '0.00'}
@@ -282,7 +282,7 @@ const Agreement: React.FC = () => {
                     </Typography>
                   </Paper>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 4 }}>
+                <Grid item xs={12} sm={4}>
                   <Paper sx={{ p: 3, textAlign: 'center', bgcolor: alpha('#10B981', 0.05) }}>
                     <Typography variant="h4" fontWeight={700} color="success.main">
                       {agreement.hcfBeds || 0}
@@ -292,7 +292,7 @@ const Agreement: React.FC = () => {
                     </Typography>
                   </Paper>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 4 }}>
+                <Grid item xs={12} sm={4}>
                   <Paper sx={{ p: 3, textAlign: 'center', bgcolor: alpha('#F59E0B', 0.05) }}>
                     <Typography variant="h4" fontWeight={700} sx={{ color: '#F59E0B' }}>
                       {agreement.billingModel || 'N/A'}

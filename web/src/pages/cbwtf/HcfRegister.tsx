@@ -224,7 +224,7 @@ export default function HcfRegister() {
 
       <Grid container spacing={3}>
         {/* Left Column: Form */}
-        <Grid size={{ xs: 12, md: 7 }}>
+        <Grid item xs={12} md={7}>
           <Stack spacing={3}>
             {/* HCF Information */}
             <Card>
@@ -233,7 +233,7 @@ export default function HcfRegister() {
                   HCF Information
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid size={{ xs: 12 }}>
+                  <Grid item xs={12}>
                     <TextField
                       label="HCF Name *"
                       fullWidth
@@ -241,7 +241,7 @@ export default function HcfRegister() {
                       onChange={handleInputChange('name')}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12 }}>
+                  <Grid item xs={12}>
                     <TextField
                       label="Address *"
                       fullWidth
@@ -251,7 +251,7 @@ export default function HcfRegister() {
                       onChange={handleInputChange('address')}
                     />
                   </Grid>
-                  <Grid size={{ xs: 6 }}>
+                  <Grid item xs={6}>
                     <TextField
                       label="Pincode *"
                       fullWidth
@@ -262,7 +262,7 @@ export default function HcfRegister() {
                       helperText={form.pincode.length > 0 && !form.pincode.match(/^\d{6}$/) ? '6 digits required' : ''}
                     />
                   </Grid>
-                  <Grid size={{ xs: 6 }}>
+                  <Grid item xs={6}>
                     <TextField
                       label="State *"
                       fullWidth
@@ -270,7 +270,7 @@ export default function HcfRegister() {
                       onChange={handleInputChange('state')}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12 }}>
+                  <Grid item xs={12}>
                     <TextField
                       label="Doctor/Owner Name *"
                       fullWidth
@@ -278,7 +278,7 @@ export default function HcfRegister() {
                       onChange={handleInputChange('doctorName')}
                     />
                   </Grid>
-                  <Grid size={{ xs: 6 }}>
+                  <Grid item xs={6}>
                     <TextField
                       label="Contact Phone *"
                       fullWidth
@@ -286,7 +286,7 @@ export default function HcfRegister() {
                       onChange={handleInputChange('contactPhone')}
                     />
                   </Grid>
-                  <Grid size={{ xs: 6 }}>
+                  <Grid item xs={6}>
                     <TextField
                       label="Email *"
                       fullWidth
@@ -306,7 +306,7 @@ export default function HcfRegister() {
                   Government IDs
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid size={{ xs: 4 }}>
+                  <Grid item xs={4}>
                     <TextField
                       label="PAN Number *"
                       fullWidth
@@ -316,7 +316,7 @@ export default function HcfRegister() {
                       error={form.panNo.length > 0 && !form.panNo.match(/^[A-Z]{5}[0-9]{4}[A-Z]$/)}
                     />
                   </Grid>
-                  <Grid size={{ xs: 4 }}>
+                  <Grid item xs={4}>
                     <TextField
                       label="GST Number *"
                       fullWidth
@@ -325,7 +325,7 @@ export default function HcfRegister() {
                       inputProps={{ maxLength: 15 }}
                     />
                   </Grid>
-                  <Grid size={{ xs: 4 }}>
+                  <Grid item xs={4}>
                     <TextField
                       label="Aadhar Number *"
                       fullWidth
@@ -503,7 +503,7 @@ export default function HcfRegister() {
                   Agreement Period
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid size={{ xs: 4 }}>
+                  <Grid item xs={4}>
                     <TextField
                       label="Start Date *"
                       type="date"
@@ -513,7 +513,7 @@ export default function HcfRegister() {
                       InputLabelProps={{ shrink: true }}
                     />
                   </Grid>
-                  <Grid size={{ xs: 4 }}>
+                  <Grid item xs={4}>
                     <TextField
                       label="End Date *"
                       type="date"
@@ -523,7 +523,7 @@ export default function HcfRegister() {
                       InputLabelProps={{ shrink: true }}
                     />
                   </Grid>
-                  <Grid size={{ xs: 4 }}>
+                  <Grid item xs={4}>
                     <TextField
                       label="Rate per Bed/Day *"
                       type="number"
@@ -559,7 +559,7 @@ export default function HcfRegister() {
         </Grid>
 
         {/* Right Column: Map */}
-        <Grid size={{ xs: 12, md: 5 }}>
+        <Grid item xs={12} md={5}>
           <Card sx={{ position: 'sticky', top: 24 }}>
             <CardContent>
               <Box display="flex" alignItems="center" gap={1} mb={2}>

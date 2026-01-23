@@ -186,7 +186,7 @@ const MyProfile: React.FC = () => {
     <Box>
       <Grid container spacing={4}>
         {/* Photo Section */}
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid item xs={12} md={4}>
           <Box sx={{ textAlign: 'center' }}>
             <Box sx={{ position: 'relative', display: 'inline-block' }}>
               <Avatar
@@ -247,7 +247,7 @@ const MyProfile: React.FC = () => {
         </Grid>
 
         {/* Edit Form */}
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid item xs={12} md={8}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
             <EditIcon sx={{ mr: 1 }} />
             <Typography variant="h6">Edit Profile</Typography>
@@ -268,7 +268,7 @@ const MyProfile: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
             />
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Email"
@@ -277,7 +277,7 @@ const MyProfile: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Phone"
@@ -313,7 +313,7 @@ const MyProfile: React.FC = () => {
             Account Information (Read Only)
           </Typography>
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="Last Login"
@@ -321,7 +321,7 @@ const MyProfile: React.FC = () => {
                 disabled
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="Created At"

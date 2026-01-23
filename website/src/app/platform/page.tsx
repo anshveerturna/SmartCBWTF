@@ -67,7 +67,7 @@ export default function PlatformPage() {
               </p>
               <div className="screenshot-frame">
                 <Image
-                  src="/screenshots/platform-1.png"
+                  src="/screenshots/platform-1.webp"
                   alt="SmartCBWTF Web Dashboard"
                   width={500}
                   height={300}
@@ -95,14 +95,14 @@ export default function PlatformPage() {
               </p>
               <div className="flex justify-center gap-4">
                 <Image
-                  src="/screenshots/app-2.png"
+                  src="/screenshots/app-2.webp"
                   alt="SmartCBWTF Android App - Dashboard"
                   width={150}
                   height={300}
                   className="rounded-2xl shadow-lg"
                 />
                 <Image
-                  src="/screenshots/app-3.png"
+                  src="/screenshots/app-3.webp"
                   alt="SmartCBWTF Android App - Scan & Weigh"
                   width={150}
                   height={300}
@@ -166,7 +166,7 @@ export default function PlatformPage() {
             >
               <div className="relative">
                 <Image
-                  src="/screenshots/app-2.png"
+                  src="/screenshots/app-2.webp"
                   alt="SmartCBWTF Android App"
                   width={280}
                   height={560}
@@ -219,7 +219,7 @@ export default function PlatformPage() {
             >
               <div className="screenshot-frame">
                 <Image
-                  src="/screenshots/platform-3.png"
+                  src="/screenshots/platform-3.webp"
                   alt="CBWTF Dashboard"
                   width={600}
                   height={400}

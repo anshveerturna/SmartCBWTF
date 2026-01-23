@@ -206,7 +206,7 @@ const ConsumablesOrder: React.FC = () => {
       {tab === 0 && (
         <Grid container spacing={3}>
           {/* Catalog */}
-          <Grid size={{ xs: 12, md: 8 }}>
+          <Grid item xs={12} md={8}>
             <Card>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2 }}>Available Items</Typography>
@@ -287,7 +287,7 @@ const ConsumablesOrder: React.FC = () => {
           </Grid>
 
           {/* Cart */}
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid item xs={12} md={4}>
             <Card sx={{ position: 'sticky', top: 80 }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>

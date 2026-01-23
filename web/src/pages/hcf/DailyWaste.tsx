@@ -110,7 +110,7 @@ const DailyWaste: React.FC = () => {
           ) : (
             <Grid container spacing={1}>
               {weekData?.days.map((day) => (
-                <Grid size={{ xs: 12 / 7 }} key={day.date}>
+                <Grid item xs key={day.date}>
                   <Paper
                     onClick={() => setSelectedDate(day.date)}
                     sx={{
@@ -143,7 +143,7 @@ const DailyWaste: React.FC = () => {
 
       {/* Date Selector & Summary */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid item xs={12} md={4}>
           <TextField
             type="date"
             label="Select Date"
@@ -156,7 +156,7 @@ const DailyWaste: React.FC = () => {
             }}
           />
         </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid item xs={12} md={4}>
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Scale sx={{ fontSize: 40, color: 'primary.main' }} />
@@ -171,7 +171,7 @@ const DailyWaste: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid item xs={12} md={4}>
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Category sx={{ fontSize: 40, color: 'secondary.main' }} />
@@ -197,7 +197,7 @@ const DailyWaste: React.FC = () => {
             </Typography>
             <Grid container spacing={2}>
               {Object.entries(dailyData.byCategory).map(([category, data]) => (
-                <Grid size={{ xs: 6, sm: 3 }} key={category}>
+                <Grid item xs={6} sm={3} key={category}>
                   <Paper
                     sx={{
                       p: 2,

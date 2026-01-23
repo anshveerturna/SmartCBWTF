@@ -107,7 +107,7 @@ export default function CompliancePage() {
             >
               <div className="absolute inset-0 bg-[#047857]/20 blur-3xl rounded-full -z-10 w-3/4 h-3/4 m-auto" />
               <Image
-                src="/compliance-hero-3d.png"
+                src="/compliance-hero-3d.webp"
                 alt="3D Compliance illustration"
                 width={600}
                 height={600}

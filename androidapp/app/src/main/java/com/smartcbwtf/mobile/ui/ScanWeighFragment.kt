@@ -684,8 +684,14 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
                 deviceNames.clear()
                 deviceList.addAll(devices)
                 devices.forEach { device ->
-                    val name = device.name ?: "Unknown Device"
+                    // Safely get device name - requires BLUETOOTH_CONNECT permission on Android 12+
+                    val name = try {
+                        device.name?.takeIf { it.isNotBlank() } ?: "BLE Device"
+                    } catch (e: SecurityException) {
+                        "BLE Device"
+                    }
                     val address = device.address
+                    // Show name prominently, with address in smaller text below
                     deviceNames.add("$name\n$address")
                 }
                 adapter.notifyDataSetChanged()
@@ -753,7 +759,11 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
      */
     @SuppressLint("MissingPermission")
     private fun showConnectingDialog(device: BluetoothDevice) {
-        val deviceName = device.name ?: "Unknown Device"
+        val deviceName = try {
+            device.name?.takeIf { it.isNotBlank() } ?: "BLE Device (${device.address.takeLast(8)})"
+        } catch (e: SecurityException) {
+            "BLE Device (${device.address.takeLast(8)})"
+        }
         
         connectingDialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle("Connecting...")

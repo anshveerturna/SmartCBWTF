@@ -4,40 +4,34 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import Image from "next/image";
 
-const roles = ["CBWTF Admin", "HCF Admin", "Management", "Android App"];
+const roles = ["CBWTF Admin", "HCF Admin", "Android App"];
 
 const features = {
   "CBWTF Admin": [
-    { title: "Dashboard & Analytics", desc: "Real-time KPIs, waste trends, revenue tracking, and risk alerts", image: "/screenshots/platform-1.png" },
-    { title: "Waste Analytics", desc: "Category breakdown, collection trends, and HCF contribution analysis", image: "/screenshots/platform-5.png" },
-    { title: "Vehicle Tracking", desc: "Live GPS map with geofencing, offline alerts, and route history", image: "/screenshots/platform-10.png" },
-    { title: "HCF Management", desc: "Onboard facilities, manage agreements, track dues, and verify compliance", image: "/screenshots/platform-15.png" },
-    { title: "Route Planning", desc: "Create optimized routes, assign vehicles and staff, manage schedules", image: "/screenshots/platform-21.png" },
-    { title: "Billing & Invoicing", desc: "Auto-generate invoices, track payments, reconcile with collections", image: "/screenshots/platform-7.png" },
-    { title: "Staff Management", desc: "Assign roles, track attendance, manage credentials and permissions", image: "/screenshots/platform-8.png" },
-    { title: "Compliance Reports", desc: "Generate Form-IV, monthly summaries, and audit-ready documentation", image: "/screenshots/platform-25.png" },
+    { title: "Dashboard & Analytics", desc: "Real-time KPIs, waste trends, revenue tracking, and risk alerts", image: "/screenshots/platform-1.webp" },
+    { title: "Waste Analytics", desc: "Category breakdown, collection trends, and HCF contribution analysis", image: "/screenshots/platform-5.webp" },
+    { title: "Vehicle Tracking", desc: "Live GPS map with geofencing, offline alerts, and route history", image: "/screenshots/platform-10.webp" },
+    { title: "HCF Management", desc: "Onboard facilities, manage agreements, track dues, and verify compliance", image: "/screenshots/platform-15.webp" },
+    { title: "Route Planning", desc: "Create optimized routes, assign vehicles and staff, manage schedules", image: "/screenshots/platform-21.webp" },
+    { title: "Billing & Invoicing", desc: "Auto-generate invoices, track payments, reconcile with collections", image: "/screenshots/billing-invoicing.webp" },
+    { title: "Staff Management", desc: "Assign roles, track attendance, manage credentials and permissions", image: "/screenshots/staff-management.webp" },
+    { title: "Compliance Reports", desc: "Generate Form-IV, monthly summaries, and audit-ready documentation", image: "/screenshots/platform-22.webp" },
   ],
   "HCF Admin": [
-    { title: "Dashboard", desc: "Track waste submissions, pending pickups, and outstanding dues", image: "/screenshots/platform-3.png" },
-    { title: "Daily Waste Entry", desc: "Log waste by category with QR verification and weight tracking", image: "/screenshots/platform-25.png" },
-    { title: "QR Label Generation", desc: "Print trackable labels for every waste bag with category coding", image: "/screenshots/platform-9.png" },
-    { title: "Compliance Reports", desc: "View pickup history, generate HCF-specific compliance reports", image: "/screenshots/platform-25.png" },
-    { title: "Agreement & Dues", desc: "View contract terms, track invoices, and payment history", image: "/screenshots/platform-12.png" },
-    { title: "Order Consumables", desc: "Request waste bags, labels, and other supplies from CBWTF", image: "/screenshots/platform-6.png" },
-  ],
-  "Management": [
-    { title: "Executive Dashboard", desc: "Multi-facility overview with key performance metrics", image: "/screenshots/platform-3.png" },
-    { title: "Approval Workflows", desc: "Review and approve dues adjustments, write-offs, and exceptions", image: "/screenshots/platform-22.png" },
-    { title: "Financial Oversight", desc: "Revenue reconciliation, outstanding dues, and collection efficiency", image: "/screenshots/platform-7.png" },
-    { title: "Audit Verification", desc: "Verify compliance reports and review immutable audit trails", image: "/screenshots/platform-25.png" },
+    { title: "Dashboard", desc: "Track waste submissions, pending pickups, and outstanding dues", image: "/screenshots/platform-24.webp" },
+    { title: "Daily Waste Entry", desc: "Log waste by category with QR verification and weight tracking", image: "/screenshots/platform-25.webp" },
+    { title: "QR Label Generation", desc: "Print trackable labels for every waste bag with category coding", image: "/screenshots/qr-label-generation.webp" },
+    { title: "Compliance Reports", desc: "View pickup history, generate HCF-specific compliance reports", image: "/screenshots/platform-25.webp" },
+    { title: "Agreement", desc: "View contract terms, track invoices, and payment history", image: "/screenshots/hcf-dashboard.webp" },
+    { title: "Order Consumables", desc: "Request waste bags, labels, and other supplies from CBWTF", image: "/screenshots/order-consumables.webp" },
   ],
   "Android App": [
-    { title: "Pickup Waste", desc: "Scan QR codes and capture weight via Bluetooth scale integration", image: "/screenshots/app-3.png" },
-    { title: "Secure Login", desc: "Biometric and credential-based authentication for authorized staff access", image: "/screenshots/app-secure-login.png" },
-    { title: "Verify at CBWTF", desc: "Verify waste receipt at the facility with automated reconciliation", image: "/screenshots/app-verify-cbwtf.png" },
-    { title: "My Route", desc: "View assigned HCFs in optimized order for efficient collection", image: "/screenshots/app-my-route.png" },
-    { title: "HCF Registration", desc: "Onboard new healthcare facilities directly from the field", image: "/screenshots/app-hcf-registration.png" },
-    { title: "Attendance", desc: "Geofenced driver chart-in/out for accurate shift tracking", image: "/screenshots/app-attendance.png" },
+    { title: "Pickup Waste", desc: "Scan QR codes and capture weight via Bluetooth scale integration", image: "/screenshots/app-3.webp" },
+    { title: "Secure Login", desc: "Biometric and credential-based authentication for authorized staff access", image: "/screenshots/app-secure-login.webp" },
+    { title: "Verify at CBWTF", desc: "Verify waste receipt at the facility with automated reconciliation", image: "/screenshots/app-verify-cbwtf.webp" },
+    { title: "My Route", desc: "View assigned HCFs in optimized order for efficient collection", image: "/screenshots/app-my-route.webp" },
+    { title: "HCF Registration", desc: "Onboard new healthcare facilities directly from the field", image: "/screenshots/app-hcf-registration.webp" },
+    { title: "Attendance", desc: "Geofenced driver chart-in/out for accurate shift tracking", image: "/screenshots/app-attendance.webp" },
   ],
 };
 

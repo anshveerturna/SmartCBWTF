@@ -264,7 +264,7 @@ export default function CBWTFDetail() {
 
       <Grid container spacing={3}>
         {/* Subscription Card */}
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid item xs={12} md={8}>
           <Card sx={{ borderRadius: 2 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -360,7 +360,7 @@ export default function CBWTFDetail() {
               </Typography>
               <Grid container spacing={2}>
                 {Object.entries(FEATURE_FLAGS).map(([key, label]) => (
-                  <Grid size={{ xs: 12, sm: 6 }} key={key}>
+                  <Grid item xs={12} sm={6} key={key}>
                     <FormControlLabel
                       control={
                         <Switch
@@ -441,7 +441,7 @@ export default function CBWTFDetail() {
         </Grid>
 
         {/* Right Column */}
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid item xs={12} md={4}>
           {/* Stats */}
           <Card sx={{ borderRadius: 2, mb: 3 }}>
             <CardContent>

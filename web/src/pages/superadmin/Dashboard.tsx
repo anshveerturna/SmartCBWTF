@@ -147,7 +147,7 @@ const SuperAdminDashboard: React.FC = () => {
 
       {/* Platform Metrics - Row 1 */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Active CBWTFs"
             value={stats?.activeCBWTFs ?? 0}
@@ -157,7 +157,7 @@ const SuperAdminDashboard: React.FC = () => {
             loading={isLoading}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Total HCFs"
             value={stats?.totalHcfs?.toLocaleString() ?? '0'}
@@ -167,7 +167,7 @@ const SuperAdminDashboard: React.FC = () => {
             loading={isLoading}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Total Users"
             value={stats?.totalUsers?.toLocaleString() ?? '0'}
@@ -177,7 +177,7 @@ const SuperAdminDashboard: React.FC = () => {
             loading={isLoading}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Total Revenue"
             value={formatCurrency(stats?.totalRevenue ?? 0)}
@@ -192,7 +192,7 @@ const SuperAdminDashboard: React.FC = () => {
       {/* Row 2 - Status + Errors */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         {/* CBWTF Status Breakdown */}
-        <Grid size={{ xs: 12, lg: 6 }}>
+        <Grid item xs={12} lg={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 3 }}>
@@ -205,7 +205,7 @@ const SuperAdminDashboard: React.FC = () => {
                   { status: 'Expired', count: stats?.expiredCBWTFs ?? 0, color: 'warning' as const },
                   { status: 'Suspended', count: stats?.suspendedCBWTFs ?? 0, color: 'error' as const },
                 ].map(({ status, count, color }) => (
-                  <Grid key={status} size={{ xs: 6, md: 3 }}>
+                  <Grid item key={status} xs={6} md={3}>
                     <Box
                       sx={{
                         p: 2,
@@ -244,7 +244,7 @@ const SuperAdminDashboard: React.FC = () => {
         </Grid>
 
         {/* System Errors */}
-        <Grid size={{ xs: 12, lg: 6 }}>
+        <Grid item xs={12} lg={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

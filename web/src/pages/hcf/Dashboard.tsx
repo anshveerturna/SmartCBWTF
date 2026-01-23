@@ -179,7 +179,7 @@ const HcfDashboard: React.FC = () => {
 
       {/* Metrics */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Today's Waste"
             value={`${stats?.todayWaste?.toFixed(1) || '0.0'} kg`}
@@ -188,7 +188,7 @@ const HcfDashboard: React.FC = () => {
             color="#10B981"
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Total Bags"
             value={stats?.monthPickups || 0}
@@ -197,7 +197,7 @@ const HcfDashboard: React.FC = () => {
             color="#6366F1"
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Dues Status"
             value={stats?.duesStatus || 'Unknown'}
@@ -206,7 +206,7 @@ const HcfDashboard: React.FC = () => {
             color={stats?.duesStatus === 'Dues Clear' ? '#10B981' : '#F59E0B'}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Compliance Score"
             value={`${stats?.complianceScore || 100}%`}
@@ -220,7 +220,7 @@ const HcfDashboard: React.FC = () => {
       {/* Advanced Charts */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* Waste by Category (Donut) */}
-        <Grid size={{ xs: 12, md: 5 }}>
+        <Grid item xs={12} md={5}>
           <Card sx={{ height: '100%', minHeight: 420, display: 'flex', flexDirection: 'column' }}>
             <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <Typography variant="h6" gutterBottom>Waste by Category</Typography>
@@ -271,7 +271,7 @@ const HcfDashboard: React.FC = () => {
         </Grid>
 
         {/* Weekly Trend (Stacked Area) */}
-        <Grid size={{ xs: 12, md: 7 }}>
+        <Grid item xs={12} md={7}>
           <Card sx={{ height: '100%', minHeight: 420 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>Weekly Collection Trend</Typography>
@@ -316,7 +316,7 @@ const HcfDashboard: React.FC = () => {
 
       {/* Recent Pickups List */}
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12 }}>
+        <Grid item xs={12}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>

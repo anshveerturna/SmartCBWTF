@@ -103,7 +103,7 @@ function HeroSection() {
         >
           <div className="screenshot-frame max-w-5xl mx-auto">
             <Image
-              src="/screenshots/platform-1.png"
+              src="/screenshots/platform-1.webp"
               alt="SmartCBWTF Dashboard"
               width={1200}
               height={700}
@@ -160,7 +160,7 @@ function ScreenshotGallery() {
             <div key={num} className="flex-shrink-0 w-[400px] lg:w-[500px]">
               <div className="screenshot-frame">
                 <Image
-                  src={`/screenshots/platform-${num}.png`}
+                  src={`/screenshots/platform-${num}.webp`}
                   alt={`Platform screenshot ${num}`}
                   width={500}
                   height={300}
@@ -176,7 +176,7 @@ function ScreenshotGallery() {
             <div key={num} className="flex-shrink-0 w-[400px] lg:w-[500px]">
               <div className="screenshot-frame">
                 <Image
-                  src={`/screenshots/platform-${num}.png`}
+                  src={`/screenshots/platform-${num}.webp`}
                   alt={`Platform screenshot ${num}`}
                   width={500}
                   height={300}
@@ -199,35 +199,35 @@ function FeaturesSection() {
       desc: "Track waste by category, weight, and source. Real-time dashboards with trend analysis.",
       icon: <ChartIcon />,
       bg: "bento-sage",
-      image: "/screenshots/platform-5.png",
+      image: "/screenshots/platform-5.webp",
     },
     {
       title: "Live GPS Tracking",
       desc: "Real-time vehicle tracking with geofenced pickup verification and route optimization.",
       icon: <GpsIcon />,
       bg: "bento-sky",
-      image: "/screenshots/platform-9.png",
+      image: "/screenshots/platform-9.webp",
     },
     {
       title: "QR Traceability",
       desc: "Complete chain of custody with QR code verification at every handoff point.",
       icon: <QrIcon />,
       bg: "bento-amber",
-      image: "/screenshots/platform-18.png",
+      image: "/screenshots/platform-18.webp",
     },
     {
       title: "Compliance Reports",
       desc: "Auto-generate Form-IV, monthly summaries, and annual reports. Always audit-ready.",
       icon: <ReportIcon />,
       bg: "bento-sky",
-      image: "/screenshots/platform-22.png",
+      image: "/screenshots/platform-22.webp",
     },
     {
       title: "Route Planning",
       desc: "Optimize collection routes, assign staff, and manage daily operations in one workflow.",
       icon: <RouteIcon />,
       bg: "bento-rose",
-      image: "/screenshots/platform-21.png",
+      image: "/screenshots/platform-21.webp",
     },
   ];
 
@@ -483,7 +483,7 @@ function AndroidAppSection() {
               {/* Main phone */}
               <div className="relative z-10">
                 <Image
-                  src="/screenshots/app-2.png"
+                  src="/screenshots/app-2.webp"
                   alt="SmartCBWTF Android App - Home Dashboard"
                   width={280}
                   height={560}
@@ -494,7 +494,7 @@ function AndroidAppSection() {
               {/* Secondary phone (behind, offset) */}
               <div className="absolute -right-16 top-12 -z-10 opacity-80">
                 <Image
-                  src="/screenshots/app-3.png"
+                  src="/screenshots/app-3.webp"
                   alt="SmartCBWTF Android App - Scan & Weigh"
                   width={240}
                   height={480}
@@ -597,7 +597,7 @@ function PortalsSection() {
           >
             <div className="screenshot-frame">
               <Image
-                src="/screenshots/platform-3.png"
+                src="/screenshots/platform-3.webp"
                 alt="SmartCBWTF Admin Dashboard"
                 width={600}
                 height={400}

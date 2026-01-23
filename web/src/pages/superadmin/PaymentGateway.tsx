@@ -117,7 +117,7 @@ export default function PaymentGateway() {
 
       <Grid container spacing={3}>
         {gateways.map((gateway, index) => (
-          <Grid key={gateway.name} size={{ xs: 12, lg: 6 }}>
+          <Grid item key={gateway.name} xs={12} lg={6}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 {/* Header */}

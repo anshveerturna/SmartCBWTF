@@ -150,7 +150,7 @@ const Analytics = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
-            <Grid size={{ xs: 12, sm: 4, md: 3 }}>
+            <Grid item xs={12} sm={4} md={3}>
               <FormControl fullWidth size="small">
                 <InputLabel>Time Range</InputLabel>
                 <Select
@@ -166,7 +166,7 @@ const Analytics = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid size={{ xs: 12, sm: 4, md: 3 }}>
+            <Grid item xs={12} sm={4} md={3}>
               <FormControl fullWidth size="small">
                 <InputLabel>HCF Filter</InputLabel>
                 <Select
@@ -183,7 +183,7 @@ const Analytics = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid size={{ xs: 12, sm: 4, md: 6 }}>
+            <Grid item xs={12} sm={4} md={6}>
               <Typography variant="body2" color="text.secondary">
                 Period: {totalWaste?.periodLabel || `${dateRange.from} to ${dateRange.to}`}
               </Typography>
@@ -211,7 +211,7 @@ const Analytics = () => {
         <>
           <Grid container spacing={3} sx={{ mb: 3 }}>
             {/* Total Waste Card */}
-            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <Grid item xs={12} sm={6} md={4}>
               <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
                 <CardContent>
                   <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
@@ -228,7 +228,7 @@ const Analytics = () => {
             </Grid>
 
             {/* Active HCFs Card */}
-            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <Grid item xs={12} sm={6} md={4}>
               <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' }}>
                 <CardContent>
                   <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
@@ -245,7 +245,7 @@ const Analytics = () => {
             </Grid>
 
             {/* Categories Tracked Card */}
-            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <Grid item xs={12} sm={6} md={4}>
               <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
                 <CardContent>
                   <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
@@ -265,7 +265,7 @@ const Analytics = () => {
           {/* Charts Row */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
             {/* Pie Chart */}
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <Card sx={{ height: 400 }}>
                 <CardContent sx={{ height: '100%' }}>
                   <Typography variant="h6" sx={{ mb: 2 }}>
@@ -301,7 +301,7 @@ const Analytics = () => {
             </Grid>
 
             {/* Bar Chart */}
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <Card sx={{ height: 400 }}>
                 <CardContent sx={{ height: '100%' }}>
                   <Typography variant="h6" sx={{ mb: 2 }}>

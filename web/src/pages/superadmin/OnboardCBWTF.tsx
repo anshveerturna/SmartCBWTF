@@ -122,7 +122,7 @@ export default function OnboardCBWTF() {
       case 0: // Basic Info
         return (
           <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid item xs={12} md={4}>
               <TextField
                 label="CBWTF Code"
                 value={formData.code}
@@ -133,7 +133,7 @@ export default function OnboardCBWTF() {
                 required
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 8 }}>
+            <Grid item xs={12} md={8}>
               <TextField
                 label="CBWTF Name"
                 value={formData.name}
@@ -144,7 +144,7 @@ export default function OnboardCBWTF() {
                 required
               />
             </Grid>
-            <Grid size={12}>
+            <Grid item xs={12}>
               <TextField
                 label="Address"
                 value={formData.address}
@@ -163,7 +163,7 @@ export default function OnboardCBWTF() {
       case 1: // Contact
         return (
           <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <TextField
                 label="Contact Email"
                 type="email"
@@ -175,7 +175,7 @@ export default function OnboardCBWTF() {
                 required
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <TextField
                 label="Contact Phone"
                 value={formData.contactPhone}
@@ -190,7 +190,7 @@ export default function OnboardCBWTF() {
       case 2: // Location
         return (
           <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid item xs={12} md={4}>
               <TextField
                 label="GPS Latitude"
                 type="number"
@@ -200,7 +200,7 @@ export default function OnboardCBWTF() {
                 inputProps={{ step: 0.000001 }}
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid item xs={12} md={4}>
               <TextField
                 label="GPS Longitude"
                 type="number"
@@ -210,7 +210,7 @@ export default function OnboardCBWTF() {
                 inputProps={{ step: 0.000001 }}
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid item xs={12} md={4}>
               <TextField
                 label="Geofence Radius"
                 type="number"
@@ -228,7 +228,7 @@ export default function OnboardCBWTF() {
       case 3: // Subscription
         return (
           <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <FormControl fullWidth>
                 <InputLabel>Subscription Plan</InputLabel>
                 <Select
@@ -243,7 +243,7 @@ export default function OnboardCBWTF() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <TextField
                 label="Trial Days"
                 type="number"
@@ -253,10 +253,10 @@ export default function OnboardCBWTF() {
                 helperText="Set to 0 for immediate activation"
               />
             </Grid>
-            <Grid size={12}>
+            <Grid item xs={12}>
               <Divider sx={{ my: 2 }}>Initial CBWTF Admin User</Divider>
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <TextField
                 label="Admin Email"
                 type="email"
@@ -268,7 +268,7 @@ export default function OnboardCBWTF() {
                 required
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <TextField
                 label="Admin Name"
                 value={formData.adminName}

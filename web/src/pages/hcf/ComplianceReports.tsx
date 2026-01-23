@@ -221,7 +221,7 @@ export default function ComplianceReports() {
       {tabIndex === 0 && (
         <Grid container spacing={3}>
           {/* Controls */}
-          <Grid size={{ xs: 12 }}>
+          <Grid item xs={12}>
             <Card sx={{ p: 2 }}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DatePicker
@@ -236,13 +236,13 @@ export default function ComplianceReports() {
           </Grid>
 
           {loadingDaily ? (
-            <Grid size={{ xs: 12 }} sx={{ textAlign: 'center', py: 5 }}>
+            <Grid item xs={12} sx={{ textAlign: 'center', py: 5 }}>
               <CircularProgress />
             </Grid>
           ) : dailyData ? (
             <>
               {/* Summary Cards */}
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid item xs={12} md={4}>
                 <Card sx={{ height: '100%', bgcolor: 'primary.light', color: 'primary.contrastText' }}>
                   <CardContent>
                     <Typography variant="overline" sx={{ opacity: 0.8 }}>Total Waste Collected</Typography>
@@ -252,7 +252,7 @@ export default function ComplianceReports() {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid item xs={12} md={4}>
                 <Card sx={{ height: '100%', bgcolor: 'secondary.light', color: 'secondary.contrastText' }}>
                   <CardContent>
                     <Typography variant="overline" sx={{ opacity: 0.8 }}>QR Labels Generated</Typography>
@@ -260,7 +260,7 @@ export default function ComplianceReports() {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid item xs={12} md={4}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Typography variant="subtitle2" gutterBottom>Category Breakdown</Typography>
@@ -278,7 +278,7 @@ export default function ComplianceReports() {
               </Grid>
 
               {/* Pickup History Table */}
-              <Grid size={{ xs: 12 }}>
+              <Grid item xs={12}>
                 <Card>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>Pickup Timeline</Typography>
@@ -335,7 +335,7 @@ export default function ComplianceReports() {
                 </Typography>
 
                 <Grid container spacing={2} alignItems="center">
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid item xs={12} md={3}>
                     <FormControl fullWidth size="small">
                         <InputLabel>Year</InputLabel>
                         <Select
@@ -349,7 +349,7 @@ export default function ComplianceReports() {
                         </Select>
                     </FormControl>
                     </Grid>
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid item xs={12} md={3}>
                     <FormControl fullWidth size="small">
                         <InputLabel>Month</InputLabel>
                         <Select
@@ -366,7 +366,7 @@ export default function ComplianceReports() {
                     </FormControl>
                     </Grid>
                     
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid item xs={12} md={6}>
                          {/* Dynamic Action Button/Status */}
                          {renderAccessControl()}
                     </Grid>

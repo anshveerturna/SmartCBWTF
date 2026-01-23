@@ -42,7 +42,7 @@ export default function SecurityPage() {
               className="flex justify-center"
             >
               <Image
-                src="/security-hero.png"
+                src="/security-hero.webp"
                 alt="Security illustration"
                 width={400}
                 height={400}
@@ -68,7 +68,7 @@ export default function SecurityPage() {
                 icon={
                   <div className="relative w-8 h-8">
                     <Image 
-                      src="/aws-logo.png" 
+                      src="/aws-logo.webp" 
                       alt="AWS Logo" 
                       fill
                       className="object-contain"
