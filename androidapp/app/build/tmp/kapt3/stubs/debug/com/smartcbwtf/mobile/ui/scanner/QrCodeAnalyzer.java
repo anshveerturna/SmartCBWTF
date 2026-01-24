@@ -86,7 +86,8 @@ public final class QrCodeAnalyzer implements androidx.camera.core.ImageAnalysis.
     
     /**
      * Validate QR code format
-     * Expected format: "TYPE|HCF_ID|CATEGORY|SERIAL" e.g., "GUT|HCF123|YELLOW|00001234"
+     * Accepts any non-empty QR code. The backend will validate the actual format.
+     * Previously expected: "TYPE|HCF_ID|CATEGORY|SERIAL" e.g., "GUT|HCF123|YELLOW|00001234"
      */
     private final boolean isValidQrFormat(java.lang.String qr) {
         return false;

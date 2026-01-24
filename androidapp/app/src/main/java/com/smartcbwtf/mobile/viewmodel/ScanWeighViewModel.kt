@@ -581,8 +581,9 @@ class ScanWeighViewModel @Inject constructor(
     }
 
     private fun isValidQr(qr: String): Boolean {
-        val parts = qr.split("|")
-        return parts.size >= 4 && parts.all { it.isNotBlank() }
+        // Accept JSON QR payloads from the backend (contains qrId field)
+        // Also accept legacy pipe-delimited format for backward compatibility
+        return qr.isNotBlank() && (qr.contains("qrId") || qr.split("|").size >= 4)
     }
 }
 

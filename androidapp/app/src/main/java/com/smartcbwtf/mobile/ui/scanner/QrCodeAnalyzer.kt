@@ -133,8 +133,10 @@ class QrCodeAnalyzer(
     }
 
     private fun findValidBarcode(barcodes: List<Barcode>, imageProxy: ImageProxy): String? {
+        Log.d(TAG, "ML Kit found ${barcodes.size} barcode(s)")
         for (barcode in barcodes) {
             val rawValue = barcode.rawValue ?: continue
+            Log.d(TAG, "Checking barcode: $rawValue")
             
             // Check if barcode is within viewfinder bounds (if set)
             val boundingBox = barcode.boundingBox
@@ -150,13 +152,17 @@ class QrCodeAnalyzer(
                 val centerX = barcodeRect.centerX()
                 val centerY = barcodeRect.centerY()
                 if (!viewfinderRect!!.contains(centerX, centerY)) {
+                    Log.d(TAG, "Barcode outside viewfinder, skipping")
                     continue // Skip barcodes outside viewfinder
                 }
             }
 
-            // Validate QR format (expecting pipe-delimited format)
+            // Validate QR format (accepting any non-empty QR code)
             if (isValidQrFormat(rawValue)) {
+                Log.d(TAG, "Valid QR code detected: $rawValue")
                 return rawValue
+            } else {
+                Log.w(TAG, "QR format validation failed for: $rawValue")
             }
         }
         return null
@@ -210,11 +216,12 @@ class QrCodeAnalyzer(
 
     /**
      * Validate QR code format
-     * Expected format: "TYPE|HCF_ID|CATEGORY|SERIAL" e.g., "GUT|HCF123|YELLOW|00001234"
+     * Accepts any non-empty QR code. The backend will validate the actual format.
+     * Previously expected: "TYPE|HCF_ID|CATEGORY|SERIAL" e.g., "GUT|HCF123|YELLOW|00001234"
      */
     private fun isValidQrFormat(qr: String): Boolean {
-        val parts = qr.split("|")
-        return parts.size >= 4 && parts.all { it.isNotBlank() }
+        // Accept any non-empty QR code - let the backend validate the format
+        return qr.isNotBlank()
     }
 
     /**
