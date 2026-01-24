@@ -172,6 +172,10 @@
         "source": "com.smartcbwtf.mobile.app-main-69:/drawable/ic_error.xml"
     },
     {
+        "merged": "com.smartcbwtf.mobile.app-debug-67:/drawable_ic_delete.xml.flat",
+        "source": "com.smartcbwtf.mobile.app-main-69:/drawable/ic_delete.xml"
+    },
+    {
         "merged": "com.smartcbwtf.mobile.app-debug-67:/drawable_ic_hospital.xml.flat",
         "source": "com.smartcbwtf.mobile.app-main-69:/drawable/ic_hospital.xml"
     },
@@ -266,6 +270,10 @@
     {
         "merged": "com.smartcbwtf.mobile.app-debug-67:/drawable_ic_verify_cbtwf.xml.flat",
         "source": "com.smartcbwtf.mobile.app-main-69:/drawable/ic_verify_cbtwf.xml"
+    },
+    {
+        "merged": "com.smartcbwtf.mobile.app-debug-67:/layout_item_bag_entry.xml.flat",
+        "source": "com.smartcbwtf.mobile.app-main-69:/layout/item_bag_entry.xml"
     },
     {
         "merged": "com.smartcbwtf.mobile.app-debug-67:/drawable_ic_check_circle_filled.xml.flat",

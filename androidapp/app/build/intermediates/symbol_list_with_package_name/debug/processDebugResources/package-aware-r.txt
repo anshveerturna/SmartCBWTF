@@ -3219,6 +3219,7 @@ drawable ic_chevron_right
 drawable ic_clear_black_24
 drawable ic_clock
 drawable ic_clock_black_24dp
+drawable ic_delete
 drawable ic_email
 drawable ic_error
 drawable ic_error_24
@@ -3478,6 +3479,7 @@ id btnCaptureGps
 id btnConnectScale
 id btnContinue
 id btnDecline
+id btnDeleteBag
 id btnForgotPassword
 id btnGrantPermissions
 id btnLogin
@@ -3888,6 +3890,7 @@ id ratio
 id rbOwned
 id rbRented
 id rectangles
+id recyclerBags
 id recyclerWaypoints
 id report_drawn
 id requirementsText
@@ -4079,6 +4082,9 @@ id transition_transform
 id triangle
 id tvAppSubtitle
 id tvAppTitle
+id tvBagIndex
+id tvBagQr
+id tvBagWeight
 id tvBluetoothStatus
 id tvBuild
 id tvCategory
@@ -4310,6 +4316,7 @@ layout fragment_splash
 layout fragment_start_pickup
 layout ime_base_split_test_activity
 layout ime_secondary_split_test_activity
+layout item_bag_entry
 layout item_hcf_selection
 layout item_profile_field
 layout item_waypoint

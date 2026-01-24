@@ -80,6 +80,7 @@ drawable ic_check_circle
 drawable ic_check_circle_filled
 drawable ic_chevron_right
 drawable ic_clock
+drawable ic_delete
 drawable ic_email
 drawable ic_error
 drawable ic_error_24
@@ -152,6 +153,7 @@ id btnCaptureGps
 id btnConnectScale
 id btnContinue
 id btnDecline
+id btnDeleteBag
 id btnForgotPassword
 id btnGrantPermissions
 id btnLogin
@@ -284,6 +286,7 @@ id qrScannerFragment
 id radioHcfSelect
 id rbOwned
 id rbRented
+id recyclerBags
 id recyclerWaypoints
 id requirementsText
 id rgOwnershipType
@@ -352,6 +355,9 @@ id toolbar
 id topBar
 id tvAppSubtitle
 id tvAppTitle
+id tvBagIndex
+id tvBagQr
+id tvBagWeight
 id tvBluetoothStatus
 id tvBuild
 id tvCategory
@@ -412,6 +418,7 @@ layout fragment_scan_weigh
 layout fragment_settings
 layout fragment_splash
 layout fragment_start_pickup
+layout item_bag_entry
 layout item_hcf_selection
 layout item_profile_field
 layout item_waypoint

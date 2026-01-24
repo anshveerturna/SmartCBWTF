@@ -36,6 +36,7 @@ import com.smartcbwtf.mobile.viewmodel.GeofenceState
 import com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel
 import com.smartcbwtf.mobile.viewmodel.SubmissionState
 import com.smartcbwtf.mobile.viewmodel.LocationState
+import com.smartcbwtf.mobile.ui.adapter.BagAdapter
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -63,6 +64,7 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
     private var connectingDialog: AlertDialog? = null
     private var geofenceBlockingDialog: AlertDialog? = null
     private var connectionTimeoutJob: Job? = null
+    private lateinit var bagAdapter: BagAdapter
     
     companion object {
         private const val CONNECTION_TIMEOUT_MS = 30_000L // 30 seconds
@@ -153,6 +155,16 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         // Update submit button text based on mode
         binding.btnSubmitAll.text = if (isVerification) "Verify" else "Submit"
 
+        // Setup RecyclerView for bag list with delete functionality
+        bagAdapter = BagAdapter { index ->
+            viewModel.removeBag(index)
+            Toast.makeText(requireContext(), "Bag removed. You can rescan this QR.", Toast.LENGTH_SHORT).show()
+        }
+        binding.recyclerBags.apply {
+            layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
+            adapter = bagAdapter
+        }
+
         // Initial session summary
         updateSessionSummary(0, 0.0)
     }
@@ -205,7 +217,14 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
     }
 
     private fun launchQrScanner() {
-        // Navigate to the new premium QR scanner fragment
+        // CRITICAL: Capture weight BEFORE opening scanner
+        // Camera can cause Bluetooth to disconnect on some devices
+        val capturedWeight = viewModel.captureWeightForScanner()
+        if (capturedWeight != null && capturedWeight > 0) {
+            Toast.makeText(requireContext(), "Weight captured: %.2f kg".format(capturedWeight), Toast.LENGTH_SHORT).show()
+        }
+        
+        // Navigate to the QR scanner fragment
         findNavController().navigate(R.id.action_scanWeighFragment_to_qrScannerFragment)
     }
 
@@ -307,6 +326,10 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
                 
                 // Update back press callback based on unsaved bags
                 backPressedCallback.isEnabled = session.hasUnsavedBags
+                
+                // Update bag list RecyclerView
+                bagAdapter.submitList(session.bags.toList())
+                binding.recyclerBags.isVisible = session.bags.isNotEmpty()
             }
         }
 

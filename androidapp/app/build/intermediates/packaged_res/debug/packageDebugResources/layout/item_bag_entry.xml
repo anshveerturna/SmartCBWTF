@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="8dp"
+    android:gravity="center_vertical"
+    android:background="?attr/selectableItemBackground">
+
+    <!-- Bag Index -->
+    <TextView
+        android:id="@+id/tvBagIndex"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:gravity="center"
+        android:background="@drawable/bg_status_badge_neutral"
+        android:text="1"
+        android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+        android:textColor="#6B7280"
+        android:textStyle="bold" />
+
+    <!-- Bag Info -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginStart="12dp">
+
+        <TextView
+            android:id="@+id/tvBagWeight"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="2.5 kg"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+            android:textColor="#111827"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvBagQr"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="QR: ..."
+            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+            android:textColor="#9CA3AF"
+            android:maxLines="1"
+            android:ellipsize="middle" />
+    </LinearLayout>
+
+    <!-- Delete Button -->
+    <ImageButton
+        android:id="@+id/btnDeleteBag"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Delete Bag"
+        android:src="@drawable/ic_delete"
+        app:tint="#EF4444" />
+
+</LinearLayout>

@@ -98,6 +98,24 @@ class ScanWeighViewModel @Inject constructor(
     private val _verificationResult = MutableStateFlow<VerificationResult?>(null)
     val verificationResult: StateFlow<VerificationResult?> = _verificationResult.asStateFlow()
 
+    // Weight captured BEFORE opening scanner (to avoid BLE/Camera conflict)
+    private var capturedWeightForScan: Double? = null
+
+    /**
+     * Capture current weight before opening QR scanner.
+     * Call this right before navigating to scanner fragment.
+     */
+    fun captureWeightForScanner(): Double? {
+        capturedWeightForScan = weight.value
+        return capturedWeightForScan
+    }
+
+    /**
+     * Get the weight that was captured before scanning.
+     */
+    fun getCapturedWeight(): Double? = capturedWeightForScan
+
+
     // GPS configuration
     companion object {
         const val GPS_TIMEOUT_MS = 8000L
@@ -197,13 +215,22 @@ class ScanWeighViewModel @Inject constructor(
     }
 
     fun onQrScanned(qr: String) {
-        if (isValidQr(qr)) {
-            _qrError.value = null
-            _scannedQr.value = qr
-        } else {
+        if (!isValidQr(qr)) {
             _qrError.value = "Invalid QR format"
             _scannedQr.value = null
+            return
         }
+        
+        // Check if QR already exists in current session
+        val existingBag = _sessionState.value.bags.find { it.qrCode == qr }
+        if (existingBag != null) {
+            _qrError.value = "QR code already scanned. Please delete the existing bag to rescan."
+            _scannedQr.value = null
+            return
+        }
+        
+        _qrError.value = null
+        _scannedQr.value = qr
     }
 
     /**
@@ -214,16 +241,79 @@ class ScanWeighViewModel @Inject constructor(
         val w = weight.value
         val loc = _location.value as? LocationState.Ready
 
-        if (qr == null || w == null || w <= 0.0 || loc == null) {
-            _error.value = "Cannot add bag: missing QR, weight, or GPS"
+        // Require QR and weight, but GPS is optional
+        if (qr == null) {
+            _error.value = "Cannot add bag: QR code not scanned"
             return false
         }
+        if (w == null || w <= 0.0) {
+            _error.value = "Cannot add bag: weight not captured (connect scale and place bag)"
+            return false
+        }
+
+        // Use GPS if available, otherwise use default coordinates
+        val gpsLat = loc?.lat ?: 0.0
+        val gpsLon = loc?.lon ?: 0.0
 
         val entry = BagEntry(
             qrCode = qr,
             weightKg = w,
-            gpsLat = loc.lat,
-            gpsLon = loc.lon,
+            gpsLat = gpsLat,
+            gpsLon = gpsLon,
+            timestamp = System.currentTimeMillis()
+        )
+
+        val currentState = _sessionState.value
+        val newBags = currentState.bags + entry
+        _sessionState.value = PickupSessionState(
+            bags = newBags,
+            totalBags = newBags.size,
+            totalWeight = newBags.sumOf { it.weightKg }
+        )
+
+        // Clear for next scan
+        _scannedQr.value = null
+        _qrError.value = null
+
+        return true
+    }
+
+    /**
+     * Add bag with pre-captured weight.
+     * Used when weight is captured at scan time before scale might disconnect.
+     */
+    fun addBagWithWeight(qrCode: String, capturedWeight: Double?): Boolean {
+        val loc = _location.value as? LocationState.Ready
+
+        // Validate QR
+        if (!isValidQr(qrCode)) {
+            _error.value = "Cannot add bag: Invalid QR format"
+            return false
+        }
+        
+        // Check for duplicate
+        val existingBag = _sessionState.value.bags.find { it.qrCode == qrCode }
+        if (existingBag != null) {
+            _qrError.value = "QR code already scanned. Please delete the existing bag to rescan."
+            return false
+        }
+
+        // Require weight
+        if (capturedWeight == null || capturedWeight <= 0.0) {
+            _error.value = "Cannot add bag: weight not captured (was $capturedWeight)"
+            _scannedQr.value = qrCode  // Keep QR saved so user can see it
+            return false
+        }
+
+        // Use GPS if available, otherwise use default coordinates
+        val gpsLat = loc?.lat ?: 0.0
+        val gpsLon = loc?.lon ?: 0.0
+
+        val entry = BagEntry(
+            qrCode = qrCode,
+            weightKg = capturedWeight,
+            gpsLat = gpsLat,
+            gpsLon = gpsLon,
             timestamp = System.currentTimeMillis()
         )
 
@@ -287,6 +377,22 @@ class ScanWeighViewModel @Inject constructor(
         _sessionState.value = PickupSessionState()
         _scannedQr.value = null
         _qrError.value = null
+    }
+
+    /**
+     * Remove a bag from the session at the given index.
+     * This allows rescanning of that QR code.
+     */
+    fun removeBag(index: Int) {
+        val currentBags = _sessionState.value.bags.toMutableList()
+        if (index >= 0 && index < currentBags.size) {
+            currentBags.removeAt(index)
+            _sessionState.value = PickupSessionState(
+                bags = currentBags,
+                totalBags = currentBags.size,
+                totalWeight = currentBags.sumOf { it.weightKg }
+            )
+        }
     }
 
     fun submit(hcfId: String, eventType: String) {

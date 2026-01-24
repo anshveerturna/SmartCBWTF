@@ -48,6 +48,10 @@
         "source": "com.smartcbwtf.mobile.app-main-69:/layout/fragment_settings.xml"
     },
     {
+        "merged": "com.smartcbwtf.mobile.app-mergeDebugResources-66:/layout/item_bag_entry.xml",
+        "source": "com.smartcbwtf.mobile.app-main-69:/layout/item_bag_entry.xml"
+    },
+    {
         "merged": "com.smartcbwtf.mobile.app-mergeDebugResources-66:/layout/fragment_start_pickup.xml",
         "source": "com.smartcbwtf.mobile.app-main-69:/layout/fragment_start_pickup.xml"
     },

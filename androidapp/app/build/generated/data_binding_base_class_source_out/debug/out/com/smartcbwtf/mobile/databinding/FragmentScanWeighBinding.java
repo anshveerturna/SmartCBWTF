@@ -10,6 +10,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.widget.NestedScrollView;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
 import com.google.android.material.button.MaterialButton;
@@ -78,6 +79,9 @@ public final class FragmentScanWeighBinding implements ViewBinding {
   public final LinearLayout qrScannedInfo;
 
   @NonNull
+  public final RecyclerView recyclerBags;
+
+  @NonNull
   public final LinearLayout sessionActionsLayout;
 
   @NonNull
@@ -129,13 +133,13 @@ public final class FragmentScanWeighBinding implements ViewBinding {
       @NonNull LinearLayout gpsStatusBadge, @NonNull View gpsStatusDot,
       @NonNull LinearLayout headerSection, @NonNull ProgressBar progressSubmit,
       @NonNull LinearLayout qrScanPrompt, @NonNull LinearLayout qrScannedInfo,
-      @NonNull LinearLayout sessionActionsLayout, @NonNull TextView tvBluetoothStatus,
-      @NonNull TextView tvGpsStatus, @NonNull TextView tvLocationCoords,
-      @NonNull TextView tvModeSubtitle, @NonNull TextView tvModeTitle,
-      @NonNull TextView tvPendingSync, @NonNull TextView tvQrCode, @NonNull TextView tvQrCodeError,
-      @NonNull TextView tvQrTimestamp, @NonNull TextView tvScaleStatus,
-      @NonNull TextView tvSessionBagCount, @NonNull TextView tvSessionTotalWeight,
-      @NonNull TextView tvWeight) {
+      @NonNull RecyclerView recyclerBags, @NonNull LinearLayout sessionActionsLayout,
+      @NonNull TextView tvBluetoothStatus, @NonNull TextView tvGpsStatus,
+      @NonNull TextView tvLocationCoords, @NonNull TextView tvModeSubtitle,
+      @NonNull TextView tvModeTitle, @NonNull TextView tvPendingSync, @NonNull TextView tvQrCode,
+      @NonNull TextView tvQrCodeError, @NonNull TextView tvQrTimestamp,
+      @NonNull TextView tvScaleStatus, @NonNull TextView tvSessionBagCount,
+      @NonNull TextView tvSessionTotalWeight, @NonNull TextView tvWeight) {
     this.rootView = rootView;
     this.bluetoothStatusBadge = bluetoothStatusBadge;
     this.bluetoothStatusDot = bluetoothStatusDot;
@@ -155,6 +159,7 @@ public final class FragmentScanWeighBinding implements ViewBinding {
     this.progressSubmit = progressSubmit;
     this.qrScanPrompt = qrScanPrompt;
     this.qrScannedInfo = qrScannedInfo;
+    this.recyclerBags = recyclerBags;
     this.sessionActionsLayout = sessionActionsLayout;
     this.tvBluetoothStatus = tvBluetoothStatus;
     this.tvGpsStatus = tvGpsStatus;
@@ -306,6 +311,12 @@ public final class FragmentScanWeighBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.recyclerBags;
+      RecyclerView recyclerBags = ViewBindings.findChildViewById(rootView, id);
+      if (recyclerBags == null) {
+        break missingId;
+      }
+
       id = R.id.sessionActionsLayout;
       LinearLayout sessionActionsLayout = ViewBindings.findChildViewById(rootView, id);
       if (sessionActionsLayout == null) {
@@ -393,7 +404,7 @@ public final class FragmentScanWeighBinding implements ViewBinding {
       return new FragmentScanWeighBinding((NestedScrollView) rootView, bluetoothStatusBadge,
           bluetoothStatusDot, btnAddBag, btnConnectScale, btnScanAgain, btnScanQr, btnSubmit,
           btnSubmitAll, cardQrScan, cardSessionSummary, cardWeight, footerStatus, gpsStatusBadge,
-          gpsStatusDot, headerSection, progressSubmit, qrScanPrompt, qrScannedInfo,
+          gpsStatusDot, headerSection, progressSubmit, qrScanPrompt, qrScannedInfo, recyclerBags,
           sessionActionsLayout, tvBluetoothStatus, tvGpsStatus, tvLocationCoords, tvModeSubtitle,
           tvModeTitle, tvPendingSync, tvQrCode, tvQrCodeError, tvQrTimestamp, tvScaleStatus,
           tvSessionBagCount, tvSessionTotalWeight, tvWeight);

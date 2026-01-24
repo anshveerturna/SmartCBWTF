@@ -331,6 +331,11 @@ class QrScannerFragment : Fragment(R.layout.fragment_qr_scanner) {
 
         scannedQrCode = qrCode
         scanTimestamp = System.currentTimeMillis()
+        
+        // Use the weight that was captured BEFORE opening scanner
+        // This avoids the BLE/Camera conflict issue
+        val capturedWeight = viewModel.getCapturedWeight()
+        Log.d(TAG, "QR scanned. Using pre-captured weight: $capturedWeight kg")
 
         // Pause scanning
         qrCodeAnalyzer?.setPaused(true)
@@ -347,16 +352,22 @@ class QrScannerFragment : Fragment(R.layout.fragment_qr_scanner) {
         // Update ViewModel with scanned QR
         viewModel.onQrScanned(qrCode)
 
-        // Auto-add bag and return to previous screen after brief delay
-        // This removes the need for manual "Add Bag" button press
+        // Return to ScanWeigh fragment after brief delay
         viewLifecycleOwner.lifecycleScope.launch {
-            delay(500L) // Brief delay to show success animation
-            if (viewModel.addBag()) {
-                Toast.makeText(requireContext(), "Bag added to session", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(requireContext(), "Bag scanned - connect scale for weight", Toast.LENGTH_SHORT).show()
-            }
+            delay(800L) // Brief delay to show success animation
+            
+            // Try to add bag with the pre-captured weight
+            val added = viewModel.addBagWithWeight(qrCode, capturedWeight)
+            
+            // Always return to ScanWeigh
             findNavController().popBackStack()
+            
+            // Show appropriate message
+            if (added) {
+                Toast.makeText(requireContext(), "Bag added: ${capturedWeight?.let { "%.2f".format(it) } ?: "0"} kg", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "Failed: Place bag on scale before scanning", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
