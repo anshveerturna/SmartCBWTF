@@ -131,6 +131,26 @@ export interface HcfOption {
   name: string;
 }
 
+export interface ProcessedBagEntry {
+  id: string;
+  category: string;
+  qrCode: string;
+  weightKg: number;
+  timestamp: string;
+  staffName: string;
+  hcfName: string;
+  eventType: string;
+  anomalyState: string | null;
+}
+
+export interface ProcessedBagsResponse {
+  bags: ProcessedBagEntry[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 // ============= Analytics Page API Functions =============
 
 export const getAnalyticsTotalWaste = async (
@@ -157,6 +177,19 @@ export const getAnalyticsWasteByCategory = async (
 
 export const getAnalyticsActiveHcfs = async (): Promise<HcfOption[]> => {
   const response = await apiClient.get('/api/analytics/page/hcfs/active');
+  return response.data;
+};
+
+export const getAnalyticsProcessedBags = async (
+  from: string,
+  to: string,
+  hcfId?: string,
+  page: number = 0,
+  pageSize: number = 20
+): Promise<ProcessedBagsResponse> => {
+  const params = new URLSearchParams({ from, to, page: page.toString(), pageSize: pageSize.toString() });
+  if (hcfId) params.append('hcfId', hcfId);
+  const response = await apiClient.get(`/api/analytics/page/processed-bags?${params}`);
   return response.data;
 };
 

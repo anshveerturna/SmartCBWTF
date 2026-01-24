@@ -209,4 +209,58 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 			@Param("hcfId") UUID hcfId,
 			@Param("fromInstant") Instant fromInstant,
 			@Param("toInstant") Instant toInstant);
+
+	/**
+	 * Fetch paginated processed bags list for facility within date range.
+	 * Only includes events from HCFs with ACTIVE agreements.
+	 */
+	@Query("""
+			SELECT e
+			FROM BagEvent e
+			JOIN FETCH e.bagLabel bl
+			JOIN FETCH e.hcf h
+			WHERE e.facility.id = :facilityId
+			AND e.eventTs >= :fromInstant
+			AND e.eventTs < :toInstant
+			AND EXISTS (
+				SELECT 1 FROM Agreement a
+				WHERE a.hcf.id = e.hcf.id
+				AND a.facility.id = :facilityId
+				AND a.status = 'ACTIVE'
+			)
+			ORDER BY e.eventTs DESC
+			""")
+	Page<BagEvent> findProcessedBagsForFacility(
+			@Param("facilityId") UUID facilityId,
+			@Param("fromInstant") Instant fromInstant,
+			@Param("toInstant") Instant toInstant,
+			Pageable pageable);
+
+	/**
+	 * Fetch paginated processed bags list for specific HCF within date range.
+	 * Verifies HCF has ACTIVE agreement with facility.
+	 */
+	@Query("""
+			SELECT e
+			FROM BagEvent e
+			JOIN FETCH e.bagLabel bl
+			JOIN FETCH e.hcf h
+			WHERE e.facility.id = :facilityId
+			AND e.hcf.id = :hcfId
+			AND e.eventTs >= :fromInstant
+			AND e.eventTs < :toInstant
+			AND EXISTS (
+				SELECT 1 FROM Agreement a
+				WHERE a.hcf.id = :hcfId
+				AND a.facility.id = :facilityId
+				AND a.status = 'ACTIVE'
+			)
+			ORDER BY e.eventTs DESC
+			""")
+	Page<BagEvent> findProcessedBagsForHcf(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("fromInstant") Instant fromInstant,
+			@Param("toInstant") Instant toInstant,
+			Pageable pageable);
 }

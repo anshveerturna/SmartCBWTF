@@ -20,6 +20,9 @@ import {
   TableRow,
   Paper,
   Chip,
+  TablePagination,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   PieChart,
@@ -38,11 +41,13 @@ import {
   getAnalyticsTotalWaste,
   getAnalyticsWasteByCategory,
   getAnalyticsActiveHcfs,
+  getAnalyticsProcessedBags,
 } from '../../api/cbwtf';
 import type {
   TotalWasteResponse,
   WasteByCategoryResponse,
   HcfOption,
+  ProcessedBagsResponse,
 } from '../../api/cbwtf';
 
 // Time range options
@@ -70,6 +75,9 @@ const formatDate = (date: Date): string => {
 const Analytics = () => {
   const [timeRange, setTimeRange] = useState(30);
   const [selectedHcf, setSelectedHcf] = useState<string>('');
+  const [activeTab, setActiveTab] = useState(0);
+  const [bagsPage, setBagsPage] = useState(0);
+  const [bagsPageSize, setBagsPageSize] = useState(20);
 
   // Calculate date range
   const dateRange = useMemo(() => {
@@ -114,6 +122,17 @@ const Analytics = () => {
   } = useQuery<WasteByCategoryResponse>({
     queryKey: ['analytics-category', dateRange.from, dateRange.to, selectedHcf],
     queryFn: () => getAnalyticsWasteByCategory(dateRange.from, dateRange.to, selectedHcf || undefined),
+  });
+
+  // Fetch processed bags list
+  const {
+    data: processedBagsData,
+    isLoading: processedBagsLoading,
+    error: processedBagsError,
+  } = useQuery<ProcessedBagsResponse>({
+    queryKey: ['analytics-processed-bags', dateRange.from, dateRange.to, selectedHcf, bagsPage, bagsPageSize],
+    queryFn: () => getAnalyticsProcessedBags(dateRange.from, dateRange.to, selectedHcf || undefined, bagsPage, bagsPageSize),
+    enabled: activeTab === 1, // Only fetch when bags tab is active
   });
 
   const isLoading = hcfLoading || totalWasteLoading || categoryLoading;
@@ -331,83 +350,225 @@ const Analytics = () => {
             </Grid>
           </Grid>
 
-          {/* Category Breakdown Table */}
+          {/* Tabs for Tables */}
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Category Breakdown Details
-              </Typography>
-              <TableContainer component={Paper} variant="outlined">
-                <Table>
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: 'grey.100' }}>
-                      <TableCell>Category</TableCell>
-                      <TableCell align="right">Weight (KG)</TableCell>
-                      <TableCell align="right">Contribution (%)</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {categoryData?.categories?.map((cat) => (
-                      <TableRow key={cat.category} hover>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Box
-                              sx={{
-                                width: 12,
-                                height: 12,
-                                borderRadius: '50%',
-                                bgcolor: CATEGORY_COLORS[cat.category] || '#9E9E9E',
-                              }}
-                            />
-                            <Chip
-                              label={cat.category}
-                              size="small"
-                              sx={{
-                                bgcolor: CATEGORY_COLORS[cat.category] || '#9E9E9E',
-                                color: cat.category === 'WHITE' ? '#000' : '#fff',
-                              }}
-                            />
-                          </Box>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography fontWeight={500}>
-                            {Number(cat.weightKg).toFixed(2)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography fontWeight={500}>
-                            {Number(cat.percentContribution).toFixed(2)}%
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {(!categoryData?.categories || categoryData.categories.length === 0) && (
-                      <TableRow>
-                        <TableCell colSpan={3} align="center">
-                          <Typography color="text.secondary" sx={{ py: 2 }}>
-                            No data available for the selected period
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    {categoryData?.categories && categoryData.categories.length > 0 && (
-                      <TableRow sx={{ bgcolor: 'grey.50' }}>
-                        <TableCell>
-                          <Typography fontWeight={700}>TOTAL</Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography fontWeight={700}>
-                            {Number(categoryData.grandTotalKg).toFixed(2)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography fontWeight={700}>100.00%</Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <Tabs
+                value={activeTab}
+                onChange={(_, newValue) => {
+                  setActiveTab(newValue);
+                  if (newValue === 1) {
+                    setBagsPage(0); // Reset page when switching to bags tab
+                  }
+                }}
+                sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+              >
+                <Tab label="Category Breakdown" />
+                <Tab label="Bags Processed List" />
+              </Tabs>
+
+              {/* Category Breakdown Table */}
+              {activeTab === 0 && (
+                <>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Category Breakdown Details
+                  </Typography>
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table>
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: 'action.selected' }}>
+                          <TableCell>Category</TableCell>
+                          <TableCell align="right">Weight (KG)</TableCell>
+                          <TableCell align="right">Contribution (%)</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {categoryData?.categories?.map((cat) => (
+                          <TableRow key={cat.category} hover>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Box
+                                  sx={{
+                                    width: 12,
+                                    height: 12,
+                                    borderRadius: '50%',
+                                    bgcolor: CATEGORY_COLORS[cat.category] || '#9E9E9E',
+                                  }}
+                                />
+                                <Chip
+                                  label={cat.category}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: CATEGORY_COLORS[cat.category] || '#9E9E9E',
+                                    color: cat.category === 'WHITE' ? '#000' : '#fff',
+                                  }}
+                                />
+                              </Box>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography fontWeight={500}>
+                                {Number(cat.weightKg).toFixed(2)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography fontWeight={500}>
+                                {Number(cat.percentContribution).toFixed(2)}%
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {(!categoryData?.categories || categoryData.categories.length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={3} align="center">
+                              <Typography color="text.secondary" sx={{ py: 2 }}>
+                                No data available for the selected period
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {categoryData?.categories && categoryData.categories.length > 0 && (
+                          <TableRow sx={{ bgcolor: 'action.hover' }}>
+                            <TableCell>
+                              <Typography fontWeight={700}>TOTAL</Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography fontWeight={700}>
+                                {Number(categoryData.grandTotalKg).toFixed(2)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography fontWeight={700}>100.00%</Typography>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </>
+              )}
+
+              {/* Bags Processed List Table */}
+              {activeTab === 1 && (
+                <>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Bags Processed List
+                  </Typography>
+                  {processedBagsLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                      <CircularProgress />
+                    </Box>
+                  ) : processedBagsError ? (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                      Failed to load processed bags data. Please try again.
+                    </Alert>
+                  ) : (
+                    <>
+                      <TableContainer component={Paper} variant="outlined">
+                        <Table>
+                          <TableHead>
+                            <TableRow sx={{ bgcolor: 'grey.100' }}>
+                              <TableCell>Waste Category</TableCell>
+                              <TableCell>QR Code / Bag ID</TableCell>
+                              <TableCell align="right">Weight (KG)</TableCell>
+                              <TableCell>Timestamp</TableCell>
+                              <TableCell>Staff Name</TableCell>
+                              <TableCell>HCF Name</TableCell>
+                              <TableCell>Event Type</TableCell>
+                              <TableCell>Status</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {processedBagsData?.bags?.map((bag) => (
+                              <TableRow key={bag.id} hover>
+                                <TableCell>
+                                  <Chip
+                                    label={bag.category}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: CATEGORY_COLORS[bag.category] || '#9E9E9E',
+                                      color: bag.category === 'WHITE' ? '#000' : '#fff',
+                                    }}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                                    {bag.qrCode}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Typography fontWeight={500}>
+                                    {Number(bag.weightKg).toFixed(3)}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="body2">
+                                    {bag.timestamp}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="body2">
+                                    {bag.staffName}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {bag.hcfName}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Chip
+                                    label={bag.eventType === 'HCF_COLLECTION' ? 'Collection' : 'Verification'}
+                                    size="small"
+                                    color={bag.eventType === 'HCF_COLLECTION' ? 'primary' : 'success'}
+                                    variant="outlined"
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Chip
+                                    label={bag.anomalyState || 'OK'}
+                                    size="small"
+                                    color={
+                                      bag.anomalyState === 'OK' || !bag.anomalyState
+                                        ? 'success'
+                                        : bag.anomalyState === 'OUT_OF_GEOFENCE'
+                                        ? 'warning'
+                                        : 'error'
+                                    }
+                                    variant="filled"
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            {(!processedBagsData?.bags || processedBagsData.bags.length === 0) && (
+                              <TableRow>
+                                <TableCell colSpan={8} align="center">
+                                  <Typography color="text.secondary" sx={{ py: 2 }}>
+                                    No bags processed for the selected period
+                                  </Typography>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                      {processedBagsData && processedBagsData.totalCount > 0 && (
+                        <TablePagination
+                          component="div"
+                          count={processedBagsData.totalCount}
+                          page={bagsPage}
+                          onPageChange={(_, newPage) => setBagsPage(newPage)}
+                          rowsPerPage={bagsPageSize}
+                          onRowsPerPageChange={(e) => {
+                            setBagsPageSize(parseInt(e.target.value, 10));
+                            setBagsPage(0);
+                          }}
+                          rowsPerPageOptions={[10, 20, 50, 100]}
+                        />
+                      )}
+                    </>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         </>

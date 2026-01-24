@@ -206,6 +206,33 @@ public class AnalyticsController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Get paginated list of processed bags for the Analytics Page.
+     * Endpoint: GET /api/analytics/page/processed-bags
+     */
+    @GetMapping("/page/processed-bags")
+    @PreAuthorize("hasRole('CBWTF_ADMIN')")
+    public ResponseEntity<com.smartcbwtf.dto.AnalyticsPageDTO.ProcessedBagsResponse> getPageProcessedBags(
+            @RequestParam(name = "from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(name = "to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(name = "hcfId", required = false) UUID hcfId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "pageSize", defaultValue = "20") int pageSize) {
+
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            return ResponseEntity.status(403).build();
+        }
+
+        // Limit page size to prevent abuse
+        if (pageSize > 100) {
+            pageSize = 100;
+        }
+
+        var response = analyticsPageService.getProcessedBags(facilityId, from, to, hcfId, page, pageSize);
+        return ResponseEntity.ok(response);
+    }
+
     // Helper methods
     private DashboardMetricsDTO aggregateMetrics(List<DailyWasteSnapshot> snapshots) {
         if (snapshots.isEmpty()) {

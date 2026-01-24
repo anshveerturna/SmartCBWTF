@@ -43,4 +43,30 @@ public class AnalyticsPageDTO {
             UUID id,
             String name) {
     }
+
+    /**
+     * Individual processed bag entry for the bags list table.
+     */
+    public record ProcessedBagEntry(
+            UUID id,
+            String category,
+            String qrCode,
+            BigDecimal weightKg,
+            String timestamp,
+            String staffName,
+            String hcfName,
+            String eventType,
+            String anomalyState) {
+    }
+
+    /**
+     * Response for processed bags list endpoint.
+     */
+    public record ProcessedBagsResponse(
+            List<ProcessedBagEntry> bags,
+            long totalCount,
+            int page,
+            int pageSize,
+            int totalPages) {
+    }
 }

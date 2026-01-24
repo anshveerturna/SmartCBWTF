@@ -1,11 +1,15 @@
 package com.smartcbwtf.service;
 
+import com.smartcbwtf.domain.BagEvent;
 import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.dto.AnalyticsPageDTO;
 import com.smartcbwtf.repository.AgreementRepository;
+import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.repository.BagEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -27,13 +31,18 @@ public class AnalyticsPageService {
 
     private static final Logger log = LoggerFactory.getLogger(AnalyticsPageService.class);
     private static final ZoneId FACILITY_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm")
+            .withZone(FACILITY_ZONE);
 
     private final BagEventRepository bagEventRepository;
     private final AgreementRepository agreementRepository;
+    private final AppUserRepository appUserRepository;
 
-    public AnalyticsPageService(BagEventRepository bagEventRepository, AgreementRepository agreementRepository) {
+    public AnalyticsPageService(BagEventRepository bagEventRepository, AgreementRepository agreementRepository,
+            AppUserRepository appUserRepository) {
         this.bagEventRepository = bagEventRepository;
         this.agreementRepository = agreementRepository;
+        this.appUserRepository = appUserRepository;
     }
 
     /**
@@ -151,6 +160,77 @@ public class AnalyticsPageService {
         return hcfs.stream()
                 .map(hcf -> new AnalyticsPageDTO.HcfOption(hcf.getId(), hcf.getName()))
                 .toList();
+    }
+
+    /**
+     * Get paginated list of processed bags for the Analytics Page.
+     *
+     * @param facilityId The current tenant facility
+     * @param fromDate   Start date (inclusive)
+     * @param toDate     End date (inclusive)
+     * @param hcfId      Optional HCF filter (null = all HCFs)
+     * @param page       Page number (0-indexed)
+     * @param pageSize   Number of items per page
+     * @return ProcessedBagsResponse with paginated bag entries
+     */
+    public AnalyticsPageDTO.ProcessedBagsResponse getProcessedBags(
+            UUID facilityId, LocalDate fromDate, LocalDate toDate, UUID hcfId, int page, int pageSize) {
+
+        Instant fromInstant = fromDate.atStartOfDay(FACILITY_ZONE).toInstant();
+        Instant toInstant = toDate.plusDays(1).atStartOfDay(FACILITY_ZONE).toInstant();
+
+        PageRequest pageRequest = PageRequest.of(page, pageSize);
+        Page<BagEvent> bagEventsPage;
+
+        if (hcfId != null) {
+            bagEventsPage = bagEventRepository.findProcessedBagsForHcf(
+                    facilityId, hcfId, fromInstant, toInstant, pageRequest);
+        } else {
+            bagEventsPage = bagEventRepository.findProcessedBagsForFacility(
+                    facilityId, fromInstant, toInstant, pageRequest);
+        }
+
+        List<AnalyticsPageDTO.ProcessedBagEntry> entries = bagEventsPage.getContent().stream()
+                .map(this::mapToProcessedBagEntry)
+                .toList();
+
+        log.debug("getProcessedBags: facility={}, from={}, to={}, hcfId={}, page={}, total={}",
+                facilityId, fromDate, toDate, hcfId, page, bagEventsPage.getTotalElements());
+
+        return new AnalyticsPageDTO.ProcessedBagsResponse(
+                entries,
+                bagEventsPage.getTotalElements(),
+                page,
+                pageSize,
+                bagEventsPage.getTotalPages());
+    }
+
+    /**
+     * Map BagEvent entity to ProcessedBagEntry DTO.
+     */
+    private AnalyticsPageDTO.ProcessedBagEntry mapToProcessedBagEntry(BagEvent event) {
+        String staffName = "Unknown";
+        if (event.getCollectedByUserId() != null) {
+            staffName = appUserRepository.findById(event.getCollectedByUserId())
+                    .map(user -> user.getFullName() != null ? user.getFullName() : user.getUsername())
+                    .orElse("Unknown");
+        }
+
+        String qrCode = event.getBagLabel() != null ? event.getBagLabel().getQrCode() : "N/A";
+        String category = event.getBagLabel() != null ? event.getBagLabel().getCategory() : "N/A";
+        String hcfName = event.getHcf() != null ? event.getHcf().getName() : "Unknown";
+        String timestamp = TIMESTAMP_FORMAT.format(event.getEventTs());
+
+        return new AnalyticsPageDTO.ProcessedBagEntry(
+                event.getId(),
+                category,
+                qrCode,
+                event.getWeightKg() != null ? event.getWeightKg().setScale(3, RoundingMode.HALF_UP) : BigDecimal.ZERO,
+                timestamp,
+                staffName,
+                hcfName,
+                event.getEventType(),
+                event.getAnomalyState());
     }
 
     /**
