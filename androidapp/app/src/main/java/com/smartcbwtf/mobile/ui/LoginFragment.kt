@@ -2,6 +2,7 @@ package com.smartcbwtf.mobile.ui
 
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.text.InputFilter
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -41,9 +42,23 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
     @Inject
     lateinit var locationRepository: LocationRepository
 
+    // InputFilter to block whitespace characters
+    private val noWhitespaceFilter = InputFilter { source, start, end, _, _, _ ->
+        for (i in start until end) {
+            if (Character.isWhitespace(source[i])) {
+                return@InputFilter ""
+            }
+        }
+        null
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentLoginBinding.bind(view)
+
+        // Apply no-whitespace filter to username and password fields
+        binding.etUsername.filters = arrayOf(noWhitespaceFilter)
+        binding.etPassword.filters = arrayOf(noWhitespaceFilter)
 
         // Hide keyboard when tapping outside inputs
         setupHideKeyboardOnTouch(binding.root)
@@ -79,8 +94,9 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
 
     private fun setupListeners() {
         binding.btnLogin.setOnClickListener {
-            val username = binding.etUsername.text.toString()
-            val password = binding.etPassword.text.toString()
+            // Trim whitespace for safety (in case of paste)
+            val username = binding.etUsername.text.toString().trim().replace("\\s".toRegex(), "")
+            val password = binding.etPassword.text.toString().trim().replace("\\s".toRegex(), "")
             viewModel.login(username, password)
         }
 

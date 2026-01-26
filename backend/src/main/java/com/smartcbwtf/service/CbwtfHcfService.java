@@ -387,15 +387,32 @@ public class CbwtfHcfService {
 
     /**
      * List pending HCF registrations (from Android app).
+     * Only returns HCFs that:
+     * 1. Have PENDING_APPROVAL status
+     * 2. Do NOT already have an ACTIVE agreement (data consistency check)
      */
     @Transactional(readOnly = true)
     public List<HcfListItemDTO> listPending(UUID facilityId) {
         // Get pending HCFs - these are HCFs with PENDING_APPROVAL status
         // that were registered by staff belonging to this facility
-        // For now, return all pending HCFs (TODO: filter by facility's staff)
         List<Hcf> pendingHcfs = hcfRepository.findByStatus("PENDING_APPROVAL", null).getContent();
 
+        // Filter out any HCFs that already have an ACTIVE agreement (data inconsistency fix)
         return pendingHcfs.stream()
+                .filter(hcf -> {
+                    // Check if HCF already has an active agreement
+                    boolean hasActiveAgreement = agreementRepository.findActiveByHcfId(hcf.getId()).isPresent();
+                    if (hasActiveAgreement) {
+                        log.warn("Data inconsistency: HCF {} has PENDING_APPROVAL status but already has ACTIVE agreement. " +
+                                "Auto-fixing status to ACTIVE.", hcf.getId());
+                        // Auto-fix the inconsistency
+                        hcf.setStatus("ACTIVE");
+                        hcf.setUpdatedAt(java.time.Instant.now());
+                        hcfRepository.save(hcf);
+                        return false; // Don't include in pending list
+                    }
+                    return true;
+                })
                 .map(hcf -> HcfListItemDTO.from(hcf, null, null))
                 .collect(Collectors.toList());
     }

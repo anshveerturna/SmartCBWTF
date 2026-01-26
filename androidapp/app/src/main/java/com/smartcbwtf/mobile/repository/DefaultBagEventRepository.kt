@@ -5,12 +5,14 @@ import com.smartcbwtf.mobile.database.entity.BagEventEntity
 import com.smartcbwtf.mobile.model.BagEvent
 import com.smartcbwtf.mobile.network.api.BagEventApi
 import com.smartcbwtf.mobile.network.model.BagEventPayload
+import com.smartcbwtf.mobile.network.model.BagEventSyncRequest
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
+import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -45,10 +47,14 @@ class DefaultBagEventRepository @Inject constructor(
         val pending = dao.getPending().firstOrNull()?.map(BagEventEntity::toPayload) ?: emptyList()
         if (pending.isEmpty()) return@withContext
 
-        val response = api.sync(pending)
-        val successIds = response.successIds.mapNotNull { id -> runCatching { UUID.fromString(id) }.getOrNull() }
-        if (successIds.isNotEmpty()) {
-            dao.markSynced(successIds)
+        // Wrap in BagEventSyncRequest to match backend format
+        val request = BagEventSyncRequest(events = pending)
+        val response = api.sync(request)
+        
+        // Mark successfully synced events by QR code
+        val successQrCodes = response.successQrCodes
+        if (successQrCodes.isNotEmpty()) {
+            dao.markSyncedByQrCodes(successQrCodes)
         }
     }
 }
@@ -84,15 +90,15 @@ private fun BagEventEntity.toDomain(): BagEvent = BagEvent(
 )
 
 private fun BagEventEntity.toPayload(): BagEventPayload = BagEventPayload(
-    id = id,
     qrCode = qrCode,
     eventType = eventType,
-    eventTs = eventTs,
+    eventTs = Instant.ofEpochMilli(eventTs).toString(),  // Convert to ISO-8601 string
     gpsLat = gpsLat,
     gpsLon = gpsLon,
     weightKg = weightKg,
-    hcfId = hcfId,
+    collectedByUserId = driverId ?: id.toString(),  // Use driverId as collectedByUserId
     facilityId = facilityId,
-    deviceId = deviceId,
-    driverId = driverId,
+    gpsAccuracyM = null,  // TODO: Add GPS accuracy tracking
+    appDeviceId = deviceId,
+    notes = null,
 )
