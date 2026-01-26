@@ -615,57 +615,57 @@ public final class DaggerApp_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
-      static String com_smartcbwtf_mobile_viewmodel_MyRouteViewModel = "com.smartcbwtf.mobile.viewmodel.MyRouteViewModel";
-
-      static String com_smartcbwtf_mobile_ui_ChangePasswordViewModel = "com.smartcbwtf.mobile.ui.ChangePasswordViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_SettingsViewModel = "com.smartcbwtf.mobile.viewmodel.SettingsViewModel";
-
       static String com_smartcbwtf_mobile_viewmodel_AttendanceViewModel = "com.smartcbwtf.mobile.viewmodel.AttendanceViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_HomeViewModel = "com.smartcbwtf.mobile.viewmodel.HomeViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_AuthViewModel = "com.smartcbwtf.mobile.viewmodel.AuthViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_StartPickupViewModel = "com.smartcbwtf.mobile.viewmodel.StartPickupViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel = "com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel";
 
       static String com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel = "com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel";
 
+      static String com_smartcbwtf_mobile_ui_ChangePasswordViewModel = "com.smartcbwtf.mobile.ui.ChangePasswordViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel = "com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_HomeViewModel = "com.smartcbwtf.mobile.viewmodel.HomeViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_MyRouteViewModel = "com.smartcbwtf.mobile.viewmodel.MyRouteViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_AuthViewModel = "com.smartcbwtf.mobile.viewmodel.AuthViewModel";
+
       static String com_smartcbwtf_mobile_viewmodel_ProfileViewModel = "com.smartcbwtf.mobile.viewmodel.ProfileViewModel";
 
+      static String com_smartcbwtf_mobile_viewmodel_SettingsViewModel = "com.smartcbwtf.mobile.viewmodel.SettingsViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_StartPickupViewModel = "com.smartcbwtf.mobile.viewmodel.StartPickupViewModel";
+
       static String com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel = "com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel";
-
-      @KeepFieldType
-      MyRouteViewModel com_smartcbwtf_mobile_viewmodel_MyRouteViewModel2;
-
-      @KeepFieldType
-      ChangePasswordViewModel com_smartcbwtf_mobile_ui_ChangePasswordViewModel2;
-
-      @KeepFieldType
-      SettingsViewModel com_smartcbwtf_mobile_viewmodel_SettingsViewModel2;
 
       @KeepFieldType
       AttendanceViewModel com_smartcbwtf_mobile_viewmodel_AttendanceViewModel2;
 
       @KeepFieldType
-      HomeViewModel com_smartcbwtf_mobile_viewmodel_HomeViewModel2;
+      ScanWeighViewModel com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel2;
 
       @KeepFieldType
-      AuthViewModel com_smartcbwtf_mobile_viewmodel_AuthViewModel2;
-
-      @KeepFieldType
-      StartPickupViewModel com_smartcbwtf_mobile_viewmodel_StartPickupViewModel2;
+      ChangePasswordViewModel com_smartcbwtf_mobile_ui_ChangePasswordViewModel2;
 
       @KeepFieldType
       VerifyAtPlantViewModel com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel2;
 
       @KeepFieldType
-      ScanWeighViewModel com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel2;
+      HomeViewModel com_smartcbwtf_mobile_viewmodel_HomeViewModel2;
+
+      @KeepFieldType
+      MyRouteViewModel com_smartcbwtf_mobile_viewmodel_MyRouteViewModel2;
+
+      @KeepFieldType
+      AuthViewModel com_smartcbwtf_mobile_viewmodel_AuthViewModel2;
 
       @KeepFieldType
       ProfileViewModel com_smartcbwtf_mobile_viewmodel_ProfileViewModel2;
+
+      @KeepFieldType
+      SettingsViewModel com_smartcbwtf_mobile_viewmodel_SettingsViewModel2;
+
+      @KeepFieldType
+      StartPickupViewModel com_smartcbwtf_mobile_viewmodel_StartPickupViewModel2;
 
       @KeepFieldType
       HcfRegistrationViewModel com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel2;
@@ -741,27 +741,51 @@ public final class DaggerApp_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
+      static String com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel = "com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel";
+
+      static String com_smartcbwtf_mobile_ui_ChangePasswordViewModel = "com.smartcbwtf.mobile.ui.ChangePasswordViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_AttendanceViewModel = "com.smartcbwtf.mobile.viewmodel.AttendanceViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_HomeViewModel = "com.smartcbwtf.mobile.viewmodel.HomeViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel = "com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_AuthViewModel = "com.smartcbwtf.mobile.viewmodel.AuthViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_MyRouteViewModel = "com.smartcbwtf.mobile.viewmodel.MyRouteViewModel";
+
+      static String com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel = "com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel";
+
       static String com_smartcbwtf_mobile_viewmodel_ProfileViewModel = "com.smartcbwtf.mobile.viewmodel.ProfileViewModel";
 
       static String com_smartcbwtf_mobile_viewmodel_SettingsViewModel = "com.smartcbwtf.mobile.viewmodel.SettingsViewModel";
 
-      static String com_smartcbwtf_mobile_viewmodel_AttendanceViewModel = "com.smartcbwtf.mobile.viewmodel.AttendanceViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel = "com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel";
-
-      static String com_smartcbwtf_mobile_viewmodel_MyRouteViewModel = "com.smartcbwtf.mobile.viewmodel.MyRouteViewModel";
-
       static String com_smartcbwtf_mobile_viewmodel_StartPickupViewModel = "com.smartcbwtf.mobile.viewmodel.StartPickupViewModel";
 
-      static String com_smartcbwtf_mobile_ui_ChangePasswordViewModel = "com.smartcbwtf.mobile.ui.ChangePasswordViewModel";
+      @KeepFieldType
+      ScanWeighViewModel com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel2;
 
-      static String com_smartcbwtf_mobile_viewmodel_AuthViewModel = "com.smartcbwtf.mobile.viewmodel.AuthViewModel";
+      @KeepFieldType
+      ChangePasswordViewModel com_smartcbwtf_mobile_ui_ChangePasswordViewModel2;
 
-      static String com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel = "com.smartcbwtf.mobile.viewmodel.ScanWeighViewModel";
+      @KeepFieldType
+      AttendanceViewModel com_smartcbwtf_mobile_viewmodel_AttendanceViewModel2;
 
-      static String com_smartcbwtf_mobile_viewmodel_HomeViewModel = "com.smartcbwtf.mobile.viewmodel.HomeViewModel";
+      @KeepFieldType
+      HomeViewModel com_smartcbwtf_mobile_viewmodel_HomeViewModel2;
 
-      static String com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel = "com.smartcbwtf.mobile.viewmodel.HcfRegistrationViewModel";
+      @KeepFieldType
+      VerifyAtPlantViewModel com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel2;
+
+      @KeepFieldType
+      AuthViewModel com_smartcbwtf_mobile_viewmodel_AuthViewModel2;
+
+      @KeepFieldType
+      MyRouteViewModel com_smartcbwtf_mobile_viewmodel_MyRouteViewModel2;
+
+      @KeepFieldType
+      HcfRegistrationViewModel com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel2;
 
       @KeepFieldType
       ProfileViewModel com_smartcbwtf_mobile_viewmodel_ProfileViewModel2;
@@ -770,31 +794,7 @@ public final class DaggerApp_HiltComponents_SingletonC {
       SettingsViewModel com_smartcbwtf_mobile_viewmodel_SettingsViewModel2;
 
       @KeepFieldType
-      AttendanceViewModel com_smartcbwtf_mobile_viewmodel_AttendanceViewModel2;
-
-      @KeepFieldType
-      VerifyAtPlantViewModel com_smartcbwtf_mobile_viewmodel_VerifyAtPlantViewModel2;
-
-      @KeepFieldType
-      MyRouteViewModel com_smartcbwtf_mobile_viewmodel_MyRouteViewModel2;
-
-      @KeepFieldType
       StartPickupViewModel com_smartcbwtf_mobile_viewmodel_StartPickupViewModel2;
-
-      @KeepFieldType
-      ChangePasswordViewModel com_smartcbwtf_mobile_ui_ChangePasswordViewModel2;
-
-      @KeepFieldType
-      AuthViewModel com_smartcbwtf_mobile_viewmodel_AuthViewModel2;
-
-      @KeepFieldType
-      ScanWeighViewModel com_smartcbwtf_mobile_viewmodel_ScanWeighViewModel2;
-
-      @KeepFieldType
-      HomeViewModel com_smartcbwtf_mobile_viewmodel_HomeViewModel2;
-
-      @KeepFieldType
-      HcfRegistrationViewModel com_smartcbwtf_mobile_viewmodel_HcfRegistrationViewModel2;
     }
 
     private static final class SwitchingProvider<T> implements Provider<T> {
@@ -849,7 +849,7 @@ public final class DaggerApp_HiltComponents_SingletonC {
           return (T) new StartPickupViewModel(singletonCImpl.defaultHcfRepositoryProvider.get(), singletonCImpl.locationHelperProvider.get());
 
           case 10: // com.smartcbwtf.mobile.viewmodel.VerifyAtPlantViewModel 
-          return (T) new VerifyAtPlantViewModel(singletonCImpl.provideScaleServiceProvider.get(), singletonCImpl.defaultBagEventRepositoryProvider.get(), singletonCImpl.locationHelperProvider.get());
+          return (T) new VerifyAtPlantViewModel(singletonCImpl.provideScaleServiceProvider.get(), singletonCImpl.defaultBagEventRepositoryProvider.get(), singletonCImpl.locationHelperProvider.get(), singletonCImpl.sessionManagerProvider.get());
 
           default: throw new AssertionError(id);
         }
@@ -986,6 +986,8 @@ public final class DaggerApp_HiltComponents_SingletonC {
 
     private Provider<AuthApi> provideAuthApiProvider;
 
+    private Provider<SessionManager> sessionManagerProvider;
+
     private Provider<NetworkMonitor> networkMonitorProvider;
 
     private Provider<DefaultAuthRepository> defaultAuthRepositoryProvider;
@@ -997,8 +999,6 @@ public final class DaggerApp_HiltComponents_SingletonC {
     private Provider<DefaultHcfRepository> defaultHcfRepositoryProvider;
 
     private Provider<ProfileApi> provideProfileApiProvider;
-
-    private Provider<SessionManager> sessionManagerProvider;
 
     private Provider<ProfileRepository> profileRepositoryProvider;
 
@@ -1069,13 +1069,13 @@ public final class DaggerApp_HiltComponents_SingletonC {
       this.defaultBagEventRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<DefaultBagEventRepository>(singletonCImpl, 17));
       this.syncBagEventsWorker_AssistedFactoryProvider = SingleCheck.provider(new SwitchingProvider<SyncBagEventsWorker_AssistedFactory>(singletonCImpl, 16));
       this.provideAuthApiProvider = DoubleCheck.provider(new SwitchingProvider<AuthApi>(singletonCImpl, 20));
-      this.networkMonitorProvider = DoubleCheck.provider(new SwitchingProvider<NetworkMonitor>(singletonCImpl, 21));
+      this.sessionManagerProvider = DoubleCheck.provider(new SwitchingProvider<SessionManager>(singletonCImpl, 21));
+      this.networkMonitorProvider = DoubleCheck.provider(new SwitchingProvider<NetworkMonitor>(singletonCImpl, 22));
       this.defaultAuthRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<DefaultAuthRepository>(singletonCImpl, 19));
-      this.permissionHelperProvider = DoubleCheck.provider(new SwitchingProvider<PermissionHelper>(singletonCImpl, 22));
-      this.provideHcfApiProvider = DoubleCheck.provider(new SwitchingProvider<HcfApi>(singletonCImpl, 24));
-      this.defaultHcfRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<DefaultHcfRepository>(singletonCImpl, 23));
-      this.provideProfileApiProvider = DoubleCheck.provider(new SwitchingProvider<ProfileApi>(singletonCImpl, 25));
-      this.sessionManagerProvider = DoubleCheck.provider(new SwitchingProvider<SessionManager>(singletonCImpl, 26));
+      this.permissionHelperProvider = DoubleCheck.provider(new SwitchingProvider<PermissionHelper>(singletonCImpl, 23));
+      this.provideHcfApiProvider = DoubleCheck.provider(new SwitchingProvider<HcfApi>(singletonCImpl, 25));
+      this.defaultHcfRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<DefaultHcfRepository>(singletonCImpl, 24));
+      this.provideProfileApiProvider = DoubleCheck.provider(new SwitchingProvider<ProfileApi>(singletonCImpl, 26));
       this.profileRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<ProfileRepository>(singletonCImpl, 27));
       this.provideWorkManagerProvider = DoubleCheck.provider(new SwitchingProvider<WorkManager>(singletonCImpl, 28));
       this.provideRouteApiProvider = DoubleCheck.provider(new SwitchingProvider<RouteApi>(singletonCImpl, 30));
@@ -1199,28 +1199,28 @@ public final class DaggerApp_HiltComponents_SingletonC {
           return (T) NetworkModule_ProvideBagEventApiFactory.provideBagEventApi(singletonCImpl.provideRetrofitProvider.get());
 
           case 19: // com.smartcbwtf.mobile.repository.DefaultAuthRepository 
-          return (T) new DefaultAuthRepository(singletonCImpl.provideAuthApiProvider.get(), singletonCImpl.defaultAuthTokenStoreProvider.get(), singletonCImpl.appConfigStoreProvider.get(), singletonCImpl.networkMonitorProvider.get(), singletonCImpl.provideIoDispatcherProvider.get());
+          return (T) new DefaultAuthRepository(singletonCImpl.provideAuthApiProvider.get(), singletonCImpl.defaultAuthTokenStoreProvider.get(), singletonCImpl.appConfigStoreProvider.get(), singletonCImpl.sessionManagerProvider.get(), singletonCImpl.networkMonitorProvider.get(), singletonCImpl.provideIoDispatcherProvider.get());
 
           case 20: // com.smartcbwtf.mobile.network.api.AuthApi 
           return (T) NetworkModule_ProvideAuthApiFactory.provideAuthApi(singletonCImpl.provideRetrofitProvider.get());
 
-          case 21: // com.smartcbwtf.mobile.utils.NetworkMonitor 
+          case 21: // com.smartcbwtf.mobile.storage.SessionManager 
+          return (T) new SessionManager(singletonCImpl.provideSharedPreferencesProvider.get());
+
+          case 22: // com.smartcbwtf.mobile.utils.NetworkMonitor 
           return (T) new NetworkMonitor(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 22: // com.smartcbwtf.mobile.utils.PermissionHelper 
+          case 23: // com.smartcbwtf.mobile.utils.PermissionHelper 
           return (T) new PermissionHelper(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 23: // com.smartcbwtf.mobile.repository.DefaultHcfRepository 
+          case 24: // com.smartcbwtf.mobile.repository.DefaultHcfRepository 
           return (T) new DefaultHcfRepository(singletonCImpl.hcfDao(), singletonCImpl.provideHcfApiProvider.get(), singletonCImpl.networkMonitorProvider.get(), singletonCImpl.provideIoDispatcherProvider.get());
 
-          case 24: // com.smartcbwtf.mobile.network.api.HcfApi 
+          case 25: // com.smartcbwtf.mobile.network.api.HcfApi 
           return (T) NetworkModule_ProvideHcfApiFactory.provideHcfApi(singletonCImpl.provideRetrofitProvider.get());
 
-          case 25: // com.smartcbwtf.mobile.network.api.ProfileApi 
+          case 26: // com.smartcbwtf.mobile.network.api.ProfileApi 
           return (T) NetworkModule_ProvideProfileApiFactory.provideProfileApi(singletonCImpl.provideRetrofitProvider.get());
-
-          case 26: // com.smartcbwtf.mobile.storage.SessionManager 
-          return (T) new SessionManager(singletonCImpl.provideSharedPreferencesProvider.get());
 
           case 27: // com.smartcbwtf.mobile.repository.ProfileRepository 
           return (T) new ProfileRepository(singletonCImpl.provideProfileApiProvider.get(), singletonCImpl.userProfileDao());

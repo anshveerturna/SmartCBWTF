@@ -35,6 +35,7 @@ public class CbwtfHcfService {
     private final HCFIdentityService hcfIdentityService;
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final BagEventRepository bagEventRepository;
 
     public CbwtfHcfService(
             HcfRepository hcfRepository,
@@ -46,7 +47,8 @@ public class CbwtfHcfService {
             AgreementNumberGeneratorService agreementNumberGenerator,
             HCFIdentityService hcfIdentityService,
             AppUserRepository userRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            BagEventRepository bagEventRepository) {
         this.hcfRepository = hcfRepository;
         this.agreementRepository = agreementRepository;
         this.billingConfigRepository = billingConfigRepository;
@@ -57,6 +59,7 @@ public class CbwtfHcfService {
         this.hcfIdentityService = hcfIdentityService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.bagEventRepository = bagEventRepository;
     }
 
     /**
@@ -163,10 +166,12 @@ public class CbwtfHcfService {
                 .findActiveByAgreementId(agreement.getId())
                 .orElse(null);
 
-        // Build operational summary (TODO: implement with actual data)
+        // Build operational summary with REAL data from bag events
         HcfDetailDTO.OperationalSummary summary = new HcfDetailDTO.OperationalSummary();
-        summary.setTotalPickups(0);
-        summary.setTotalAttendanceMarks(0);
+        summary.setTotalPickups(bagEventRepository.countPickupDaysByHcfId(hcfId));
+        summary.setTotalWasteKg(bagEventRepository.sumTotalWasteByHcfId(hcfId));
+        summary.setLastPickupAt(bagEventRepository.findLastPickupTimeByHcfId(hcfId));
+        summary.setTotalAttendanceMarks(0); // TODO: implement when attendance tracking is added
 
         return HcfDetailDTO.from(hcf, agreement, billingConfig, summary);
     }

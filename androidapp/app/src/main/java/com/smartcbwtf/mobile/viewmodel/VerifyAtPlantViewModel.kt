@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.smartcbwtf.mobile.bluetooth.ScaleService
 import com.smartcbwtf.mobile.model.BagEvent
 import com.smartcbwtf.mobile.repository.BagEventRepository
+import com.smartcbwtf.mobile.storage.SessionManager
 import com.smartcbwtf.mobile.utils.LocationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +19,8 @@ import javax.inject.Inject
 class VerifyAtPlantViewModel @Inject constructor(
     private val scaleService: ScaleService,
     private val bagEventRepository: BagEventRepository,
-    private val locationHelper: LocationHelper
+    private val locationHelper: LocationHelper,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     val weight = scaleService.weight
@@ -56,8 +58,9 @@ class VerifyAtPlantViewModel @Inject constructor(
                         gpsLon = loc?.longitude ?: 0.0,
                         weightKg = w,
                         hcfId = hcfId,
-                        facilityId = null,
-                        synced = false
+                        facilityId = sessionManager.facilityId,
+                        synced = false,
+                        driverId = sessionManager.userId
                     )
                 )
                 _state.value = SubmissionState.Success

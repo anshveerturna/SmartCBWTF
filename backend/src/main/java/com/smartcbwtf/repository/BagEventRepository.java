@@ -263,4 +263,26 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 			@Param("fromInstant") Instant fromInstant,
 			@Param("toInstant") Instant toInstant,
 			Pageable pageable);
+
+	// =====================================================
+	// HCF OPERATIONAL SUMMARY QUERIES
+	// =====================================================
+
+	/**
+	 * Count total pickups (bag events) for an HCF.
+	 */
+	@Query("SELECT COUNT(DISTINCT DATE(e.eventTs)) FROM BagEvent e WHERE e.hcf.id = :hcfId AND e.eventType = 'HCF_COLLECTION'")
+	int countPickupDaysByHcfId(@Param("hcfId") UUID hcfId);
+
+	/**
+	 * Sum total waste weight for an HCF.
+	 */
+	@Query("SELECT COALESCE(SUM(e.weightKg), 0) FROM BagEvent e WHERE e.hcf.id = :hcfId")
+	java.math.BigDecimal sumTotalWasteByHcfId(@Param("hcfId") UUID hcfId);
+
+	/**
+	 * Get the most recent pickup time for an HCF.
+	 */
+	@Query("SELECT MAX(e.eventTs) FROM BagEvent e WHERE e.hcf.id = :hcfId AND e.eventType = 'HCF_COLLECTION'")
+	Instant findLastPickupTimeByHcfId(@Param("hcfId") UUID hcfId);
 }

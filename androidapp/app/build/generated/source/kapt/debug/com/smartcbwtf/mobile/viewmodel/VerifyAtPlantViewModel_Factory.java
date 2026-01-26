@@ -2,6 +2,7 @@ package com.smartcbwtf.mobile.viewmodel;
 
 import com.smartcbwtf.mobile.bluetooth.ScaleService;
 import com.smartcbwtf.mobile.repository.BagEventRepository;
+import com.smartcbwtf.mobile.storage.SessionManager;
 import com.smartcbwtf.mobile.utils.LocationHelper;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
@@ -31,27 +32,33 @@ public final class VerifyAtPlantViewModel_Factory implements Factory<VerifyAtPla
 
   private final Provider<LocationHelper> locationHelperProvider;
 
+  private final Provider<SessionManager> sessionManagerProvider;
+
   public VerifyAtPlantViewModel_Factory(Provider<ScaleService> scaleServiceProvider,
       Provider<BagEventRepository> bagEventRepositoryProvider,
-      Provider<LocationHelper> locationHelperProvider) {
+      Provider<LocationHelper> locationHelperProvider,
+      Provider<SessionManager> sessionManagerProvider) {
     this.scaleServiceProvider = scaleServiceProvider;
     this.bagEventRepositoryProvider = bagEventRepositoryProvider;
     this.locationHelperProvider = locationHelperProvider;
+    this.sessionManagerProvider = sessionManagerProvider;
   }
 
   @Override
   public VerifyAtPlantViewModel get() {
-    return newInstance(scaleServiceProvider.get(), bagEventRepositoryProvider.get(), locationHelperProvider.get());
+    return newInstance(scaleServiceProvider.get(), bagEventRepositoryProvider.get(), locationHelperProvider.get(), sessionManagerProvider.get());
   }
 
   public static VerifyAtPlantViewModel_Factory create(Provider<ScaleService> scaleServiceProvider,
       Provider<BagEventRepository> bagEventRepositoryProvider,
-      Provider<LocationHelper> locationHelperProvider) {
-    return new VerifyAtPlantViewModel_Factory(scaleServiceProvider, bagEventRepositoryProvider, locationHelperProvider);
+      Provider<LocationHelper> locationHelperProvider,
+      Provider<SessionManager> sessionManagerProvider) {
+    return new VerifyAtPlantViewModel_Factory(scaleServiceProvider, bagEventRepositoryProvider, locationHelperProvider, sessionManagerProvider);
   }
 
   public static VerifyAtPlantViewModel newInstance(ScaleService scaleService,
-      BagEventRepository bagEventRepository, LocationHelper locationHelper) {
-    return new VerifyAtPlantViewModel(scaleService, bagEventRepository, locationHelper);
+      BagEventRepository bagEventRepository, LocationHelper locationHelper,
+      SessionManager sessionManager) {
+    return new VerifyAtPlantViewModel(scaleService, bagEventRepository, locationHelper, sessionManager);
   }
 }

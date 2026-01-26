@@ -22,7 +22,7 @@ public class BagLabel {
     @Column(nullable = false)
     private String serialNo;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, columnDefinition = "TEXT")
     private String qrCode;
 
     @Column(nullable = false)

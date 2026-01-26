@@ -10,10 +10,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * QR Authorization Service - Manages QR lifecycle for waste movement
@@ -38,20 +40,26 @@ public class QrAuthorizationService {
     private final AgreementRepository agreementRepository;
     private final HcfRepository hcfRepository;
     private final FacilityRepository facilityRepository;
+    private final BagLabelRepository bagLabelRepository;
     private final QrSigningService signingService;
     private final AuditLogService auditLogService;
+    
+    // Serial number counter (for generating unique serial numbers)
+    private static final AtomicLong serialCounter = new AtomicLong(System.currentTimeMillis() % 100000);
 
     public QrAuthorizationService(
             QrAuthorizationRepository qrRepository,
             AgreementRepository agreementRepository,
             HcfRepository hcfRepository,
             FacilityRepository facilityRepository,
+            BagLabelRepository bagLabelRepository,
             QrSigningService signingService,
             AuditLogService auditLogService) {
         this.qrRepository = qrRepository;
         this.agreementRepository = agreementRepository;
         this.hcfRepository = hcfRepository;
         this.facilityRepository = facilityRepository;
+        this.bagLabelRepository = bagLabelRepository;
         this.signingService = signingService;
         this.auditLogService = auditLogService;
     }
@@ -143,6 +151,20 @@ public class QrAuthorizationService {
 
         // Save once with all fields populated
         qrRepository.save(qr);
+
+        // *** AUTO-CREATE BAG LABEL ***
+        // This creates the BagLabel record that BagEventService.sync() looks for
+        BagLabel bagLabel = new BagLabel();
+        bagLabel.setHcf(hcf);
+        bagLabel.setFacility(facilityRepository.findById(facilityId).orElseThrow());
+        bagLabel.setCategory(wasteCategory);
+        bagLabel.setSerialNo(generateSerialNo(wasteCategory));
+        bagLabel.setQrCode(signedPayload.json());  // Full QR payload JSON
+        bagLabel.setStatus("ISSUED");
+        bagLabel.setIssuedAt(Instant.now());
+        bagLabelRepository.save(bagLabel);
+        
+        log.info("BagLabel auto-created: {} for QR {} category {}", bagLabel.getId(), qrId, wasteCategory);
 
         // Audit log
         auditLogService.log("QR", qr.getId(), "QR_CREATED", createdBy,
@@ -413,6 +435,25 @@ public class QrAuthorizationService {
             log.info("Updated {} QRs to {} due to agreement {} status change to {}",
                     updated, qrNewStatus, agreementId, newStatus);
         }
+    }
+
+    // ============= Helper Methods =============
+    
+    /**
+     * Generate a unique serial number for bag labels.
+     * Format: CAT-YYYYMMDD-NNNNN (e.g., YEL-20260126-00042)
+     */
+    private String generateSerialNo(String wasteCategory) {
+        String catPrefix = switch (wasteCategory.toUpperCase()) {
+            case "YELLOW" -> "YEL";
+            case "RED" -> "RED";
+            case "WHITE" -> "WHT";
+            case "BLUE" -> "BLU";
+            default -> "OTH";
+        };
+        String dateStr = LocalDate.now().toString().replace("-", "");
+        long seq = serialCounter.incrementAndGet() % 100000;
+        return String.format("%s-%s-%05d", catPrefix, dateStr, seq);
     }
 
     // ============= Result Records =============

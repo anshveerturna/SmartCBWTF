@@ -1,6 +1,7 @@
 package com.smartcbwtf.mobile.viewmodel
 
 import android.provider.Settings
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartcbwtf.mobile.bluetooth.ConnectionState
@@ -337,7 +338,9 @@ class ScanWeighViewModel @Inject constructor(
      */
     fun submitAll(eventType: String = "HCF_COLLECTION") {
         val bags = _sessionState.value.bags
+        Log.d("ScanWeighVM", "submitAll called: bags=${bags.size}, eventType=$eventType")
         if (bags.isEmpty()) {
+            Log.w("ScanWeighVM", "No bags to submit")
             _error.value = "No bags to submit"
             return
         }
@@ -345,6 +348,9 @@ class ScanWeighViewModel @Inject constructor(
         viewModelScope.launch {
             _submissionState.value = SubmissionState.Loading
             try {
+                val currentUserId = sessionManager.userId
+                val currentFacilityId = sessionManager.facilityId
+                Log.d("ScanWeighVM", "Session data: userId=$currentUserId, facilityId=$currentFacilityId")
                 val events = bags.map { bag ->
                     BagEvent(
                         id = UUID.randomUUID(),
@@ -355,16 +361,20 @@ class ScanWeighViewModel @Inject constructor(
                         gpsLon = bag.gpsLon,
                         weightKg = bag.weightKg,
                         hcfId = "", // Backend resolves from QR
-                        facilityId = null,
-                        synced = false
+                        facilityId = currentFacilityId,
+                        synced = false,
+                        driverId = currentUserId
                     )
                 }
+                Log.d("ScanWeighVM", "Calling bagEventRepository.recordBatch with ${events.size} events")
                 bagEventRepository.recordBatch(events)
+                Log.d("ScanWeighVM", "recordBatch completed successfully")
                 _submissionState.value = SubmissionState.BatchSuccess(bags.size)
                 
                 // Clear session after successful submit
                 clearSession()
             } catch (e: Exception) {
+                Log.e("ScanWeighVM", "Submit failed: ${e.message}", e)
                 _submissionState.value = SubmissionState.Error(e.message ?: "Batch submission failed")
             }
         }
@@ -422,8 +432,9 @@ class ScanWeighViewModel @Inject constructor(
                     gpsLon = loc.lon,
                     weightKg = w,
                     hcfId = hcfId,
-                    facilityId = null, // Set if needed
-                    synced = false
+                    facilityId = sessionManager.facilityId,
+                    synced = false,
+                    driverId = sessionManager.userId
                 )
                 bagEventRepository.record(event)
                 _submissionState.value = SubmissionState.Success

@@ -24,7 +24,7 @@ public class BagEventController {
     }
 
     @PostMapping("/events/sync")
-    @PreAuthorize("hasRole('DRIVER')")
+    @PreAuthorize("hasAnyRole('DRIVER', 'PLANT_OPERATOR')")
     public BagEventSyncResponse sync(@Valid @RequestBody BagEventSyncRequest request) {
         return bagEventService.sync(request);
     }
