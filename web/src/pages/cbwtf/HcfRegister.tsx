@@ -23,6 +23,9 @@ import {
   InputAdornment,
   CircularProgress,
   LinearProgress,
+  Select,
+  MenuItem,
+  InputLabel,
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -101,6 +104,7 @@ export default function HcfRegister() {
     address: '',
     pincode: '',
     state: '',
+    city: '',
     doctorName: '',
     contactPhone: '',
     contactEmail: '',
@@ -116,6 +120,9 @@ export default function HcfRegister() {
     agreementStartDate: new Date().toISOString().split('T')[0],
     agreementEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
     perBedPerDayRate: '15.50',
+    // New HCF category fields
+    hcfType: 'HOSPITAL',
+    seatCount: '',
   });
 
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -169,9 +176,9 @@ export default function HcfRegister() {
       doctorName: form.doctorName,
       contactPhone: form.contactPhone,
       contactEmail: form.contactEmail,
-      panNo: form.panNo,
-      gstNo: form.gstNo,
-      aadharNo: form.aadharNo,
+      panNo: form.panNo || undefined,
+      gstNo: form.gstNo || undefined,
+      aadharNo: form.aadharNo || undefined,
       ownershipType: form.ownershipType,
       rentAgreementUrl: form.ownershipType === 'RENTED' ? form.rentAgreementUrl : undefined,
       bedded: form.bedded,
@@ -183,6 +190,11 @@ export default function HcfRegister() {
       agreementStartDate: form.agreementStartDate,
       agreementEndDate: form.agreementEndDate,
       perBedPerDayRate: parseFloat(form.perBedPerDayRate),
+      // New HCF category fields
+      hcfType: form.hcfType as 'HOSPITAL' | 'DENTAL' | 'CLINIC' | 'PATHOLOGY_COLLECTION' | 'PATHOLOGY_STORAGE',
+      city: form.city || undefined,
+      seatCount: (form.hcfType === 'DENTAL' || form.hcfType === 'CLINIC') && form.seatCount 
+        ? parseInt(form.seatCount) : undefined,
     };
 
     mutation.mutate(request);
@@ -197,9 +209,9 @@ export default function HcfRegister() {
       form.doctorName.trim() &&
       form.contactPhone.trim() &&
       form.contactEmail.trim() &&
-      form.panNo.match(/^[A-Z]{5}[0-9]{4}[A-Z]$/) &&
-      form.gstNo.trim() &&
-      form.aadharNo.match(/^\d{12}$/) &&
+      // PAN, GST, Aadhar are now optional - only validate format if provided
+      (!form.panNo || form.panNo.match(/^[A-Z]{5}[0-9]{4}[A-Z]$/)) &&
+      (!form.aadharNo || form.aadharNo.match(/^\d{12}$/)) &&
       (form.ownershipType !== 'RENTED' || form.rentAgreementUrl.trim()) &&
       (!form.bedded || (form.numberOfBeds && parseInt(form.numberOfBeds) > 0)) &&
       location &&
@@ -270,6 +282,30 @@ export default function HcfRegister() {
                       onChange={handleInputChange('state')}
                     />
                   </Grid>
+                  <Grid item xs={6}>
+                    <TextField
+                      label="City"
+                      fullWidth
+                      value={form.city}
+                      onChange={handleInputChange('city')}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>HCF Type *</InputLabel>
+                      <Select
+                        value={form.hcfType}
+                        label="HCF Type *"
+                        onChange={(e) => setForm({ ...form, hcfType: e.target.value })}
+                      >
+                        <MenuItem value="HOSPITAL">Hospital</MenuItem>
+                        <MenuItem value="DENTAL">Dental</MenuItem>
+                        <MenuItem value="CLINIC">Clinic</MenuItem>
+                        <MenuItem value="PATHOLOGY_COLLECTION">Pathology Lab (Collection)</MenuItem>
+                        <MenuItem value="PATHOLOGY_STORAGE">Pathology Lab (Storage)</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
                   <Grid item xs={12}>
                     <TextField
                       label="Doctor/Owner Name *"
@@ -299,26 +335,27 @@ export default function HcfRegister() {
               </CardContent>
             </Card>
 
-            {/* Government IDs */}
+            {/* Government IDs (Optional) */}
             <Card>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" color="primary" mb={2}>
-                  Government IDs
+                  Government IDs (Optional)
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={4}>
                     <TextField
-                      label="PAN Number *"
+                      label="PAN Number"
                       fullWidth
                       value={form.panNo}
                       onChange={(e) => setForm({ ...form, panNo: e.target.value.toUpperCase() })}
                       inputProps={{ maxLength: 10 }}
                       error={form.panNo.length > 0 && !form.panNo.match(/^[A-Z]{5}[0-9]{4}[A-Z]$/)}
+                      helperText={form.panNo.length > 0 && !form.panNo.match(/^[A-Z]{5}[0-9]{4}[A-Z]$/) ? 'Invalid PAN format' : ''}
                     />
                   </Grid>
                   <Grid item xs={4}>
                     <TextField
-                      label="GST Number *"
+                      label="GST Number"
                       fullWidth
                       value={form.gstNo}
                       onChange={(e) => setForm({ ...form, gstNo: e.target.value.toUpperCase() })}
@@ -327,12 +364,13 @@ export default function HcfRegister() {
                   </Grid>
                   <Grid item xs={4}>
                     <TextField
-                      label="Aadhar Number *"
+                      label="Aadhar Number"
                       fullWidth
                       value={form.aadharNo}
                       onChange={handleInputChange('aadharNo')}
                       inputProps={{ maxLength: 12 }}
                       error={form.aadharNo.length > 0 && !form.aadharNo.match(/^\d{12}$/)}
+                      helperText={form.aadharNo.length > 0 && !form.aadharNo.match(/^\d{12}$/) ? 'Must be 12 digits' : ''}
                     />
                   </Grid>
                 </Grid>
@@ -469,12 +507,12 @@ export default function HcfRegister() {
                         onChange={(e) => setForm({ ...form, bedded: e.target.checked })}
                       />
                     }
-                    label="Bedded Facility"
+                    label={form.hcfType === 'HOSPITAL' ? 'Bedded Facility' : 'Seated Facility'}
                   />
 
                   {form.bedded && (
                     <TextField
-                      label="Number of Beds *"
+                      label={form.hcfType === 'HOSPITAL' ? 'Number of Beds *' : 'Number of Seats *'}
                       type="number"
                       value={form.numberOfBeds}
                       onChange={handleInputChange('numberOfBeds')}

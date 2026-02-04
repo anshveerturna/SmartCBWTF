@@ -25,9 +25,9 @@ android {
 
     buildTypes {
         debug {
-            // Use production API for testing. Change to localhost for local dev.
+            // For emulator debugging, use 10.0.2.2 to reach host machine's localhost
             val apiBaseUrl = project.findProperty("API_BASE_URL") as String?
-                ?: "https://api.smartcbwtf.com/api/"
+                ?: "http://10.0.2.2:8080/api/"
             buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
         }
         release {

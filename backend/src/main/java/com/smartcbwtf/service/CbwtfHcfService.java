@@ -402,14 +402,18 @@ public class CbwtfHcfService {
         // that were registered by staff belonging to this facility
         List<Hcf> pendingHcfs = hcfRepository.findByStatus("PENDING_APPROVAL", null).getContent();
 
-        // Filter out any HCFs that already have an ACTIVE agreement (data inconsistency fix)
+        // Filter out any HCFs that already have an ACTIVE agreement (data inconsistency
+        // fix)
         return pendingHcfs.stream()
                 .filter(hcf -> {
                     // Check if HCF already has an active agreement
                     boolean hasActiveAgreement = agreementRepository.findActiveByHcfId(hcf.getId()).isPresent();
                     if (hasActiveAgreement) {
-                        log.warn("Data inconsistency: HCF {} has PENDING_APPROVAL status but already has ACTIVE agreement. " +
-                                "Auto-fixing status to ACTIVE.", hcf.getId());
+                        log.warn(
+                                "Data inconsistency: HCF {} has PENDING_APPROVAL status but already has ACTIVE agreement. "
+                                        +
+                                        "Auto-fixing status to ACTIVE.",
+                                hcf.getId());
                         // Auto-fix the inconsistency
                         hcf.setStatus("ACTIVE");
                         hcf.setUpdatedAt(java.time.Instant.now());
@@ -653,9 +657,25 @@ public class CbwtfHcfService {
         hcf.setGpsLat(request.getGpsLat());
         hcf.setGpsLon(request.getGpsLon());
         hcf.setIdentityHash(identityHash);
+
+        // New HCF category fields
+        hcf.setCity(request.getCity());
+        hcf.setSeatCount(request.getSeatCount());
+        if (request.getHcfType() != null && !request.getHcfType().isBlank()) {
+            try {
+                hcf.setHcfType(com.smartcbwtf.domain.HcfType.valueOf(request.getHcfType()));
+            } catch (IllegalArgumentException e) {
+                hcf.setHcfType(com.smartcbwtf.domain.HcfType.HOSPITAL); // Default
+            }
+        }
+
         hcf.setStatus("ACTIVE"); // Auto-approved for admin registration
         hcf.setCreatedAt(Instant.now());
         hcf.setUpdatedAt(Instant.now());
+
+        // Recalculate bed access category (considers hcfType)
+        hcf.recalculateBedAccessCategory();
+
         hcfRepository.save(hcf);
 
         // 5. Check eligibility for new agreement (after HCF is created)

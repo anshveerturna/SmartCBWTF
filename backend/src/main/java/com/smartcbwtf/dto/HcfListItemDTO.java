@@ -20,6 +20,13 @@ public class HcfListItemDTO {
     private String contactEmail;
     private Integer numberOfBeds;
 
+    // New filter fields
+    private String city;
+    private String state;
+    private String hcfType;
+    private String hcfTypeDisplay;
+    private Integer seatCount;
+
     // Agreement info
     private UUID agreementId;
     private String agreementNumber;
@@ -47,6 +54,13 @@ public class HcfListItemDTO {
         dto.contactPhone = hcf.getContactPhone();
         dto.contactEmail = hcf.getContactEmail();
         dto.numberOfBeds = hcf.getNumberOfBeds();
+        dto.city = hcf.getCity();
+        dto.state = hcf.getState();
+        dto.seatCount = hcf.getSeatCount();
+        if (hcf.getHcfType() != null) {
+            dto.hcfType = hcf.getHcfType().name();
+            dto.hcfTypeDisplay = hcf.getHcfType().getDisplayName();
+        }
         dto.createdAt = hcf.getCreatedAt();
         dto.lastPickupAt = lastPickupAt;
 
@@ -217,5 +231,45 @@ public class HcfListItemDTO {
 
     public void setPortalEligible(boolean portalEligible) {
         this.portalEligible = portalEligible;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getHcfType() {
+        return hcfType;
+    }
+
+    public void setHcfType(String hcfType) {
+        this.hcfType = hcfType;
+    }
+
+    public String getHcfTypeDisplay() {
+        return hcfTypeDisplay;
+    }
+
+    public void setHcfTypeDisplay(String hcfTypeDisplay) {
+        this.hcfTypeDisplay = hcfTypeDisplay;
+    }
+
+    public Integer getSeatCount() {
+        return seatCount;
+    }
+
+    public void setSeatCount(Integer seatCount) {
+        this.seatCount = seatCount;
     }
 }

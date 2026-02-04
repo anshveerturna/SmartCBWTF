@@ -372,4 +372,57 @@ public class CBWTFDashboardService {
                                         "isPositive", true);
                 }
         }
+
+        /**
+         * Get anomaly bags from this week with full details.
+         */
+        public List<CBWTFDashboardController.AnomalyBagDTO> getAnomalyBags() {
+                try {
+                        UUID facilityId = tenantAssertion.getRequiredTenantId();
+                        Instant weekStart = Instant.now().minus(7, ChronoUnit.DAYS);
+
+                        // Get all bag events with anomalies from this week
+                        var anomalyEvents = bagEventRepo.findByFacilityIdAndEventTsBetween(
+                                        facilityId, weekStart, Instant.now())
+                                        .stream()
+                                        .filter(event -> event.getAnomalyState() != null
+                                                        && !"OK".equals(event.getAnomalyState()))
+                                        .map(event -> {
+                                                String hcfName = event.getHcf() != null ? event.getHcf().getName() : "Unknown";
+                                                String category = event.getBagLabel() != null
+                                                                ? event.getBagLabel().getCategory()
+                                                                : "Unknown";
+                                                String staffName = null;
+                                                if (event.getCollectedByUserId() != null) {
+                                                        staffName = userRepo.findById(event.getCollectedByUserId())
+                                                                        .map(u -> u.getFullName() != null ? u.getFullName()
+                                                                                        : u.getUsername())
+                                                                        .orElse(null);
+                                                }
+
+                                                return new CBWTFDashboardController.AnomalyBagDTO(
+                                                                event.getId().toString(),
+                                                                event.getEventTs().toString(),
+                                                                hcfName,
+                                                                category,
+                                                                event.getAnomalyState(),
+                                                                event.getWeightKg() != null
+                                                                                ? event.getWeightKg().doubleValue()
+                                                                                : null,
+                                                                event.getCollectedByUserId() != null
+                                                                                ? event.getCollectedByUserId().toString()
+                                                                                : null,
+                                                                staffName,
+                                                                event.getGpsLat(),
+                                                                event.getGpsLon(),
+                                                                event.getEventType());
+                                        })
+                                        .collect(Collectors.toList());
+
+                        return anomalyEvents;
+                } catch (Exception e) {
+                        log.warn("Error fetching anomaly bags: {}", e.getMessage());
+                        return new ArrayList<>();
+                }
+        }
 }

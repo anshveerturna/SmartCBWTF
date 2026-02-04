@@ -141,6 +141,7 @@ id action_scanWeighFragment_to_qrScannerFragment
 id action_splashFragment_to_homeFragment
 id action_splashFragment_to_loginFragment
 id action_startPickupFragment_to_scanWeighFragment
+id actvHcfType
 id attendanceFragment
 id avatarView
 id bluetoothStatusBadge
@@ -205,6 +206,7 @@ id errorText
 id etAadharNo
 id etAddress
 id etBeds
+id etCity
 id etDoctorName
 id etEmail
 id etGstNo
@@ -338,9 +340,11 @@ id textVerifyTitle
 id tilAadharNo
 id tilAddress
 id tilBeds
+id tilCity
 id tilDoctorName
 id tilEmail
 id tilGstNo
+id tilHcfType
 id tilMonthlyCharges
 id tilName
 id tilOtherNotes

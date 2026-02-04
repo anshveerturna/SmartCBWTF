@@ -145,7 +145,10 @@ class HcfRegistrationViewModel @Inject constructor(
         aadharNo: String?,
         beds: Int?,
         monthlyCharges: Double?,
-        otherNotes: String?
+        otherNotes: String?,
+        hcfType: String?,
+        city: String?,
+        seatCount: Int?
     ) {
         // Validation
         if (name.isBlank()) {
@@ -184,26 +187,13 @@ class HcfRegistrationViewModel @Inject constructor(
         }
 
         if (email.isNullOrBlank()) {
-            _state.value = RegistrationState.Error("Email is required")
-            return
-        }
+        _state.value = RegistrationState.Error("Email is required")
+        return
+    }
 
-        if (panNo.isNullOrBlank()) {
-            _state.value = RegistrationState.Error("PAN Number is required")
-            return
-        }
-
-        if (gstNo.isNullOrBlank()) {
-            _state.value = RegistrationState.Error("GST Number is required")
-            return
-        }
-
-        if (aadharNo.isNullOrBlank()) {
-            _state.value = RegistrationState.Error("Aadhar Number is required")
-            return
-        }
-        
-        val gps = _gpsState.value
+    // PAN, GST, Aadhar are now optional
+    
+    val gps = _gpsState.value
         if (gps !is GpsState.Captured) {
             _state.value = RegistrationState.Error("GPS location is required. Please capture your location.")
             return
@@ -247,9 +237,9 @@ class HcfRegistrationViewModel @Inject constructor(
                     doctorName = doctorName.trim(),
                     phone = phone.trim(),
                     email = email.trim(),
-                    panNo = panNo.trim().uppercase(),
-                    gstNo = gstNo.trim().uppercase(),
-                    aadharNo = aadharNo.trim(),
+                    panNo = panNo?.trim()?.uppercase()?.takeIf { it.isNotBlank() },
+                    gstNo = gstNo?.trim()?.uppercase()?.takeIf { it.isNotBlank() },
+                    aadharNo = aadharNo?.trim()?.takeIf { it.isNotBlank() },
                     bedded = bedded,
                     numberOfBeds = if (bedded) beds else null,
                     monthlyCharges = monthlyCharges,
@@ -262,7 +252,11 @@ class HcfRegistrationViewModel @Inject constructor(
                     gpsLongitude = gps.longitude,
                     gpsAccuracy = gps.accuracy,
                     registeredByUserId = sessionManager.userId,
-                    facilityId = sessionManager.facilityId
+                    facilityId = sessionManager.facilityId,
+                    // HCF category fields
+                    hcfType = hcfType?.takeIf { it.isNotBlank() } ?: "HOSPITAL",
+                    city = city?.trim()?.takeIf { it.isNotBlank() },
+                    seatCount = if (hcfType in listOf("DENTAL", "CLINIC")) seatCount else null
                 )
                 
                 val response = hcfRepository.register(request)

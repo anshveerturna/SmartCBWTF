@@ -43,6 +43,11 @@ public class HcfRegistrationRequest {
 
     private Integer numberOfBeds; // Required if bedded == true
 
+    // New HCF category fields
+    private String hcfType; // HOSPITAL, DENTAL, CLINIC, PATHOLOGY_COLLECTION, PATHOLOGY_STORAGE
+    private String city;
+    private Integer seatCount; // For Dental/Clinic types
+
     private String pcbAuthorizationNo;
 
     // Ownership type: OWNED or RENTED
@@ -286,5 +291,29 @@ public class HcfRegistrationRequest {
 
     public void setFacilityId(UUID facilityId) {
         this.facilityId = facilityId;
+    }
+
+    public String getHcfType() {
+        return hcfType;
+    }
+
+    public void setHcfType(String hcfType) {
+        this.hcfType = hcfType;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public Integer getSeatCount() {
+        return seatCount;
+    }
+
+    public void setSeatCount(Integer seatCount) {
+        this.seatCount = seatCount;
     }
 }

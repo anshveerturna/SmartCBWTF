@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
@@ -14,7 +14,20 @@ import {
   Stack,
   Divider,
   useTheme,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  CircularProgress,
 } from '@mui/material';
+import { Close as CloseIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import {
   TrendingUp,
   TrendingDown,
@@ -58,6 +71,8 @@ interface MetricCardProps {
   gradient: string[];
   loading?: boolean;
   glowColor?: string;
+  onClick?: () => void;
+  clickable?: boolean;
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({
@@ -69,15 +84,19 @@ const MetricCard: React.FC<MetricCardProps> = ({
   gradient,
   loading = false,
   glowColor,
+  onClick,
+  clickable = false,
 }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   
   return (
     <Card
+      onClick={clickable ? onClick : undefined}
       sx={{
         position: 'relative',
         overflow: 'hidden',
+        cursor: clickable ? 'pointer' : 'default',
         background: isDark 
           ? `linear-gradient(135deg, ${alpha(gradient[0], 0.15)} 0%, ${alpha(gradient[1], 0.08)} 100%)`
           : `linear-gradient(135deg, ${alpha(gradient[0], 0.08)} 0%, ${alpha(gradient[1], 0.03)} 100%)`,
@@ -275,11 +294,19 @@ const defaultTrendData = [
 const CbwtfDashboard: React.FC = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+  const [anomalyDialogOpen, setAnomalyDialogOpen] = useState(false);
 
   const { data: dashboard, isLoading, isError, error, refetch } = useQuery<CBWTFDashboardDTO>({
     queryKey: ['cbwtf-dashboard'],
     queryFn: cbwtfApi.getDashboard,
     refetchInterval: 60000,
+  });
+
+  // Fetch anomaly bags when dialog is opened
+  const { data: anomalyBags, isLoading: anomalyLoading } = useQuery({
+    queryKey: ['cbwtf-anomaly-bags'],
+    queryFn: cbwtfApi.getAnomalyBags,
+    enabled: anomalyDialogOpen,
   });
 
   // Fetch chart data from backend
@@ -411,7 +438,7 @@ const CbwtfDashboard: React.FC = () => {
         />
         
         <MetricCard
-          title="Bags Processed Today"
+          title="Bags Verified Today"
           value={dashboard?.bagsProcessedToday ?? '-'}
           subtitle={`${dashboard?.bagsProcessedThisWeek ?? 0} this week`}
           icon={<InventoryIcon sx={{ fontSize: 28 }} />}
@@ -490,11 +517,13 @@ const CbwtfDashboard: React.FC = () => {
         <MetricCard
           title="Anomaly Bags"
           value={dashboard?.anomalyBagsThisWeek ?? '-'}
-          subtitle="This week"
+          subtitle="This week • Click for details"
           icon={<ErrorOutline sx={{ fontSize: 26 }} />}
           gradient={['#F97316', '#EA580C']}
           glowColor="#F97316"
           loading={isLoading}
+          clickable={true}
+          onClick={() => setAnomalyDialogOpen(true)}
         />
         <MetricCard
           title="Total Revenue"
@@ -841,6 +870,137 @@ const CbwtfDashboard: React.FC = () => {
           </CardContent>
         </Card>
       </Box>
+
+      {/* Anomaly Bags Dialog */}
+      <Dialog 
+        open={anomalyDialogOpen} 
+        onClose={() => setAnomalyDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, rgba(249,115,22,0.1) 0%, rgba(234,88,12,0.05) 100%)',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ErrorOutline sx={{ color: '#F97316' }} />
+            <Typography variant="h6" fontWeight={700}>Anomaly Bags - This Week</Typography>
+          </Box>
+          <IconButton onClick={() => setAnomalyDialogOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          {anomalyLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+              <CircularProgress />
+            </Box>
+          ) : anomalyBags && anomalyBags.length > 0 ? (
+            <TableContainer component={Paper} elevation={0}>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: alpha('#F97316', 0.08) }}>
+                    <TableCell sx={{ fontWeight: 700 }}>Timestamp</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>HCF</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Anomaly Type</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Weight (kg)</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Staff</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Location</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {anomalyBags.map((bag: any, index: number) => (
+                    <TableRow 
+                      key={bag.id || index}
+                      sx={{ 
+                        '&:hover': { bgcolor: alpha('#F97316', 0.05) },
+                        '&:nth-of-type(odd)': { bgcolor: alpha('#F97316', 0.02) },
+                      }}
+                    >
+                      <TableCell>
+                        <Typography variant="body2">
+                          {new Date(bag.eventTs).toLocaleDateString()}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(bag.eventTs).toLocaleTimeString()}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={500}>
+                          {bag.hcfName || 'Unknown HCF'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={bag.category || 'Unknown'} 
+                          size="small"
+                          sx={{
+                            bgcolor: bag.category === 'RED' ? alpha('#EF4444', 0.2) :
+                                    bag.category === 'YELLOW' ? alpha('#FBBF24', 0.2) :
+                                    bag.category === 'BLUE' ? alpha('#3B82F6', 0.2) :
+                                    alpha('#94A3B8', 0.2),
+                            color: bag.category === 'RED' ? '#DC2626' :
+                                   bag.category === 'YELLOW' ? '#B45309' :
+                                   bag.category === 'BLUE' ? '#2563EB' :
+                                   '#475569',
+                            fontWeight: 600,
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={bag.anomalyState?.replace(/_/g, ' ') || 'Unknown'} 
+                          size="small"
+                          color="warning"
+                          variant="outlined"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={500}>
+                          {bag.weightKg?.toFixed(2) || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {bag.staffName || bag.collectedByUserId?.substring(0, 8) || 'Unknown'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {bag.gpsLat && bag.gpsLon ? (
+                          <IconButton 
+                            size="small" 
+                            onClick={() => window.open(`https://www.google.com/maps?q=${bag.gpsLat},${bag.gpsLon}`, '_blank')}
+                            sx={{ color: '#3B82F6' }}
+                          >
+                            <OpenInNewIcon fontSize="small" />
+                          </IconButton>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">N/A</Typography>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Box sx={{ py: 8, textAlign: 'center' }}>
+              <Typography variant="body1" color="text.secondary">
+                🎉 No anomaly bags this week!
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                All bag collections and verifications are within normal parameters.
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

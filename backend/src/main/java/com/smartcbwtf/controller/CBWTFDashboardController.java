@@ -61,6 +61,15 @@ public class CBWTFDashboardController {
         return ResponseEntity.ok(comparison);
     }
 
+    /**
+     * Get anomaly bags from this week with full details.
+     */
+    @GetMapping("/anomaly-bags")
+    public ResponseEntity<List<AnomalyBagDTO>> getAnomalyBags() {
+        List<AnomalyBagDTO> anomalies = dashboardService.getAnomalyBags();
+        return ResponseEntity.ok(anomalies);
+    }
+
     // DTO Records
     public record CategoryBreakdown(
             String name,
@@ -74,5 +83,19 @@ public class CBWTFDashboardController {
             long red,
             long blue,
             long white) {
+    }
+
+    public record AnomalyBagDTO(
+            String id,
+            String eventTs,
+            String hcfName,
+            String category,
+            String anomalyState,
+            Double weightKg,
+            String collectedByUserId,
+            String staffName,
+            Double gpsLat,
+            Double gpsLon,
+            String eventType) {
     }
 }

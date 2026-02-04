@@ -3435,6 +3435,7 @@ id action_startPickupFragment_to_scanWeighFragment
 id action_text
 id actions
 id activity_chooser_view_content
+id actvHcfType
 id add
 id adjust_height
 id adjust_width
@@ -3618,6 +3619,7 @@ id escape
 id etAadharNo
 id etAddress
 id etBeds
+id etCity
 id etDoctorName
 id etEmail
 id etGstNo
@@ -4046,9 +4048,11 @@ id textinput_suffix_text
 id tilAadharNo
 id tilAddress
 id tilBeds
+id tilCity
 id tilDoctorName
 id tilEmail
 id tilGstNo
+id tilHcfType
 id tilMonthlyCharges
 id tilName
 id tilOtherNotes

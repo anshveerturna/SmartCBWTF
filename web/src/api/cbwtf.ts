@@ -70,6 +70,20 @@ export interface CBWTFDashboardDTO {
   subscriptionDaysLeft: number;
 }
 
+export interface AnomalyBagDTO {
+  id: string;
+  eventTs: string;
+  hcfName: string;
+  category: string;
+  anomalyState: string;
+  weightKg: number;
+  collectedByUserId: string;
+  staffName: string | null;
+  gpsLat: number;
+  gpsLon: number;
+  eventType: string;
+}
+
 // ============= API Functions =============
 
 export const cbwtfApi = {
@@ -103,6 +117,14 @@ export const cbwtfApi = {
    */
   getTrendComparison: async (): Promise<{ todayBags: number; yesterdayBags: number; percentChange: number; isPositive: boolean }> => {
     const response = await apiClient.get('/api/cbwtf/dashboard/trend-comparison');
+    return response.data;
+  },
+
+  /**
+   * Get anomaly bags for the current week.
+   */
+  getAnomalyBags: async (): Promise<AnomalyBagDTO[]> => {
+    const response = await apiClient.get('/api/cbwtf/dashboard/anomaly-bags');
     return response.data;
   },
 };
@@ -587,6 +609,12 @@ export interface HcfListItem {
   bedAccessCategory: 'BEDS_0_TO_30' | 'ABOVE_30_BEDS' | null;
   bedAccessCategoryDisplay: string | null;
   portalEligible: boolean;
+  // New filter fields
+  city: string | null;
+  state: string | null;
+  hcfType: 'HOSPITAL' | 'DENTAL' | 'CLINIC' | 'PATHOLOGY_COLLECTION' | 'PATHOLOGY_STORAGE' | null;
+  hcfTypeDisplay: string | null;
+  seatCount: number | null;
 }
 
 export interface AgreementInfo {
@@ -806,9 +834,10 @@ export interface CbwtfAdminHcfRegistrationRequest {
   doctorName: string;
   contactPhone: string;
   contactEmail: string;
-  panNo: string;
-  gstNo: string;
-  aadharNo: string;
+  // Identity fields (optional)
+  panNo?: string;
+  gstNo?: string;
+  aadharNo?: string;
   ownershipType: string;
   rentAgreementUrl?: string;
   bedded: boolean;
@@ -820,6 +849,10 @@ export interface CbwtfAdminHcfRegistrationRequest {
   agreementStartDate: string;
   agreementEndDate: string;
   perBedPerDayRate: number;
+  // New HCF category fields
+  hcfType?: 'HOSPITAL' | 'DENTAL' | 'CLINIC' | 'PATHOLOGY_COLLECTION' | 'PATHOLOGY_STORAGE';
+  city?: string;
+  seatCount?: number;
 }
 
 export const registerHcf = async (data: CbwtfAdminHcfRegistrationRequest): Promise<HcfDetail> => {

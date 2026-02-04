@@ -38,16 +38,13 @@ public class CbwtfAdminHcfRegistrationRequest {
     @Email(message = "Invalid email format")
     private String contactEmail;
 
-    // Government IDs
-    @NotBlank(message = "PAN number is required")
+    // Government IDs (Optional)
     @Pattern(regexp = "^[A-Z]{5}[0-9]{4}[A-Z]$", message = "Invalid PAN format")
     private String panNo;
 
-    @NotBlank(message = "GST number is required")
     @Pattern(regexp = "^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$", message = "Invalid GST format")
     private String gstNo;
 
-    @NotBlank(message = "Aadhar number is required")
     @Pattern(regexp = "^[0-9]{12}$", message = "Aadhar must be 12 digits")
     private String aadharNo;
 
@@ -64,6 +61,11 @@ public class CbwtfAdminHcfRegistrationRequest {
     private Boolean bedded;
 
     private Integer numberOfBeds; // Required if bedded == true
+
+    // New HCF category fields
+    private String hcfType; // HOSPITAL, DENTAL, CLINIC, PATHOLOGY_COLLECTION, PATHOLOGY_STORAGE
+    private String city;
+    private Integer seatCount; // For Dental/Clinic types
 
     private BigDecimal monthlyCharges;
 
@@ -254,5 +256,29 @@ public class CbwtfAdminHcfRegistrationRequest {
 
     public void setPerBedPerDayRate(BigDecimal perBedPerDayRate) {
         this.perBedPerDayRate = perBedPerDayRate;
+    }
+
+    public String getHcfType() {
+        return hcfType;
+    }
+
+    public void setHcfType(String hcfType) {
+        this.hcfType = hcfType;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public Integer getSeatCount() {
+        return seatCount;
+    }
+
+    public void setSeatCount(Integer seatCount) {
+        this.seatCount = seatCount;
     }
 }

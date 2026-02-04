@@ -4,6 +4,7 @@ package com.smartcbwtf.mobile.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AutoCompleteTextView;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RadioGroup;
@@ -28,6 +29,9 @@ import java.lang.String;
 public final class FragmentHcfRegistrationBinding implements ViewBinding {
   @NonNull
   private final NestedScrollView rootView;
+
+  @NonNull
+  public final AutoCompleteTextView actvHcfType;
 
   @NonNull
   public final MaterialButton btnCaptureGps;
@@ -58,6 +62,9 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
 
   @NonNull
   public final TextInputEditText etBeds;
+
+  @NonNull
+  public final TextInputEditText etCity;
 
   @NonNull
   public final TextInputEditText etDoctorName;
@@ -126,6 +133,9 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
   public final TextInputLayout tilBeds;
 
   @NonNull
+  public final TextInputLayout tilCity;
+
+  @NonNull
   public final TextInputLayout tilDoctorName;
 
   @NonNull
@@ -133,6 +143,9 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
 
   @NonNull
   public final TextInputLayout tilGstNo;
+
+  @NonNull
+  public final TextInputLayout tilHcfType;
 
   @NonNull
   public final TextInputLayout tilMonthlyCharges;
@@ -168,11 +181,12 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
   public final TextView tvTermsVersion;
 
   private FragmentHcfRegistrationBinding(@NonNull NestedScrollView rootView,
-      @NonNull MaterialButton btnCaptureGps, @NonNull MaterialButton btnRegister,
-      @NonNull MaterialButton btnUploadRentAgreement, @NonNull MaterialCardView cardGps,
-      @NonNull MaterialCardView cardRentAgreement, @NonNull MaterialCardView cardTerms,
-      @NonNull MaterialCheckBox cbTermsAccepted, @NonNull TextInputEditText etAadharNo,
-      @NonNull TextInputEditText etAddress, @NonNull TextInputEditText etBeds,
+      @NonNull AutoCompleteTextView actvHcfType, @NonNull MaterialButton btnCaptureGps,
+      @NonNull MaterialButton btnRegister, @NonNull MaterialButton btnUploadRentAgreement,
+      @NonNull MaterialCardView cardGps, @NonNull MaterialCardView cardRentAgreement,
+      @NonNull MaterialCardView cardTerms, @NonNull MaterialCheckBox cbTermsAccepted,
+      @NonNull TextInputEditText etAadharNo, @NonNull TextInputEditText etAddress,
+      @NonNull TextInputEditText etBeds, @NonNull TextInputEditText etCity,
       @NonNull TextInputEditText etDoctorName, @NonNull TextInputEditText etEmail,
       @NonNull TextInputEditText etGstNo, @NonNull TextInputEditText etMonthlyCharges,
       @NonNull TextInputEditText etName, @NonNull TextInputEditText etOtherNotes,
@@ -184,14 +198,16 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
       @NonNull MaterialRadioButton rbRented, @NonNull RadioGroup rgOwnershipType,
       @NonNull MaterialSwitch switchBedded, @NonNull TextInputLayout tilAadharNo,
       @NonNull TextInputLayout tilAddress, @NonNull TextInputLayout tilBeds,
-      @NonNull TextInputLayout tilDoctorName, @NonNull TextInputLayout tilEmail,
-      @NonNull TextInputLayout tilGstNo, @NonNull TextInputLayout tilMonthlyCharges,
+      @NonNull TextInputLayout tilCity, @NonNull TextInputLayout tilDoctorName,
+      @NonNull TextInputLayout tilEmail, @NonNull TextInputLayout tilGstNo,
+      @NonNull TextInputLayout tilHcfType, @NonNull TextInputLayout tilMonthlyCharges,
       @NonNull TextInputLayout tilName, @NonNull TextInputLayout tilOtherNotes,
       @NonNull TextInputLayout tilPanNo, @NonNull TextInputLayout tilPhone,
       @NonNull TextInputLayout tilPincode, @NonNull TextInputLayout tilState,
       @NonNull TextView tvGpsCoordinates, @NonNull TextView tvGpsStatus,
       @NonNull TextView tvRentAgreementStatus, @NonNull TextView tvTermsVersion) {
     this.rootView = rootView;
+    this.actvHcfType = actvHcfType;
     this.btnCaptureGps = btnCaptureGps;
     this.btnRegister = btnRegister;
     this.btnUploadRentAgreement = btnUploadRentAgreement;
@@ -202,6 +218,7 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
     this.etAadharNo = etAadharNo;
     this.etAddress = etAddress;
     this.etBeds = etBeds;
+    this.etCity = etCity;
     this.etDoctorName = etDoctorName;
     this.etEmail = etEmail;
     this.etGstNo = etGstNo;
@@ -224,9 +241,11 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
     this.tilAadharNo = tilAadharNo;
     this.tilAddress = tilAddress;
     this.tilBeds = tilBeds;
+    this.tilCity = tilCity;
     this.tilDoctorName = tilDoctorName;
     this.tilEmail = tilEmail;
     this.tilGstNo = tilGstNo;
+    this.tilHcfType = tilHcfType;
     this.tilMonthlyCharges = tilMonthlyCharges;
     this.tilName = tilName;
     this.tilOtherNotes = tilOtherNotes;
@@ -267,6 +286,12 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.actvHcfType;
+      AutoCompleteTextView actvHcfType = ViewBindings.findChildViewById(rootView, id);
+      if (actvHcfType == null) {
+        break missingId;
+      }
+
       id = R.id.btnCaptureGps;
       MaterialButton btnCaptureGps = ViewBindings.findChildViewById(rootView, id);
       if (btnCaptureGps == null) {
@@ -324,6 +349,12 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
       id = R.id.etBeds;
       TextInputEditText etBeds = ViewBindings.findChildViewById(rootView, id);
       if (etBeds == null) {
+        break missingId;
+      }
+
+      id = R.id.etCity;
+      TextInputEditText etCity = ViewBindings.findChildViewById(rootView, id);
+      if (etCity == null) {
         break missingId;
       }
 
@@ -459,6 +490,12 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.tilCity;
+      TextInputLayout tilCity = ViewBindings.findChildViewById(rootView, id);
+      if (tilCity == null) {
+        break missingId;
+      }
+
       id = R.id.tilDoctorName;
       TextInputLayout tilDoctorName = ViewBindings.findChildViewById(rootView, id);
       if (tilDoctorName == null) {
@@ -474,6 +511,12 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
       id = R.id.tilGstNo;
       TextInputLayout tilGstNo = ViewBindings.findChildViewById(rootView, id);
       if (tilGstNo == null) {
+        break missingId;
+      }
+
+      id = R.id.tilHcfType;
+      TextInputLayout tilHcfType = ViewBindings.findChildViewById(rootView, id);
+      if (tilHcfType == null) {
         break missingId;
       }
 
@@ -543,15 +586,15 @@ public final class FragmentHcfRegistrationBinding implements ViewBinding {
         break missingId;
       }
 
-      return new FragmentHcfRegistrationBinding((NestedScrollView) rootView, btnCaptureGps,
-          btnRegister, btnUploadRentAgreement, cardGps, cardRentAgreement, cardTerms,
-          cbTermsAccepted, etAadharNo, etAddress, etBeds, etDoctorName, etEmail, etGstNo,
+      return new FragmentHcfRegistrationBinding((NestedScrollView) rootView, actvHcfType,
+          btnCaptureGps, btnRegister, btnUploadRentAgreement, cardGps, cardRentAgreement, cardTerms,
+          cbTermsAccepted, etAadharNo, etAddress, etBeds, etCity, etDoctorName, etEmail, etGstNo,
           etMonthlyCharges, etName, etOtherNotes, etPanNo, etPhone, etPincode, etState, ivGpsStatus,
           ivRentAgreementStatus, progressBar, progressRentAgreement, progressTerms, rbOwned,
-          rbRented, rgOwnershipType, switchBedded, tilAadharNo, tilAddress, tilBeds, tilDoctorName,
-          tilEmail, tilGstNo, tilMonthlyCharges, tilName, tilOtherNotes, tilPanNo, tilPhone,
-          tilPincode, tilState, tvGpsCoordinates, tvGpsStatus, tvRentAgreementStatus,
-          tvTermsVersion);
+          rbRented, rgOwnershipType, switchBedded, tilAadharNo, tilAddress, tilBeds, tilCity,
+          tilDoctorName, tilEmail, tilGstNo, tilHcfType, tilMonthlyCharges, tilName, tilOtherNotes,
+          tilPanNo, tilPhone, tilPincode, tilState, tvGpsCoordinates, tvGpsStatus,
+          tvRentAgreementStatus, tvTermsVersion);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

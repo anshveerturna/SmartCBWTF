@@ -3434,6 +3434,7 @@ int id action_startPickupFragment_to_scanWeighFragment 0x7f080058
 int id action_text 0x7f080059
 int id actions 0x7f08005a
 int id activity_chooser_view_content 0x7f08005b
+int id actvHcfType 0x7f080339
 int id add 0x7f08005c
 int id adjust_height 0x7f08005d
 int id adjust_width 0x7f08005e
@@ -3617,6 +3618,7 @@ int id escape 0x7f08010f
 int id etAadharNo 0x7f080110
 int id etAddress 0x7f080111
 int id etBeds 0x7f080112
+int id etCity 0x7f080337
 int id etDoctorName 0x7f080113
 int id etEmail 0x7f080114
 int id etGstNo 0x7f080115
@@ -4045,9 +4047,11 @@ int id textinput_suffix_text 0x7f0802bb
 int id tilAadharNo 0x7f0802bc
 int id tilAddress 0x7f0802bd
 int id tilBeds 0x7f0802be
+int id tilCity 0x7f080338
 int id tilDoctorName 0x7f0802bf
 int id tilEmail 0x7f0802c0
 int id tilGstNo 0x7f0802c1
+int id tilHcfType 0x7f08033a
 int id tilMonthlyCharges 0x7f0802c2
 int id tilName 0x7f0802c3
 int id tilOtherNotes 0x7f0802c4

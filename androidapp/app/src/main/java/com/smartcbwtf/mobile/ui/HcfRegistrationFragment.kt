@@ -34,6 +34,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.util.Locale
+import android.widget.ArrayAdapter
 
 @AndroidEntryPoint
 class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
@@ -60,6 +61,7 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         setupHideKeyboardOnTouch(binding.root)
 
         setupFormFields()
+        setupHcfTypeDropdown()
         setupOwnershipType()
         setupGpsCapture()
         setupTermsCard()
@@ -117,6 +119,39 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
             if (upper != it?.toString()) binding.etGstNo.setText(upper)
             binding.etGstNo.setSelection(binding.etGstNo.text?.length ?: 0)
             textWatcher(); validateGstField(showError = true)
+        }
+    }
+    
+    private fun setupHcfTypeDropdown() {
+        // HCF Type options
+        val hcfTypes = listOf(
+            "Hospital" to "HOSPITAL",
+            "Dental" to "DENTAL",
+            "Clinic" to "CLINIC",
+            "Pathology (Collection)" to "PATHOLOGY_COLLECTION",
+            "Pathology (Storage)" to "PATHOLOGY_STORAGE"
+        )
+        
+        val displayNames = hcfTypes.map { it.first }
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, displayNames)
+        binding.actvHcfType.setAdapter(adapter)
+        
+        // Set default selection
+        binding.actvHcfType.setText("Hospital", false)
+        selectedHcfType = "HOSPITAL"
+        
+        // Handle selection
+        binding.actvHcfType.setOnItemClickListener { _, _, position, _ ->
+            selectedHcfType = hcfTypes[position].second
+            
+            // Update toggle and field labels based on HCF type
+            if (selectedHcfType == "HOSPITAL") {
+                binding.switchBedded.text = "Bedded Facility"
+                binding.tilBeds.hint = "Number of Beds"
+            } else {
+                binding.switchBedded.text = "Seated Facility"
+                binding.tilBeds.hint = "Number of Seats"
+            }
         }
     }
     
@@ -279,6 +314,9 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
         return valid
     }
     
+    // Track selected HCF type - default to Hospital
+    private var selectedHcfType: String = "HOSPITAL"
+    
     private fun submitRegistration() {
         val beds = binding.etBeds.text?.toString()?.toIntOrNull()
         val monthlyCharges = binding.etMonthlyCharges.text?.toString()?.toDoubleOrNull()
@@ -296,7 +334,11 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
             aadharNo = binding.etAadharNo.text?.toString(),
             beds = beds,
             monthlyCharges = monthlyCharges,
-            otherNotes = binding.etOtherNotes.text?.toString()
+            otherNotes = binding.etOtherNotes.text?.toString(),
+            hcfType = selectedHcfType,
+            city = binding.etCity.text?.toString(),
+            // For non-hospital types, use beds value as seat count
+            seatCount = if (selectedHcfType != "HOSPITAL") beds else null
         )
     }
     

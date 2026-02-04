@@ -80,11 +80,32 @@ export default function HcfListSmall() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [cityFilter, setCityFilter] = useState<string>('all');
+  const [stateFilter, setStateFilter] = useState<string>('all');
+  const [hcfTypeFilter, setHcfTypeFilter] = useState<string>('all');
 
   const { data: allHcfs, isLoading, error } = useQuery({
     queryKey: ['cbwtf-hcfs'],
     queryFn: getHcfList,
   });
+
+  // Get unique cities, states, and HCF types for filter dropdowns
+  const { cities, states, hcfTypes } = useMemo(() => {
+    if (!allHcfs) return { cities: [], states: [], hcfTypes: [] };
+    const citySet = new Set<string>();
+    const stateSet = new Set<string>();
+    const typeSet = new Set<string>();
+    allHcfs.forEach((hcf) => {
+      if (hcf.city) citySet.add(hcf.city);
+      if (hcf.state) stateSet.add(hcf.state);
+      if (hcf.hcfType) typeSet.add(hcf.hcfType);
+    });
+    return {
+      cities: Array.from(citySet).sort(),
+      states: Array.from(stateSet).sort(),
+      hcfTypes: Array.from(typeSet).sort(),
+    };
+  }, [allHcfs]);
 
   // Filter to only show 0-30 beds HCFs
   const filteredHcfs = useMemo(() => {
@@ -119,9 +140,21 @@ export default function HcfListSmall() {
       const matchesStatus =
         statusFilter === 'all' || hcf.agreementStatus === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      // City filter
+      const matchesCity =
+        cityFilter === 'all' || hcf.city === cityFilter;
+
+      // State filter
+      const matchesState =
+        stateFilter === 'all' || hcf.state === stateFilter;
+
+      // HCF Type filter
+      const matchesType =
+        hcfTypeFilter === 'all' || hcf.hcfType === hcfTypeFilter;
+
+      return matchesSearch && matchesStatus && matchesCity && matchesState && matchesType;
     });
-  }, [allHcfs, searchQuery, statusFilter]);
+  }, [allHcfs, searchQuery, statusFilter, cityFilter, stateFilter, hcfTypeFilter]);
 
   if (isLoading) {
     return (
@@ -170,13 +203,13 @@ export default function HcfListSmall() {
       {/* Filters */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flexWrap="wrap">
             <TextField
               placeholder="Search by name, code, or agreement..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               size="small"
-              sx={{ flex: 2, minWidth: 300 }}
+              sx={{ flex: 2, minWidth: 250 }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -185,7 +218,7 @@ export default function HcfListSmall() {
                 ),
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 180 }}>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
               <InputLabel>Status</InputLabel>
               <Select
                 value={statusFilter}
@@ -197,6 +230,47 @@ export default function HcfListSmall() {
                 <MenuItem value="EXPIRED">Expired</MenuItem>
                 <MenuItem value="TERMINATED">Terminated</MenuItem>
                 <MenuItem value="DISPUTED">Disputed</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 130 }}>
+              <InputLabel>City</InputLabel>
+              <Select
+                value={cityFilter}
+                label="City"
+                onChange={(e) => setCityFilter(e.target.value)}
+              >
+                <MenuItem value="all">All Cities</MenuItem>
+                {cities.map((city) => (
+                  <MenuItem key={city} value={city}>{city}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 130 }}>
+              <InputLabel>State</InputLabel>
+              <Select
+                value={stateFilter}
+                label="State"
+                onChange={(e) => setStateFilter(e.target.value)}
+              >
+                <MenuItem value="all">All States</MenuItem>
+                {states.map((state) => (
+                  <MenuItem key={state} value={state}>{state}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>HCF Type</InputLabel>
+              <Select
+                value={hcfTypeFilter}
+                label="HCF Type"
+                onChange={(e) => setHcfTypeFilter(e.target.value)}
+              >
+                <MenuItem value="all">All Types</MenuItem>
+                <MenuItem value="HOSPITAL">Hospital</MenuItem>
+                <MenuItem value="DENTAL">Dental</MenuItem>
+                <MenuItem value="CLINIC">Clinic</MenuItem>
+                <MenuItem value="PATHOLOGY_COLLECTION">Pathology (Collection)</MenuItem>
+                <MenuItem value="PATHOLOGY_STORAGE">Pathology (Storage)</MenuItem>
               </Select>
             </FormControl>
           </Stack>

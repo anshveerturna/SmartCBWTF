@@ -394,6 +394,17 @@ public class HcfService {
         hcf.setPcbAuthorizationNo(request.getPcbAuthorizationNo());
         hcf.setOtherNotes(request.getOtherNotes());
 
+        // New HCF category fields
+        hcf.setCity(request.getCity());
+        hcf.setSeatCount(request.getSeatCount());
+        if (request.getHcfType() != null && !request.getHcfType().isBlank()) {
+            try {
+                hcf.setHcfType(com.smartcbwtf.domain.HcfType.valueOf(request.getHcfType()));
+            } catch (IllegalArgumentException e) {
+                hcf.setHcfType(com.smartcbwtf.domain.HcfType.HOSPITAL); // Default
+            }
+        }
+
         // Ownership fields
         hcf.setOwnershipType(request.getOwnershipType() != null ? request.getOwnershipType() : "OWNED");
         hcf.setRentAgreementUrl(request.getRentAgreementUrl());
@@ -409,6 +420,9 @@ public class HcfService {
         hcf.setStatus("PENDING_APPROVAL");
         hcf.setCreatedAt(Instant.now());
         hcf.setUpdatedAt(Instant.now());
+
+        // Recalculate bed access category (considers hcfType)
+        hcf.recalculateBedAccessCategory();
 
         return hcf;
     }

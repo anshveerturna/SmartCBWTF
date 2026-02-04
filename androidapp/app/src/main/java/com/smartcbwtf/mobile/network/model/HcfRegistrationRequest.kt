@@ -42,4 +42,9 @@ data class HcfRegistrationRequest(
     
     // Registered by user ID (from current session)
     @SerializedName("registeredByUserId") val registeredByUserId: String? = null,
+    
+    // HCF category fields
+    @SerializedName("hcfType") val hcfType: String? = "HOSPITAL",  // HOSPITAL, DENTAL, CLINIC, PATHOLOGY_COLLECTION, PATHOLOGY_STORAGE
+    @SerializedName("city") val city: String? = null,
+    @SerializedName("seatCount") val seatCount: Int? = null,  // For Dental/Clinic types
 )

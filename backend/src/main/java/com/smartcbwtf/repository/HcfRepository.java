@@ -160,4 +160,19 @@ public interface HcfRepository extends JpaRepository<Hcf, UUID> {
 
     @Query("SELECT h FROM Hcf h WHERE LOWER(h.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(h.code) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<Hcf> searchByNameOrCode(@Param("search") String search, Pageable pageable);
+
+    // ============================================================================
+    // FILTER QUERIES - City, State, HCF Type
+    // ============================================================================
+    List<Hcf> findByCity(String city);
+
+    List<Hcf> findByState(String state);
+
+    List<Hcf> findByHcfType(com.smartcbwtf.domain.HcfType hcfType);
+
+    @Query("SELECT DISTINCT h.city FROM Hcf h WHERE h.city IS NOT NULL ORDER BY h.city")
+    List<String> findDistinctCities();
+
+    @Query("SELECT DISTINCT h.state FROM Hcf h WHERE h.state IS NOT NULL ORDER BY h.state")
+    List<String> findDistinctStates();
 }

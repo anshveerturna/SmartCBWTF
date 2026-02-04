@@ -53,6 +53,19 @@ public class Hcf {
     @Column(columnDefinition = "TEXT")
     private String otherNotes;
 
+    // HCF Facility Type (Dental, Clinic, Pathology, etc.)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hcf_type", length = 30)
+    private HcfType hcfType = HcfType.HOSPITAL;
+
+    // City for location filtering
+    @Column(length = 100)
+    private String city;
+
+    // Seat count for Dental/Clinic types
+    @Column(name = "seat_count")
+    private Integer seatCount;
+
     // Ownership type: OWNED or RENTED
     @Column(name = "ownership_type", nullable = false)
     private String ownershipType = "OWNED";
@@ -427,11 +440,18 @@ public class Hcf {
     }
 
     /**
-     * Recalculate bed access category based on current bed count.
+     * Recalculate bed access category based on current bed count and HCF type.
+     * Non-hospital types (Dental, Clinic, Pathology) always get 0-30 beds category.
      */
     public void recalculateBedAccessCategory() {
-        this.bedAccessCategory = HcfBedAccessCategory.calculate(numberOfBeds, bedded);
-        this.portalAccessEnabled = this.bedAccessCategory.isPortalEligible();
+        // Non-hospital types are always 0-30 beds (no portal access)
+        if (hcfType != null && hcfType != HcfType.HOSPITAL) {
+            this.bedAccessCategory = HcfBedAccessCategory.BEDS_0_TO_30;
+            this.portalAccessEnabled = false;
+        } else {
+            this.bedAccessCategory = HcfBedAccessCategory.calculate(numberOfBeds, bedded);
+            this.portalAccessEnabled = this.bedAccessCategory.isPortalEligible();
+        }
     }
 
     /**
@@ -439,5 +459,30 @@ public class Hcf {
      */
     public void snapshotCategoryOnApproval() {
         this.approvedBedAccessCategory = this.bedAccessCategory;
+    }
+
+    // HCF Type getters/setters
+    public HcfType getHcfType() {
+        return hcfType;
+    }
+
+    public void setHcfType(HcfType hcfType) {
+        this.hcfType = hcfType;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public Integer getSeatCount() {
+        return seatCount;
+    }
+
+    public void setSeatCount(Integer seatCount) {
+        this.seatCount = seatCount;
     }
 }
