@@ -181,55 +181,44 @@ public class HcfConsumableOrderController {
 
     private void sendOrderConfirmationEmails(ConsumableOrder order, Hcf hcf, Facility facility) {
         try {
-            String itemsHtml = order.getItems().stream()
-                    .map(i -> String.format("• %s (Qty: %d) - ₹%.2f",
-                            i.getItemName(), i.getQuantity(), i.getLineTotal()))
-                    .collect(java.util.stream.Collectors.joining("<br>"));
+            // Build items HTML for email
+            String itemsHtml = "<table style='width:100%; border-collapse:collapse;'>" +
+                    "<tr style='background:#1a8754; color:#fff;'><th style='padding:10px;text-align:left;'>Item</th><th style='padding:10px;'>Qty</th><th style='padding:10px;'>Amount</th></tr>"
+                    +
+                    order.getItems().stream()
+                            .map(i -> String.format(
+                                    "<tr style='border-bottom:1px solid #e9ecef;'><td style='padding:10px;'>%s</td><td style='padding:10px;text-align:center;'>%d</td><td style='padding:10px;text-align:right;'>₹%.2f</td></tr>",
+                                    i.getItemName(), i.getQuantity(), i.getLineTotal()))
+                            .collect(java.util.stream.Collectors.joining(""))
+                    +
+                    "</table>";
+
+            String total = String.format("%.2f", order.getTotalAmount());
 
             // Email to HCF (order confirmation)
             String hcfEmail = hcf.getContactEmail();
             if (hcfEmail != null && !hcfEmail.isEmpty()) {
-                String hcfSubject = "Order Confirmation - " + order.getOrderNumber();
-                String hcfBody = String.format(
-                        "<h2>Order Confirmed</h2>" +
-                                "<p>Dear %s,</p>" +
-                                "<p>Your consumable order has been placed successfully.</p>" +
-                                "<p><strong>Order Number:</strong> %s<br>" +
-                                "<strong>CBWTF:</strong> %s<br>" +
-                                "<strong>Order Date:</strong> %s</p>" +
-                                "<h3>Order Items:</h3><p>%s</p>" +
-                                "<p><strong>Total Amount:</strong> ₹%.2f (incl. GST)</p>" +
-                                "<p>You will be notified once the order is confirmed and dispatched.</p>" +
-                                "<p>Thank you,<br>SmartCBWTF Team</p>",
-                        hcf.getName(), order.getOrderNumber(), facility.getName(),
-                        java.time.LocalDateTime.now()
-                                .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")),
-                        itemsHtml, order.getTotalAmount());
-                emailService.sendEmail(hcfEmail, hcfSubject, hcfBody);
+                String html = emailService.getTemplates().orderPlacedHcf(
+                        hcf.getName(),
+                        order.getOrderNumber(),
+                        facility.getName(),
+                        itemsHtml,
+                        total);
+                emailService.sendHtmlEmail(hcfEmail, "Order Confirmation - " + order.getOrderNumber(), html);
                 log.info("Order confirmation email sent to HCF: {}", hcfEmail);
             }
 
             // Email to CBWTF (new order notification)
             String cbwtfEmail = facility.getContactEmail();
             if (cbwtfEmail != null && !cbwtfEmail.isEmpty()) {
-                String cbwtfSubject = "New Consumable Order - " + order.getOrderNumber();
-                String cbwtfBody = String.format(
-                        "<h2>New Consumable Order Received</h2>" +
-                                "<p><strong>Order Number:</strong> %s<br>" +
-                                "<strong>From HCF:</strong> %s (%s)<br>" +
-                                "<strong>Order Date:</strong> %s</p>" +
-                                "<h3>Order Items:</h3><p>%s</p>" +
-                                "<p><strong>Total Amount:</strong> ₹%.2f (incl. GST)</p>" +
-                                "%s" +
-                                "<p>Please log in to the portal to confirm and process this order.</p>",
-                        order.getOrderNumber(), hcf.getName(), hcf.getCode(),
-                        java.time.LocalDateTime.now()
-                                .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")),
-                        itemsHtml, order.getTotalAmount(),
-                        order.getHcfNotes() != null
-                                ? "<p><strong>Customer Notes:</strong> " + order.getHcfNotes() + "</p>"
-                                : "");
-                emailService.sendEmail(cbwtfEmail, cbwtfSubject, cbwtfBody);
+                String html = emailService.getTemplates().orderPlacedCbwtf(
+                        order.getOrderNumber(),
+                        hcf.getName(),
+                        hcf.getCode(),
+                        itemsHtml,
+                        total,
+                        order.getHcfNotes());
+                emailService.sendHtmlEmail(cbwtfEmail, "New Consumable Order - " + order.getOrderNumber(), html);
                 log.info("New order notification email sent to CBWTF: {}", cbwtfEmail);
             }
         } catch (Exception e) {

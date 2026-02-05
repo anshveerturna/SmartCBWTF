@@ -5,5 +5,7 @@ public enum TemplateCategory {
     BILLING,
     PAYMENT,
     COMPLIANCE,
-    SYSTEM
+    SYSTEM,
+    ORDER,
+    SECURITY
 }

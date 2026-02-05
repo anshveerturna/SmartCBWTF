@@ -2,6 +2,7 @@ package com.smartcbwtf.service;
 
 import com.smartcbwtf.service.GlobalEmailTemplateService.RenderedEmail;
 import com.smartcbwtf.service.email.BrevoEmailProvider;
+import com.smartcbwtf.service.email.EmailTemplates;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,10 +30,20 @@ public class EmailService {
 
     private final GlobalEmailTemplateService templateService;
     private final BrevoEmailProvider brevoProvider;
+    private final EmailTemplates emailTemplates;
 
-    public EmailService(GlobalEmailTemplateService templateService, BrevoEmailProvider brevoProvider) {
+    public EmailService(GlobalEmailTemplateService templateService, BrevoEmailProvider brevoProvider,
+            EmailTemplates emailTemplates) {
         this.templateService = templateService;
         this.brevoProvider = brevoProvider;
+        this.emailTemplates = emailTemplates;
+    }
+
+    /**
+     * Get email templates for building custom emails.
+     */
+    public EmailTemplates getTemplates() {
+        return emailTemplates;
     }
 
     /**
@@ -50,6 +61,23 @@ public class EmailService {
             log.info("[EMAIL] Sent simple email to={} messageId={}", to, messageId);
         } else {
             log.error("[EMAIL] Failed to send simple email to={}", to);
+        }
+    }
+
+    /**
+     * Send pre-formatted HTML email (from templates).
+     */
+    public void sendHtmlEmail(String to, String subject, String htmlContent) {
+        if (!emailEnabled) {
+            log.info("[EMAIL-DEV] HTML email to={} subject={}", to, subject);
+            return;
+        }
+
+        String messageId = brevoProvider.sendEmail(to, subject, htmlContent, null);
+        if (messageId != null) {
+            log.info("[EMAIL] Sent HTML email to={} subject={} messageId={}", to, subject, messageId);
+        } else {
+            log.error("[EMAIL] Failed to send HTML email to={}", to);
         }
     }
 

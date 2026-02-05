@@ -189,15 +189,21 @@ public class BillAdjustmentService {
                 return;
             }
 
-            // Build email content
+            // Build email with professional template
             String subject = String.format("[BILL ADJUSTMENT ALERT] %s - %s",
                     bill.getAgreement().getHcf().getName(),
                     bill.getBillingMonth().toString());
 
-            String body = buildAdjustmentEmailBody(bill, version);
+            String html = emailService.getTemplates().billAdjustment(
+                    "CBWTF Admin",
+                    bill.getAgreement().getHcf().getName(),
+                    bill.getBillingMonth().toString(),
+                    "Concession",
+                    version.getAdjustmentAmount().abs().toPlainString(),
+                    version.getAdjustmentReason());
 
             // Send email
-            emailService.sendEmail(notificationEmail, subject, body);
+            emailService.sendHtmlEmail(notificationEmail, subject, html);
 
             log.info("CBWTF adjustment alert email sent to {} for bill {}", notificationEmail, bill.getId());
 
@@ -207,31 +213,5 @@ public class BillAdjustmentService {
             log.error("COMPLIANCE WARNING: Failed to send adjustment alert email for bill {}: {}",
                     bill.getId(), e.getMessage(), e);
         }
-    }
-
-    private String buildAdjustmentEmailBody(Bill bill, BillVersion version) {
-        return String.format("""
-                A bill adjustment has been applied:
-
-                HCF: %s
-                Billing Period: %s
-                Original Bill Amount: ₹%s
-                Adjustment Amount: ₹%s
-                Final Payable Amount: ₹%s
-
-                Reason: %s
-                Modified by: %s
-                Timestamp: %s
-
-                This is an automated notification. Invoice will be generated separately via Tally.
-                """,
-                bill.getAgreement().getHcf().getName(),
-                bill.getBillingMonth().toString(),
-                bill.getTotalAmount().toPlainString(),
-                version.getAdjustmentAmount().toPlainString(),
-                bill.getFinalPayableAmount().toPlainString(),
-                version.getAdjustmentReason(),
-                version.getAdjustedBy().toString(),
-                version.getAdjustedAt().toString());
     }
 }

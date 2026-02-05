@@ -450,17 +450,12 @@ public class CbwtfConsumableOrderController {
         try {
             String hcfEmail = order.getHcf().getContactEmail();
             if (hcfEmail != null && !hcfEmail.isEmpty()) {
-                String subject = statusTitle + " - " + order.getOrderNumber();
-                String body = String.format(
-                        "<h2>%s</h2>" +
-                                "<p>Dear %s,</p>" +
-                                "<p>%s</p>" +
-                                "<p><strong>Order Number:</strong> %s<br>" +
-                                "<strong>Total Amount:</strong> ₹%.2f</p>" +
-                                "<p>Thank you,<br>SmartCBWTF Team</p>",
-                        statusTitle, order.getHcf().getName(), statusMessage,
-                        order.getOrderNumber(), order.getTotalAmount());
-                emailService.sendEmail(hcfEmail, subject, body);
+                String html = emailService.getTemplates().orderStatusUpdate(
+                        order.getHcf().getName(),
+                        order.getOrderNumber(),
+                        order.getStatus(),
+                        statusMessage);
+                emailService.sendHtmlEmail(hcfEmail, statusTitle + " - " + order.getOrderNumber(), html);
                 log.info("Status update email sent to HCF: {}", hcfEmail);
             }
         } catch (Exception e) {

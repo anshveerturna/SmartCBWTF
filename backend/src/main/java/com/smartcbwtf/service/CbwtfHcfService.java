@@ -5,6 +5,7 @@ import com.smartcbwtf.dto.*;
 import com.smartcbwtf.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,10 @@ public class CbwtfHcfService {
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final BagEventRepository bagEventRepository;
+    private final EmailService emailService;
+
+    @Value("${app.portal.url:https://portal.smartcbwtf.com}")
+    private String portalUrl;
 
     public CbwtfHcfService(
             HcfRepository hcfRepository,
@@ -48,7 +53,8 @@ public class CbwtfHcfService {
             HCFIdentityService hcfIdentityService,
             AppUserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            BagEventRepository bagEventRepository) {
+            BagEventRepository bagEventRepository,
+            EmailService emailService) {
         this.hcfRepository = hcfRepository;
         this.agreementRepository = agreementRepository;
         this.billingConfigRepository = billingConfigRepository;
@@ -60,6 +66,7 @@ public class CbwtfHcfService {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.bagEventRepository = bagEventRepository;
+        this.emailService = emailService;
     }
 
     /**
@@ -475,8 +482,9 @@ public class CbwtfHcfService {
         billingConfigRepository.save(config);
 
         // Create HCF portal admin user for 30+ bed HCFs
+        String generatedPassword = null;
         if (hcf.isPortalEligible()) {
-            String generatedPassword = generateRandomPassword();
+            generatedPassword = generateRandomPassword();
             AppUser hcfAdmin = new AppUser();
             hcfAdmin.setUsername(agreement.getAgreementNumber());
             hcfAdmin.setPasswordHash(passwordEncoder.encode(generatedPassword));
@@ -489,7 +497,14 @@ public class CbwtfHcfService {
             hcfAdmin.setUpdatedAt(Instant.now());
             userRepository.save(hcfAdmin);
             log.info("Created HCF_ADMIN user on approval: username={}", agreement.getAgreementNumber());
+
+            // Send credentials email
+            sendCredentialsEmail(hcf.getName(), hcf.getContactEmail(), agreement.getAgreementNumber(),
+                    generatedPassword);
         }
+
+        // Send HCF approval email (for all HCFs, regardless of portal eligibility)
+        sendHcfApprovalEmail(hcf, agreement);
 
         // Audit log
         auditLogService.log("HCF", hcfId, "HCF_APPROVED", null,
@@ -670,6 +685,7 @@ public class CbwtfHcfService {
         }
 
         hcf.setStatus("ACTIVE"); // Auto-approved for admin registration
+        hcf.setApprovalStatus(com.smartcbwtf.domain.ApprovalStatus.APPROVED); // Portal access enabled
         hcf.setCreatedAt(Instant.now());
         hcf.setUpdatedAt(Instant.now());
 
@@ -720,6 +736,10 @@ public class CbwtfHcfService {
             hcfAdmin.setUpdatedAt(Instant.now());
             userRepository.save(hcfAdmin);
             log.info("Created HCF_ADMIN user for portal: username={}", agreement.getAgreementNumber());
+
+            // Send credentials email
+            sendCredentialsEmail(hcf.getName(), hcf.getContactEmail(), agreement.getAgreementNumber(),
+                    generatedPassword);
         }
 
         // 8. Audit log with distinct event type
@@ -730,6 +750,9 @@ public class CbwtfHcfService {
         auditLogService.log("HCF", hcf.getId(), "HCF_REGISTERED_BY_ADMIN", adminUserId, auditDetails);
         log.info("HCF {} registered by admin {}, agreement {} created",
                 hcf.getId(), adminUserId, agreement.getAgreementNumber());
+
+        // Send HCF approval/registration confirmation email (for ALL HCFs)
+        sendHcfApprovalEmail(hcf, agreement);
 
         return getHcfDetail(hcf.getId(), facilityId);
     }
@@ -877,6 +900,9 @@ public class CbwtfHcfService {
         hcfAdmin.setUpdatedAt(Instant.now());
         userRepository.save(hcfAdmin);
 
+        // Send credentials email
+        sendCredentialsEmail(hcf.getName(), hcf.getContactEmail(), agreement.getAgreementNumber(), generatedPassword);
+
         // Audit log
         auditLogService.log("USER", hcfAdmin.getId(), "HCF_ADMIN_CREATED", null,
                 "Created HCF portal admin for HCF: " + hcf.getName() + ", username: " + agreement.getAgreementNumber());
@@ -924,6 +950,9 @@ public class CbwtfHcfService {
         adminUser.setPasswordHash(passwordEncoder.encode(newPassword));
         adminUser.setUpdatedAt(Instant.now());
         userRepository.save(adminUser);
+
+        // Send password reset email
+        sendPasswordResetEmail(hcf.getName(), hcf.getContactEmail(), adminUser.getUsername(), newPassword);
 
         // Audit log
         auditLogService.log("USER", adminUser.getId(), "HCF_ADMIN_PASSWORD_RESET", null,
@@ -998,6 +1027,9 @@ public class CbwtfHcfService {
         hcfAdmin.setUpdatedAt(Instant.now());
         userRepository.save(hcfAdmin);
 
+        // Send credentials email
+        sendCredentialsEmail(hcf.getName(), hcf.getContactEmail(), agreement.getAgreementNumber(), generatedPassword);
+
         // Audit log
         auditLogService.log("USER", hcfAdmin.getId(), "HCF_ADMIN_CREATED_MANUAL", null,
                 "Manually enabled portal access for small HCF: " + hcf.getName() + ", username: "
@@ -1010,5 +1042,63 @@ public class CbwtfHcfService {
                 "username", agreement.getAgreementNumber(),
                 "tempPassword", generatedPassword,
                 "message", "Portal access enabled and admin created successfully");
+    }
+
+    /**
+     * Send HCF credentials email using professional template.
+     */
+    private void sendCredentialsEmail(String hcfName, String email, String username, String password) {
+        log.info("sendCredentialsEmail called: hcfName={}, email={}, username={}", hcfName, email, username);
+        if (email == null || email.isBlank()) {
+            log.warn("Cannot send credentials email: no email for HCF {}", hcfName);
+            return;
+        }
+        try {
+            String html = emailService.getTemplates().hcfCredentials(hcfName, username, password, portalUrl);
+            emailService.sendHtmlEmail(email, "Your SmartCBWTF Portal Credentials", html);
+            log.info("Credentials email sent to HCF: {}", email);
+        } catch (Exception e) {
+            log.warn("Failed to send credentials email to {}: {}", email, e.getMessage());
+        }
+    }
+
+    /**
+     * Send HCF approval notification email.
+     */
+    private void sendHcfApprovalEmail(Hcf hcf, Agreement agreement) {
+        log.info("sendHcfApprovalEmail called: hcfName={}, email={}, agreementNumber={}",
+                hcf.getName(), hcf.getContactEmail(), agreement.getAgreementNumber());
+        if (hcf.getContactEmail() == null || hcf.getContactEmail().isBlank()) {
+            log.warn("Cannot send approval email: no email for HCF {}", hcf.getName());
+            return;
+        }
+        try {
+            String html = emailService.getTemplates().hcfApproved(
+                    hcf.getName(),
+                    agreement.getAgreementNumber(),
+                    agreement.getStartDate().toString(),
+                    agreement.getEndDate().toString());
+            emailService.sendHtmlEmail(hcf.getContactEmail(), "Your HCF Registration is Approved - SmartCBWTF", html);
+            log.info("Approval email sent to HCF: {}", hcf.getContactEmail());
+        } catch (Exception e) {
+            log.warn("Failed to send approval email to {}: {}", hcf.getContactEmail(), e.getMessage());
+        }
+    }
+
+    /**
+     * Send password reset notification email.
+     */
+    private void sendPasswordResetEmail(String hcfName, String email, String username, String newPassword) {
+        if (email == null || email.isBlank()) {
+            log.warn("Cannot send password reset email: no email for HCF {}", hcfName);
+            return;
+        }
+        try {
+            String html = emailService.getTemplates().passwordReset(hcfName, newPassword);
+            emailService.sendHtmlEmail(email, "Your SmartCBWTF Password Has Been Reset", html);
+            log.info("Password reset email sent to HCF: {}", email);
+        } catch (Exception e) {
+            log.warn("Failed to send password reset email to {}: {}", email, e.getMessage());
+        }
     }
 }
