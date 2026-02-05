@@ -1,1 +1,18 @@
+# Build outputs
 backend/target/
+
+# Environment files (contain secrets)
+.env
+.env.*
+*.env
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+
+# Logs
+*.log

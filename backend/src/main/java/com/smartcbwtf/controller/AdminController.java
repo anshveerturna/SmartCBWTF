@@ -4,6 +4,7 @@ import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.*;
 import com.smartcbwtf.dto.admin.*;
 import com.smartcbwtf.repository.*;
+import com.smartcbwtf.service.EmailService;
 import com.smartcbwtf.service.SubscriptionService;
 import com.smartcbwtf.service.SystemConfigService;
 import jakarta.validation.Valid;
@@ -43,6 +44,7 @@ public class AdminController {
     private final SystemErrorRepository systemErrorRepository;
     private final PasswordEncoder passwordEncoder;
     private final SystemConfigService systemConfigService;
+    private final EmailService emailService;
 
     public AdminController(
             FacilityRepository facilityRepository,
@@ -53,7 +55,8 @@ public class AdminController {
             InvoiceRepository invoiceRepository,
             SystemErrorRepository systemErrorRepository,
             PasswordEncoder passwordEncoder,
-            SystemConfigService systemConfigService) {
+            SystemConfigService systemConfigService,
+            EmailService emailService) {
         this.facilityRepository = facilityRepository;
         this.userRepository = userRepository;
         this.hcfRepository = hcfRepository;
@@ -63,6 +66,7 @@ public class AdminController {
         this.systemErrorRepository = systemErrorRepository;
         this.passwordEncoder = passwordEncoder;
         this.systemConfigService = systemConfigService;
+        this.emailService = emailService;
     }
 
     // ========== CBWTF LISTING ==========
@@ -508,6 +512,39 @@ public class AdminController {
         Page<TenantAuditDTO> result = audits.map(TenantAuditDTO::from);
 
         return ResponseEntity.ok(result);
+    }
+
+    // ========== EMAIL TEST ==========
+
+    /**
+     * Test email sending via Brevo.
+     * SuperAdmin only - for verifying email configuration.
+     */
+    @PostMapping("/test-email")
+    public ResponseEntity<Map<String, Object>> sendTestEmail(@RequestBody Map<String, String> body) {
+        String toEmail = body.get("email");
+        if (toEmail == null || toEmail.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email address required"));
+        }
+
+        try {
+            String subject = "SmartCBWTF Test Email";
+            String messageBody = "Hello!\n\nThis is a test email from SmartCBWTF to verify your Brevo email integration is working correctly.\n\nIf you received this email, your configuration is correct!\n\nTimestamp: "
+                    + java.time.Instant.now();
+
+            emailService.sendEmail(toEmail, subject, messageBody);
+
+            log.info("Test email sent to {} by {}", toEmail, getCurrentUsername());
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Test email sent to " + toEmail,
+                    "timestamp", java.time.Instant.now().toString()));
+        } catch (Exception e) {
+            log.error("Failed to send test email to {}: {}", toEmail, e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()));
+        }
     }
 
     // ========== PLATFORM STATS ==========
