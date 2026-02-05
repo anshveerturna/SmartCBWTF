@@ -235,4 +235,15 @@ public class CbwtfHcfController {
     public static class ResetPasswordRequest {
         public String newPassword;
     }
+
+    /**
+     * Enable portal access for a small HCF (0-30 beds).
+     * Creates HCF admin user with generated password.
+     * This is a manual override for HCFs that don't automatically qualify.
+     */
+    @PostMapping("/{id}/enable-portal-access")
+    public ResponseEntity<?> enablePortalAccess(@PathVariable("id") UUID id) {
+        UUID facilityId = TenantContext.getTenantId();
+        return ResponseEntity.ok(hcfService.enablePortalAccessForSmallHcf(id, facilityId));
+    }
 }

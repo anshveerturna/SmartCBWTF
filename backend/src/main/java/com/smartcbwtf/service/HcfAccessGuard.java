@@ -48,12 +48,12 @@ public class HcfAccessGuard {
                     "Healthcare facility not found.");
         }
 
-        // Check bed access category (30+ beds required)
-        if (hcf.getBedAccessCategory() != HcfBedAccessCategory.ABOVE_30_BEDS) {
-            log.warn("HCF portal access denied - bed count ineligible: hcfId={}, category={}",
-                    hcfId, hcf.getBedAccessCategory());
-            return AccessCheckResult.denied("ACCESS_DENIED_BED_COUNT",
-                    "Portal Access Unavailable — Facility Under 30 Beds");
+        // Check portal eligibility (30+ beds OR manually enabled)
+        if (!hcf.isPortalEligible()) {
+            log.warn("HCF portal access denied - not eligible: hcfId={}, category={}, manuallyEnabled={}",
+                    hcfId, hcf.getBedAccessCategory(), hcf.isPortalAccessManuallyEnabled());
+            return AccessCheckResult.denied("ACCESS_DENIED_NOT_ELIGIBLE",
+                    "Portal Access Unavailable — Facility Not Eligible");
         }
 
         // Check approval status

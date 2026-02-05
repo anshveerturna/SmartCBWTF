@@ -105,6 +105,10 @@ public class Hcf {
     @Column(name = "portal_access_enabled")
     private boolean portalAccessEnabled = false;
 
+    // Manual override for 0-30 beds HCFs to enable portal access
+    @Column(name = "portal_access_manually_enabled")
+    private boolean portalAccessManuallyEnabled = false;
+
     // Snapshot of category at approval time - for audit trail
     @Enumerated(EnumType.STRING)
     @Column(name = "approved_bed_access_category", length = 20)
@@ -434,9 +438,25 @@ public class Hcf {
     /**
      * Check if this HCF is eligible for portal access.
      * SINGLE source of truth for portal eligibility.
+     * Returns true if:
+     * - Auto-eligible (30+ beds) OR
+     * - Manually enabled by CBWTF admin (for 0-30 beds)
      */
     public boolean isPortalEligible() {
+        // Manual override for small HCFs
+        if (portalAccessManuallyEnabled) {
+            return true;
+        }
+        // Auto-eligible based on bed count
         return bedAccessCategory != null && bedAccessCategory.isPortalEligible();
+    }
+
+    public boolean isPortalAccessManuallyEnabled() {
+        return portalAccessManuallyEnabled;
+    }
+
+    public void setPortalAccessManuallyEnabled(boolean portalAccessManuallyEnabled) {
+        this.portalAccessManuallyEnabled = portalAccessManuallyEnabled;
     }
 
     /**

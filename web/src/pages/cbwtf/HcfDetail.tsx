@@ -128,7 +128,7 @@ const formatCurrency = (amount: number | null | undefined) => {
   }).format(amount);
 };
 
-// Portal Access Card for 30+ bed HCFs
+// Portal Access Card for all HCFs
 interface PortalAdminInfo {
   eligible: boolean;
   hasAdmin?: boolean;
@@ -145,7 +145,7 @@ interface CreateAdminResponse {
   message: string;
 }
 
-function PortalAccessCard({ hcfId }: { hcfId: string }) {
+function PortalAccessCard({ hcfId, isSmallHcf = false }: { hcfId: string; isSmallHcf?: boolean }) {
   const queryClient = useQueryClient();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -164,6 +164,7 @@ function PortalAccessCard({ hcfId }: { hcfId: string }) {
     retry: 1
   });
 
+  // For 30+ beds HCFs - create admin if eligible
   const createAdminMutation = useMutation({
     mutationFn: async () => {
       const res = await apiClient.post<CreateAdminResponse>(`/api/cbwtf/hcfs/${hcfId}/portal-admin/create`);
@@ -176,6 +177,24 @@ function PortalAccessCard({ hcfId }: { hcfId: string }) {
     },
     onError: (err: any) => {
       const message = err.response?.data?.message || err.message || 'Failed to create admin';
+      setSnackbar({ open: true, message, severity: 'error' });
+    }
+  });
+
+  // For 0-30 beds HCFs - enable portal access manually
+  const enablePortalAccessMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiClient.post<CreateAdminResponse>(`/api/cbwtf/hcfs/${hcfId}/enable-portal-access`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      setCreatedCredentials({ username: data.username, password: data.tempPassword });
+      setSnackbar({ open: true, message: 'Portal access enabled successfully!', severity: 'success' });
+      queryClient.invalidateQueries({ queryKey: ['hcf-portal-admin', hcfId] });
+      queryClient.invalidateQueries({ queryKey: ['cbwtf-hcf', hcfId] });
+    },
+    onError: (err: any) => {
+      const message = err.response?.data?.message || err.message || 'Failed to enable portal access';
       setSnackbar({ open: true, message, severity: 'error' });
     }
   });
@@ -223,12 +242,65 @@ function PortalAccessCard({ hcfId }: { hcfId: string }) {
     );
   }
 
+  // For small HCFs (0-30 beds) that are not yet enabled, show the enable button
+  if (!adminInfo?.eligible && isSmallHcf) {
+    return (
+      <Card>
+        <CardContent>
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <Typography variant="h6" fontWeight="bold">
+              🔐 Portal Access
+            </Typography>
+            <Chip label="0-30 Beds" size="small" color="warning" variant="outlined" />
+          </Box>
+
+          {createdCredentials && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" fontWeight="bold">Portal Access Enabled!</Typography>
+              <Typography variant="body2">Username: <strong>{createdCredentials.username}</strong></Typography>
+              <Typography variant="body2">Temp Password: <strong style={{ fontFamily: 'monospace' }}>{createdCredentials.password}</strong></Typography>
+              <Typography variant="caption" color="text.secondary">Save this password now - it won't be shown again!</Typography>
+            </Alert>
+          )}
+
+          <Stack spacing={2}>
+            <Alert severity="info">
+              This HCF is eligible for manual portal access. Click below to enable.
+            </Alert>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => enablePortalAccessMutation.mutate()}
+              disabled={enablePortalAccessMutation.isPending}
+              fullWidth
+              startIcon={enablePortalAccessMutation.isPending ? <CircularProgress size={16} color="inherit" /> : null}
+            >
+              {enablePortalAccessMutation.isPending ? 'Enabling...' : 'Enable Portal Access'}
+            </Button>
+            <Typography variant="caption" color="text.secondary">
+              This will create an HCF admin account with the agreement number as username.
+            </Typography>
+          </Stack>
+
+          <Snackbar
+            open={snackbar.open}
+            autoHideDuration={4000}
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+          >
+            <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+          </Snackbar>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // For 30+ beds that are not eligible (should not happen normally)
   if (!adminInfo?.eligible) {
     return (
        <Card>
          <CardContent>
             <Alert severity="warning">
-              HCF is not eligible for portal access (requires 30+ beds).
+              HCF is not eligible for portal access.
             </Alert>
          </CardContent>
       </Card>
@@ -242,7 +314,7 @@ function PortalAccessCard({ hcfId }: { hcfId: string }) {
           <Typography variant="h6" fontWeight="bold">
             🔐 Portal Access
           </Typography>
-          <Chip label="30+ Beds" size="small" color="primary" variant="outlined" />
+          <Chip label={isSmallHcf ? "0-30 Beds (Manual)" : "30+ Beds"} size="small" color="primary" variant="outlined" />
         </Box>
 
         {/* Show newly created credentials */}
@@ -920,9 +992,12 @@ export default function HcfDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Portal Access Card - Only for 30+ beds (portal eligible) */}
-            {hcf.numberOfBeds && hcf.numberOfBeds > 30 && (
-              <PortalAccessCard hcfId={id!} />
+            {/* Portal Access Card - Shown for all approved HCFs */}
+            {hcf.agreement?.status === 'ACTIVE' && (
+              <PortalAccessCard 
+                hcfId={id!} 
+                isSmallHcf={!hcf.numberOfBeds || hcf.numberOfBeds <= 30} 
+              />
             )}
            </Stack>
         </Grid>

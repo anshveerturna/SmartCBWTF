@@ -935,4 +935,80 @@ public class CbwtfHcfService {
                 "username", adminUser.getUsername(),
                 "message", "Password updated successfully");
     }
+
+    /**
+     * Enable portal access for a small HCF (0-30 beds).
+     * Creates an HCF_ADMIN user with generated password.
+     * This is a manual override for HCFs that don't automatically qualify.
+     */
+    @Transactional
+    public Map<String, Object> enablePortalAccessForSmallHcf(UUID hcfId, UUID facilityId) {
+        // Verify HCF belongs to facility
+        Agreement agreement = agreementRepository.findAllByHcfIdAndFacilityId(hcfId, facilityId)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found or not associated with this facility"));
+
+        Hcf hcf = agreement.getHcf();
+
+        // Verify HCF is NOT auto-eligible (i.e., it's 0-30 beds)
+        if (hcf.getBedAccessCategory() != null && hcf.getBedAccessCategory().isPortalEligible()) {
+            throw new IllegalStateException(
+                    "HCF is already auto-eligible for portal access (30+ beds). Use createPortalAdmin instead.");
+        }
+
+        // Verify HCF is approved
+        if (!"ACTIVE".equals(hcf.getStatus())) {
+            throw new IllegalStateException("HCF must be approved before enabling portal access");
+        }
+
+        // Check if portal access already manually enabled
+        if (hcf.isPortalAccessManuallyEnabled()) {
+            throw new IllegalStateException("Portal access is already enabled for this HCF");
+        }
+
+        // Check if admin already exists
+        boolean adminExists = userRepository.findByHcfIdAndRole(hcfId, "HCF_ADMIN")
+                .stream()
+                .findFirst()
+                .isPresent();
+
+        if (adminExists) {
+            throw new IllegalStateException("HCF admin already exists for this HCF");
+        }
+
+        // Enable manual portal access
+        hcf.setPortalAccessManuallyEnabled(true);
+        hcf.setPortalAccessEnabled(true);
+        hcfRepository.save(hcf);
+
+        // Generate password
+        String generatedPassword = generateRandomPassword();
+
+        // Create HCF_ADMIN user
+        AppUser hcfAdmin = new AppUser();
+        hcfAdmin.setUsername(agreement.getAgreementNumber()); // Agreement number as username
+        hcfAdmin.setPasswordHash(passwordEncoder.encode(generatedPassword));
+        hcfAdmin.setRole("HCF_ADMIN");
+        hcfAdmin.setHcf(hcf);
+        hcfAdmin.setFullName(hcf.getName() + " Admin");
+        hcfAdmin.setEmail(hcf.getContactEmail());
+        hcfAdmin.setActive(true);
+        hcfAdmin.setCreatedAt(Instant.now());
+        hcfAdmin.setUpdatedAt(Instant.now());
+        userRepository.save(hcfAdmin);
+
+        // Audit log
+        auditLogService.log("USER", hcfAdmin.getId(), "HCF_ADMIN_CREATED_MANUAL", null,
+                "Manually enabled portal access for small HCF: " + hcf.getName() + ", username: "
+                        + agreement.getAgreementNumber());
+        log.info("Manually enabled portal access for small HCF: username={}, hcfId={}, beds={}",
+                agreement.getAgreementNumber(), hcfId, hcf.getNumberOfBeds());
+
+        return Map.of(
+                "success", true,
+                "username", agreement.getAgreementNumber(),
+                "tempPassword", generatedPassword,
+                "message", "Portal access enabled and admin created successfully");
+    }
 }
