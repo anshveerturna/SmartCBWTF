@@ -38,6 +38,7 @@ import {
   Download,
   History,
   ShoppingCart,
+  QrCode2,
 } from '@mui/icons-material';
 import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -77,6 +78,23 @@ interface Order {
   cbwtfNotes?: string;
 }
 
+interface QrOrder {
+  id: string;
+  hcfId: string;
+  hcfName: string;
+  hcfCode: string;
+  wasteCategory: string;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  orderType: 'HCF_SELF' | 'CBWTF_REQUEST';
+  status: 'PENDING' | 'APPROVED' | 'FULFILLED' | 'REJECTED' | 'CANCELLED';
+  notes?: string;
+  requestedAt: string;
+  fulfilledAt?: string;
+  pdfUrl?: string;
+}
+
 const ConsumableOrders: React.FC = () => {
   const queryClient = useQueryClient();
   const [mainTab, setMainTab] = useState(0); // 0 = Orders, 1 = Analytics
@@ -87,6 +105,8 @@ const ConsumableOrders: React.FC = () => {
   });
   const [notes, setNotes] = useState('');
   const [analyticsPeriod, setAnalyticsPeriod] = useState<'day' | 'week' | 'month'>('month');
+  const [qrActionDialog, setQrActionDialog] = useState<{ open: boolean; orderId: string; action: string }>({ open: false, orderId: '', action: '' });
+  const [qrRejectReason, setQrRejectReason] = useState('');
 
   const statusFilters = ['', 'PENDING', 'CONFIRMED', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
   const statusFilter = statusFilters[tab];
@@ -129,6 +149,32 @@ const ConsumableOrders: React.FC = () => {
       return res.data as Order;
     },
     enabled: !!expandedOrder,
+  });
+
+  // QR Orders query
+  const { data: qrOrdersData, isLoading: qrLoading } = useQuery({
+    queryKey: ['cbwtf-qr-orders'],
+    queryFn: async () => {
+      const res = await apiClient.get('/api/cbwtf/qr-orders/pending');
+      return res.data as QrOrder[];
+    },
+    enabled: mainTab === 2,
+  });
+
+  // QR action mutation
+  const qrActionMutation = useMutation({
+    mutationFn: async ({ id, action, reason }: { id: string; action: string; reason?: string }) => {
+      if (action === 'fulfill') {
+        return await apiClient.post(`/api/cbwtf/qr-orders/${id}/fulfill`);
+      } else {
+        return await apiClient.post(`/api/cbwtf/qr-orders/${id}/reject`, { reason });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cbwtf-qr-orders'] });
+      setQrActionDialog({ open: false, orderId: '', action: '' });
+      setQrRejectReason('');
+    },
   });
 
   // Action mutations
@@ -216,6 +262,7 @@ const ConsumableOrders: React.FC = () => {
       <Tabs value={mainTab} onChange={(_, v) => setMainTab(v)} sx={{ mb: 3 }}>
         <Tab label="Orders" icon={<ShoppingCart />} iconPosition="start" />
         <Tab label="Order History" icon={<History />} iconPosition="start" />
+        <Tab label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>QR Label Requests {qrOrdersData?.length ? <Chip label={qrOrdersData.length} size="small" color="warning" sx={{ height: 20 }} /> : null}</Box>} icon={<QrCode2 />} iconPosition="start" />
       </Tabs>
 
       {mainTab === 0 && (
@@ -651,6 +698,155 @@ const ConsumableOrders: React.FC = () => {
               </Card>
             </>
           )}
+        </Box>
+      )}
+
+      {/* QR Label Orders Tab */}
+      {mainTab === 2 && (
+        <Box>
+          <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+            QR Label Requests from HCFs
+          </Typography>
+          
+          <Card>
+            <CardContent>
+              {qrLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : !qrOrdersData?.length ? (
+                <Paper sx={{ p: 4, textAlign: 'center', bgcolor: alpha('#6366F1', 0.05) }}>
+                  <QrCode2 sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                  <Typography color="text.secondary">No pending QR label requests</Typography>
+                </Paper>
+              ) : (
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>HCF</TableCell>
+                        <TableCell>Category</TableCell>
+                        <TableCell align="center">Quantity</TableCell>
+                        <TableCell align="right">Unit Price</TableCell>
+                        <TableCell align="right">Total</TableCell>
+                        <TableCell>Requested</TableCell>
+                        <TableCell>Notes</TableCell>
+                        <TableCell align="center">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {qrOrdersData.map((order) => (
+                        <TableRow key={order.id} hover>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight={500}>{order.hcfName}</Typography>
+                            <Typography variant="caption" color="text.secondary">{order.hcfCode}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={order.wasteCategory} 
+                              size="small"
+                              color={
+                                order.wasteCategory === 'RED' ? 'error' :
+                                order.wasteCategory === 'YELLOW' ? 'warning' :
+                                order.wasteCategory === 'BLUE' ? 'info' :
+                                order.wasteCategory === 'WHITE' ? 'default' : 'primary'
+                              }
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Typography variant="body2" fontWeight={600}>{order.quantity}</Typography>
+                          </TableCell>
+                          <TableCell align="right">₹{order.unitPrice}</TableCell>
+                          <TableCell align="right">
+                            <Typography variant="body2" fontWeight={600}>₹{order.totalAmount?.toLocaleString()}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption">
+                              {new Date(order.requestedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {new Date(order.requestedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption" color="text.secondary">{order.notes || '-'}</Typography>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button 
+                                size="small" 
+                                variant="contained" 
+                                color="success"
+                                startIcon={<CheckCircle />}
+                                onClick={() => setQrActionDialog({ open: true, orderId: order.id, action: 'fulfill' })}
+                              >
+                                Fulfill
+                              </Button>
+                              <Button 
+                                size="small" 
+                                variant="outlined" 
+                                color="error"
+                                startIcon={<Cancel />}
+                                onClick={() => setQrActionDialog({ open: true, orderId: order.id, action: 'reject' })}
+                              >
+                                Reject
+                              </Button>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* QR Action Dialog */}
+          <Dialog 
+            open={qrActionDialog.open} 
+            onClose={() => setQrActionDialog({ open: false, orderId: '', action: '' })} 
+            maxWidth="sm" 
+            fullWidth
+          >
+            <DialogTitle>
+              {qrActionDialog.action === 'fulfill' ? 'Fulfill QR Label Request' : 'Reject QR Label Request'}
+            </DialogTitle>
+            <DialogContent>
+              {qrActionDialog.action === 'fulfill' ? (
+                <Typography>
+                  This will generate the QR labels and charge the HCF. The PDF will be available for download.
+                </Typography>
+              ) : (
+                <TextField
+                  label="Reason for Rejection"
+                  fullWidth
+                  multiline
+                  rows={3}
+                  value={qrRejectReason}
+                  onChange={(e) => setQrRejectReason(e.target.value)}
+                  sx={{ mt: 2 }}
+                  placeholder="Why are you rejecting this request?"
+                />
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setQrActionDialog({ open: false, orderId: '', action: '' })}>Cancel</Button>
+              <Button 
+                variant="contained" 
+                color={qrActionDialog.action === 'fulfill' ? 'success' : 'error'}
+                onClick={() => qrActionMutation.mutate({ 
+                  id: qrActionDialog.orderId, 
+                  action: qrActionDialog.action,
+                  reason: qrRejectReason
+                })}
+                disabled={qrActionMutation.isPending}
+              >
+                {qrActionMutation.isPending ? <CircularProgress size={20} /> : 
+                  qrActionDialog.action === 'fulfill' ? 'Fulfill & Generate' : 'Reject Request'}
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
       )}
     </Box>

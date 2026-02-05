@@ -100,7 +100,8 @@ public class PdfService {
 
             try (PDPageContentStream cs = new PDPageContentStream(document, page1)) {
                 // Draw Header & Footer
-                drawCommonHeader(cs, document, periodStr);
+                // Draw Header & Footer
+                drawCommonHeader(cs, document, "MONTHLY COMPLIANCE REPORT", "Period: " + periodStr);
                 drawCommonFooter(cs, document);
 
                 float y = PAGE_HEIGHT - MARGIN_TOP - 70; // Start below header
@@ -149,7 +150,8 @@ public class PdfService {
     // SECTIONS & COMPONENTS
     // ============================================================================================
 
-    private void drawCommonHeader(PDPageContentStream cs, PDDocument doc, String period) throws IOException {
+    private void drawCommonHeader(PDPageContentStream cs, PDDocument doc, String title, String subTitle)
+            throws IOException {
         float y = PAGE_HEIGHT - MARGIN_TOP;
 
         // Logo
@@ -187,23 +189,17 @@ public class PdfService {
 
                 float finalW = imgW * scale;
                 float finalH = imgH * scale;
-
-                // Center vertical relative to text block: text top is y+15, text bottom y-5?
-                // Approx y center is y+5.
-                // Draw image bottom-left such that it centers on y+5.
-                // y_draw = (y+5) - (finalH/2);
                 cs.drawImage(logo, MARGIN_LEFT, y + 5 - (finalH / 2), finalW, finalH);
             }
         } catch (Exception e) {
-            // Logo load failed, fallback to text specific spacing or just ignore
-            System.err.println("Failed to load logo: " + e.getMessage());
+            // Logo load failed
         }
 
         // Title Left (Adjusted for Logo)
         cs.beginText();
         cs.setFont(FONT_BOLD, 14);
         cs.setNonStrokingColor(COL_PRIMARY);
-        cs.newLineAtOffset(MARGIN_LEFT + 65, y + 10); // Moved right (40->65) to clear 50px logo
+        cs.newLineAtOffset(MARGIN_LEFT + 65, y + 10);
         cs.showText("SmartCBWTF");
         cs.endText();
 
@@ -218,19 +214,19 @@ public class PdfService {
         cs.beginText();
         cs.setFont(FONT_BOLD, 12);
         cs.setNonStrokingColor(COL_DARK_TEXT);
-        String rTitle = "MONTHLY COMPLIANCE REPORT";
-        float rTitleW = FONT_BOLD.getStringWidth(rTitle) / 1000 * 12;
+        float rTitleW = FONT_BOLD.getStringWidth(title) / 1000 * 12;
         cs.newLineAtOffset(PAGE_WIDTH - MARGIN_RIGHT - rTitleW, y);
-        cs.showText(rTitle);
+        cs.showText(title);
         cs.endText();
 
-        cs.beginText();
-        cs.setFont(FONT_REGULAR, 10);
-        String pText = "Period: " + period;
-        float pTextW = FONT_REGULAR.getStringWidth(pText) / 1000 * 10;
-        cs.newLineAtOffset(PAGE_WIDTH - MARGIN_RIGHT - pTextW, y - 12);
-        cs.showText(pText);
-        cs.endText();
+        if (subTitle != null && !subTitle.isEmpty()) {
+            cs.beginText();
+            cs.setFont(FONT_REGULAR, 10);
+            float pTextW = FONT_REGULAR.getStringWidth(subTitle) / 1000 * 10;
+            cs.newLineAtOffset(PAGE_WIDTH - MARGIN_RIGHT - pTextW, y - 12);
+            cs.showText(subTitle);
+            cs.endText();
+        }
 
         // Divider
         y -= 25;
@@ -510,7 +506,7 @@ public class PdfService {
                 doc.addPage(page);
                 cs = new PDPageContentStream(doc, page);
 
-                drawCommonHeader(cs, doc, period);
+                drawCommonHeader(cs, doc, "MONTHLY COMPLIANCE REPORT", "Period: " + period);
                 drawCommonFooter(cs, doc);
 
                 y = yStart; // Reset Y
@@ -582,7 +578,7 @@ public class PdfService {
             page = new PDPage(PDRectangle.A4);
             doc.addPage(page);
             cs = new PDPageContentStream(doc, page);
-            drawCommonHeader(cs, doc, period);
+            drawCommonHeader(cs, doc, "MONTHLY COMPLIANCE REPORT", "Period: " + period);
             drawCommonFooter(cs, doc);
             y = PAGE_HEIGHT - MARGIN_TOP - 50;
         }
@@ -842,29 +838,175 @@ public class PdfService {
         Path path = baseDir.resolve(filename);
 
         try (PDDocument document = new PDDocument()) {
-            PDPage page = new PDPage(PDRectangle.A4);
-            document.addPage(page);
-            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
-                contentStream.beginText();
-                contentStream.setFont(FONT_BOLD, 16);
-                contentStream.setLeading(16f);
-                contentStream.setNonStrokingColor(Color.BLACK);
-                contentStream.newLineAtOffset(50, 770);
-                contentStream.showText("Label Batch - " + hcf.getCode() + " (" + category + ")");
-                contentStream.setFont(FONT_REGULAR, 12);
-                contentStream.newLine();
-                contentStream.showText("HCF: " + hcf.getName());
-                for (String qr : qrCodes) {
-                    contentStream.newLine();
-                    contentStream.showText(qr);
+            // Layout Configuration
+            float margin = 20;
+            float headerHeight = 80; // Space for header
+            float footerHeight = 40; // Space for footer
+            float pageWidth = PDRectangle.A4.getWidth();
+            float pageHeight = PDRectangle.A4.getHeight();
+            float contentWidth = pageWidth - (2 * margin);
+            // Effective content height between header and footer
+            float contentHeight = pageHeight - (2 * margin) - headerHeight - footerHeight;
+
+            float startY = pageHeight - margin - headerHeight;
+
+            // Grid Config: 3 Columns x 4 Rows (reduced rows for larger QR codes)
+            int cols = 3;
+            int rows = 4;
+            float gap = 12;
+            float labelWidth = (contentWidth - ((cols - 1) * gap)) / cols;
+            float labelHeight = (contentHeight - ((rows - 1) * gap)) / rows;
+
+            int totalLabels = qrCodes.length;
+            int labelsPerPage = cols * rows;
+            int numPages = (int) Math.ceil((double) totalLabels / labelsPerPage);
+
+            String dateStr = DateTimeFormatter.ofPattern("dd MMM yyyy").format(LocalDate.now());
+
+            for (int p = 0; p < numPages; p++) {
+                PDPage page = new PDPage(PDRectangle.A4);
+                document.addPage(page);
+
+                try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                    // Draw Branding
+                    drawCommonHeader(cs, document, "QR LABELS BATCH", "Generated: " + dateStr);
+                    drawCommonFooter(cs, document);
+
+                    int startIdx = p * labelsPerPage;
+                    int endIdx = Math.min(startIdx + labelsPerPage, totalLabels);
+
+                    for (int i = startIdx; i < endIdx; i++) {
+                        int pageIndex = i - startIdx;
+                        int row = pageIndex / cols;
+                        int col = pageIndex % cols;
+
+                        float x = margin + (col * (labelWidth + gap));
+                        float y = startY - ((row + 1) * labelHeight) - (row * gap);
+
+                        drawProfessionalLabel(document, cs, x, y, labelWidth, labelHeight, hcf, category, qrCodes[i]);
+                    }
+                    // Cut lines logic adjusted for new Y range?
+                    // To keep it simple, we draw cut lines for the whole grid area
+                    // But we need to offset Y to start below header
+                    drawCutLines(cs, margin, pageWidth, startY, rows, cols, labelWidth, labelHeight, gap);
                 }
-                contentStream.endText();
             }
+
             document.save(path.toFile());
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Failed to write label PDF", e);
         }
-        return path.toString();
+        return "/files/" + filename;
+    }
+
+    private void drawProfessionalLabel(PDDocument doc, PDPageContentStream cs, float x, float y, float w, float h,
+            Hcf hcf, String category, String qrCodeText) throws IOException, com.google.zxing.WriterException {
+        // Outline
+        cs.setStrokingColor(Color.LIGHT_GRAY);
+        cs.setLineWidth(0.5f);
+        cs.addRect(x, y, w, h);
+        cs.stroke();
+
+        // Category Header Color
+        Color catColor = Color.GRAY;
+        switch (category.toUpperCase()) {
+            case "YELLOW":
+                catColor = new Color(255, 235, 59);
+                break; // Yellow
+            case "RED":
+                catColor = new Color(244, 67, 54);
+                break; // Red
+            case "BLUE":
+                catColor = new Color(33, 150, 243);
+                break; // Blue
+            case "WHITE":
+                catColor = Color.WHITE;
+                break;
+        }
+
+        // Header Background
+        float headerH = 20;
+        cs.setNonStrokingColor(catColor);
+        cs.addRect(x, y + h - headerH, w, headerH);
+        cs.fill();
+
+        // Header Text (Category)
+        cs.beginText();
+        cs.setFont(FONT_BOLD, 10);
+        cs.setNonStrokingColor(category.equalsIgnoreCase("WHITE") ? Color.BLACK : Color.DARK_GRAY);
+        float tw = FONT_BOLD.getStringWidth(category) / 1000 * 10;
+        cs.newLineAtOffset(x + (w - tw) / 2, y + h - 14);
+        cs.showText(category);
+        cs.endText();
+
+        // HCF Name
+        cs.beginText();
+        cs.setFont(FONT_BOLD, 9);
+        cs.setNonStrokingColor(Color.BLACK);
+        String hcfName = truncate(hcf.getName(), 25);
+        float nw = FONT_BOLD.getStringWidth(hcfName) / 1000 * 9;
+        cs.newLineAtOffset(x + (w - nw) / 2, y + h - 35);
+        cs.showText(hcfName);
+        cs.endText();
+
+        // QR Code Image
+        float qrSize = h - 65; // Remaining space approx
+        if (qrSize > w - 20)
+            qrSize = w - 20; // Bound width
+
+        byte[] qrBytes = generateQrImage(qrCodeText, 300, 300);
+        PDImageXObject qrImage = PDImageXObject.createFromByteArray(doc, qrBytes, "qr");
+        float qrX = x + (w - qrSize) / 2;
+        float qrY = y + 20;
+        cs.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+        // Code Text at bottom
+        cs.beginText();
+        cs.setFont(FONT_MONO, 7);
+        cs.setNonStrokingColor(Color.DARK_GRAY);
+        String shortCode = qrCodeText.contains("|") ? qrCodeText.substring(qrCodeText.lastIndexOf("|") + 1)
+                : qrCodeText;
+        float cw = FONT_MONO.getStringWidth(shortCode) / 1000 * 7;
+        cs.newLineAtOffset(x + (w - cw) / 2, y + 8);
+        cs.showText(shortCode);
+        cs.endText();
+    }
+
+    private void drawCutLines(PDPageContentStream cs, float margin, float pageWidth, float startY, int rows, int cols,
+            float lw, float lh, float gap) throws IOException {
+        cs.setStrokingColor(Color.LIGHT_GRAY);
+        cs.setLineDashPattern(new float[] { 3, 3 }, 0);
+        cs.setLineWidth(0.2f);
+
+        // Vertical lines
+        for (int c = 1; c < cols; c++) {
+            float x = margin + (c * lw) + ((c - 1) * gap) + (gap / 2);
+            // Draw from startY down to end of grid
+            float gridHeight = rows * lh + (rows - 1) * gap;
+            cs.moveTo(x, startY);
+            cs.lineTo(x, startY - gridHeight);
+            cs.stroke();
+        }
+
+        // Horizontal lines
+        for (int r = 1; r < rows; r++) {
+            float y = startY - (r * lh) - ((r - 1) * gap) - (gap / 2);
+            cs.moveTo(margin, y);
+            cs.lineTo(pageWidth - margin, y);
+            cs.stroke();
+        }
+        cs.setLineDashPattern(new float[] {}, 0);
+    }
+
+    private byte[] generateQrImage(String text, int width, int height)
+            throws com.google.zxing.WriterException, IOException {
+        com.google.zxing.qrcode.QRCodeWriter qrCodeWriter = new com.google.zxing.qrcode.QRCodeWriter();
+        com.google.zxing.common.BitMatrix bitMatrix = qrCodeWriter.encode(text, com.google.zxing.BarcodeFormat.QR_CODE,
+                width, height);
+
+        java.io.ByteArrayOutputStream pngOutputStream = new java.io.ByteArrayOutputStream();
+        com.google.zxing.client.j2se.MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
+        return pngOutputStream.toByteArray();
     }
 
     private void renderSimplePdf(Path path, String title, String[] lines) throws IOException {

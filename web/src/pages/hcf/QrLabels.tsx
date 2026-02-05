@@ -29,6 +29,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Stack,
+  Divider,
 } from '@mui/material';
 import {
   QrCode,
@@ -40,11 +42,14 @@ import {
   Visibility,
   Block,
   PictureAsPdf,
+  Receipt,
+  ShoppingCart,
+  History,
 } from '@mui/icons-material';
+import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
 import QRCode from 'qrcode';
-import { jsPDF } from 'jspdf';
 
 // Waste categories with colors
 const WASTE_CATEGORIES = [
@@ -54,28 +59,29 @@ const WASTE_CATEGORIES = [
   { code: 'WHITE', name: 'Sharps Waste', color: '#9E9E9E' },
 ];
 
-interface QrLabel {
-  id: string;
-  wasteCategory: string;
-  status: string;
-  validFrom: string;
-  validTo: string;
-  createdAt: string;
-  qrPayload: string;
-  isActive: boolean;
-  isUsable: boolean;
+interface QrPricing {
+  selfGeneratePrice: number;
+  cbwtfRequestPrice: number;
+  maxQuantity: number;
 }
 
-// Helper to format date as YYYY-MM-DD
-const formatDateForInput = (date: Date) => {
-  return date.toISOString().split('T')[0];
-};
+interface QrOrder {
+  id: string;
+  wasteCategory: string;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  orderType: 'HCF_SELF' | 'CBWTF_REQUEST';
+  status: string;
+  pdfUrl?: string;
+  requestedAt: string;
+  notes?: string;
+}
 
 const QrLabels: React.FC = () => {
   const queryClient = useQueryClient();
   const [category, setCategory] = useState('YELLOW');
-  const [validFrom, setValidFrom] = useState(formatDateForInput(new Date()));
-  const [validTo, setValidTo] = useState(formatDateForInput(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)));
+  const [quantity, setQuantity] = useState<number>(50);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
@@ -84,177 +90,118 @@ const QrLabels: React.FC = () => {
   
   // View dialog state
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [selectedQr, setSelectedQr] = useState<QrLabel | null>(null);
-  const [qrImageUrl, setQrImageUrl] = useState<string>('');
+  const [selectedOrder, setSelectedOrder] = useState<QrOrder | null>(null);
 
-  // Fetch labels
-  const { data: labelsData, isLoading } = useQuery({
-    queryKey: ['hcf-qr-labels'],
+  // Fetch pricing
+  const { data: pricing } = useQuery<QrPricing>({
+    queryKey: ['qr-pricing'],
     queryFn: async () => {
-      const res = await apiClient.get('/api/hcf/qr-labels');
-      return res.data as { labels: QrLabel[]; total: number };
+      const res = await apiClient.get('/api/hcf/qr-orders/pricing');
+      return res.data;
+    },
+  });
+
+  // Fetch orders
+  const { data: orders, isLoading } = useQuery<QrOrder[]>({
+    queryKey: ['hcf-qr-orders'],
+    queryFn: async () => {
+      const res = await apiClient.get('/api/hcf/qr-orders');
+      return res.data;
     },
   });
 
   // Generate mutation
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post('/api/hcf/qr-labels/generate', {
+      const res = await apiClient.post('/api/hcf/qr-orders/generate', {
         wasteCategory: category,
-        validFrom: new Date(validFrom).toISOString(),
-        validTo: new Date(validTo + 'T23:59:59').toISOString(),
+        quantity: quantity
       });
       return res.data;
     },
-    onSuccess: () => {
-      setSuccess('QR label generated successfully');
+    onSuccess: (data) => {
+      setSuccess(data.message || 'QR labels generated successfully');
       setError(null);
-      queryClient.invalidateQueries({ queryKey: ['hcf-qr-labels'] });
+      queryClient.invalidateQueries({ queryKey: ['hcf-qr-orders'] });
+      // Open PDF in new tab if available
+      if (data.pdfUrl) {
+        window.open(getDownloadUrl(data.pdfUrl), '_blank');
+      }
     },
-    onError: (err: Error & { response?: { data?: { message?: string } } }) => {
-      setError(err.response?.data?.message || 'Failed to generate label');
+    onError: (err: any) => {
+      setError(err.response?.data?.error || 'Failed to generate labels');
       setSuccess(null);
     },
   });
 
-  // Deactivate mutation
-  const deactivateMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await apiClient.put(`/api/hcf/qr-labels/${id}/deactivate`);
+  // Request from CBWTF mutation
+  const requestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiClient.post('/api/hcf/qr-orders/request', {
+        wasteCategory: category,
+        quantity: quantity,
+        notes: 'Requested from HCF Portal'
+      });
       return res.data;
     },
-    onSuccess: () => {
-      setSuccess('QR label deactivated successfully');
+    onSuccess: (data) => {
+      setSuccess(data.message || 'Request submitted successfully');
       setError(null);
-      queryClient.invalidateQueries({ queryKey: ['hcf-qr-labels'] });
+      queryClient.invalidateQueries({ queryKey: ['hcf-qr-orders'] });
     },
-    onError: (err: Error & { response?: { data?: { message?: string } } }) => {
-      setError(err.response?.data?.message || 'Failed to deactivate label');
+    onError: (err: any) => {
+      setError(err.response?.data?.error || 'Failed to submit request');
       setSuccess(null);
     },
   });
 
   const handleGenerate = () => {
+    if (!pricing) return;
+    if (quantity > pricing.maxQuantity) {
+      setError(`Maximum quantity allowed is ${pricing.maxQuantity}`);
+      return;
+    }
     setError(null);
     setSuccess(null);
     generateMutation.mutate();
   };
 
-  const handleViewQr = async (label: QrLabel) => {
-    setSelectedQr(label);
-    try {
-      const url = await QRCode.toDataURL(label.qrPayload, { width: 300, margin: 2 });
-      setQrImageUrl(url);
-      setViewDialogOpen(true);
-    } catch (err) {
-      setError('Failed to generate QR image');
-    }
+  const handleRequest = () => {
+    if (!pricing) return;
+    setError(null);
+    setSuccess(null);
+    requestMutation.mutate();
   };
 
-  const handleDownloadQr = () => {
-    if (qrImageUrl && selectedQr) {
-      const link = document.createElement('a');
-      const dateStr = new Date(selectedQr.validFrom).toLocaleDateString('en-IN').replace(/\//g, '-');
-      link.download = `QR-${selectedQr.wasteCategory}-${dateStr}.png`;
-      link.href = qrImageUrl;
-      link.click();
-    }
+  const calculateTotal = (isSelf: boolean) => {
+    if (!pricing || !quantity) return 0;
+    const price = isSelf ? pricing.selfGeneratePrice : pricing.cbwtfRequestPrice;
+    return price * quantity;
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked && labelsData?.labels) {
-      setSelectedIds(new Set(labelsData.labels.map(l => l.id)));
-    } else {
-      setSelectedIds(new Set());
+  const getStatusChip = (status: string) => {
+    switch (status) {
+      case 'FULFILLED': return <Chip label="Fulfilled" color="success" size="small" />;
+      case 'PENDING': return <Chip label="Pending" color="warning" size="small" />;
+      case 'REJECTED': return <Chip label="Rejected" color="error" size="small" />;
+      default: return <Chip label={status} size="small" />;
     }
-  };
-
-  const handleSelectOne = (id: string, checked: boolean) => {
-    const newSelected = new Set(selectedIds);
-    if (checked) {
-      newSelected.add(id);
-    } else {
-      newSelected.delete(id);
-    }
-    setSelectedIds(newSelected);
-  };
-
-  const handleExportPdf = async () => {
-    if (selectedIds.size === 0 || !labelsData?.labels) return;
-
-    const selectedLabels = labelsData.labels.filter(l => selectedIds.has(l.id));
-    const pdf = new jsPDF();
-    
-    for (let i = 0; i < selectedLabels.length; i++) {
-      const label = selectedLabels[i];
-      
-      if (i > 0) {
-        pdf.addPage();
-      }
-
-      try {
-        // Generate QR code image
-        const qrDataUrl = await QRCode.toDataURL(label.qrPayload, { width: 200, margin: 2 });
-        
-        // Add title
-        pdf.setFontSize(20);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('SmartCBWTF - QR Label', 105, 30, { align: 'center' });
-        
-        // Add QR code image
-        pdf.addImage(qrDataUrl, 'PNG', 55, 45, 100, 100);
-        
-        // Add details
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'normal');
-        
-        const category = WASTE_CATEGORIES.find(c => c.code === label.wasteCategory);
-        pdf.text(`Category: ${category?.name || label.wasteCategory}`, 105, 160, { align: 'center' });
-        
-        pdf.setFontSize(12);
-        pdf.text(`Valid From: ${new Date(label.validFrom).toLocaleDateString('en-IN')}`, 105, 175, { align: 'center' });
-        pdf.text(`Valid To: ${new Date(label.validTo).toLocaleDateString('en-IN')}`, 105, 190, { align: 'center' });
-        pdf.text(`Status: ${label.status}`, 105, 205, { align: 'center' });
-        
-        // Add footer
-        pdf.setFontSize(10);
-        pdf.setTextColor(128);
-        pdf.text(`Generated: ${new Date(label.createdAt).toLocaleString('en-IN')}`, 105, 280, { align: 'center' });
-        pdf.text(`ID: ${label.id}`, 105, 287, { align: 'center' });
-        pdf.setTextColor(0);
-      } catch (err) {
-        console.error('Error generating QR for PDF:', err);
-      }
-    }
-
-    pdf.save(`QR-Labels-${new Date().toISOString().slice(0, 10)}.pdf`);
-    setSuccess(`Exported ${selectedLabels.length} QR label(s) to PDF`);
-  };
-
-  const getStatusChip = (label: QrLabel) => {
-    if (label.status === 'ACTIVE' && label.isUsable) {
-      return <Chip icon={<CheckCircle />} label="Active" size="small" color="success" />;
-    } else if (label.status === 'ACTIVE' && !label.isUsable) {
-      return <Chip icon={<Schedule />} label="Scheduled" size="small" color="info" />;
-    } else if (label.status === 'EXPIRED') {
-      return <Chip icon={<Warning />} label="Expired" size="small" color="default" />;
-    } else if (label.status === 'USED') {
-      return <Chip label="Used" size="small" color="warning" />;
-    } else if (label.status === 'VERIFIED') {
-      return <Chip label="Verified" size="small" color="success" />;
-    } else if (label.status === 'REVOKED') {
-      return <Chip label="Revoked" size="small" color="error" />;
-    }
-    return <Chip label={label.status} size="small" />;
   };
 
   const getCategoryColor = (code: string) => {
     return WASTE_CATEGORIES.find(c => c.code === code)?.color || '#9E9E9E';
   };
 
-  const isAllSelected = labelsData?.labels && labelsData.labels.length > 0 && 
-    labelsData.labels.every(l => selectedIds.has(l.id));
-  const isSomeSelected = selectedIds.size > 0;
+  const getDownloadUrl = (url: string) => {
+    if (!url) return '';
+    // If it's already a correct relative URL
+    if (url.startsWith('/files/')) return url;
+    
+    // If it's a local absolute path (legacy data), extract filename
+    const parts = url.split(/[/\\]/); // Split by forward or backward slash
+    const filename = parts[parts.length - 1];
+    return `/files/${filename}`;
+  };
 
   return (
     <Box>
@@ -264,7 +211,7 @@ const QrLabels: React.FC = () => {
           QR Labels
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Generate and manage QR labels for waste collection
+          Generate or request chargeable QR labels for waste collection
         </Typography>
       </Box>
 
@@ -272,217 +219,185 @@ const QrLabels: React.FC = () => {
       {error && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>{success}</Alert>}
 
-      {/* Generation Form */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <QrCode /> Generate New Labels
-          </Typography>
-          <Grid container spacing={3} alignItems="flex-end">
-            <Grid item xs={12} sm={3}>
-              <FormControl fullWidth>
-                <InputLabel>Waste Category</InputLabel>
-                <Select
-                  value={category}
-                  label="Waste Category"
-                  onChange={(e) => setCategory(e.target.value)}
-                >
-                  {WASTE_CATEGORIES.map((cat) => (
-                    <MenuItem key={cat.code} value={cat.code}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box
-                          sx={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: 1,
-                            bgcolor: cat.color,
-                            border: cat.code === 'WHITE' ? '1px solid #999' : 'none',
-                          }}
-                        />
-                        {cat.name}
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <TextField
-                label="Valid From"
-                type="date"
-                fullWidth
-                value={validFrom}
-                onChange={(e) => setValidFrom(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ min: formatDateForInput(new Date()) }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <TextField
-                label="Valid To"
-                type="date"
-                fullWidth
-                value={validTo}
-                onChange={(e) => setValidTo(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ min: validFrom }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <Button
-                variant="contained"
-                fullWidth
-                startIcon={generateMutation.isPending ? <CircularProgress size={20} /> : <Add />}
-                onClick={handleGenerate}
-                disabled={generateMutation.isPending}
-                sx={{ height: 56 }}
-              >
-                Generate
-              </Button>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+      {/* Pricing & Actions */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* Self Generate Option */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ height: '100%', border: '1px solid', borderColor: 'primary.light', bgcolor: alpha('#6366F1', 0.02) }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <QrCode color="primary" sx={{ mr: 1, fontSize: 28 }} />
+                <Typography variant="h6">Self Generate</Typography>
+                <Chip label="Instant" size="small" color="success" sx={{ ml: 'auto' }} />
+              </Box>
+              
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Generate and download QR labels instantly. Charges will be added to your monthly bill.
+              </Typography>
 
-      {/* Labels Table */}
+              <Box sx={{ my: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Price per Label</Typography>
+                <Typography variant="h4" color="primary.main">
+                  ₹{pricing?.selfGeneratePrice?.toFixed(2) || '0.00'}
+                </Typography>
+              </Box>
+
+              <Stack spacing={2}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Waste Category</InputLabel>
+                  <Select
+                    value={category}
+                    label="Waste Category"
+                    onChange={(e) => setCategory(e.target.value)}
+                  >
+                    {WASTE_CATEGORIES.map((cat) => (
+                      <MenuItem key={cat.code} value={cat.code}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ width: 12, height: 12, borderRadius: 1, bgcolor: cat.color }} />
+                          {cat.name}
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <TextField
+                  label="Quantity"
+                  type="number"
+                  size="small"
+                  fullWidth
+                  value={quantity}
+                  onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                  helperText={`Total Charge: ₹${calculateTotal(true).toFixed(2)}`}
+                />
+
+                <Button
+                  variant="contained"
+                  fullWidth
+                  startIcon={generateMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <Download />}
+                  onClick={handleGenerate}
+                  disabled={generateMutation.isPending || !quantity}
+                >
+                  Generate & Pay Later
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* CBWTF Request Option */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <ShoppingCart color="secondary" sx={{ mr: 1, fontSize: 28 }} />
+                <Typography variant="h6">Request from CBWTF</Typography>
+                <Chip label="Wait time applies" size="small" sx={{ ml: 'auto' }} />
+              </Box>
+              
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Request printed labels from the facility. Higher charges apply for printing and delivery.
+              </Typography>
+
+              <Box sx={{ my: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Price per Label</Typography>
+                <Typography variant="h4" color="secondary.main">
+                  ₹{pricing?.cbwtfRequestPrice?.toFixed(2) || '0.00'}
+                </Typography>
+              </Box>
+
+              <Button
+                variant="outlined"
+                color="secondary"
+                fullWidth
+                size="large"
+                startIcon={requestMutation.isPending ? <CircularProgress size={20} /> : <Receipt />}
+                onClick={handleRequest}
+                disabled={requestMutation.isPending || !quantity}
+                sx={{ mt: 2 }}
+              >
+                Request Order (₹{calculateTotal(false).toFixed(2)})
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Orders History */}
       <Card>
         <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">
-              Generated Labels ({labelsData?.total || 0})
-              {selectedIds.size > 0 && (
-                <Typography component="span" color="primary.main" sx={{ ml: 2 }}>
-                  {selectedIds.size} selected
-                </Typography>
-              )}
-            </Typography>
-            <Button 
-              startIcon={<PictureAsPdf />} 
-              variant="outlined" 
-              size="small"
-              disabled={selectedIds.size === 0}
-              onClick={handleExportPdf}
-            >
-              Export PDF ({selectedIds.size})
-            </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <History sx={{ mr: 1 }} />
+            <Typography variant="h6">Order History</Typography>
           </Box>
 
-          {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : labelsData?.labels?.length === 0 ? (
-            <Paper sx={{ p: 4, textAlign: 'center', bgcolor: alpha('#6366F1', 0.05) }}>
-              <QrCode sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-              <Typography color="text.secondary">
-                No QR labels generated yet. Use the form above to create labels.
-              </Typography>
-            </Paper>
-          ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Category</TableCell>
+                  <TableCell>Qty</TableCell>
+                  <TableCell>Amount</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {isLoading ? (
                   <TableRow>
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        checked={isAllSelected}
-                        indeterminate={isSomeSelected && !isAllSelected}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                      />
+                    <TableCell colSpan={7} align="center">
+                      <CircularProgress size={24} sx={{ my: 2 }} />
                     </TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Valid From</TableCell>
-                    <TableCell>Valid Until</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell align="right">Actions</TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {labelsData?.labels?.slice(0, 50).map((label) => (
-                    <TableRow key={label.id} hover selected={selectedIds.has(label.id)}>
-                      <TableCell padding="checkbox">
-                        <Checkbox
-                          checked={selectedIds.has(label.id)}
-                          onChange={(e) => handleSelectOne(label.id, e.target.checked)}
-                        />
+                ) : orders?.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                      No orders found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  orders?.map((order) => (
+                    <TableRow key={order.id} hover>
+                      <TableCell>{new Date(order.requestedAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {order.orderType === 'HCF_SELF' ? 'Self Generated' : 'Requested'}
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box
-                            sx={{
-                              width: 12,
-                              height: 12,
-                              borderRadius: 0.5,
-                              bgcolor: getCategoryColor(label.wasteCategory),
-                              border: label.wasteCategory === 'WHITE' ? '1px solid #999' : 'none',
-                            }}
-                          />
-                          {label.wasteCategory}
+                          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: getCategoryColor(order.wasteCategory) }} />
+                          {order.wasteCategory}
                         </Box>
                       </TableCell>
-                      <TableCell>{getStatusChip(label)}</TableCell>
-                      <TableCell>{new Date(label.validFrom).toLocaleDateString()}</TableCell>
-                      <TableCell>{new Date(label.validTo).toLocaleDateString()}</TableCell>
-                      <TableCell>{new Date(label.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>{order.quantity}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="bold">
+                          ₹{order.totalAmount.toFixed(2)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{getStatusChip(order.status)}</TableCell>
                       <TableCell align="right">
-                        <Tooltip title="View QR Code">
-                          <IconButton size="small" onClick={() => handleViewQr(label)} color="primary">
-                            <Visibility />
-                          </IconButton>
-                        </Tooltip>
-                        {(label.status === 'ACTIVE' || label.isUsable) && (
-                          <Tooltip title="Deactivate">
+                        {order.pdfUrl && (
+                          <Tooltip title="Download PDF">
                             <IconButton 
                               size="small" 
-                              onClick={() => deactivateMutation.mutate(label.id)}
-                              color="error"
-                              disabled={deactivateMutation.isPending}
+                              color="primary" 
+                              onClick={() => window.open(getDownloadUrl(order.pdfUrl), '_blank')}
                             >
-                              <Block />
+                              <PictureAsPdf />
                             </IconButton>
                           </Tooltip>
                         )}
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </CardContent>
       </Card>
-
-      {/* View QR Dialog */}
-      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>QR Label</DialogTitle>
-        <DialogContent>
-          {selectedQr && (
-            <Box textAlign="center">
-              <img src={qrImageUrl} alt="QR Code" style={{ maxWidth: '100%' }} />
-              <Typography variant="h6" mt={2}>
-                {WASTE_CATEGORIES.find(c => c.code === selectedQr.wasteCategory)?.name || selectedQr.wasteCategory}
-              </Typography>
-              <Box sx={{ mt: 1 }}>
-                {getStatusChip(selectedQr)}
-              </Box>
-              <Typography variant="body2" color="text.secondary" mt={2}>
-                Valid: {new Date(selectedQr.validFrom).toLocaleDateString()} - {new Date(selectedQr.validTo).toLocaleDateString()}
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
-          <Button
-            variant="contained"
-            startIcon={<Download />}
-            onClick={handleDownloadQr}
-          >
-            Download PNG
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };
