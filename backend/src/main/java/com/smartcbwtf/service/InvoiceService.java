@@ -61,7 +61,7 @@ public class InvoiceService {
         // *** CRITICAL: Agreement Guard Check ***
         agreementGuard.assertAgreementActive(agreement.getId(), "INVOICE_GENERATE");
 
-        // Tax rate priority: request override > HCF's stored rate > default 18%
+        // Tax rate priority: request override > HCF's stored rate > default 5%
         double taxRate = request.getTaxRate() != null ? request.getTaxRate()
                 : hcf.getTaxRateDecimal();
 

@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -686,7 +687,10 @@ public class CbwtfHcfService {
         hcf.setGpsLat(request.getGpsLat());
         hcf.setGpsLon(request.getGpsLon());
         hcf.setIdentityHash(identityHash);
-        hcf.setTaxRate(request.getTaxRate() != null ? request.getTaxRate() : 18.0);
+        hcf.setTaxRate(request.getTaxRate() != null ? request.getTaxRate() : 5.0);
+        if (request.getExcessRatePerKg() != null) {
+            hcf.setExcessRatePerKg(request.getExcessRatePerKg().doubleValue());
+        }
 
         // New HCF category fields
         hcf.setCity(request.getCity());
@@ -755,8 +759,9 @@ public class CbwtfHcfService {
         // 7. Create default billing config
         AgreementBillingConfig config = new AgreementBillingConfig();
         config.setAgreement(agreement);
-        config.setBaseGramsPerBedPerDay(270); // Default waste allowance
-        config.setBaseRatePerBedPerDay(request.getPerBedPerDayRate());
+        config.setBaseGramsPerBedPerDay(277); // Standard 277g/bed/day waste allowance
+        config.setBaseRatePerBedPerDay(request.getPerBedPerDayRate() != null
+                ? request.getPerBedPerDayRate() : BigDecimal.ZERO);
         config.setEffectiveFrom(request.getAgreementStartDate());
         config.setCreatedBy(adminUserId);
         billingConfigRepository.save(config);

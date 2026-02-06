@@ -148,14 +148,17 @@ public class BillGenerationService {
         YearMonth ym = YearMonth.from(monthStart);
         int daysInMonth = ym.lengthOfMonth();
 
-        // Get facility excess rate
-        BigDecimal excessRate = facility.getExcessRatePerKg();
-        LocalDate excessRateEffectiveFrom = facility.getExcessRateEffectiveFrom();
-
-        if (excessRate == null) {
+        // Get excess rate: HCF-specific > facility default > hardcoded default
+        Hcf billingHcf = agreement.getHcf();
+        BigDecimal excessRate;
+        if (billingHcf.getExcessRatePerKg() != null) {
+            excessRate = BigDecimal.valueOf(billingHcf.getExcessRatePerKg());
+        } else if (facility.getExcessRatePerKg() != null) {
+            excessRate = facility.getExcessRatePerKg();
+        } else {
             excessRate = new BigDecimal("50.00"); // Default
-            excessRateEffectiveFrom = LocalDate.of(2020, 1, 1);
         }
+        LocalDate excessRateEffectiveFrom = facility.getExcessRateEffectiveFrom();
         if (excessRateEffectiveFrom == null) {
             excessRateEffectiveFrom = LocalDate.of(2020, 1, 1);
         }
@@ -179,7 +182,7 @@ public class BillGenerationService {
         snapshot.setSnapshotHash(computeSnapshotHash(snapshot));
         snapshotRepository.save(snapshot);
 
-        // Calculate bill (use HCF's configured tax rate, or default 18%)
+        // Calculate bill (use HCF's configured tax rate, or default 5%)
         BillingCalculationService.BillCalculation calc = calculationService.calculate(
                 bedCount, daysInMonth, baseGrams, baseRate, excessRate, pickupWeightKg,
                 agreement.getHcf().getTaxRate());

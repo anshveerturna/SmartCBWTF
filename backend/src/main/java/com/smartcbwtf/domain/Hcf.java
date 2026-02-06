@@ -50,9 +50,13 @@ public class Hcf {
     private Boolean bedded;
     private String pcbAuthorizationNo;
 
-    // Tax rate percentage (e.g., 18.0 = 18% GST). Used in invoice and bill generation.
+    // Tax rate percentage (e.g., 5.0 = 5% GST). Used in invoice and bill generation.
     @Column(name = "tax_rate")
-    private Double taxRate = 18.0;
+    private Double taxRate = 5.0;
+
+    // Excess rate per kg for waste above 277g/bed/day allowance
+    @Column(name = "excess_rate_per_kg")
+    private Double excessRatePerKg;
 
     @Column(columnDefinition = "TEXT")
     private String otherNotes;
@@ -333,11 +337,19 @@ public class Hcf {
     }
 
     /**
-     * Get the tax rate as a decimal fraction (e.g., 18.0% → 0.18).
-     * Returns 0.18 as default if not set.
+     * Get the tax rate as a decimal fraction (e.g., 5.0% → 0.05).
+     * Returns 0.05 as default if not set.
      */
     public double getTaxRateDecimal() {
-        return (taxRate != null ? taxRate : 18.0) / 100.0;
+        return (taxRate != null ? taxRate : 5.0) / 100.0;
+    }
+
+    public Double getExcessRatePerKg() {
+        return excessRatePerKg;
+    }
+
+    public void setExcessRatePerKg(Double excessRatePerKg) {
+        this.excessRatePerKg = excessRatePerKg;
     }
 
     public String getOtherNotes() {

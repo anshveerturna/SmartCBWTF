@@ -861,8 +861,9 @@ export interface CbwtfAdminHcfRegistrationRequest {
   gpsLon: number;
   agreementStartDate: string;
   agreementEndDate: string;
-  perBedPerDayRate: number;
-  taxRate?: number; // GST percentage (e.g. 18 for 18%)
+  perBedPerDayRate?: number; // Optional: only for bedded facilities without monthly charges
+  excessRatePerKg?: number; // Rate per kg for waste above 277g/bed/day allowance
+  taxRate?: number; // GST percentage (e.g. 5 for 5%)
   // New HCF category fields
   hcfType?: 'HOSPITAL' | 'DENTAL' | 'CLINIC' | 'PATHOLOGY_COLLECTION' | 'PATHOLOGY_STORAGE';
   city?: string;

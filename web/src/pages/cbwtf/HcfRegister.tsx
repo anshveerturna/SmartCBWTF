@@ -134,8 +134,9 @@ export default function HcfRegister() {
     otherNotes: '',
     agreementStartDate: new Date().toISOString().split('T')[0],
     agreementEndDate: '',
-    perBedPerDayRate: '15.50',
-    taxRate: '18',
+    perBedPerDayRate: '',
+    excessRatePerKg: '',
+    taxRate: '5',
     // New HCF category fields
     hcfType: 'HOSPITAL',
     seatCount: '',
@@ -217,8 +218,9 @@ export default function HcfRegister() {
       gpsLon: location.lng,
       agreementStartDate: form.agreementStartDate,
       agreementEndDate: form.agreementEndDate,
-      perBedPerDayRate: parseFloat(form.perBedPerDayRate),
-      taxRate: form.taxRate ? parseFloat(form.taxRate) : 18,
+      perBedPerDayRate: form.perBedPerDayRate ? parseFloat(form.perBedPerDayRate) : undefined,
+      excessRatePerKg: form.excessRatePerKg ? parseFloat(form.excessRatePerKg) : undefined,
+      taxRate: form.taxRate ? parseFloat(form.taxRate) : 5,
       // New HCF category fields
       hcfType: form.hcfType as 'HOSPITAL' | 'DENTAL' | 'CLINIC' | 'PATHOLOGY_COLLECTION' | 'PATHOLOGY_STORAGE',
       city: form.city || undefined,
@@ -247,8 +249,7 @@ export default function HcfRegister() {
       (!form.bedded || (form.numberOfBeds && parseInt(form.numberOfBeds) > 0)) &&
       location &&
       form.agreementStartDate &&
-      form.agreementEndDate &&
-      form.perBedPerDayRate
+      form.agreementEndDate
     );
   };
 
@@ -551,16 +552,29 @@ export default function HcfRegister() {
                     />
                   )}
 
-                  <TextField
-                    label="Monthly Charges"
-                    type="number"
-                    value={form.monthlyCharges}
-                    onChange={handleInputChange('monthlyCharges')}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                    }}
-                    sx={{ width: 200 }}
-                  />
+                  <Stack direction="row" spacing={2} alignItems="flex-start">
+                    <TextField
+                      label="Monthly Charges"
+                      type="number"
+                      value={form.monthlyCharges}
+                      onChange={handleInputChange('monthlyCharges')}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                      }}
+                      sx={{ width: 200 }}
+                    />
+                    <TextField
+                      label="Tax Rate (GST %)"
+                      type="number"
+                      value={form.taxRate}
+                      onChange={handleInputChange('taxRate')}
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                      }}
+                      helperText="Default 5%"
+                      sx={{ width: 150 }}
+                    />
+                  </Stack>
                 </Stack>
               </CardContent>
             </Card>
@@ -592,29 +606,17 @@ export default function HcfRegister() {
                       InputLabelProps={{ shrink: true }}
                     />
                   </Grid>
-                  <Grid item xs={2}>
+                  <Grid item xs={4}>
                     <TextField
-                      label="Rate per Bed/Day *"
+                      label="Excess Rate per Kg (above 277g/bed/day)"
                       type="number"
                       fullWidth
-                      value={form.perBedPerDayRate}
-                      onChange={handleInputChange('perBedPerDayRate')}
+                      value={form.excessRatePerKg}
+                      onChange={handleInputChange('excessRatePerKg')}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                       }}
-                    />
-                  </Grid>
-                  <Grid item xs={2}>
-                    <TextField
-                      label="Tax Rate (GST %)"
-                      type="number"
-                      fullWidth
-                      value={form.taxRate}
-                      onChange={handleInputChange('taxRate')}
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                      }}
-                      helperText="Default 18%"
+                      helperText="Charged per kg for waste exceeding 277g/bed/day"
                     />
                   </Grid>
                   <Grid item xs={12}>

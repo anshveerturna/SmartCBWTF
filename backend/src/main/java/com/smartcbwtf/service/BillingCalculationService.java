@@ -10,12 +10,14 @@ import java.math.RoundingMode;
  * 
  * NO SIDE EFFECTS. Same inputs ALWAYS produce same outputs.
  * All amounts in INR with 2 decimal precision.
- * GST: 9% CGST + 9% SGST = 18% total.
+ * Default waste allowance: 277g per bed per day.
+ * Excess waste above allowance charged at configurable rate per kg.
+ * GST: Split 50/50 CGST + SGST at configurable rate (default 5%).
  */
 @Service
 public class BillingCalculationService {
 
-    private static final BigDecimal GST_RATE = new BigDecimal("0.09"); // 9% each for CGST & SGST
+    private static final BigDecimal GST_RATE = new BigDecimal("0.025"); // 2.5% each for CGST & SGST (5% total)
     private static final int SCALE = 2;
     private static final int WEIGHT_SCALE = 3;
     private static final RoundingMode ROUNDING = RoundingMode.HALF_UP;
@@ -71,7 +73,7 @@ public class BillingCalculationService {
     /**
      * Calculate bill amounts with configurable tax rate.
      * 
-     * @param taxRatePercent Total GST percentage (e.g. 18.0 for 18%). Split 50/50 CGST/SGST. Defaults to 18%.
+     * @param taxRatePercent Total GST percentage (e.g. 5.0 for 5%). Split 50/50 CGST/SGST. Defaults to 5%.
      */
     public BillCalculation calculate(
             int bedCount,

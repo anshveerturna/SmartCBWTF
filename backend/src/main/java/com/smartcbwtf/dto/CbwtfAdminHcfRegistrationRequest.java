@@ -85,11 +85,13 @@ public class CbwtfAdminHcfRegistrationRequest {
     @NotNull(message = "Agreement end date is required")
     private LocalDate agreementEndDate;
 
-    // Per-bed rate for billing
-    @NotNull(message = "Per bed per day rate is required")
+    // Per-bed rate for billing (optional - only for bedded facilities without monthly charges)
     private BigDecimal perBedPerDayRate;
 
-    // Tax rate percentage (e.g. 18.0 for 18% GST). Defaults to 18.0 if not provided.
+    // Excess rate per kg for waste above 277g/bed/day allowance
+    private BigDecimal excessRatePerKg;
+
+    // Tax rate percentage (e.g. 5.0 for 5% GST). Defaults to 5.0 if not provided.
     private Double taxRate;
 
     // Optional custom agreement number (overrides auto-generation)
@@ -286,6 +288,14 @@ public class CbwtfAdminHcfRegistrationRequest {
 
     public void setSeatCount(Integer seatCount) {
         this.seatCount = seatCount;
+    }
+
+    public BigDecimal getExcessRatePerKg() {
+        return excessRatePerKg;
+    }
+
+    public void setExcessRatePerKg(BigDecimal excessRatePerKg) {
+        this.excessRatePerKg = excessRatePerKg;
     }
 
     public Double getTaxRate() {
