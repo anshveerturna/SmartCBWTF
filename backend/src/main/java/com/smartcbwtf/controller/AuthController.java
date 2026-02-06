@@ -38,16 +38,19 @@ public class AuthController {
     private final AuditLogService auditLogService;
     private final SystemConfigService systemConfigService;
     private final HcfAccessGuard hcfAccessGuard;
+    private final com.smartcbwtf.service.EmailService emailService;
 
     public AuthController(AuthenticationManager authenticationManager, JwtService jwtService,
             AppUserRepository appUserRepository, AuditLogService auditLogService,
-            SystemConfigService systemConfigService, HcfAccessGuard hcfAccessGuard) {
+            SystemConfigService systemConfigService, HcfAccessGuard hcfAccessGuard,
+            com.smartcbwtf.service.EmailService emailService) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.appUserRepository = appUserRepository;
         this.auditLogService = auditLogService;
         this.systemConfigService = systemConfigService;
         this.hcfAccessGuard = hcfAccessGuard;
+        this.emailService = emailService;
     }
 
     @PostMapping("/login")
@@ -155,6 +158,19 @@ public class AuthController {
                             "Locked due to " + maxLoginAttempts + " failed login attempts");
 
                     log.warn("Account locked after {} failed attempts: {}", maxLoginAttempts, user.getUsername());
+
+                    // Send account locked email notification
+                    if (user.getEmail() != null && !user.getEmail().isBlank()) {
+                        try {
+                            String html = emailService.getTemplates().accountLocked(
+                                    user.getFullName(),
+                                    "Multiple failed login attempts (" + maxLoginAttempts + " attempts). Account locked for " + LOCKOUT_DURATION_MINUTES + " minutes.");
+                            emailService.sendHtmlEmail(user.getEmail(), "Account Security Alert - SmartCBWTF", html);
+                            log.info("Account locked email sent to: {}", user.getEmail());
+                        } catch (Exception emailEx) {
+                            log.warn("Failed to send account locked email to {}: {}", user.getEmail(), emailEx.getMessage());
+                        }
+                    }
 
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                             "error", "ACCOUNT_LOCKED",

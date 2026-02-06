@@ -40,6 +40,7 @@ public class PaymentService {
     private final BankAccountRepository bankAccountRepository;
     private final AlertService alertService;
     private final ReceiptService receiptService;
+    private final EmailService emailService;
 
     public PaymentService(
             PaymentRepository paymentRepository,
@@ -51,7 +52,8 @@ public class PaymentService {
             FacilityRepository facilityRepository,
             BankAccountRepository bankAccountRepository,
             AlertService alertService,
-            ReceiptService receiptService) {
+            ReceiptService receiptService,
+            EmailService emailService) {
         this.paymentRepository = paymentRepository;
         this.reversalRepository = reversalRepository;
         this.invoicePaymentRepository = invoicePaymentRepository;
@@ -62,6 +64,7 @@ public class PaymentService {
         this.bankAccountRepository = bankAccountRepository;
         this.alertService = alertService;
         this.receiptService = receiptService;
+        this.emailService = emailService;
     }
 
     /**
@@ -130,6 +133,23 @@ public class PaymentService {
                     AlertSeverity.INFO, "Payment Received",
                     String.format("₹%.2f received from %s.", request.amount(), hcf.getName()),
                     "Payment", payment.getId());
+        }
+
+        // Send payment received email to HCF
+        if (hcf.getContactEmail() != null && !hcf.getContactEmail().isBlank()) {
+            try {
+                String html = emailService.getTemplates().paymentReceived(
+                        hcf.getName(),
+                        receipt.getReceiptNumber(),
+                        String.format("%.2f", request.amount()),
+                        request.mode() != null ? request.mode().name() : "N/A",
+                        request.referenceNumber() != null ? request.referenceNumber() : receipt.getReceiptNumber());
+                emailService.sendHtmlEmail(hcf.getContactEmail(),
+                        "Payment Received - " + receipt.getReceiptNumber(), html);
+                log.info("Payment received email sent to HCF: {}", hcf.getContactEmail());
+            } catch (Exception e) {
+                log.warn("Failed to send payment received email to {}: {}", hcf.getContactEmail(), e.getMessage());
+            }
         }
 
         return PaymentResult.success(payment.getId(), receipt.getReceiptNumber(), allocation);

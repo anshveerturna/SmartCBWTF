@@ -41,6 +41,10 @@ public class UserManagementController {
     private final SubscriptionAuditRepository auditRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyValidator passwordPolicyValidator;
+    private final com.smartcbwtf.service.EmailService emailService;
+
+    @org.springframework.beans.factory.annotation.Value("${app.portal.url:https://portal.smartcbwtf.com}")
+    private String portalUrl;
 
     public UserManagementController(
             AppUserRepository userRepository,
@@ -48,13 +52,15 @@ public class UserManagementController {
             HcfRepository hcfRepository,
             SubscriptionAuditRepository auditRepository,
             PasswordEncoder passwordEncoder,
-            PasswordPolicyValidator passwordPolicyValidator) {
+            PasswordPolicyValidator passwordPolicyValidator,
+            com.smartcbwtf.service.EmailService emailService) {
         this.userRepository = userRepository;
         this.facilityRepository = facilityRepository;
         this.hcfRepository = hcfRepository;
         this.auditRepository = auditRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyValidator = passwordPolicyValidator;
+        this.emailService = emailService;
     }
 
     // ========== LIST ALL USERS ==========
@@ -170,7 +176,19 @@ public class UserManagementController {
                 "User created by SuperAdmin"));
 
         log.info("SuperAdmin created user {} with role {}", request.username(), request.role());
-        log.warn("TEMP PASSWORD for {}: {} (remove this log in production)", request.username(), tempPassword);
+
+        // Send welcome email with credentials
+        if (request.email() != null && !request.email().isBlank()) {
+            try {
+                String facilityName = facility != null ? facility.getName() : "SmartCBWTF";
+                String html = emailService.getTemplates().cbwtfWelcome(
+                        facilityName, request.fullName(), request.username(), tempPassword, portalUrl);
+                emailService.sendHtmlEmail(request.email(), "Your SmartCBWTF Account Credentials", html);
+                log.info("Welcome email sent to new user: {}", request.email());
+            } catch (Exception e) {
+                log.warn("Failed to send welcome email to {}: {}", request.email(), e.getMessage());
+            }
+        }
 
         return ResponseEntity.ok(UserManagementDTO.from(user));
     }

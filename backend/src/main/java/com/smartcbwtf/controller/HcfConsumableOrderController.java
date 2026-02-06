@@ -331,6 +331,23 @@ public class HcfConsumableOrderController {
 
         log.info("HCF {} cancelled order {}", hcfId, order.getOrderNumber());
 
+        // Send cancellation email to CBWTF
+        try {
+            Facility facility = order.getFacility();
+            if (facility != null && facility.getContactEmail() != null && !facility.getContactEmail().isBlank()) {
+                String html = emailService.getTemplates().orderCancelled(
+                        facility.getName(),
+                        order.getOrderNumber(),
+                        "Cancelled by HCF",
+                        false);
+                emailService.sendHtmlEmail(facility.getContactEmail(),
+                        "Order Cancelled - " + order.getOrderNumber(), html);
+                log.info("Order cancellation email sent to CBWTF: {}", facility.getContactEmail());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to send order cancellation email: {}", e.getMessage());
+        }
+
         return ResponseEntity.ok(Map.of(
                 "id", order.getId().toString(),
                 "status", order.getStatus(),

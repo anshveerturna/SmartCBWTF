@@ -50,6 +50,10 @@ public class Hcf {
     private Boolean bedded;
     private String pcbAuthorizationNo;
 
+    // Tax rate percentage (e.g., 18.0 = 18% GST). Used in invoice and bill generation.
+    @Column(name = "tax_rate")
+    private Double taxRate = 18.0;
+
     @Column(columnDefinition = "TEXT")
     private String otherNotes;
 
@@ -318,6 +322,22 @@ public class Hcf {
 
     public void setPcbAuthorizationNo(String pcbAuthorizationNo) {
         this.pcbAuthorizationNo = pcbAuthorizationNo;
+    }
+
+    public Double getTaxRate() {
+        return taxRate;
+    }
+
+    public void setTaxRate(Double taxRate) {
+        this.taxRate = taxRate;
+    }
+
+    /**
+     * Get the tax rate as a decimal fraction (e.g., 18.0% → 0.18).
+     * Returns 0.18 as default if not set.
+     */
+    public double getTaxRateDecimal() {
+        return (taxRate != null ? taxRate : 18.0) / 100.0;
     }
 
     public String getOtherNotes() {

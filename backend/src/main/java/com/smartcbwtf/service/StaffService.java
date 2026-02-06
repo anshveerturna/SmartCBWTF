@@ -49,18 +49,21 @@ public class StaffService {
     private final AttendanceRepository attendanceRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
+    private final EmailService emailService;
 
     public StaffService(
             AppUserRepository appUserRepository,
             FacilityRepository facilityRepository,
             AttendanceRepository attendanceRepository,
             PasswordEncoder passwordEncoder,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            EmailService emailService) {
         this.appUserRepository = appUserRepository;
         this.facilityRepository = facilityRepository;
         this.attendanceRepository = attendanceRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
+        this.emailService = emailService;
     }
 
     /**
@@ -151,6 +154,18 @@ public class StaffService {
                         username, request.role(), request.fullName()));
 
         log.info("Created staff user: {} ({}) for facility: {}", username, request.role(), facility.getCode());
+
+        // Send staff credentials email
+        if (request.email() != null && !request.email().isBlank()) {
+            try {
+                String html = emailService.getTemplates().staffCredentials(
+                        request.fullName(), request.role(), username, tempPassword, facility.getName());
+                emailService.sendHtmlEmail(request.email(), "Your SmartCBWTF Staff Account", html);
+                log.info("Staff credentials email sent to: {}", request.email());
+            } catch (Exception e) {
+                log.warn("Failed to send staff credentials email to {}: {}", request.email(), e.getMessage());
+            }
+        }
 
         // Return DTO with temporary password (only time it's visible)
         return new StaffDTO(
@@ -278,6 +293,18 @@ public class StaffService {
                 String.format("{\"username\":\"%s\"}", user.getUsername()));
 
         log.info("Reset password for staff user: {}", user.getUsername());
+
+        // Send password reset email
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            try {
+                String html = emailService.getTemplates().passwordReset(user.getFullName(), newPassword);
+                emailService.sendHtmlEmail(user.getEmail(), "Your SmartCBWTF Password Has Been Reset", html);
+                log.info("Password reset email sent to staff: {}", user.getEmail());
+            } catch (Exception e) {
+                log.warn("Failed to send password reset email to {}: {}", user.getEmail(), e.getMessage());
+            }
+        }
+
         return newPassword;
     }
 

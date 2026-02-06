@@ -179,9 +179,10 @@ public class BillGenerationService {
         snapshot.setSnapshotHash(computeSnapshotHash(snapshot));
         snapshotRepository.save(snapshot);
 
-        // Calculate bill
+        // Calculate bill (use HCF's configured tax rate, or default 18%)
         BillingCalculationService.BillCalculation calc = calculationService.calculate(
-                bedCount, daysInMonth, baseGrams, baseRate, excessRate, pickupWeightKg);
+                bedCount, daysInMonth, baseGrams, baseRate, excessRate, pickupWeightKg,
+                agreement.getHcf().getTaxRate());
 
         // Create bill
         Bill bill = new Bill();

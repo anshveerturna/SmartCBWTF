@@ -135,6 +135,7 @@ export default function HcfRegister() {
     agreementStartDate: new Date().toISOString().split('T')[0],
     agreementEndDate: '',
     perBedPerDayRate: '15.50',
+    taxRate: '18',
     // New HCF category fields
     hcfType: 'HOSPITAL',
     seatCount: '',
@@ -217,6 +218,7 @@ export default function HcfRegister() {
       agreementStartDate: form.agreementStartDate,
       agreementEndDate: form.agreementEndDate,
       perBedPerDayRate: parseFloat(form.perBedPerDayRate),
+      taxRate: form.taxRate ? parseFloat(form.taxRate) : 18,
       // New HCF category fields
       hcfType: form.hcfType as 'HOSPITAL' | 'DENTAL' | 'CLINIC' | 'PATHOLOGY_COLLECTION' | 'PATHOLOGY_STORAGE',
       city: form.city || undefined,
@@ -590,7 +592,7 @@ export default function HcfRegister() {
                       InputLabelProps={{ shrink: true }}
                     />
                   </Grid>
-                  <Grid item xs={4}>
+                  <Grid item xs={2}>
                     <TextField
                       label="Rate per Bed/Day *"
                       type="number"
@@ -600,6 +602,19 @@ export default function HcfRegister() {
                       InputProps={{
                         startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                       }}
+                    />
+                  </Grid>
+                  <Grid item xs={2}>
+                    <TextField
+                      label="Tax Rate (GST %)"
+                      type="number"
+                      fullWidth
+                      value={form.taxRate}
+                      onChange={handleInputChange('taxRate')}
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                      }}
+                      helperText="Default 18%"
                     />
                   </Grid>
                   <Grid item xs={12}>

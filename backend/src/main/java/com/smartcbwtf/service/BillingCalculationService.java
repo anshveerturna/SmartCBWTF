@@ -45,8 +45,8 @@ public class BillingCalculationService {
      * base_amount = bed_count × base_rate_per_bed × days
      * excess_amount = excess_weight_kg × excess_rate_per_kg
      * subtotal = base_amount + excess_amount
-     * CGST = subtotal × 0.09
-     * SGST = subtotal × 0.09
+     * CGST = subtotal × gstHalfRate
+     * SGST = subtotal × gstHalfRate
      * total = subtotal + CGST + SGST
      * 
      * @param bedCount              Number of beds in HCF
@@ -64,6 +64,23 @@ public class BillingCalculationService {
             BigDecimal baseRatePerBedPerDay,
             BigDecimal excessRatePerKg,
             BigDecimal pickupWeightKg) {
+        return calculate(bedCount, daysInMonth, baseGramsPerBedPerDay, baseRatePerBedPerDay,
+                excessRatePerKg, pickupWeightKg, null);
+    }
+
+    /**
+     * Calculate bill amounts with configurable tax rate.
+     * 
+     * @param taxRatePercent Total GST percentage (e.g. 18.0 for 18%). Split 50/50 CGST/SGST. Defaults to 18%.
+     */
+    public BillCalculation calculate(
+            int bedCount,
+            int daysInMonth,
+            BigDecimal baseGramsPerBedPerDay,
+            BigDecimal baseRatePerBedPerDay,
+            BigDecimal excessRatePerKg,
+            BigDecimal pickupWeightKg,
+            Double taxRatePercent) {
 
         // Calculate base allowance in kg
         // Formula: (beds × grams × days) / 1000
@@ -94,9 +111,12 @@ public class BillingCalculationService {
         // Calculate subtotal
         BigDecimal subtotal = baseAmount.add(excessAmount).setScale(SCALE, ROUNDING);
 
-        // Calculate GST (9% CGST + 9% SGST)
-        BigDecimal cgst = subtotal.multiply(GST_RATE).setScale(SCALE, ROUNDING);
-        BigDecimal sgst = subtotal.multiply(GST_RATE).setScale(SCALE, ROUNDING);
+        // Calculate GST (split 50/50 into CGST + SGST)
+        BigDecimal gstHalfRate = (taxRatePercent != null)
+                ? new BigDecimal(String.valueOf(taxRatePercent / 2.0 / 100.0))
+                : GST_RATE;
+        BigDecimal cgst = subtotal.multiply(gstHalfRate).setScale(SCALE, ROUNDING);
+        BigDecimal sgst = subtotal.multiply(gstHalfRate).setScale(SCALE, ROUNDING);
 
         // Calculate total
         BigDecimal totalAmount = subtotal.add(cgst).add(sgst).setScale(SCALE, ROUNDING);

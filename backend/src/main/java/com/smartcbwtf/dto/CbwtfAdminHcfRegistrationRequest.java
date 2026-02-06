@@ -89,6 +89,9 @@ public class CbwtfAdminHcfRegistrationRequest {
     @NotNull(message = "Per bed per day rate is required")
     private BigDecimal perBedPerDayRate;
 
+    // Tax rate percentage (e.g. 18.0 for 18% GST). Defaults to 18.0 if not provided.
+    private Double taxRate;
+
     // Optional custom agreement number (overrides auto-generation)
     private String customAgreementNumber;
 
@@ -283,6 +286,14 @@ public class CbwtfAdminHcfRegistrationRequest {
 
     public void setSeatCount(Integer seatCount) {
         this.seatCount = seatCount;
+    }
+
+    public Double getTaxRate() {
+        return taxRate;
+    }
+
+    public void setTaxRate(Double taxRate) {
+        this.taxRate = taxRate;
     }
 
     public String getCustomAgreementNumber() {

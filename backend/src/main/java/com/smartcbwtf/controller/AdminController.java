@@ -10,6 +10,7 @@ import com.smartcbwtf.service.SystemConfigService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -45,6 +46,9 @@ public class AdminController {
     private final PasswordEncoder passwordEncoder;
     private final SystemConfigService systemConfigService;
     private final EmailService emailService;
+
+    @Value("${app.portal.url:https://portal.smartcbwtf.com}")
+    private String portalUrl;
 
     public AdminController(
             FacilityRepository facilityRepository,
@@ -367,9 +371,19 @@ public class AdminController {
 
         log.info("Onboarded CBWTF {} with admin user {}", facility.getCode(), request.adminEmail());
 
-        // TODO: Send email with temp password to admin
-        // For now, log it (remove in production!)
-        log.warn("TEMP PASSWORD for {}: {} (remove this log in production)", request.adminEmail(), tempPassword);
+        // Send welcome email with credentials via Brevo
+        try {
+            String html = emailService.getTemplates().cbwtfWelcome(
+                    facility.getName(),
+                    request.adminName(),
+                    request.adminEmail(),
+                    tempPassword,
+                    portalUrl);
+            emailService.sendHtmlEmail(request.adminEmail(), "Welcome to SmartCBWTF – Your Admin Credentials", html);
+            log.info("Sent CBWTF welcome email to {}", request.adminEmail());
+        } catch (Exception e) {
+            log.error("Failed to send CBWTF welcome email to {}: {}", request.adminEmail(), e.getMessage());
+        }
 
         return ResponseEntity.ok(TenantDTO.from(
                 facility,

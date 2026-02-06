@@ -8,6 +8,8 @@ import com.smartcbwtf.dto.InvoiceGenerateRequest;
 import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.repository.HcfRepository;
 import com.smartcbwtf.repository.InvoiceRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,8 @@ import java.util.UUID;
 @Service
 public class InvoiceService {
 
+    private static final Logger log = LoggerFactory.getLogger(InvoiceService.class);
+
     private final InvoiceRepository invoiceRepository;
     private final HcfRepository hcfRepository;
     private final AgreementRepository agreementRepository;
@@ -28,6 +32,7 @@ public class InvoiceService {
     private final AgreementSnapshotService snapshotService;
     private final PdfService pdfService;
     private final AuditLogService auditLogService;
+    private final EmailService emailService;
 
     public InvoiceService(InvoiceRepository invoiceRepository,
             HcfRepository hcfRepository,
@@ -35,7 +40,8 @@ public class InvoiceService {
             AgreementGuardService agreementGuard,
             AgreementSnapshotService snapshotService,
             PdfService pdfService,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            EmailService emailService) {
         this.invoiceRepository = invoiceRepository;
         this.hcfRepository = hcfRepository;
         this.agreementRepository = agreementRepository;
@@ -43,6 +49,7 @@ public class InvoiceService {
         this.snapshotService = snapshotService;
         this.pdfService = pdfService;
         this.auditLogService = auditLogService;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -54,7 +61,9 @@ public class InvoiceService {
         // *** CRITICAL: Agreement Guard Check ***
         agreementGuard.assertAgreementActive(agreement.getId(), "INVOICE_GENERATE");
 
-        double taxRate = request.getTaxRate() != null ? request.getTaxRate() : 0.18;
+        // Tax rate priority: request override > HCF's stored rate > default 18%
+        double taxRate = request.getTaxRate() != null ? request.getTaxRate()
+                : hcf.getTaxRateDecimal();
 
         LocalDate start = request.getPeriodStart();
         LocalDate end = request.getPeriodEnd();
@@ -90,6 +99,26 @@ public class InvoiceService {
         invoiceRepository.save(invoice);
         auditLogService.log("INVOICE", invoice.getId(), "GENERATE", null,
                 "{\"snapshotId\":\"" + snapshot.getId() + "\"}");
+
+        // Send invoice email to HCF
+        if (hcf.getContactEmail() != null && !hcf.getContactEmail().isBlank()) {
+            try {
+                String period = start.toString() + " to " + end.toString();
+                String dueDate = end.plusDays(30).toString();
+                String html = emailService.getTemplates().invoiceGenerated(
+                        hcf.getName(),
+                        invoice.getInvoiceNumber(),
+                        period,
+                        total.toString(),
+                        dueDate);
+                emailService.sendHtmlEmail(hcf.getContactEmail(),
+                        "Invoice Generated - " + invoice.getInvoiceNumber(), html);
+                log.info("Invoice email sent to HCF: {}", hcf.getContactEmail());
+            } catch (Exception e) {
+                log.warn("Failed to send invoice email to {}: {}", hcf.getContactEmail(), e.getMessage());
+            }
+        }
+
         return invoice;
     }
 

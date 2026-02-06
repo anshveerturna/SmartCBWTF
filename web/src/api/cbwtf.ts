@@ -862,6 +862,7 @@ export interface CbwtfAdminHcfRegistrationRequest {
   agreementStartDate: string;
   agreementEndDate: string;
   perBedPerDayRate: number;
+  taxRate?: number; // GST percentage (e.g. 18 for 18%)
   // New HCF category fields
   hcfType?: 'HOSPITAL' | 'DENTAL' | 'CLINIC' | 'PATHOLOGY_COLLECTION' | 'PATHOLOGY_STORAGE';
   city?: string;

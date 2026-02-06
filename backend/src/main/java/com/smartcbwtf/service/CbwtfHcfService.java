@@ -537,6 +537,17 @@ public class CbwtfHcfService {
         // Audit log
         auditLogService.log("HCF", hcfId, "HCF_REJECTED", null, "Reason: " + request.getReason());
         log.info("HCF {} rejected: {}", hcfId, request.getReason());
+
+        // Send rejection email to HCF
+        if (hcf.getContactEmail() != null && !hcf.getContactEmail().isBlank()) {
+            try {
+                String html = emailService.getTemplates().hcfRejected(hcf.getName(), request.getReason());
+                emailService.sendHtmlEmail(hcf.getContactEmail(), "Registration Status Update - SmartCBWTF", html);
+                log.info("Rejection email sent to HCF: {}", hcf.getContactEmail());
+            } catch (Exception e) {
+                log.warn("Failed to send rejection email to {}: {}", hcf.getContactEmail(), e.getMessage());
+            }
+        }
     }
 
     /**
@@ -675,6 +686,7 @@ public class CbwtfHcfService {
         hcf.setGpsLat(request.getGpsLat());
         hcf.setGpsLon(request.getGpsLon());
         hcf.setIdentityHash(identityHash);
+        hcf.setTaxRate(request.getTaxRate() != null ? request.getTaxRate() : 18.0);
 
         // New HCF category fields
         hcf.setCity(request.getCity());
