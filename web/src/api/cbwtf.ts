@@ -586,6 +586,9 @@ export interface HcfListItem {
   code: string;
   name: string;
   address: string;
+  city: string | null;
+  state: string | null;
+  hcfType: string | null;
   contactPhone: string | null;
   contactEmail: string | null;
   numberOfBeds: number | null;
@@ -609,12 +612,6 @@ export interface HcfListItem {
   bedAccessCategory: 'BEDS_0_TO_30' | 'ABOVE_30_BEDS' | null;
   bedAccessCategoryDisplay: string | null;
   portalEligible: boolean;
-  // New filter fields
-  city: string | null;
-  state: string | null;
-  hcfType: 'HOSPITAL' | 'DENTAL' | 'CLINIC' | 'PATHOLOGY_COLLECTION' | 'PATHOLOGY_STORAGE' | null;
-  hcfTypeDisplay: string | null;
-  seatCount: number | null;
 }
 
 export interface AgreementInfo {
@@ -834,7 +831,6 @@ export interface CbwtfAdminHcfRegistrationRequest {
   doctorName: string;
   contactPhone: string;
   contactEmail: string;
-  // Identity fields (optional)
   panNo?: string;
   gstNo?: string;
   aadharNo?: string;

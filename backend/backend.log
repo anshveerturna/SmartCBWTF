@@ -102,3 +102,8 @@ Standard Commons Logging discovery in action with spring-jcl: please remove comm
 2026-02-06T01:28:16.227+05:30 DEBUG 22329 --- [smart-cbwtf-backend] [   scheduling-1] c.smartcbwtf.service.SystemErrorService  : Inactive user check skipped - lastLogin field not available
 2026-02-06T01:28:16.232+05:30 DEBUG 22329 --- [smart-cbwtf-backend] [   scheduling-1] c.smartcbwtf.service.SystemErrorService  : HCF activity check: 18 total HCFs
 2026-02-06T01:28:16.232+05:30  INFO 22329 --- [smart-cbwtf-backend] [   scheduling-1] c.smartcbwtf.service.SystemErrorService  : Auto-detection completed
+2026-02-06T01:29:16.202+05:30  INFO 22329 --- [smart-cbwtf-backend] [   scheduling-1] c.smartcbwtf.service.SystemErrorService  : Running auto-resolution check for system errors...
+2026-02-06T01:29:16.241+05:30  INFO 22329 --- [smart-cbwtf-backend] [   scheduling-1] c.smartcbwtf.service.SystemErrorService  : Auto-resolution completed: 0 errors resolved
+2026-02-06T01:33:45.566+05:30  INFO 22329 --- [smart-cbwtf-backend] [ionShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-02-06T01:33:45.580+05:30  INFO 22329 --- [smart-cbwtf-backend] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-02-06T01:33:45.585+05:30  INFO 22329 --- [smart-cbwtf-backend] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.

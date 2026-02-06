@@ -383,7 +383,7 @@ const QrLabels: React.FC = () => {
                             <IconButton 
                               size="small" 
                               color="primary" 
-                              onClick={() => window.open(getDownloadUrl(order.pdfUrl), '_blank')}
+                              onClick={() => order.pdfUrl && window.open(getDownloadUrl(order.pdfUrl), '_blank')}
                             >
                               <PictureAsPdf />
                             </IconButton>

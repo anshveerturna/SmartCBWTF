@@ -489,7 +489,7 @@ public class PdfService {
         doc.addPage(page);
         PDPageContentStream cs = new PDPageContentStream(doc, page);
 
-        drawCommonHeader(cs, doc, period);
+        drawCommonHeader(cs, doc, "MONTHLY COMPLIANCE REPORT", "Period: " + period);
         drawCommonFooter(cs, doc);
 
         drawText(cs, FONT_BOLD, 12, COL_PRIMARY, MARGIN_LEFT, yStart + 20, "Detailed Waste Pickup Log");

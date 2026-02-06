@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: smart-cbwtf-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smart_cbwtf
+    username: smart_cbwtf
+    password: SmartCBWTF2026Secure!
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    ignore-missing-migrations: true
+    validate-on-migrate: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: 8080
+
+security:
+  jwt:
+    secret: ChangeThisToA32ByteOrLongerSecretKey2026Production
+    issuer: smart-cbwtf
+    access-token-ttl-minutes: 60
+
+logging:
+  level:
+    root: INFO
+    com.smartcbwtf: INFO
+
+app:
+  geofence:
+    hcf-radius-m: 200
+    facility-default-radius-m: 200
+    enable-server-check: true
+  gps:
+    min-accuracy-m: 50
+    max-accuracy-m: 100
+  weight:
+    mismatch-threshold-kg: 0.5
+  alerts:
+    missing-bag-hours: 24
+  attendance:
+    geofence-radius-m: 50
+    cooldown-minutes: 5
+  email:
+    enabled: false
+    from: noreply@smartcbwtf.com
+  agreement:
+    number:
+      prefix: HCF
+      separator: "-"
+      sequence-digits: 5
+      include-facility-code: true
+      include-year: true
+  pdf:
+    output-dir: files/agreements
+    timezone: Asia/Kolkata
