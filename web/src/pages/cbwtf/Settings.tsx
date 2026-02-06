@@ -8,7 +8,6 @@ import {
   Tabs,
   Tab,
   TextField,
-  Switch,
   Button,
   Alert,
   Skeleton,
@@ -19,7 +18,6 @@ import {
   DialogContent,
   DialogActions,
   Snackbar,
-  Divider,
   Table,
   TableBody,
   TableCell,
@@ -29,45 +27,26 @@ import {
   Paper,
   TablePagination,
   CircularProgress,
-  InputAdornment,
 } from '@mui/material';
 import {
   Save as SaveIcon,
   Warning as WarningIcon,
   Lock as LockIcon,
   Business as LegalIcon,
-  AccountBalance as FinancialIcon,
-  Payment as PaymentIcon,
   Description as AgreementIcon,
-  QrCode as OperationalIcon,
-  VerifiedUser as ComplianceIcon,
-  Email as EmailIcon,
   Timeline as AuditIcon,
-  Percent as PercentIcon,
   Palette as BrandingIcon,
 } from '@mui/icons-material';
 import BrandingSection from './settings/BrandingSection';
+import AgreementRulesSection from './settings/AgreementRulesSection';
 import dayjs from 'dayjs';
 import {
   getFacilitySettings,
   updateLegalProfile,
-  updateFinancialSettings,
-  updatePaymentReminders,
-  updateAgreementRules,
-  updateOperationalRules,
-  updateComplianceSettings,
-  updateEmailSettings,
   getSettingsAuditHistory,
 } from '../../api/cbwtf';
 import type {
-  FacilitySettingsDTO,
   LegalProfileDTO,
-  FinancialSettingsDTO,
-  PaymentReminderDTO,
-  AgreementRulesDTO,
-  OperationalRulesDTO,
-  ComplianceSettingsDTO,
-  EmailSettingsDTO,
   LockedFieldsDTO,
   SettingsAuditDTO,
 } from '../../api/cbwtf';
@@ -75,12 +54,7 @@ import type {
 // Tab configuration
 const TABS = [
   { key: 'legal', label: 'Legal & Profile', icon: <LegalIcon /> },
-  { key: 'financial', label: 'Financial', icon: <FinancialIcon /> },
-  { key: 'payment', label: 'Payment Rules', icon: <PaymentIcon /> },
   { key: 'agreement', label: 'Agreements', icon: <AgreementIcon /> },
-  { key: 'operational', label: 'Operational', icon: <OperationalIcon /> },
-  { key: 'compliance', label: 'Compliance', icon: <ComplianceIcon /> },
-  { key: 'email', label: 'Notifications', icon: <EmailIcon /> },
   { key: 'branding', label: 'Branding', icon: <BrandingIcon /> },
   { key: 'audit', label: 'Audit History', icon: <AuditIcon /> },
 ];
@@ -175,27 +149,6 @@ export default function Settings() {
 
   // Form states
   const [legalForm, setLegalForm] = useState<LegalProfileDTO>({});
-  const [financialForm, setFinancialForm] = useState<FinancialSettingsDTO>({
-    cgstPercent: 9, sgstPercent: 9, igstPercent: 18, gstEnabled: true,
-  });
-  const [paymentForm, setPaymentForm] = useState<PaymentReminderDTO>({
-    gracePeriodDays: 7, autoAlertEscalation: true,
-  });
-  const [agreementForm, setAgreementForm] = useState<AgreementRulesDTO>({
-    defaultAgreementValidityMonths: 12, agreementRenewalWindowDays: 30, blockOverlappingAgreements: true,
-  });
-  const [operationalForm, setOperationalForm] = useState<OperationalRulesDTO>({
-    qrValidityDays: 30, allowMultipleActiveQrs: false, requireCbwtfVerification: true,
-    gpsGeofenceRadiusM: 100, maxUnverifiedBags: 10, blueWasteMinPercent: 5,
-  });
-  const [complianceForm, setComplianceForm] = useState<ComplianceSettingsDTO>({
-    dailyReportTime: '08:00', monthlyReportDay: 1, enforceChecksum: true,
-  });
-  const [emailForm, setEmailForm] = useState<EmailSettingsDTO>({
-    resolvedSenderName: '', resolvedSenderEmail: '', senderSlugLocked: false,
-    useGenericSender: false, notificationEmail: null, ccAdminOnHcfEmails: true,
-    emailNotificationsEnabled: true, inAppAlertsEnabled: true,
-  });
 
   // Audit state
   const [auditPage, setAuditPage] = useState(0);
@@ -210,18 +163,12 @@ export default function Settings() {
   const { data: auditData, isLoading: auditLoading } = useQuery({
     queryKey: ['settings-audit', auditPage, auditRowsPerPage],
     queryFn: () => getSettingsAuditHistory(undefined, auditPage, auditRowsPerPage),
-    enabled: activeTab === 9,
+    enabled: activeTab === 3,
   });
 
   useEffect(() => {
     if (settings) {
       setLegalForm(settings.legal);
-      setFinancialForm(settings.financial);
-      setPaymentForm(settings.paymentReminders);
-      setAgreementForm(settings.agreementRules);
-      setOperationalForm(settings.operational);
-      setComplianceForm(settings.compliance);
-      setEmailForm(settings.email);
     }
   }, [settings]);
 
@@ -239,12 +186,6 @@ export default function Settings() {
     });
 
   const legalMutation = createMutation(updateLegalProfile, 'Legal profile');
-  const financialMutation = createMutation(updateFinancialSettings, 'Financial settings');
-  const paymentMutation = createMutation(updatePaymentReminders, 'Payment reminders');
-  const agreementMutation = createMutation(updateAgreementRules, 'Agreement rules');
-  const operationalMutation = createMutation(updateOperationalRules, 'Operational settings');
-  const complianceMutation = createMutation(updateComplianceSettings, 'Compliance settings');
-  const emailMutation = createMutation(updateEmailSettings, 'Email settings');
 
   const lockedFields = settings?.lockedFields || {} as LockedFieldsDTO;
 
@@ -390,377 +331,18 @@ export default function Settings() {
           </Box>
         );
 
-      case 1: // Financial
-        return (
-          <Box>
-            <SectionHeader title="Financial & Billing" description="GST rates and tax configuration for invoice generation." />
+      case 1: // Agreements
+        return settings ? (
+          <AgreementRulesSection
+            data={settings.agreementRules}
+            onSave={() => queryClient.invalidateQueries({ queryKey: ['facility-settings'] })}
+          />
+        ) : null;
 
-            <SettingRow label="GST Enabled" description="Enable or disable GST calculation on invoices." locked={lockedFields.gstLocked} lockedReason="Locked after first invoice generation">
-              <Switch
-                checked={financialForm.gstEnabled}
-                onChange={(e) => setFinancialForm({ ...financialForm, gstEnabled: e.target.checked })}
-                disabled={lockedFields.gstLocked}
-              />
-            </SettingRow>
-
-            {financialForm.gstEnabled && (
-              <>
-                <SettingRow label="CGST Rate" description="Central GST rate percentage." locked={lockedFields.gstLocked}>
-                  <TextField
-                    size="small"
-                    type="number"
-                    value={financialForm.cgstPercent}
-                    onChange={(e) => setFinancialForm({ ...financialForm, cgstPercent: Number(e.target.value) })}
-                    disabled={lockedFields.gstLocked}
-                    InputProps={{ endAdornment: <InputAdornment position="end"><PercentIcon fontSize="small" /></InputAdornment> }}
-                    sx={{ width: 120 }}
-                  />
-                </SettingRow>
-
-                <SettingRow label="SGST Rate" description="State GST rate percentage." locked={lockedFields.gstLocked}>
-                  <TextField
-                    size="small"
-                    type="number"
-                    value={financialForm.sgstPercent}
-                    onChange={(e) => setFinancialForm({ ...financialForm, sgstPercent: Number(e.target.value) })}
-                    disabled={lockedFields.gstLocked}
-                    InputProps={{ endAdornment: <InputAdornment position="end"><PercentIcon fontSize="small" /></InputAdornment> }}
-                    sx={{ width: 120 }}
-                  />
-                </SettingRow>
-
-                <SettingRow label="IGST Rate" description="Integrated GST rate for inter-state transactions." locked={lockedFields.gstLocked} noBorder>
-                  <TextField
-                    size="small"
-                    type="number"
-                    value={financialForm.igstPercent}
-                    onChange={(e) => setFinancialForm({ ...financialForm, igstPercent: Number(e.target.value) })}
-                    disabled={lockedFields.gstLocked}
-                    InputProps={{ endAdornment: <InputAdornment position="end"><PercentIcon fontSize="small" /></InputAdornment> }}
-                    sx={{ width: 120 }}
-                  />
-                </SettingRow>
-              </>
-            )}
-
-            <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={financialMutation.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-                onClick={() => financialMutation.mutate(financialForm)}
-                disabled={financialMutation.isPending}
-                sx={{ px: 4, fontWeight: 600 }}
-              >
-                Save Changes
-              </Button>
-            </Box>
-          </Box>
-        );
-
-      case 2: // Payment Rules
-        return (
-          <Box>
-            <SectionHeader title="Payment & Reminder Rules" description="Configure payment grace periods and automated alert escalation." />
-
-            <SettingRow label="Grace Period" description="Number of days after due date before payment escalation triggers.">
-              <TextField
-                size="small"
-                type="number"
-                value={paymentForm.gracePeriodDays}
-                onChange={(e) => setPaymentForm({ ...paymentForm, gracePeriodDays: Number(e.target.value) })}
-                InputProps={{ endAdornment: <InputAdornment position="end">days</InputAdornment> }}
-                inputProps={{ min: 1, max: 90 }}
-                sx={{ width: 140 }}
-              />
-            </SettingRow>
-
-            <SettingRow label="Auto Alert Escalation" description="Automatically escalate alerts when payment is overdue beyond grace period." noBorder>
-              <Switch
-                checked={paymentForm.autoAlertEscalation}
-                onChange={(e) => setPaymentForm({ ...paymentForm, autoAlertEscalation: e.target.checked })}
-              />
-            </SettingRow>
-
-            <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={paymentMutation.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-                onClick={() => paymentMutation.mutate(paymentForm)}
-                disabled={paymentMutation.isPending}
-                sx={{ px: 4, fontWeight: 600 }}
-              >
-                Save Changes
-              </Button>
-            </Box>
-          </Box>
-        );
-
-      case 3: // Agreement Rules
-        return (
-          <Box>
-            <SectionHeader title="Agreement & Contract Rules" description="Default validity periods and renewal policies for HCF agreements." />
-
-            <SettingRow label="Default Validity" description="Default duration for new HCF agreements.">
-              <TextField
-                size="small"
-                type="number"
-                value={agreementForm.defaultAgreementValidityMonths}
-                onChange={(e) => setAgreementForm({ ...agreementForm, defaultAgreementValidityMonths: Number(e.target.value) })}
-                InputProps={{ endAdornment: <InputAdornment position="end">months</InputAdornment> }}
-                inputProps={{ min: 1, max: 60 }}
-                sx={{ width: 140 }}
-              />
-            </SettingRow>
-
-            <SettingRow label="Renewal Window" description="Days before expiry to prompt renewal reminders.">
-              <TextField
-                size="small"
-                type="number"
-                value={agreementForm.agreementRenewalWindowDays}
-                onChange={(e) => setAgreementForm({ ...agreementForm, agreementRenewalWindowDays: Number(e.target.value) })}
-                InputProps={{ endAdornment: <InputAdornment position="end">days</InputAdornment> }}
-                inputProps={{ min: 7, max: 180 }}
-                sx={{ width: 140 }}
-              />
-            </SettingRow>
-
-            <SettingRow label="Block Overlapping Agreements" description="Prevent creating agreements with overlapping dates for same HCF." noBorder>
-              <Switch
-                checked={agreementForm.blockOverlappingAgreements}
-                onChange={(e) => setAgreementForm({ ...agreementForm, blockOverlappingAgreements: e.target.checked })}
-              />
-            </SettingRow>
-
-            <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={agreementMutation.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-                onClick={() => agreementMutation.mutate(agreementForm)}
-                disabled={agreementMutation.isPending}
-                sx={{ px: 4, fontWeight: 600 }}
-              >
-                Save Changes
-              </Button>
-            </Box>
-          </Box>
-        );
-
-      case 4: // Operational
-        return (
-          <Box>
-            <SectionHeader title="QR & Operational Rules" description="QR code validity, geofencing, and bag verification settings." />
-
-            <SettingRow label="QR Validity" description="How long generated QR codes remain valid." locked={lockedFields.qrRulesLocked} lockedReason="Locked after first QR generation">
-              <TextField
-                size="small"
-                type="number"
-                value={operationalForm.qrValidityDays}
-                onChange={(e) => setOperationalForm({ ...operationalForm, qrValidityDays: Number(e.target.value) })}
-                disabled={lockedFields.qrRulesLocked}
-                InputProps={{ endAdornment: <InputAdornment position="end">days</InputAdornment> }}
-                inputProps={{ min: 1, max: 365 }}
-                sx={{ width: 140 }}
-              />
-            </SettingRow>
-
-            <SettingRow label="GPS Geofence Radius" description="Radius for location-based verification at HCF sites.">
-              <TextField
-                size="small"
-                type="number"
-                value={operationalForm.gpsGeofenceRadiusM}
-                onChange={(e) => setOperationalForm({ ...operationalForm, gpsGeofenceRadiusM: Number(e.target.value) })}
-                InputProps={{ endAdornment: <InputAdornment position="end">meters</InputAdornment> }}
-                inputProps={{ min: 50, max: 1000 }}
-                sx={{ width: 140 }}
-              />
-            </SettingRow>
-
-            <SettingRow label="Max Unverified Bags" description="Maximum bags allowed before verification is required.">
-              <TextField
-                size="small"
-                type="number"
-                value={operationalForm.maxUnverifiedBags}
-                onChange={(e) => setOperationalForm({ ...operationalForm, maxUnverifiedBags: Number(e.target.value) })}
-                inputProps={{ min: 1, max: 100 }}
-                sx={{ width: 100 }}
-              />
-            </SettingRow>
-
-            <SettingRow label="Blue Waste Minimum" description="Minimum percentage of blue waste required in collections.">
-              <TextField
-                size="small"
-                type="number"
-                value={operationalForm.blueWasteMinPercent}
-                onChange={(e) => setOperationalForm({ ...operationalForm, blueWasteMinPercent: Number(e.target.value) })}
-                InputProps={{ endAdornment: <InputAdornment position="end"><PercentIcon fontSize="small" /></InputAdornment> }}
-                inputProps={{ min: 0, max: 100 }}
-                sx={{ width: 120 }}
-              />
-            </SettingRow>
-
-            <SettingRow label="Allow Multiple Active QRs" description="Allow multiple active QR codes per HCF simultaneously.">
-              <Switch
-                checked={operationalForm.allowMultipleActiveQrs}
-                onChange={(e) => setOperationalForm({ ...operationalForm, allowMultipleActiveQrs: e.target.checked })}
-              />
-            </SettingRow>
-
-            <SettingRow label="Require CBWTF Verification" description="Require CBWTF staff to verify bags upon arrival." noBorder>
-              <Switch
-                checked={operationalForm.requireCbwtfVerification}
-                onChange={(e) => setOperationalForm({ ...operationalForm, requireCbwtfVerification: e.target.checked })}
-              />
-            </SettingRow>
-
-            <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={operationalMutation.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-                onClick={() => operationalMutation.mutate(operationalForm)}
-                disabled={operationalMutation.isPending}
-                sx={{ px: 4, fontWeight: 600 }}
-              >
-                Save Changes
-              </Button>
-            </Box>
-          </Box>
-        );
-
-      case 5: // Compliance
-        return (
-          <Box>
-            <SectionHeader title="Compliance & Reporting" description="Scheduled report generation times and data integrity settings." />
-
-            <SettingRow label="Daily Report Time" description="Time of day to generate daily compliance reports.">
-              <TextField
-                size="small"
-                type="time"
-                value={complianceForm.dailyReportTime}
-                onChange={(e) => setComplianceForm({ ...complianceForm, dailyReportTime: e.target.value })}
-                sx={{ width: 140 }}
-              />
-            </SettingRow>
-
-            <SettingRow label="Monthly Report Day" description="Day of month to generate monthly compliance reports.">
-              <TextField
-                size="small"
-                type="number"
-                value={complianceForm.monthlyReportDay}
-                onChange={(e) => setComplianceForm({ ...complianceForm, monthlyReportDay: Number(e.target.value) })}
-                inputProps={{ min: 1, max: 28 }}
-                sx={{ width: 100 }}
-              />
-            </SettingRow>
-
-            <SettingRow label="Enforce Checksum" description="Require data integrity checksums on compliance reports." noBorder>
-              <Switch
-                checked={complianceForm.enforceChecksum}
-                onChange={(e) => setComplianceForm({ ...complianceForm, enforceChecksum: e.target.checked })}
-              />
-            </SettingRow>
-
-            <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={complianceMutation.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-                onClick={() => complianceMutation.mutate(complianceForm)}
-                disabled={complianceMutation.isPending}
-                sx={{ px: 4, fontWeight: 600 }}
-              >
-                Save Changes
-              </Button>
-            </Box>
-          </Box>
-        );
-
-      case 6: // Email
-        return (
-          <Box>
-            <SectionHeader title="Email & Notifications" description="Configure notification preferences. Sender identity is system-controlled." />
-
-            {/* Sender Identity - READ ONLY */}
-            <Box sx={{ mb: 3, p: 2, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <LockIcon fontSize="small" />
-                Sender Identity (System-Controlled)
-              </Typography>
-              <SettingRow label="From Name" description="Automatically generated from your facility name.">
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={emailForm.resolvedSenderName || 'SmartCBWTF'}
-                  disabled
-                  sx={{ maxWidth: 280, '& .MuiInputBase-input.Mui-disabled': { color: 'text.primary', WebkitTextFillColor: 'unset' } }}
-                />
-              </SettingRow>
-              <SettingRow label="From Address" description="Automatically generated sender address." noBorder>
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={emailForm.resolvedSenderEmail || 'no-reply@smartcbwtf.com'}
-                  disabled
-                  sx={{ maxWidth: 280, fontFamily: 'monospace', '& .MuiInputBase-input.Mui-disabled': { color: 'text.primary', WebkitTextFillColor: 'unset' } }}
-                />
-              </SettingRow>
-            </Box>
-
-            <SettingRow label="Use Generic Sender" description="Send from no-reply@smartcbwtf.com instead of facility-specific address.">
-              <Switch
-                checked={emailForm.useGenericSender}
-                onChange={(e) => setEmailForm({ ...emailForm, useGenericSender: e.target.checked })}
-              />
-            </SettingRow>
-
-            <Alert severity="info" sx={{ mb: 2 }}>
-              System notifications (alerts, billing, compliance reports) are sent to your <strong>profile email</strong>. 
-              Update it in <a href="/cbwtf/profile" style={{ color: 'inherit' }}>My Profile</a>.
-            </Alert>
-
-            <SettingRow label="CC Admin on HCF Emails" description="Copy admin on all emails sent to HCF contacts.">
-              <Switch
-                checked={emailForm.ccAdminOnHcfEmails}
-                onChange={(e) => setEmailForm({ ...emailForm, ccAdminOnHcfEmails: e.target.checked })}
-              />
-            </SettingRow>
-
-            <SettingRow label="Email Notifications" description="Enable email notifications for system events.">
-              <Switch
-                checked={emailForm.emailNotificationsEnabled}
-                onChange={(e) => setEmailForm({ ...emailForm, emailNotificationsEnabled: e.target.checked })}
-              />
-            </SettingRow>
-
-            <SettingRow label="In-App Alerts" description="Enable in-app alert notifications." noBorder>
-              <Switch
-                checked={emailForm.inAppAlertsEnabled}
-                onChange={(e) => setEmailForm({ ...emailForm, inAppAlertsEnabled: e.target.checked })}
-              />
-            </SettingRow>
-
-            <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={emailMutation.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-                onClick={() => emailMutation.mutate(emailForm)}
-                disabled={emailMutation.isPending}
-                sx={{ px: 4, fontWeight: 600 }}
-              >
-                Save Changes
-              </Button>
-            </Box>
-          </Box>
-        );
-
-      case 7: // Branding
+      case 2: // Branding
         return <BrandingSection onSettingsChange={() => queryClient.invalidateQueries({ queryKey: ['settings-audit'] })} />;
 
-      case 8: // Audit History
+      case 3: // Audit History
         return (
           <Box>
             <SectionHeader title="Configuration History" description="Complete audit log of all settings changes with timestamps and user information." />

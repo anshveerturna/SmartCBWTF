@@ -4,6 +4,9 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
@@ -12,8 +15,11 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.smartcbwtf.mobile.databinding.ActivityMainBinding
 import com.smartcbwtf.mobile.repository.AuthRepository
+import com.smartcbwtf.mobile.repository.LocationRepository
+import com.smartcbwtf.mobile.service.ForegroundLocationService
+import com.smartcbwtf.mobile.storage.AppConfigStore
+import com.smartcbwtf.mobile.storage.SessionManager
 import dagger.hilt.android.AndroidEntryPoint
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,6 +28,9 @@ import javax.inject.Inject
  * 
  * SECURITY: When mustChangePassword is true, user is locked to password change screen.
  * Cannot bypass via: back button, deep links, saved state restore.
+ * 
+ * SESSION MANAGEMENT: Re-initializes critical services when app resumes from background
+ * to ensure proper functionality after process death or app restart.
  */
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
@@ -32,6 +41,18 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var authRepository: AuthRepository
+
+    @Inject
+    lateinit var locationRepository: LocationRepository
+
+    @Inject
+    lateinit var appConfigStore: AppConfigStore
+
+    @Inject
+    lateinit var sessionManager: SessionManager
+
+    // Track if we've already initialized services this session
+    private var servicesInitialized = false
 
     companion object {
         private const val TAG = "MainActivity"
@@ -95,26 +116,73 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Global auth state observer
+        // Global auth state observer (lifecycle-aware)
         // If token is cleared (e.g. 401 Unauthorized), force navigation to login
         lifecycleScope.launch {
-            authRepository.getAuthStateFlow().collect { token ->
-                if (token == null) {
-                    val currentDest = navController.currentDestination?.id
-                    if (currentDest != R.id.loginFragment && currentDest != R.id.splashFragment) {
-                        Log.i(TAG, "Token cleared (remote logout), redirecting to Login")
-                        navController.navigate(
-                            R.id.loginFragment,
-                            null,
-                            NavOptions.Builder()
-                                .setPopUpTo(R.id.nav_graph, true)
-                                .build()
-                        )
-                        Toast.makeText(this@MainActivity, "Session expired. Please login again.", Toast.LENGTH_LONG).show()
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                authRepository.getAuthStateFlow().collect { token ->
+                    if (token == null) {
+                        // Token cleared — stop services and redirect to login
+                        servicesInitialized = false
+                        ForegroundLocationService.stopService(this@MainActivity)
+
+                        val currentDest = navController.currentDestination?.id
+                        if (currentDest != R.id.loginFragment && currentDest != R.id.splashFragment) {
+                            Log.i(TAG, "Token cleared (remote logout), redirecting to Login")
+                            navController.navigate(
+                                R.id.loginFragment,
+                                null,
+                                NavOptions.Builder()
+                                    .setPopUpTo(R.id.nav_graph, true)
+                                    .build()
+                            )
+                            Toast.makeText(this@MainActivity, "Session expired. Please login again.", Toast.LENGTH_LONG).show()
+                        }
+                    } else if (!servicesInitialized) {
+                        // Token present but services not started — reinitialize
+                        reinitializeServices()
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Called every time the activity comes to foreground.
+     * Re-initializes critical services that may have been killed by Android.
+     */
+    override fun onStart() {
+        super.onStart()
+        Log.d(TAG, "onStart: checking if services need re-initialization")
+        lifecycleScope.launch {
+            val token = authRepository.currentToken()
+            if (token != null) {
+                reinitializeServices()
+            } else {
+                Log.d(TAG, "onStart: no token, skipping service init")
+                servicesInitialized = false
+            }
+        }
+    }
+
+    /**
+     * Re-initialize all services that depend on an active login session.
+     * Safe to call multiple times — idempotent.
+     */
+    private fun reinitializeServices() {
+        Log.i(TAG, "Reinitializing services after app resume")
+
+        // Restart ForegroundLocationService if consent was given
+        if (locationRepository.hasLocationConsent() && appConfigStore.gpsEnabled) {
+            val userRole = appConfigStore.userRole
+            if (userRole == "DRIVER" || userRole == "PLANT_OPERATOR") {
+                Log.d(TAG, "Restarting ForegroundLocationService")
+                ForegroundLocationService.startService(this)
+            }
+        }
+
+        servicesInitialized = true
+        Log.d(TAG, "Services re-initialization complete")
     }
 
     /**

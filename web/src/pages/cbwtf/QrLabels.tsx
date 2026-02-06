@@ -36,9 +36,11 @@ import {
   Block as RevokeIcon,
   Visibility as ViewIcon,
   Download as DownloadIcon,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
-import { listQrs, generateQr, revokeQr, getHcfList, type QrDetail, type QrGenerateRequest } from '../../api/cbwtf';
+import { listQrs, generateQr, revokeQr, getHcfList, getHcfDetail, type QrDetail, type QrGenerateRequest } from '../../api/cbwtf';
 import QRCode from 'qrcode';
+import { jsPDF } from 'jspdf';
 
 const WASTE_CATEGORIES = ['YELLOW', 'RED', 'BLUE', 'WHITE'] as const;
 
@@ -153,6 +155,192 @@ export default function QrLabels() {
       link.download = `QR-${selectedQr.hcfName}-${selectedQr.wasteCategory}.png`;
       link.href = qrImageUrl;
       link.click();
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!selectedQr) return;
+
+    try {
+      // Fetch full HCF details
+      const hcf = await getHcfDetail(selectedQr.hcfId);
+
+      // Generate high-res QR image
+      const qrDataUrl = await QRCode.toDataURL(selectedQr.qrPayloadJson, {
+        width: 600,
+        margin: 2,
+        errorCorrectionLevel: 'H',
+      });
+
+      // Load SmartCBWTF logo as image
+      const logoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = '/logo.svg';
+      });
+      const logoCanvas = document.createElement('canvas');
+      logoCanvas.width = 128;
+      logoCanvas.height = 128;
+      const ctx = logoCanvas.getContext('2d')!;
+      ctx.drawImage(logoImg, 0, 0, 128, 128);
+      const logoDataUrl = logoCanvas.toDataURL('image/png');
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // === Brand colors ===
+      const brandPrimary: [number, number, number] = [0, 105, 92];
+      const brandAccent: [number, number, number] = [38, 166, 154];
+
+      // === Header band ===
+      doc.setFillColor(...brandPrimary);
+      doc.rect(0, 0, pageWidth, 32, 'F');
+      doc.setFillColor(...brandAccent);
+      doc.rect(0, 32, pageWidth, 2, 'F');
+
+      // Logo + Title in header
+      doc.addImage(logoDataUrl, 'PNG', 14, 5, 22, 22);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SmartCBWTF', 42, 16);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text('QR Waste Authorization Label', 42, 24);
+
+      // === Waste Category Badge ===
+      const catColors: Record<string, [number, number, number]> = {
+        YELLOW: [255, 193, 7],
+        RED: [244, 67, 54],
+        BLUE: [33, 150, 243],
+        WHITE: [158, 158, 158],
+      };
+      const catColor = catColors[selectedQr.wasteCategory] || [100, 100, 100];
+      const badgeY = 40;
+      const badgeW = 60;
+      const badgeH = 10;
+      doc.setFillColor(...catColor);
+      doc.roundedRect((pageWidth - badgeW) / 2, badgeY, badgeW, badgeH, 3, 3, 'F');
+      const isWhite = selectedQr.wasteCategory === 'WHITE';
+      doc.setTextColor(isWhite ? 0 : 255, isWhite ? 0 : 255, isWhite ? 0 : 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(selectedQr.wasteCategory + ' WASTE', pageWidth / 2, badgeY + 7.2, { align: 'center' });
+
+      // === QR Code (centered) ===
+      const qrSize = 70;
+      const qrX = (pageWidth - qrSize) / 2;
+      const qrY = 56;
+      doc.setDrawColor(...brandPrimary);
+      doc.setLineWidth(0.8);
+      doc.roundedRect(qrX - 3, qrY - 3, qrSize + 6, qrSize + 6, 3, 3, 'S');
+      doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+
+      // === HCF Details Section ===
+      let y = qrY + qrSize + 12;
+      doc.setTextColor(0, 0, 0);
+
+      // HCF Name as section title
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(hcf.name, pageWidth / 2, y, { align: 'center' });
+      y += 3;
+
+      // Divider
+      doc.setDrawColor(...brandAccent);
+      doc.setLineWidth(0.5);
+      doc.line(25, y, pageWidth - 25, y);
+      y += 6;
+
+      // Section: HCF Registration Details
+      doc.setFillColor(245, 245, 245);
+      doc.roundedRect(20, y - 2, pageWidth - 40, 8, 2, 2, 'F');
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...brandPrimary);
+      doc.text('HEALTHCARE FACILITY DETAILS', 25, y + 4);
+      y += 12;
+
+      const hcfRows: { label: string; value: string }[] = [
+        { label: 'HCF Code', value: hcf.code || '-' },
+        { label: 'Address', value: hcf.address || '-' },
+        { label: 'State / Pincode', value: [hcf.state, hcf.pincode].filter(Boolean).join(' — ') || '-' },
+        { label: 'Contact Phone', value: hcf.contactPhone || '-' },
+        { label: 'Contact Email', value: hcf.contactEmail || '-' },
+        { label: 'Doctor / In-charge', value: hcf.doctorName || '-' },
+        { label: 'PAN No.', value: hcf.panNo || '-' },
+        { label: 'GST No.', value: hcf.gstNo || '-' },
+        { label: 'Aadhar No.', value: hcf.aadharNo || '-' },
+        { label: 'PCB Authorization', value: hcf.pcbAuthorizationNo || '-' },
+        { label: 'No. of Beds', value: hcf.numberOfBeds != null ? String(hcf.numberOfBeds) : '-' },
+        { label: 'Ownership Type', value: hcf.ownershipType || '-' },
+      ];
+
+      doc.setFontSize(9);
+      hcfRows.forEach(({ label, value }) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(80, 80, 80);
+        doc.text(label + ':', 25, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        // Wrap long values
+        const lines = doc.splitTextToSize(value, pageWidth - 100);
+        doc.text(lines, 80, y);
+        y += lines.length * 5;
+      });
+
+      // Section: QR Authorization Details
+      y += 4;
+      doc.setFillColor(245, 245, 245);
+      doc.roundedRect(20, y - 2, pageWidth - 40, 8, 2, 2, 'F');
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...brandPrimary);
+      doc.text('QR AUTHORIZATION DETAILS', 25, y + 4);
+      y += 12;
+
+      const qrRows = [
+        { label: 'QR ID', value: selectedQr.id },
+        { label: 'Agreement No.', value: selectedQr.agreementNumber },
+        { label: 'Valid From', value: formatDate(selectedQr.validFrom) },
+        { label: 'Valid To', value: formatDate(selectedQr.validTo) },
+        { label: 'Status', value: selectedQr.status },
+        { label: 'Generated On', value: formatDate(selectedQr.createdAt) },
+      ];
+
+      doc.setFontSize(9);
+      qrRows.forEach(({ label, value }) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(80, 80, 80);
+        doc.text(label + ':', 25, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.text(value, 80, y);
+        y += 5;
+      });
+
+      // === Footer ===
+      const footerY = 272;
+      doc.setFillColor(...brandPrimary);
+      doc.rect(0, footerY, pageWidth, 25, 'F');
+
+      // Footer logo
+      const footerLogoSize = 14;
+      doc.addImage(logoDataUrl, 'PNG', 14, footerY + 5.5, footerLogoSize, footerLogoSize);
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text('This QR label is digitally signed and tamper-proof. Scan with SmartCBWTF app for verification.', pageWidth / 2, footerY + 7, { align: 'center' });
+      doc.text('\u00A9 2025 SmartCBWTF \u2014 Enterprise Biomedical Waste Management System', pageWidth / 2, footerY + 13, { align: 'center' });
+      doc.text('support@smartcbwtf.com | www.smartcbwtf.com', pageWidth / 2, footerY + 19, { align: 'center' });
+
+      doc.save(`QR-${hcf.name}-${selectedQr.wasteCategory}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      setSnackbar({ open: true, message: 'Failed to generate PDF', severity: 'error' });
     }
   };
 
@@ -408,11 +596,18 @@ export default function QrLabels() {
         <DialogActions>
           <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
           <Button
-            variant="contained"
+            variant="outlined"
             startIcon={<DownloadIcon />}
             onClick={handleDownloadQr}
           >
-            Download
+            PNG
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<PdfIcon />}
+            onClick={handleDownloadPdf}
+          >
+            Download PDF
           </Button>
         </DialogActions>
       </Dialog>

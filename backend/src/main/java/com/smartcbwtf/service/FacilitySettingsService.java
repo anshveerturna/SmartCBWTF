@@ -224,6 +224,38 @@ public class FacilitySettingsService {
                 settings.setAgreementRenewalWindowDays(dto.agreementRenewalWindowDays());
                 settings.setBlockOverlappingAgreements(dto.blockOverlappingAgreements());
 
+                // Agreement number format fields
+                if (dto.agreementNumberPrefix() != null) {
+                        auditIfChanged("agreement", "agreementNumberPrefix",
+                                        str(settings.getAgreementNumberPrefix()),
+                                        str(dto.agreementNumberPrefix()), facilityId, ipAddress);
+                        settings.setAgreementNumberPrefix(dto.agreementNumberPrefix());
+                }
+                if (dto.agreementNumberSeparator() != null) {
+                        auditIfChanged("agreement", "agreementNumberSeparator",
+                                        str(settings.getAgreementNumberSeparator()),
+                                        str(dto.agreementNumberSeparator()), facilityId, ipAddress);
+                        settings.setAgreementNumberSeparator(dto.agreementNumberSeparator());
+                }
+                if (dto.agreementNumberSequenceDigits() != null) {
+                        auditIfChanged("agreement", "agreementNumberSequenceDigits",
+                                        str(settings.getAgreementNumberSequenceDigits()),
+                                        str(dto.agreementNumberSequenceDigits()), facilityId, ipAddress);
+                        settings.setAgreementNumberSequenceDigits(dto.agreementNumberSequenceDigits());
+                }
+                if (dto.agreementNumberIncludeFacilityCode() != null) {
+                        auditIfChanged("agreement", "agreementNumberIncludeFacilityCode",
+                                        str(settings.getAgreementNumberIncludeFacilityCode()),
+                                        str(dto.agreementNumberIncludeFacilityCode()), facilityId, ipAddress);
+                        settings.setAgreementNumberIncludeFacilityCode(dto.agreementNumberIncludeFacilityCode());
+                }
+                if (dto.agreementNumberIncludeYear() != null) {
+                        auditIfChanged("agreement", "agreementNumberIncludeYear",
+                                        str(settings.getAgreementNumberIncludeYear()),
+                                        str(dto.agreementNumberIncludeYear()), facilityId, ipAddress);
+                        settings.setAgreementNumberIncludeYear(dto.agreementNumberIncludeYear());
+                }
+
                 settingsRepository.save(settings);
                 log.info("Updated agreement rules for facility {}", facilityId);
         }
@@ -387,7 +419,12 @@ public class FacilitySettingsService {
                                 new AgreementRulesDTO(
                                                 s.getDefaultAgreementValidityMonths(),
                                                 s.getAgreementRenewalWindowDays(),
-                                                s.getBlockOverlappingAgreements()),
+                                                s.getBlockOverlappingAgreements(),
+                                                s.getAgreementNumberPrefix(),
+                                                s.getAgreementNumberSeparator(),
+                                                s.getAgreementNumberSequenceDigits(),
+                                                s.getAgreementNumberIncludeFacilityCode(),
+                                                s.getAgreementNumberIncludeYear()),
                                 new OperationalRulesDTO(
                                                 s.getQrValidityDays(), s.getAllowMultipleActiveQrs(),
                                                 s.getRequireCbwtfVerification(),

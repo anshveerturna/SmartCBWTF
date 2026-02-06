@@ -109,6 +109,22 @@ public class FacilitySettings {
     @Column(name = "block_overlapping_agreements", nullable = false)
     private Boolean blockOverlappingAgreements = true;
 
+    // Agreement Number Format Settings
+    @Column(name = "agreement_number_prefix", nullable = false, length = 20)
+    private String agreementNumberPrefix = "HCF";
+
+    @Column(name = "agreement_number_separator", nullable = false, length = 5)
+    private String agreementNumberSeparator = "-";
+
+    @Column(name = "agreement_number_sequence_digits", nullable = false)
+    private Integer agreementNumberSequenceDigits = 5;
+
+    @Column(name = "agreement_number_include_facility_code", nullable = false)
+    private Boolean agreementNumberIncludeFacilityCode = true;
+
+    @Column(name = "agreement_number_include_year", nullable = false)
+    private Boolean agreementNumberIncludeYear = true;
+
     // ==================== Section 5: QR & Operational Rules ====================
     @Column(name = "qr_validity_days", nullable = false)
     private Integer qrValidityDays = 30;
@@ -506,6 +522,46 @@ public class FacilitySettings {
 
     public void setBlockOverlappingAgreements(Boolean blockOverlappingAgreements) {
         this.blockOverlappingAgreements = blockOverlappingAgreements;
+    }
+
+    public String getAgreementNumberPrefix() {
+        return agreementNumberPrefix;
+    }
+
+    public void setAgreementNumberPrefix(String agreementNumberPrefix) {
+        this.agreementNumberPrefix = agreementNumberPrefix;
+    }
+
+    public String getAgreementNumberSeparator() {
+        return agreementNumberSeparator;
+    }
+
+    public void setAgreementNumberSeparator(String agreementNumberSeparator) {
+        this.agreementNumberSeparator = agreementNumberSeparator;
+    }
+
+    public Integer getAgreementNumberSequenceDigits() {
+        return agreementNumberSequenceDigits;
+    }
+
+    public void setAgreementNumberSequenceDigits(Integer agreementNumberSequenceDigits) {
+        this.agreementNumberSequenceDigits = agreementNumberSequenceDigits;
+    }
+
+    public Boolean getAgreementNumberIncludeFacilityCode() {
+        return agreementNumberIncludeFacilityCode;
+    }
+
+    public void setAgreementNumberIncludeFacilityCode(Boolean agreementNumberIncludeFacilityCode) {
+        this.agreementNumberIncludeFacilityCode = agreementNumberIncludeFacilityCode;
+    }
+
+    public Boolean getAgreementNumberIncludeYear() {
+        return agreementNumberIncludeYear;
+    }
+
+    public void setAgreementNumberIncludeYear(Boolean agreementNumberIncludeYear) {
+        this.agreementNumberIncludeYear = agreementNumberIncludeYear;
     }
 
     public Integer getQrValidityDays() {

@@ -20,6 +20,7 @@ import androidx.navigation.navOptions
 import androidx.appcompat.widget.PopupMenu
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.util.Log
+import com.smartcbwtf.mobile.BuildConfig
 import com.smartcbwtf.mobile.R
 import com.smartcbwtf.mobile.databinding.FragmentHomeBinding
 import com.smartcbwtf.mobile.repository.LocationRepository
@@ -63,15 +64,33 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         _binding = FragmentHomeBinding.bind(view)
 
         // Start GPS tracking service if consent was previously given
-        if (locationRepository.hasLocationConsent()) {
-            Log.d("HomeFragment", "Location consent already given, starting GPS tracking service")
-            ForegroundLocationService.startService(requireContext())
-        }
+        ensureLocationServiceRunning()
 
         setupActions()
         setupProfileMenu()
         bindStatus()
         animateEntry()
+    }
+
+    /**
+     * Called every time the fragment comes back to the foreground.
+     * Ensures services are running even if Android killed them while backgrounded.
+     */
+    override fun onResume() {
+        super.onResume()
+        Log.d("HomeFragment", "onResume: ensuring services are running")
+        ensureLocationServiceRunning()
+    }
+
+    /**
+     * Restart ForegroundLocationService if the user has given consent.
+     * Safe to call repeatedly — startService is idempotent.
+     */
+    private fun ensureLocationServiceRunning() {
+        if (locationRepository.hasLocationConsent()) {
+            Log.d("HomeFragment", "Location consent given, ensuring GPS tracking service is running")
+            ForegroundLocationService.startService(requireContext())
+        }
     }
 
     override fun onDestroyView() {
@@ -269,7 +288,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                     homeViewModel.profilePhotoUrl.collect { photoUrl ->
                         Log.d("HomeFragment", "Profile photo URL: $photoUrl")
                         if (!photoUrl.isNullOrBlank()) {
-                            val baseUrl = "http://10.0.2.2:8080" // For emulator
+                            // Derive base URL from BuildConfig (strip /api/ suffix)
+                            val baseUrl = BuildConfig.BASE_URL.removeSuffix("/").removeSuffix("api").removeSuffix("/")
                             val fullUrl = if (photoUrl.startsWith("http")) photoUrl else "$baseUrl$photoUrl"
                             Log.d("HomeFragment", "Loading avatar from: $fullUrl")
                             

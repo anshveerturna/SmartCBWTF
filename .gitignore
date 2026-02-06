@@ -1,5 +1,16 @@
 # Build outputs
 backend/target/
+web/dist/
+web/node_modules/
+website/node_modules/
+website/.next/
+
+# Android build artifacts
+androidapp/.gradle/
+androidapp/app/build/
+androidapp/build/
+androidapp/local.properties
+androidapp/app/local.properties
 
 # Environment files (contain secrets)
 .env
@@ -13,6 +24,13 @@ backend/target/
 
 # OS files
 .DS_Store
+Thumbs.db
 
 # Logs
 *.log
+
+# Node
+node_modules/
+
+# Keys (secrets)
+keys/

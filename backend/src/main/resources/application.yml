@@ -47,6 +47,7 @@ app:
     hcf-radius-m: 200
     facility-default-radius-m: 200
     enable-server-check: true # Server-side geofence enforcement (authoritative)
+    hcf-proximity-radius-m: 25 # Min distance between HCF registrations (anti-fraud)
   gps:
     min-accuracy-m: 50 # Minimum GPS accuracy required (meters)
     max-accuracy-m: 100 # Maximum allowed GPS accuracy for events

@@ -38,6 +38,7 @@ public class CbwtfHcfService {
     private final PasswordEncoder passwordEncoder;
     private final BagEventRepository bagEventRepository;
     private final EmailService emailService;
+    private final FacilitySettingsRepository facilitySettingsRepository;
 
     @Value("${app.portal.url:https://portal.smartcbwtf.com}")
     private String portalUrl;
@@ -54,7 +55,8 @@ public class CbwtfHcfService {
             AppUserRepository userRepository,
             PasswordEncoder passwordEncoder,
             BagEventRepository bagEventRepository,
-            EmailService emailService) {
+            EmailService emailService,
+            FacilitySettingsRepository facilitySettingsRepository) {
         this.hcfRepository = hcfRepository;
         this.agreementRepository = agreementRepository;
         this.billingConfigRepository = billingConfigRepository;
@@ -67,6 +69,7 @@ public class CbwtfHcfService {
         this.passwordEncoder = passwordEncoder;
         this.bagEventRepository = bagEventRepository;
         this.emailService = emailService;
+        this.facilitySettingsRepository = facilitySettingsRepository;
     }
 
     /**
@@ -701,7 +704,33 @@ public class CbwtfHcfService {
         Agreement agreement = new Agreement();
         agreement.setHcf(hcf);
         agreement.setFacility(facility);
-        agreement.setAgreementNumber(agreementNumberGenerator.generateNextAgreementNumber(facility));
+
+        // Determine agreement number: custom or auto-generated with facility settings
+        String agreementNum;
+        if (request.getCustomAgreementNumber() != null && !request.getCustomAgreementNumber().isBlank()) {
+            // Custom agreement number - validate uniqueness
+            String customNum = request.getCustomAgreementNumber().trim();
+            if (agreementRepository.findByAgreementNumber(customNum).isPresent()) {
+                throw new IllegalArgumentException("Agreement number '" + customNum + "' already exists");
+            }
+            agreementNum = customNum;
+            log.info("Using custom agreement number: {}", agreementNum);
+        } else {
+            // Auto-generate using per-facility format settings
+            FacilitySettings settings = facilitySettingsRepository.findById(facilityId).orElse(null);
+            if (settings != null) {
+                agreementNum = agreementNumberGenerator.generateNextAgreementNumberWithSettings(
+                        facility,
+                        settings.getAgreementNumberPrefix(),
+                        settings.getAgreementNumberSeparator(),
+                        settings.getAgreementNumberSequenceDigits(),
+                        settings.getAgreementNumberIncludeFacilityCode(),
+                        settings.getAgreementNumberIncludeYear());
+            } else {
+                agreementNum = agreementNumberGenerator.generateNextAgreementNumber(facility);
+            }
+        }
+        agreement.setAgreementNumber(agreementNum);
         agreement.setStatus(Agreement.Status.ACTIVE.name());
         agreement.setDuesStatus(Agreement.DuesStatus.CLEAR.name());
         agreement.setStartDate(request.getAgreementStartDate());

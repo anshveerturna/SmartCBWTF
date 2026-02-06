@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -37,7 +37,7 @@ import {
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { registerHcf, uploadRentAgreement, type CbwtfAdminHcfRegistrationRequest } from '../../api/cbwtf';
+import { registerHcf, uploadRentAgreement, getFacilitySettings, type CbwtfAdminHcfRegistrationRequest } from '../../api/cbwtf';
 
 // Custom location marker icon
 const createLocationIcon = () => {
@@ -98,6 +98,21 @@ export default function HcfRegister() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Fetch facility settings for agreement defaults
+  const { data: facilitySettings } = useQuery({
+    queryKey: ['facility-settings'],
+    queryFn: getFacilitySettings,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Compute default end date from settings
+  const defaultValidityMonths = facilitySettings?.agreementRules?.defaultAgreementValidityMonths || 12;
+  const computeEndDate = (startDateStr: string, months: number) => {
+    const d = new Date(startDateStr);
+    d.setMonth(d.getMonth() + months);
+    return d.toISOString().split('T')[0];
+  };
+
   // Form state
   const [form, setForm] = useState({
     name: '',
@@ -118,14 +133,26 @@ export default function HcfRegister() {
     monthlyCharges: '',
     otherNotes: '',
     agreementStartDate: new Date().toISOString().split('T')[0],
-    agreementEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+    agreementEndDate: '',
     perBedPerDayRate: '15.50',
     // New HCF category fields
     hcfType: 'HOSPITAL',
     seatCount: '',
+    // Custom agreement number
+    customAgreementNumber: '',
   });
 
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Auto-compute agreement end date from settings
+  useEffect(() => {
+    if (form.agreementStartDate && (!form.agreementEndDate || form.agreementEndDate === '')) {
+      setForm(prev => ({
+        ...prev,
+        agreementEndDate: computeEndDate(prev.agreementStartDate, defaultValidityMonths),
+      }));
+    }
+  }, [defaultValidityMonths, form.agreementStartDate]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -195,6 +222,8 @@ export default function HcfRegister() {
       city: form.city || undefined,
       seatCount: (form.hcfType === 'DENTAL' || form.hcfType === 'CLINIC') && form.seatCount 
         ? parseInt(form.seatCount) : undefined,
+      // Custom agreement number
+      customAgreementNumber: form.customAgreementNumber.trim() || undefined,
     };
 
     mutation.mutate(request);
@@ -571,6 +600,16 @@ export default function HcfRegister() {
                       InputProps={{
                         startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                       }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Custom Agreement Number (Optional)"
+                      fullWidth
+                      value={form.customAgreementNumber}
+                      onChange={handleInputChange('customAgreementNumber')}
+                      helperText="Leave blank to auto-generate based on your format settings. Enter a custom number to override."
+                      placeholder="e.g., CUSTOM-2026-001"
                     />
                   </Grid>
                 </Grid>

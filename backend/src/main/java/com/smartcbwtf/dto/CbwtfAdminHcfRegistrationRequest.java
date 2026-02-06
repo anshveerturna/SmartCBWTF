@@ -89,6 +89,9 @@ public class CbwtfAdminHcfRegistrationRequest {
     @NotNull(message = "Per bed per day rate is required")
     private BigDecimal perBedPerDayRate;
 
+    // Optional custom agreement number (overrides auto-generation)
+    private String customAgreementNumber;
+
     // Getters and Setters
     public String getName() {
         return name;
@@ -280,5 +283,13 @@ public class CbwtfAdminHcfRegistrationRequest {
 
     public void setSeatCount(Integer seatCount) {
         this.seatCount = seatCount;
+    }
+
+    public String getCustomAgreementNumber() {
+        return customAgreementNumber;
+    }
+
+    public void setCustomAgreementNumber(String customAgreementNumber) {
+        this.customAgreementNumber = customAgreementNumber;
     }
 }

@@ -8,6 +8,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.smartcbwtf.mobile.BuildConfig
 import com.smartcbwtf.mobile.R
 import com.smartcbwtf.mobile.databinding.FragmentProfileBinding
 import com.smartcbwtf.mobile.databinding.ItemProfileFieldBinding
@@ -128,8 +129,8 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
         // Load profile photo with Coil
         val photoUrl = profile.profilePhotoUrl
         if (!photoUrl.isNullOrBlank()) {
-            // Build full URL (assuming backend is at the same host)
-            val baseUrl = "http://10.0.2.2:8080" // For emulator; update for production
+            // Derive base URL from BuildConfig (strip /api/ suffix)
+            val baseUrl = BuildConfig.BASE_URL.removeSuffix("/").removeSuffix("api").removeSuffix("/")
             val fullUrl = if (photoUrl.startsWith("http")) photoUrl else "$baseUrl$photoUrl"
             
             requireContext().imageLoader.enqueue(

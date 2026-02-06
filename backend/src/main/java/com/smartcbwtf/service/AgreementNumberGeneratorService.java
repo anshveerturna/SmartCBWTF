@@ -166,4 +166,72 @@ public class AgreementNumberGeneratorService {
         int nextSeq = getCurrentSequenceNumber(facility, currentYear) + 1;
         return buildAgreementNumber(facility.getCode(), currentYear, nextSeq);
     }
+
+    /**
+     * Preview next agreement number using per-facility format settings.
+     */
+    public String previewNextAgreementNumber(Facility facility,
+            String customPrefix, String customSeparator, int customDigits,
+            boolean customIncludeFacilityCode, boolean customIncludeYear) {
+        int currentYear = Year.now().getValue();
+        int nextSeq = getCurrentSequenceNumber(facility, currentYear) + 1;
+        return buildCustomAgreementNumber(facility.getCode(), currentYear, nextSeq,
+                customPrefix, customSeparator, customDigits, customIncludeFacilityCode, customIncludeYear);
+    }
+
+    /**
+     * Generate next agreement number using per-facility format settings from FacilitySettings.
+     * Falls back to application-level defaults if parameters are null.
+     */
+    @Transactional
+    public String generateNextAgreementNumberWithSettings(Facility facility,
+            String customPrefix, String customSeparator, Integer customDigits,
+            Boolean customIncludeFacilityCode, Boolean customIncludeYear) {
+        int currentYear = Year.now().getValue();
+
+        AgreementNumberSequence sequence = sequenceRepository
+                .findByFacilityIdAndYearForUpdate(facility.getId(), currentYear)
+                .orElseGet(() -> createNewSequence(facility, currentYear));
+
+        int nextSeq = sequence.getLastSequence() + 1;
+        sequence.setLastSequence(nextSeq);
+        sequence.setUpdatedAt(Instant.now());
+        sequenceRepository.save(sequence);
+
+        String effectivePrefix = customPrefix != null ? customPrefix : prefix;
+        String effectiveSeparator = customSeparator != null ? customSeparator : separator;
+        int effectiveDigits = customDigits != null ? customDigits : sequenceDigits;
+        boolean effectiveIncludeFacilityCode = customIncludeFacilityCode != null ? customIncludeFacilityCode : includeFacilityCode;
+        boolean effectiveIncludeYear = customIncludeYear != null ? customIncludeYear : includeYear;
+
+        return buildCustomAgreementNumber(facility.getCode(), currentYear, nextSeq,
+                effectivePrefix, effectiveSeparator, effectiveDigits,
+                effectiveIncludeFacilityCode, effectiveIncludeYear);
+    }
+
+    /**
+     * Build agreement number with custom format parameters.
+     */
+    private String buildCustomAgreementNumber(String facilityCode, int year, int sequence,
+            String customPrefix, String customSeparator, int customDigits,
+            boolean customIncludeFacilityCode, boolean customIncludeYear) {
+        StringBuilder sb = new StringBuilder();
+
+        if (customIncludeFacilityCode) {
+            sb.append(facilityCode.toUpperCase());
+            sb.append(customSeparator);
+        }
+
+        sb.append(customPrefix);
+
+        if (customIncludeYear) {
+            sb.append(customSeparator);
+            sb.append(year);
+        }
+
+        sb.append(customSeparator);
+        sb.append(String.format("%0" + customDigits + "d", sequence));
+
+        return sb.toString();
+    }
 }

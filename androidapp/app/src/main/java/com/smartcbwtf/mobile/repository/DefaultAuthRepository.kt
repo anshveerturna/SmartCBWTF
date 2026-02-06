@@ -90,10 +90,11 @@ class DefaultAuthRepository @Inject constructor(
     }
 
     override suspend fun logout() = withContext(ioDispatcher) {
-        tokenStore.setToken(null)
+        Log.i(TAG, "Logging out: clearing all auth & session state")
+        tokenStore.setToken(null)         // Clears token (triggers service shutdown via token flow)
         tokenStore.setMustChangePassword(false)
-        appConfigStore.setUserRole("") // Clear role on logout
-        sessionManager.clearSession() // Clear session data
+        appConfigStore.clear()            // Clear ALL cached config (role, GPS settings, etc.)
+        sessionManager.clearSession()     // Clear session data (userId, facilityId, etc.)
     }
 
     override suspend fun currentToken(): String? = withContext(ioDispatcher) {

@@ -51,6 +51,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
 import QRCode from 'qrcode';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 // Waste categories with colors
 const WASTE_CATEGORIES = [
   { code: 'YELLOW', name: 'Infectious Waste', color: '#FFEB3B' },
@@ -194,13 +196,17 @@ const QrLabels: React.FC = () => {
 
   const getDownloadUrl = (url: string) => {
     if (!url) return '';
-    // If it's already a correct relative URL
-    if (url.startsWith('/files/')) return url;
-    
-    // If it's a local absolute path (legacy data), extract filename
-    const parts = url.split(/[/\\]/); // Split by forward or backward slash
-    const filename = parts[parts.length - 1];
-    return `/files/${filename}`;
+    // Normalize to a relative /files/ path first
+    let filePath = url;
+    if (!url.startsWith('/files/')) {
+      // If it's a local absolute path (legacy data), extract filename
+      const parts = url.split(/[/\\]/); // Split by forward or backward slash
+      const filename = parts[parts.length - 1];
+      filePath = `/files/${filename}`;
+    }
+    // In production, prepend API base URL so files are fetched from the backend
+    // not from the portal's CloudFront/S3 which doesn't host them
+    return API_BASE_URL ? `${API_BASE_URL}${filePath}` : filePath;
   };
 
   return (

@@ -217,7 +217,7 @@ class ScanWeighViewModel @Inject constructor(
 
     fun onQrScanned(qr: String) {
         if (!isValidQr(qr)) {
-            _qrError.value = "Invalid QR format"
+            _qrError.value = "Invalid QR format. Please scan a SmartCBWTF waste authorization QR code."
             _scannedQr.value = null
             return
         }
@@ -698,9 +698,14 @@ class ScanWeighViewModel @Inject constructor(
     }
 
     private fun isValidQr(qr: String): Boolean {
-        // Accept JSON QR payloads from the backend (contains qrId field)
-        // Also accept legacy pipe-delimited format for backward compatibility
-        return qr.isNotBlank() && (qr.contains("qrId") || qr.split("|").size >= 4)
+        if (qr.isBlank()) return false
+        // Accept signed JSON QR payloads from SmartCBWTF backend
+        // Format: {"qrId":"...","agreementId":"...","hcfId":"...","facilityId":"...",
+        //          "wasteCategory":"...","validFrom":"...","validTo":"...","checksum":"..."}
+        if (qr.trimStart().startsWith("{") && qr.contains("\"qrId\"")) return true
+        // Legacy pipe-delimited format: TYPE|HCF_ID|CATEGORY|SERIAL
+        if (qr.split("|").size >= 4) return true
+        return false
     }
 }
 

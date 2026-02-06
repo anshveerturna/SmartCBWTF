@@ -64,10 +64,19 @@ class DefaultHcfRepository @Inject constructor(
             try {
                 api.register(request)
             } catch (e: retrofit2.HttpException) {
+                // Parse the actual error message from the server response
+                val serverMessage = try {
+                    val errorBody = e.response()?.errorBody()?.string()
+                    if (errorBody != null) {
+                        val json = org.json.JSONObject(errorBody)
+                        json.optString("message", null)
+                    } else null
+                } catch (_: Exception) { null }
+
                 when (e.code()) {
-                    409 -> throw Exception("Another HCF is already registered at this location. Please move to a different location and try again.")
-                    400 -> throw Exception("Invalid registration data. Please check your inputs.")
-                    else -> throw Exception("Registration failed: ${e.message()}")
+                    409 -> throw Exception(serverMessage ?: "Another HCF is already registered at this location. Please move to a different location and try again.")
+                    400 -> throw Exception(serverMessage ?: "Invalid registration data. Please check your inputs.")
+                    else -> throw Exception(serverMessage ?: "Registration failed: ${e.message()}")
                 }
             }
         }

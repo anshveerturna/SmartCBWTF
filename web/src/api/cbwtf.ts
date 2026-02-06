@@ -319,6 +319,12 @@ export interface AgreementRulesDTO {
   defaultAgreementValidityMonths: number;
   agreementRenewalWindowDays: number;
   blockOverlappingAgreements: boolean;
+  // Agreement Number Format
+  agreementNumberPrefix: string;
+  agreementNumberSeparator: string;
+  agreementNumberSequenceDigits: number;
+  agreementNumberIncludeFacilityCode: boolean;
+  agreementNumberIncludeYear: boolean;
 }
 
 export interface OperationalRulesDTO {
@@ -422,6 +428,17 @@ export const updatePaymentReminders = async (data: PaymentReminderDTO): Promise<
 
 export const updateAgreementRules = async (data: AgreementRulesDTO): Promise<void> => {
   await apiClient.put('/api/cbwtf/settings/agreement-rules', data);
+};
+
+export const previewAgreementNumber = async (params?: {
+  prefix?: string;
+  separator?: string;
+  digits?: number;
+  includeFacilityCode?: boolean;
+  includeYear?: boolean;
+}): Promise<{ preview: string }> => {
+  const response = await apiClient.get('/api/cbwtf/settings/agreement-number-preview', { params });
+  return response.data;
 };
 
 export const updateOperationalRules = async (data: OperationalRulesDTO): Promise<void> => {
@@ -849,6 +866,8 @@ export interface CbwtfAdminHcfRegistrationRequest {
   hcfType?: 'HOSPITAL' | 'DENTAL' | 'CLINIC' | 'PATHOLOGY_COLLECTION' | 'PATHOLOGY_STORAGE';
   city?: string;
   seatCount?: number;
+  // Custom agreement number (overrides auto-generation)
+  customAgreementNumber?: string;
 }
 
 export const registerHcf = async (data: CbwtfAdminHcfRegistrationRequest): Promise<HcfDetail> => {

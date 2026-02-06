@@ -5,6 +5,7 @@ import com.smartcbwtf.domain.*;
 import com.smartcbwtf.dto.HcfRegistrationRequest;
 import com.smartcbwtf.dto.HcfRegistrationResponse;
 import com.smartcbwtf.repository.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +35,7 @@ public class HcfService {
     private final PdfService pdfService;
     private final EmailService emailService;
     private final ObjectMapper objectMapper;
+    private final double hcfProximityRadiusM;
 
     public HcfService(
             HcfRepository hcfRepository,
@@ -46,7 +48,8 @@ public class HcfService {
             FacilityTemplateService facilityTemplateService,
             PdfService pdfService,
             EmailService emailService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            @Value("${app.geofence.hcf-proximity-radius-m:25}") double hcfProximityRadiusM) {
         this.hcfRepository = hcfRepository;
         this.agreementRepository = agreementRepository;
         this.facilityRepository = facilityRepository;
@@ -58,6 +61,7 @@ public class HcfService {
         this.pdfService = pdfService;
         this.emailService = emailService;
         this.objectMapper = objectMapper;
+        this.hcfProximityRadiusM = hcfProximityRadiusM;
     }
 
     /**
@@ -296,21 +300,18 @@ public class HcfService {
     }
 
     /**
-     * Validates GPS proximity - prevents registration within 50 meters of
+     * Validates GPS proximity - prevents registration within configured radius of
      * existing HCFs with active agreements.
      * This is an anti-fraud measure to prevent same location being registered
      * with different identities.
      * Note: CBWTFs can adjust HCF location after registration if needed.
+     * Radius is configurable via app.geofence.hcf-proximity-radius-m (default: 25m)
      */
     private void validateGpsProximity(HcfRegistrationRequest request) {
-        // Proximity radius: 50 meters - allows multiple clinics in same building
-        // while preventing exact same location fraud
-        final double PROXIMITY_RADIUS_METERS = 50.0;
-
         List<com.smartcbwtf.domain.Hcf> nearbyHcfs = hcfRepository.findNearbyWithActiveAgreement(
                 request.getRegistrationGpsLat(),
                 request.getRegistrationGpsLon(),
-                PROXIMITY_RADIUS_METERS);
+                hcfProximityRadiusM);
 
         if (!nearbyHcfs.isEmpty()) {
             com.smartcbwtf.domain.Hcf nearest = nearbyHcfs.get(0);
@@ -323,7 +324,7 @@ public class HcfService {
                     nearest.getGpsLon());
 
             String distanceStr = distance != null ? String.format("%.1f", distance)
-                    : "less than " + (int) PROXIMITY_RADIUS_METERS;
+                    : "less than " + (int) hcfProximityRadiusM;
 
             throw new com.smartcbwtf.exception.DuplicateHcfException(
                     "Another healthcare facility (" + nearest.getName() + ") with an active service agreement " +

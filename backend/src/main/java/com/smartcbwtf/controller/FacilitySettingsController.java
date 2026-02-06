@@ -1,6 +1,12 @@
 package com.smartcbwtf.controller;
 
+import com.smartcbwtf.config.TenantContext;
+import com.smartcbwtf.domain.Facility;
+import com.smartcbwtf.domain.FacilitySettings;
 import com.smartcbwtf.dto.settings.*;
+import com.smartcbwtf.repository.FacilityRepository;
+import com.smartcbwtf.repository.FacilitySettingsRepository;
+import com.smartcbwtf.service.AgreementNumberGeneratorService;
 import com.smartcbwtf.service.FacilitySettingsService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -8,6 +14,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * REST Controller for CBWTF Facility Settings.
@@ -19,9 +28,19 @@ import org.springframework.web.bind.annotation.*;
 public class FacilitySettingsController {
 
     private final FacilitySettingsService settingsService;
+    private final AgreementNumberGeneratorService agreementNumberGenerator;
+    private final FacilityRepository facilityRepository;
+    private final FacilitySettingsRepository facilitySettingsRepository;
 
-    public FacilitySettingsController(FacilitySettingsService settingsService) {
+    public FacilitySettingsController(
+            FacilitySettingsService settingsService,
+            AgreementNumberGeneratorService agreementNumberGenerator,
+            FacilityRepository facilityRepository,
+            FacilitySettingsRepository facilitySettingsRepository) {
         this.settingsService = settingsService;
+        this.agreementNumberGenerator = agreementNumberGenerator;
+        this.facilityRepository = facilityRepository;
+        this.facilitySettingsRepository = facilitySettingsRepository;
     }
 
     /**
@@ -122,6 +141,36 @@ public class FacilitySettingsController {
         String ipAddress = extractIpAddress(request);
         settingsService.updateEmailSettings(dto, ipAddress);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Preview the next agreement number with current or custom format settings.
+     * Does NOT consume a sequence number.
+     */
+    @GetMapping("/agreement-number-preview")
+    public ResponseEntity<Map<String, String>> previewAgreementNumber(
+            @RequestParam(name = "prefix", required = false) String prefix,
+            @RequestParam(name = "separator", required = false) String separator,
+            @RequestParam(name = "digits", required = false) Integer digits,
+            @RequestParam(name = "includeFacilityCode", required = false) Boolean includeFacilityCode,
+            @RequestParam(name = "includeYear", required = false) Boolean includeYear) {
+        UUID facilityId = TenantContext.getTenantId();
+        Facility facility = facilityRepository.findById(facilityId)
+                .orElseThrow(() -> new IllegalArgumentException("Facility not found"));
+
+        // If no params provided, use saved settings (or defaults)
+        FacilitySettings settings = facilitySettingsRepository.findById(facilityId).orElse(null);
+        String effectivePrefix = prefix != null ? prefix : (settings != null ? settings.getAgreementNumberPrefix() : "HCF");
+        String effectiveSeparator = separator != null ? separator : (settings != null ? settings.getAgreementNumberSeparator() : "-");
+        int effectiveDigits = digits != null ? digits : (settings != null ? settings.getAgreementNumberSequenceDigits() : 5);
+        boolean effectiveIncludeFacilityCode = includeFacilityCode != null ? includeFacilityCode : (settings != null ? settings.getAgreementNumberIncludeFacilityCode() : true);
+        boolean effectiveIncludeYear = includeYear != null ? includeYear : (settings != null ? settings.getAgreementNumberIncludeYear() : true);
+
+        String preview = agreementNumberGenerator.previewNextAgreementNumber(
+                facility, effectivePrefix, effectiveSeparator, effectiveDigits,
+                effectiveIncludeFacilityCode, effectiveIncludeYear);
+
+        return ResponseEntity.ok(Map.of("preview", preview));
     }
 
     /**
