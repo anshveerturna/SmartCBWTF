@@ -29,6 +29,7 @@ import {
   Alert,
   Snackbar,
   CircularProgress,
+  Divider,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -37,10 +38,13 @@ import {
   Visibility as ViewIcon,
   Download as DownloadIcon,
   PictureAsPdf as PdfIcon,
+  Print as PrintIcon,
 } from '@mui/icons-material';
-import { listQrs, generateQr, revokeQr, getHcfList, getHcfDetail, type QrDetail, type QrGenerateRequest } from '../../api/cbwtf';
+import { listQrs, generateQr, revokeQr, getHcfList, getHcfDetail, generateLabelsForHcf, type QrDetail, type QrGenerateRequest } from '../../api/cbwtf';
 import QRCode from 'qrcode';
 import { jsPDF } from 'jspdf';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const WASTE_CATEGORIES = ['YELLOW', 'RED', 'BLUE', 'WHITE'] as const;
 
@@ -64,6 +68,7 @@ export default function QrLabels() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedQr, setSelectedQr] = useState<QrDetail | null>(null);
   const [qrImageUrl, setQrImageUrl] = useState<string>('');
@@ -73,12 +78,19 @@ export default function QrLabels() {
     severity: 'success',
   });
 
-  // Generate form state
+  // Generate form state (single QR authorization)
   const [generateForm, setGenerateForm] = useState({
     hcfId: '',
     wasteCategory: '' as 'YELLOW' | 'RED' | 'BLUE' | 'WHITE' | '',
     validFrom: new Date().toISOString().slice(0, 16),
     validTo: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+  });
+
+  // Bulk label generation form state
+  const [bulkForm, setBulkForm] = useState({
+    hcfId: '',
+    wasteCategory: '' as 'YELLOW' | 'RED' | 'BLUE' | 'WHITE' | '',
+    quantity: 9,
   });
 
   // Fetch QRs
@@ -124,6 +136,47 @@ export default function QrLabels() {
       setSnackbar({ open: true, message: error.message || 'Failed to revoke QR', severity: 'error' });
     },
   });
+
+  // Bulk label generation mutation
+  const bulkGenerateMutation = useMutation({
+    mutationFn: () => generateLabelsForHcf({
+      hcfId: bulkForm.hcfId,
+      wasteCategory: bulkForm.wasteCategory as 'YELLOW' | 'RED' | 'BLUE' | 'WHITE',
+      quantity: bulkForm.quantity,
+    }),
+    onSuccess: (data) => {
+      setBulkDialogOpen(false);
+      setSnackbar({ open: true, message: data.message || 'QR labels generated!', severity: 'success' });
+      setBulkForm({ hcfId: '', wasteCategory: '', quantity: 9 });
+      if (data.pdfUrl) {
+        window.open(getDownloadUrl(data.pdfUrl), '_blank');
+      }
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error || error?.message || 'Failed to generate labels';
+      setSnackbar({ open: true, message, severity: 'error' });
+    },
+  });
+
+  // Helper to build full download URL for server-generated PDFs
+  const getDownloadUrl = (url: string) => {
+    if (!url) return '';
+    let filePath = url;
+    if (!url.startsWith('/files/')) {
+      const parts = url.split(/[/\\]/);
+      const filename = parts[parts.length - 1];
+      filePath = `/files/${filename}`;
+    }
+    return API_BASE_URL ? `${API_BASE_URL}${filePath}` : filePath;
+  };
+
+  const handleBulkGenerate = () => {
+    if (!bulkForm.hcfId || !bulkForm.wasteCategory || bulkForm.quantity < 1) {
+      setSnackbar({ open: true, message: 'Please fill all required fields', severity: 'error' });
+      return;
+    }
+    bulkGenerateMutation.mutate();
+  };
 
   const handleGenerate = () => {
     if (!generateForm.hcfId || !generateForm.wasteCategory) {
@@ -364,13 +417,22 @@ export default function QrLabels() {
             QR Authorization
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setGenerateDialogOpen(true)}
-        >
-          Generate QR
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<PrintIcon />}
+            onClick={() => setBulkDialogOpen(true)}
+          >
+            Generate Bulk Labels
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setGenerateDialogOpen(true)}
+          >
+            Generate QR
+          </Button>
+        </Stack>
       </Box>
 
       {/* Filters */}
@@ -565,6 +627,77 @@ export default function QrLabels() {
             startIcon={generateMutation.isPending && <CircularProgress size={16} />}
           >
             Generate
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bulk Label Generation Dialog */}
+      <Dialog open={bulkDialogOpen} onClose={() => setBulkDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <PrintIcon color="primary" />
+            Generate Bulk QR Labels for HCF
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2, mt: 1 }}>
+            Generate printable QR bag labels for an HCF. Labels will be generated as a PDF with 9 labels per page (3×3 grid) including HCF details.
+          </Alert>
+          <Stack spacing={3}>
+            <FormControl fullWidth required>
+              <InputLabel>Select HCF</InputLabel>
+              <Select
+                value={bulkForm.hcfId}
+                label="Select HCF"
+                onChange={(e) => setBulkForm({ ...bulkForm, hcfId: e.target.value })}
+              >
+                {hcfs.map((hcf) => (
+                  <MenuItem key={hcf.id} value={hcf.id}>
+                    {hcf.name} ({hcf.code})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth required>
+              <InputLabel>Waste Category</InputLabel>
+              <Select
+                value={bulkForm.wasteCategory}
+                label="Waste Category"
+                onChange={(e) => setBulkForm({ ...bulkForm, wasteCategory: e.target.value as any })}
+              >
+                {WASTE_CATEGORIES.map((cat) => (
+                  <MenuItem key={cat} value={cat}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: CATEGORY_COLORS[cat] }} />
+                      {cat}
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Quantity"
+              type="number"
+              fullWidth
+              required
+              value={bulkForm.quantity}
+              onChange={(e) => setBulkForm({ ...bulkForm, quantity: Math.max(1, Math.min(500, parseInt(e.target.value) || 1)) })}
+              inputProps={{ min: 1, max: 500 }}
+              helperText="Max 500 labels per batch. 9 labels per page."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleBulkGenerate}
+            disabled={bulkGenerateMutation.isPending}
+            startIcon={bulkGenerateMutation.isPending ? <CircularProgress size={16} /> : <PdfIcon />}
+          >
+            {bulkGenerateMutation.isPending ? 'Generating...' : `Generate ${bulkForm.quantity} Labels`}
           </Button>
         </DialogActions>
       </Dialog>

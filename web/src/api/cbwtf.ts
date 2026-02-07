@@ -967,6 +967,32 @@ export const revokeQr = async (id: string, reason?: string): Promise<void> => {
   });
 };
 
+// ============= QR Label Bulk Generation (CBWTF Admin) =============
+
+export interface GenerateLabelsForHcfRequest {
+  hcfId: string;
+  wasteCategory: 'YELLOW' | 'RED' | 'BLUE' | 'WHITE';
+  quantity: number;
+}
+
+export interface GenerateLabelsForHcfResponse {
+  success: boolean;
+  orderId: string;
+  pdfUrl: string;
+  quantity: number;
+  message: string;
+}
+
+export const generateLabelsForHcf = async (data: GenerateLabelsForHcfRequest): Promise<GenerateLabelsForHcfResponse> => {
+  const response = await apiClient.post('/api/cbwtf/qr-orders/generate-for-hcf', data);
+  return response.data;
+};
+
+export const getQrOrderPricing = async () => {
+  const response = await apiClient.get('/api/cbwtf/qr-orders/pricing');
+  return response.data;
+};
+
 // ============= Billing API =============
 
 export interface BillSummary {

@@ -850,9 +850,9 @@ public class PdfService {
 
             float startY = pageHeight - margin - headerHeight;
 
-            // Grid Config: 3 Columns x 4 Rows (reduced rows for larger QR codes)
+            // Grid Config: 3 Columns x 3 Rows (more space per label for QR + HCF details)
             int cols = 3;
-            int rows = 4;
+            int rows = 3;
             float gap = 12;
             float labelWidth = (contentWidth - ((cols - 1) * gap)) / cols;
             float labelHeight = (contentHeight - ((rows - 1) * gap)) / rows;
@@ -912,13 +912,13 @@ public class PdfService {
         switch (category.toUpperCase()) {
             case "YELLOW":
                 catColor = new Color(255, 235, 59);
-                break; // Yellow
+                break;
             case "RED":
                 catColor = new Color(244, 67, 54);
-                break; // Red
+                break;
             case "BLUE":
                 catColor = new Color(33, 150, 243);
-                break; // Blue
+                break;
             case "WHITE":
                 catColor = Color.WHITE;
                 break;
@@ -941,35 +941,93 @@ public class PdfService {
 
         // HCF Name
         cs.beginText();
-        cs.setFont(FONT_BOLD, 9);
+        cs.setFont(FONT_BOLD, 8);
         cs.setNonStrokingColor(Color.BLACK);
-        String hcfName = truncate(hcf.getName(), 25);
-        float nw = FONT_BOLD.getStringWidth(hcfName) / 1000 * 9;
-        cs.newLineAtOffset(x + (w - nw) / 2, y + h - 35);
+        String hcfName = truncate(hcf.getName(), 28);
+        float nw = FONT_BOLD.getStringWidth(hcfName) / 1000 * 8;
+        cs.newLineAtOffset(x + (w - nw) / 2, y + h - 34);
         cs.showText(hcfName);
         cs.endText();
 
-        // QR Code Image
-        float qrSize = h - 65; // Remaining space approx
-        if (qrSize > w - 20)
-            qrSize = w - 20; // Bound width
+        // --- Bottom details section (built from bottom up) ---
+        float detailFontSize = 5.5f;
+        float lineSp = 8f;
+        float bottomY = y + 4;
+
+        // Serial number at very bottom
+        cs.beginText();
+        cs.setFont(FONT_MONO, 6);
+        cs.setNonStrokingColor(Color.DARK_GRAY);
+        String shortCode = qrCodeText.contains("|") ? qrCodeText.substring(qrCodeText.lastIndexOf("|") + 1)
+                : qrCodeText;
+        float cw = FONT_MONO.getStringWidth(shortCode) / 1000 * 6;
+        cs.newLineAtOffset(x + (w - cw) / 2, bottomY);
+        cs.showText(shortCode);
+        cs.endText();
+        bottomY += lineSp;
+
+        // Doctor name
+        if (hcf.getDoctorName() != null && !hcf.getDoctorName().isBlank()) {
+            cs.beginText();
+            cs.setFont(FONT_REGULAR, detailFontSize);
+            cs.setNonStrokingColor(Color.DARK_GRAY);
+            String text = "Dr: " + truncate(hcf.getDoctorName(), 24);
+            float dtw = FONT_REGULAR.getStringWidth(text) / 1000 * detailFontSize;
+            cs.newLineAtOffset(x + (w - dtw) / 2, bottomY);
+            cs.showText(text);
+            cs.endText();
+            bottomY += lineSp;
+        }
+
+        // Contact Phone
+        if (hcf.getContactPhone() != null && !hcf.getContactPhone().isBlank()) {
+            cs.beginText();
+            cs.setFont(FONT_REGULAR, detailFontSize);
+            cs.setNonStrokingColor(Color.DARK_GRAY);
+            String text = "Ph: " + hcf.getContactPhone();
+            float ptw = FONT_REGULAR.getStringWidth(text) / 1000 * detailFontSize;
+            cs.newLineAtOffset(x + (w - ptw) / 2, bottomY);
+            cs.showText(text);
+            cs.endText();
+            bottomY += lineSp;
+        }
+
+        // Contact Email
+        if (hcf.getContactEmail() != null && !hcf.getContactEmail().isBlank()) {
+            cs.beginText();
+            cs.setFont(FONT_REGULAR, detailFontSize);
+            cs.setNonStrokingColor(Color.DARK_GRAY);
+            String text = truncate(hcf.getContactEmail(), 30);
+            float etw = FONT_REGULAR.getStringWidth(text) / 1000 * detailFontSize;
+            cs.newLineAtOffset(x + (w - etw) / 2, bottomY);
+            cs.showText(text);
+            cs.endText();
+            bottomY += lineSp;
+        }
+
+        // HCF Address
+        if (hcf.getAddress() != null && !hcf.getAddress().isBlank()) {
+            cs.beginText();
+            cs.setFont(FONT_REGULAR, detailFontSize);
+            cs.setNonStrokingColor(Color.DARK_GRAY);
+            String text = truncate(hcf.getAddress(), 32);
+            float atw = FONT_REGULAR.getStringWidth(text) / 1000 * detailFontSize;
+            cs.newLineAtOffset(x + (w - atw) / 2, bottomY);
+            cs.showText(text);
+            cs.endText();
+            bottomY += lineSp;
+        }
+
+        // QR Code Image - fills remaining space between header section and detail section
+        float qrAvailableHeight = (y + h - 38) - bottomY - 2;
+        float qrSize = Math.min(qrAvailableHeight, w - 16);
+        if (qrSize < 40) qrSize = 40;
 
         byte[] qrBytes = generateQrImage(qrCodeText, 300, 300);
         PDImageXObject qrImage = PDImageXObject.createFromByteArray(doc, qrBytes, "qr");
         float qrX = x + (w - qrSize) / 2;
-        float qrY = y + 20;
+        float qrY = bottomY + 1;
         cs.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-
-        // Code Text at bottom
-        cs.beginText();
-        cs.setFont(FONT_MONO, 7);
-        cs.setNonStrokingColor(Color.DARK_GRAY);
-        String shortCode = qrCodeText.contains("|") ? qrCodeText.substring(qrCodeText.lastIndexOf("|") + 1)
-                : qrCodeText;
-        float cw = FONT_MONO.getStringWidth(shortCode) / 1000 * 7;
-        cs.newLineAtOffset(x + (w - cw) / 2, y + 8);
-        cs.showText(shortCode);
-        cs.endText();
     }
 
     private void drawCutLines(PDPageContentStream cs, float margin, float pageWidth, float startY, int rows, int cols,

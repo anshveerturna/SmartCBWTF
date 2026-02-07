@@ -179,6 +179,59 @@ public class QrOrderService {
     }
 
     /**
+     * CBWTF admin directly generates QR labels for an HCF.
+     * No charge to HCF (admin-initiated generation).
+     */
+    @Transactional
+    public QrSelfGenerateResult adminDirectGenerate(UUID hcfId, String category, int quantity, UUID adminUserId) {
+        validateQuantity(quantity);
+
+        Hcf hcf = hcfRepository.findById(hcfId)
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
+
+        Agreement agreement = agreementRepository.findActiveByHcfId(hcfId)
+                .orElseThrow(() -> new IllegalStateException("No active agreement found for this HCF"));
+
+        Facility facility = agreement.getFacility();
+
+        // Admin-generated labels are free (no charge to HCF)
+        QrLabelOrder order = new QrLabelOrder();
+        order.setHcf(hcf);
+        order.setFacility(facility);
+        order.setAgreement(agreement);
+        order.setWasteCategory(category);
+        order.setQuantity(quantity);
+        order.setUnitPrice(BigDecimal.ZERO);
+        order.setTotalAmount(BigDecimal.ZERO);
+        order.setOrderType(QrOrderType.CBWTF_REQUEST);
+        order.setStatus(QrOrderStatus.FULFILLED);
+        order.setRequestedAt(Instant.now());
+        order.setFulfilledAt(Instant.now());
+        order.setFulfilledBy(adminUserId);
+        order.setNotes("Admin direct generation");
+
+        // Generate labels using existing LabelService
+        LabelIssueRequest labelRequest = new LabelIssueRequest();
+        labelRequest.setHcfId(hcfId);
+        labelRequest.setFacilityId(facility.getId());
+        labelRequest.setCategory(category);
+        labelRequest.setQuantity(quantity);
+        var labelResponse = labelService.issue(labelRequest);
+
+        order.setPdfUrl(labelResponse.getPdfUrl());
+        QrLabelOrder saved = qrOrderRepository.save(order);
+
+        auditLogService.log("QR_ORDER", saved.getId(), "QR_ADMIN_GENERATED", adminUserId,
+                String.format("CBWTF admin generated %d %s QR labels for HCF %s (no charge)",
+                        quantity, category, hcf.getName()));
+
+        log.info("QR admin-generated: orderId={}, hcfId={}, category={}, quantity={}, admin={}",
+                saved.getId(), hcfId, category, quantity, adminUserId);
+
+        return new QrSelfGenerateResult(saved, labelResponse.getQrCodes(), labelResponse.getPdfUrl());
+    }
+
+    /**
      * CBWTF admin fulfills a QR request.
      */
     @Transactional

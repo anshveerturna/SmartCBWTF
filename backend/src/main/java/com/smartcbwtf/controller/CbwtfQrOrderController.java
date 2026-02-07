@@ -34,6 +34,36 @@ public class CbwtfQrOrderController {
     }
 
     /**
+     * CBWTF admin directly generates QR labels for an HCF.
+     * No charge — admin-initiated generation with PDF download.
+     */
+    @PostMapping("/generate-for-hcf")
+    public ResponseEntity<?> generateForHcf(@RequestBody GenerateForHcfRequest request) {
+        try {
+            UUID adminUserId = TenantContext.getUserId();
+
+            var result = qrOrderService.adminDirectGenerate(
+                    request.hcfId(), request.wasteCategory(), request.quantity(), adminUserId);
+
+            log.info("CBWTF admin generated {} {} QR labels for HCF {}", request.quantity(), request.wasteCategory(),
+                    request.hcfId());
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "orderId", result.order().getId(),
+                    "pdfUrl", result.pdfUrl(),
+                    "quantity", result.qrCodes().size(),
+                    "message", result.qrCodes().size() + " QR labels generated successfully"));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            log.warn("Admin QR generation failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Admin QR generation error", e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Internal error: " + e.getMessage()));
+        }
+    }
+
+    /**
      * List pending QR orders for this facility.
      */
     @GetMapping("/pending")
@@ -115,6 +145,9 @@ public class CbwtfQrOrderController {
 
     // DTOs
     public record RejectRequest(String reason) {
+    }
+
+    public record GenerateForHcfRequest(UUID hcfId, String wasteCategory, int quantity) {
     }
 
     public record QrOrderDTO(
