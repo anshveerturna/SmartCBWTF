@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -42,10 +43,29 @@ public class CbwtfQrOrderController {
         try {
             UUID adminUserId = TenantContext.getUserId();
 
-            var result = qrOrderService.adminDirectGenerate(
-                    request.hcfId(), request.wasteCategory(), request.quantity(), adminUserId);
+            // Build category-quantity map from the request
+            Map<String, Integer> categoryQuantities = new LinkedHashMap<>();
+            if (request.categoryQuantities() != null && !request.categoryQuantities().isEmpty()) {
+                categoryQuantities.putAll(request.categoryQuantities());
+            } else if (request.wasteCategory() != null && request.quantity() > 0) {
+                // Backward compatible: single category
+                categoryQuantities.put(request.wasteCategory(), request.quantity());
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("error", "No categories/quantities provided"));
+            }
 
-            log.info("CBWTF admin generated {} {} QR labels for HCF {}", request.quantity(), request.wasteCategory(),
+            // Remove zero-quantity entries
+            categoryQuantities.entrySet().removeIf(e -> e.getValue() == null || e.getValue() <= 0);
+            if (categoryQuantities.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "At least one category with quantity > 0 required"));
+            }
+
+            int totalQty = categoryQuantities.values().stream().mapToInt(Integer::intValue).sum();
+
+            var result = qrOrderService.adminDirectGenerateMulti(
+                    request.hcfId(), categoryQuantities, adminUserId);
+
+            log.info("CBWTF admin generated {} QR labels ({}) for HCF {}", totalQty, categoryQuantities.keySet(),
                     request.hcfId());
 
             return ResponseEntity.ok(Map.of(
@@ -147,7 +167,11 @@ public class CbwtfQrOrderController {
     public record RejectRequest(String reason) {
     }
 
-    public record GenerateForHcfRequest(UUID hcfId, String wasteCategory, int quantity) {
+    public record GenerateForHcfRequest(
+            UUID hcfId,
+            String wasteCategory,
+            int quantity,
+            Map<String, Integer> categoryQuantities) {
     }
 
     public record QrOrderDTO(

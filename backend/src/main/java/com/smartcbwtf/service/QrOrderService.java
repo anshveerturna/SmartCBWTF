@@ -12,7 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -227,6 +229,97 @@ public class QrOrderService {
 
         log.info("QR admin-generated: orderId={}, hcfId={}, category={}, quantity={}, admin={}",
                 saved.getId(), hcfId, category, quantity, adminUserId);
+
+        return new QrSelfGenerateResult(saved, labelResponse.getQrCodes(), labelResponse.getPdfUrl());
+    }
+
+    /**
+     * HCF self-generates QR labels for multiple categories in a single PDF.
+     */
+    @Transactional
+    public QrSelfGenerateResult selfGenerateMulti(UUID hcfId, Map<String, Integer> categoryQuantities) {
+        int totalQuantity = categoryQuantities.values().stream().mapToInt(Integer::intValue).sum();
+        validateQuantity(totalQuantity);
+
+        Hcf hcf = hcfRepository.findById(hcfId)
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
+        Agreement agreement = agreementRepository.findActiveByHcfId(hcfId)
+                .orElseThrow(() -> new IllegalStateException("No active agreement found for this HCF"));
+        Facility facility = agreement.getFacility();
+
+        BigDecimal unitPrice = getConfigPrice("qr.price.hcf_self_per_unit", DEFAULT_SELF_PRICE);
+        BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(totalQuantity));
+
+        QrLabelOrder order = new QrLabelOrder();
+        order.setHcf(hcf);
+        order.setFacility(facility);
+        order.setAgreement(agreement);
+        order.setWasteCategory("MULTI");
+        order.setQuantity(totalQuantity);
+        order.setUnitPrice(unitPrice);
+        order.setTotalAmount(totalAmount);
+        order.setOrderType(QrOrderType.HCF_SELF);
+        order.setStatus(QrOrderStatus.FULFILLED);
+        order.setRequestedAt(Instant.now());
+        order.setFulfilledAt(Instant.now());
+
+        var labelResponse = labelService.issueMultiCategory(hcfId, facility.getId(), categoryQuantities);
+
+        order.setPdfUrl(labelResponse.getPdfUrl());
+        QrLabelOrder saved = qrOrderRepository.save(order);
+
+        auditLogService.log("QR_ORDER", saved.getId(), "QR_SELF_GENERATED_MULTI", null,
+                String.format("HCF self-generated %d QR labels across %d categories. Charge: ₹%.2f",
+                        totalQuantity, categoryQuantities.size(), totalAmount));
+
+        log.info("QR self-generated multi: orderId={}, hcfId={}, categories={}, totalQty={}, charge={}",
+                saved.getId(), hcfId, categoryQuantities.keySet(), totalQuantity, totalAmount);
+
+        return new QrSelfGenerateResult(saved, labelResponse.getQrCodes(), labelResponse.getPdfUrl());
+    }
+
+    /**
+     * CBWTF admin directly generates QR labels for an HCF across multiple categories.
+     * No charge to HCF (admin-initiated generation).
+     */
+    @Transactional
+    public QrSelfGenerateResult adminDirectGenerateMulti(UUID hcfId, Map<String, Integer> categoryQuantities,
+            UUID adminUserId) {
+        int totalQuantity = categoryQuantities.values().stream().mapToInt(Integer::intValue).sum();
+        validateQuantity(totalQuantity);
+
+        Hcf hcf = hcfRepository.findById(hcfId)
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
+        Agreement agreement = agreementRepository.findActiveByHcfId(hcfId)
+                .orElseThrow(() -> new IllegalStateException("No active agreement found for this HCF"));
+        Facility facility = agreement.getFacility();
+
+        QrLabelOrder order = new QrLabelOrder();
+        order.setHcf(hcf);
+        order.setFacility(facility);
+        order.setAgreement(agreement);
+        order.setWasteCategory("MULTI");
+        order.setQuantity(totalQuantity);
+        order.setUnitPrice(BigDecimal.ZERO);
+        order.setTotalAmount(BigDecimal.ZERO);
+        order.setOrderType(QrOrderType.CBWTF_REQUEST);
+        order.setStatus(QrOrderStatus.FULFILLED);
+        order.setRequestedAt(Instant.now());
+        order.setFulfilledAt(Instant.now());
+        order.setFulfilledBy(adminUserId);
+        order.setNotes("Admin direct generation (multi-category)");
+
+        var labelResponse = labelService.issueMultiCategory(hcfId, facility.getId(), categoryQuantities);
+
+        order.setPdfUrl(labelResponse.getPdfUrl());
+        QrLabelOrder saved = qrOrderRepository.save(order);
+
+        auditLogService.log("QR_ORDER", saved.getId(), "QR_ADMIN_GENERATED_MULTI", adminUserId,
+                String.format("CBWTF admin generated %d QR labels across %d categories for HCF %s (no charge)",
+                        totalQuantity, categoryQuantities.size(), hcf.getName()));
+
+        log.info("QR admin-generated multi: orderId={}, hcfId={}, categories={}, totalQty={}, admin={}",
+                saved.getId(), hcfId, categoryQuantities.keySet(), totalQuantity, adminUserId);
 
         return new QrSelfGenerateResult(saved, labelResponse.getQrCodes(), labelResponse.getPdfUrl());
     }

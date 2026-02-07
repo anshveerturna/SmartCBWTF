@@ -34,17 +34,16 @@ export default function QrLabels() {
   });
   const [generateForm, setGenerateForm] = useState({
     hcfId: '',
-    wasteCategory: '' as 'YELLOW' | 'RED' | 'BLUE' | 'WHITE' | '',
-    quantity: 9,
+    categoryQuantities: { YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0 } as Record<string, number>,
   });
 
-  // Fetch existing QR authorization codes
+  const totalLabels = Object.values(generateForm.categoryQuantities).reduce((sum, q) => sum + (q || 0), 0);
+
   const { data: qrs = [], isLoading } = useQuery({
     queryKey: ['cbwtf-qrs', statusFilter],
     queryFn: () => listQrs(undefined, statusFilter || undefined),
   });
 
-  // Fetch HCF list for the generate dialog
   const { data: hcfs = [] } = useQuery({
     queryKey: ['cbwtf-hcfs-for-qr'],
     queryFn: () => getHcfList(),
@@ -62,16 +61,21 @@ export default function QrLabels() {
   });
 
   const generateMutation = useMutation({
-    mutationFn: () =>
-      generateLabelsForHcf({
+    mutationFn: () => {
+      // Filter out zero-quantity categories
+      const filtered: Record<string, number> = {};
+      for (const [cat, qty] of Object.entries(generateForm.categoryQuantities)) {
+        if (qty > 0) filtered[cat] = qty;
+      }
+      return generateLabelsForHcf({
         hcfId: generateForm.hcfId,
-        wasteCategory: generateForm.wasteCategory as 'YELLOW' | 'RED' | 'BLUE' | 'WHITE',
-        quantity: generateForm.quantity,
-      }),
+        categoryQuantities: filtered,
+      });
+    },
     onSuccess: (data) => {
       setGenerateDialogOpen(false);
       setSnackbar({ open: true, message: data.message || 'QR labels generated!', severity: 'success' });
-      setGenerateForm({ hcfId: '', wasteCategory: '', quantity: 9 });
+      setGenerateForm({ hcfId: '', categoryQuantities: { YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0 } });
       if (data.pdfUrl) {
         window.open(getDownloadUrl(data.pdfUrl), '_blank');
       }
@@ -94,11 +98,26 @@ export default function QrLabels() {
   };
 
   const handleGenerate = () => {
-    if (!generateForm.hcfId || !generateForm.wasteCategory || generateForm.quantity < 1) {
-      setSnackbar({ open: true, message: 'Please select HCF, category and enter quantity', severity: 'error' });
+    if (!generateForm.hcfId) {
+      setSnackbar({ open: true, message: 'Please select an HCF', severity: 'error' });
+      return;
+    }
+    if (totalLabels < 1) {
+      setSnackbar({ open: true, message: 'Enter quantity for at least one waste category', severity: 'error' });
+      return;
+    }
+    if (totalLabels > 500) {
+      setSnackbar({ open: true, message: 'Total labels cannot exceed 500', severity: 'error' });
       return;
     }
     generateMutation.mutate();
+  };
+
+  const setCategoryQty = (cat: string, val: number) => {
+    setGenerateForm((prev) => ({
+      ...prev,
+      categoryQuantities: { ...prev.categoryQuantities, [cat]: Math.max(0, Math.min(500, val)) },
+    }));
   };
 
   const handleViewQr = async (qr: QrDetail) => {
@@ -252,8 +271,8 @@ export default function QrLabels() {
         </DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2, mt: 1 }}>
-            Generate printable QR bag labels for an HCF. Labels are downloaded as a PDF
-            (3&times;3 grid per page) with HCF details printed on each label.
+            Generate printable QR bag labels for an HCF. Set quantity for each waste category
+            you need. All labels are combined into a single PDF (3&times;3 grid per page).
           </Alert>
           <Stack spacing={3}>
             <FormControl fullWidth required>
@@ -270,38 +289,40 @@ export default function QrLabels() {
                 ))}
               </Select>
             </FormControl>
-            <FormControl fullWidth required>
-              <InputLabel>Waste Category</InputLabel>
-              <Select
-                value={generateForm.wasteCategory}
-                label="Waste Category"
-                onChange={(e) => setGenerateForm({ ...generateForm, wasteCategory: e.target.value as any })}
-              >
-                {WASTE_CATEGORIES.map((cat) => (
-                  <MenuItem key={cat} value={cat}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: CATEGORY_COLORS[cat] }} />
-                      {cat}
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              label="Quantity"
-              type="number"
-              fullWidth
-              required
-              value={generateForm.quantity}
-              onChange={(e) =>
-                setGenerateForm({
-                  ...generateForm,
-                  quantity: Math.max(1, Math.min(500, parseInt(e.target.value) || 1)),
-                })
-              }
-              inputProps={{ min: 1, max: 500 }}
-              helperText="Max 500 labels per batch. 9 labels per page."
-            />
+
+            <Typography variant="subtitle2" color="text.secondary">
+              Quantity per Waste Category
+            </Typography>
+
+            {WASTE_CATEGORIES.map((cat) => (
+              <Box key={cat} display="flex" alignItems="center" gap={2}>
+                <Box
+                  sx={{
+                    width: 20, height: 20, borderRadius: '50%',
+                    bgcolor: CATEGORY_COLORS[cat], flexShrink: 0,
+                    border: cat === 'WHITE' ? '1px solid #ccc' : 'none',
+                  }}
+                />
+                <Typography sx={{ width: 70, fontWeight: 'bold' }}>{cat}</Typography>
+                <TextField
+                  type="number"
+                  size="small"
+                  value={generateForm.categoryQuantities[cat] || 0}
+                  onChange={(e) => setCategoryQty(cat, parseInt(e.target.value) || 0)}
+                  inputProps={{ min: 0, max: 500, style: { textAlign: 'center' } }}
+                  sx={{ width: 120 }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  {Math.ceil((generateForm.categoryQuantities[cat] || 0) / 9)} page(s)
+                </Typography>
+              </Box>
+            ))}
+
+            <Alert severity={totalLabels > 500 ? 'error' : 'info'} sx={{ py: 0.5 }}>
+              <strong>Total: {totalLabels} labels</strong> &mdash;{' '}
+              {Math.ceil(totalLabels / 9)} page(s) &bull; 9 labels per page
+              {totalLabels > 500 && ' — Max 500 labels per batch!'}
+            </Alert>
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -309,10 +330,10 @@ export default function QrLabels() {
           <Button
             variant="contained"
             onClick={handleGenerate}
-            disabled={generateMutation.isPending}
+            disabled={generateMutation.isPending || totalLabels < 1 || totalLabels > 500}
             startIcon={generateMutation.isPending ? <CircularProgress size={16} /> : <PdfIcon />}
           >
-            {generateMutation.isPending ? 'Generating...' : `Generate ${generateForm.quantity} Labels`}
+            {generateMutation.isPending ? 'Generating...' : `Generate ${totalLabels} Labels`}
           </Button>
         </DialogActions>
       </Dialog>

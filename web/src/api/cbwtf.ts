@@ -971,8 +971,9 @@ export const revokeQr = async (id: string, reason?: string): Promise<void> => {
 
 export interface GenerateLabelsForHcfRequest {
   hcfId: string;
-  wasteCategory: 'YELLOW' | 'RED' | 'BLUE' | 'WHITE';
-  quantity: number;
+  wasteCategory?: string;
+  quantity?: number;
+  categoryQuantities: Record<string, number>;
 }
 
 export interface GenerateLabelsForHcfResponse {

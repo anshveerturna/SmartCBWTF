@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -80,6 +81,7 @@ public class HcfQrOrderController {
 
     /**
      * Self-generate QR labels (lower price, immediate).
+     * Supports single category (wasteCategory + quantity) or multi-category (categoryQuantities map).
      */
     @PostMapping("/generate")
     public ResponseEntity<?> selfGenerate(@RequestBody QrOrderRequest request) {
@@ -91,13 +93,27 @@ public class HcfQrOrderController {
                         .body(Map.of("error", "HCF context not found"));
             }
 
-            var result = qrOrderService.selfGenerate(
-                    hcfId,
-                    request.wasteCategory,
-                    request.quantity);
+            // Build category-quantity map
+            Map<String, Integer> categoryQuantities = new LinkedHashMap<>();
+            if (request.categoryQuantities() != null && !request.categoryQuantities().isEmpty()) {
+                categoryQuantities.putAll(request.categoryQuantities());
+            } else if (request.wasteCategory() != null && request.quantity() != null && request.quantity() > 0) {
+                categoryQuantities.put(request.wasteCategory(), request.quantity());
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("error", "No categories/quantities provided"));
+            }
 
-            log.info("QR self-generated: orderId={}, hcfId={}, category={}, qty={}",
-                    result.order().getId(), hcfId, request.wasteCategory, request.quantity);
+            categoryQuantities.entrySet().removeIf(e -> e.getValue() == null || e.getValue() <= 0);
+            if (categoryQuantities.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "At least one category with quantity > 0 required"));
+            }
+
+            int totalQty = categoryQuantities.values().stream().mapToInt(Integer::intValue).sum();
+
+            var result = qrOrderService.selfGenerateMulti(hcfId, categoryQuantities);
+
+            log.info("QR self-generated: orderId={}, hcfId={}, categories={}, totalQty={}",
+                    result.order().getId(), hcfId, categoryQuantities.keySet(), totalQty);
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -105,8 +121,8 @@ public class HcfQrOrderController {
                     "qrCodes", result.qrCodes(),
                     "pdfUrl", result.pdfUrl(),
                     "totalCharge", result.order().getTotalAmount(),
-                    "message", String.format("Generated %d %s QR labels. Charge: ₹%.2f",
-                            request.quantity, request.wasteCategory, result.order().getTotalAmount())));
+                    "message", String.format("Generated %d QR labels. Charge: ₹%.2f",
+                            totalQty, result.order().getTotalAmount())));
         } catch (IllegalArgumentException | IllegalStateException e) {
             log.warn("QR generate failed: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -130,7 +146,8 @@ public class HcfQrOrderController {
     public record QrOrderRequest(
             String wasteCategory,
             Integer quantity,
-            String notes) {
+            String notes,
+            Map<String, Integer> categoryQuantities) {
     }
 
     public record QrOrderDTO(

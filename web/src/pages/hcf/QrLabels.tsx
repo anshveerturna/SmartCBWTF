@@ -22,38 +22,22 @@ import {
   CircularProgress,
   Paper,
   alpha,
-  Checkbox,
   IconButton,
   Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Stack,
-  Divider,
 } from '@mui/material';
 import {
   QrCode,
-  Add,
   Download,
-  CheckCircle,
-  Warning,
-  Schedule,
-  Visibility,
-  Block,
   PictureAsPdf,
-  Receipt,
   ShoppingCart,
   History,
 } from '@mui/icons-material';
-import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
-import QRCode from 'qrcode';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
-// Waste categories with colors
 const WASTE_CATEGORIES = [
   { code: 'YELLOW', name: 'Infectious Waste', color: '#FFEB3B' },
   { code: 'RED', name: 'Contaminated Recyclables', color: '#F44336' },
@@ -82,17 +66,23 @@ interface QrOrder {
 
 const QrLabels: React.FC = () => {
   const queryClient = useQueryClient();
-  const [category, setCategory] = useState('YELLOW');
-  const [quantity, setQuantity] = useState<number>(50);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
-  // Selection state
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  
-  // View dialog state
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<QrOrder | null>(null);
+
+  // Multi-category quantities for self-generate
+  const [categoryQuantities, setCategoryQuantities] = useState<Record<string, number>>({
+    YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0,
+  });
+
+  // Request from CBWTF (single category)
+  const [requestCategory, setRequestCategory] = useState('YELLOW');
+  const [requestQuantity, setRequestQuantity] = useState<number>(50);
+
+  const totalSelfLabels = Object.values(categoryQuantities).reduce((sum, q) => sum + (q || 0), 0);
+
+  const setCatQty = (cat: string, val: number) => {
+    setCategoryQuantities((prev) => ({ ...prev, [cat]: Math.max(0, Math.min(500, val)) }));
+  };
 
   // Fetch pricing
   const { data: pricing } = useQuery<QrPricing>({
@@ -112,20 +102,23 @@ const QrLabels: React.FC = () => {
     },
   });
 
-  // Generate mutation
+  // Generate mutation (multi-category)
   const generateMutation = useMutation({
     mutationFn: async () => {
+      const filtered: Record<string, number> = {};
+      for (const [cat, qty] of Object.entries(categoryQuantities)) {
+        if (qty > 0) filtered[cat] = qty;
+      }
       const res = await apiClient.post('/api/hcf/qr-orders/generate', {
-        wasteCategory: category,
-        quantity: quantity
+        categoryQuantities: filtered,
       });
       return res.data;
     },
     onSuccess: (data) => {
       setSuccess(data.message || 'QR labels generated successfully');
       setError(null);
+      setCategoryQuantities({ YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0 });
       queryClient.invalidateQueries({ queryKey: ['hcf-qr-orders'] });
-      // Open PDF in new tab if available
       if (data.pdfUrl) {
         window.open(getDownloadUrl(data.pdfUrl), '_blank');
       }
@@ -140,9 +133,9 @@ const QrLabels: React.FC = () => {
   const requestMutation = useMutation({
     mutationFn: async () => {
       const res = await apiClient.post('/api/hcf/qr-orders/request', {
-        wasteCategory: category,
-        quantity: quantity,
-        notes: 'Requested from HCF Portal'
+        wasteCategory: requestCategory,
+        quantity: requestQuantity,
+        notes: 'Requested from HCF Portal',
       });
       return res.data;
     },
@@ -158,9 +151,12 @@ const QrLabels: React.FC = () => {
   });
 
   const handleGenerate = () => {
-    if (!pricing) return;
-    if (quantity > pricing.maxQuantity) {
-      setError(`Maximum quantity allowed is ${pricing.maxQuantity}`);
+    if (totalSelfLabels < 1) {
+      setError('Enter quantity for at least one waste category');
+      return;
+    }
+    if (totalSelfLabels > (pricing?.maxQuantity || 500)) {
+      setError(`Total labels cannot exceed ${pricing?.maxQuantity || 500}`);
       return;
     }
     setError(null);
@@ -175,11 +171,8 @@ const QrLabels: React.FC = () => {
     requestMutation.mutate();
   };
 
-  const calculateTotal = (isSelf: boolean) => {
-    if (!pricing || !quantity) return 0;
-    const price = isSelf ? pricing.selfGeneratePrice : pricing.cbwtfRequestPrice;
-    return price * quantity;
-  };
+  const selfTotal = pricing ? pricing.selfGeneratePrice * totalSelfLabels : 0;
+  const requestTotal = pricing ? pricing.cbwtfRequestPrice * requestQuantity : 0;
 
   const getStatusChip = (status: string) => {
     switch (status) {
@@ -191,21 +184,17 @@ const QrLabels: React.FC = () => {
   };
 
   const getCategoryColor = (code: string) => {
-    return WASTE_CATEGORIES.find(c => c.code === code)?.color || '#9E9E9E';
+    return WASTE_CATEGORIES.find((c) => c.code === code)?.color || '#9E9E9E';
   };
 
   const getDownloadUrl = (url: string) => {
     if (!url) return '';
-    // Normalize to a relative /files/ path first
     let filePath = url;
     if (!url.startsWith('/files/')) {
-      // If it's a local absolute path (legacy data), extract filename
-      const parts = url.split(/[/\\]/); // Split by forward or backward slash
+      const parts = url.split(/[/\\]/);
       const filename = parts[parts.length - 1];
       filePath = `/files/${filename}`;
     }
-    // In production, prepend API base URL so files are fetched from the backend
-    // not from the portal's CloudFront/S3 which doesn't host them
     return API_BASE_URL ? `${API_BASE_URL}${filePath}` : filePath;
   };
 
@@ -228,7 +217,7 @@ const QrLabels: React.FC = () => {
       {/* Pricing & Actions */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* Self Generate Option */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={7}>
           <Card sx={{ height: '100%', border: '1px solid', borderColor: 'primary.light', bgcolor: alpha('#6366F1', 0.02) }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -236,15 +225,82 @@ const QrLabels: React.FC = () => {
                 <Typography variant="h6">Self Generate</Typography>
                 <Chip label="Instant" size="small" color="success" sx={{ ml: 'auto' }} />
               </Box>
-              
+
               <Typography variant="body2" color="text.secondary" paragraph>
-                Generate and download QR labels instantly. Charges will be added to your monthly bill.
+                Generate and download QR labels instantly. Set quantity per waste category &mdash;
+                all categories are combined into a single PDF. Charges added to your monthly bill.
               </Typography>
 
               <Box sx={{ my: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
                 <Typography variant="subtitle2" color="text.secondary">Price per Label</Typography>
                 <Typography variant="h4" color="primary.main">
-                  ₹{pricing?.selfGeneratePrice?.toFixed(2) || '0.00'}
+                  \u20b9{pricing?.selfGeneratePrice?.toFixed(2) || '0.00'}
+                </Typography>
+              </Box>
+
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                Quantity per Waste Category
+              </Typography>
+
+              <Stack spacing={1.5} sx={{ mb: 2 }}>
+                {WASTE_CATEGORIES.map((cat) => (
+                  <Box key={cat.code} display="flex" alignItems="center" gap={1.5}>
+                    <Box sx={{
+                      width: 16, height: 16, borderRadius: '50%', bgcolor: cat.color, flexShrink: 0,
+                      border: cat.code === 'WHITE' ? '1px solid #ccc' : 'none',
+                    }} />
+                    <Typography sx={{ width: 60, fontWeight: 'bold', fontSize: '0.85rem' }}>{cat.code}</Typography>
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={categoryQuantities[cat.code] || 0}
+                      onChange={(e) => setCatQty(cat.code, parseInt(e.target.value) || 0)}
+                      inputProps={{ min: 0, max: 500, style: { textAlign: 'center' } }}
+                      sx={{ width: 100 }}
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      {Math.ceil((categoryQuantities[cat.code] || 0) / 9)} pg
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+
+              <Alert severity={totalSelfLabels > (pricing?.maxQuantity || 500) ? 'error' : 'info'} sx={{ mb: 2, py: 0.5 }}>
+                <strong>Total: {totalSelfLabels} labels</strong> &bull; {Math.ceil(totalSelfLabels / 9)} page(s)
+                &bull; Charge: \u20b9{selfTotal.toFixed(2)}
+              </Alert>
+
+              <Button
+                variant="contained"
+                fullWidth
+                startIcon={generateMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <Download />}
+                onClick={handleGenerate}
+                disabled={generateMutation.isPending || totalSelfLabels < 1 || totalSelfLabels > (pricing?.maxQuantity || 500)}
+              >
+                Generate & Pay Later
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* CBWTF Request Option */}
+        <Grid item xs={12} md={5}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <ShoppingCart color="secondary" sx={{ mr: 1, fontSize: 28 }} />
+                <Typography variant="h6">Request from CBWTF</Typography>
+                <Chip label="Wait time applies" size="small" sx={{ ml: 'auto' }} />
+              </Box>
+
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Request printed labels from the facility. Higher charges apply for printing and delivery.
+              </Typography>
+
+              <Box sx={{ my: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Price per Label</Typography>
+                <Typography variant="h4" color="secondary.main">
+                  \u20b9{pricing?.cbwtfRequestPrice?.toFixed(2) || '0.00'}
                 </Typography>
               </Box>
 
@@ -252,9 +308,9 @@ const QrLabels: React.FC = () => {
                 <FormControl fullWidth size="small">
                   <InputLabel>Waste Category</InputLabel>
                   <Select
-                    value={category}
+                    value={requestCategory}
                     label="Waste Category"
-                    onChange={(e) => setCategory(e.target.value)}
+                    onChange={(e) => setRequestCategory(e.target.value)}
                   >
                     {WASTE_CATEGORIES.map((cat) => (
                       <MenuItem key={cat.code} value={cat.code}>
@@ -272,58 +328,23 @@ const QrLabels: React.FC = () => {
                   type="number"
                   size="small"
                   fullWidth
-                  value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                  helperText={`Total Charge: ₹${calculateTotal(true).toFixed(2)}`}
+                  value={requestQuantity}
+                  onChange={(e) => setRequestQuantity(parseInt(e.target.value) || 0)}
+                  helperText={`Total Charge: \u20b9${requestTotal.toFixed(2)}`}
                 />
 
                 <Button
-                  variant="contained"
+                  variant="outlined"
+                  color="secondary"
                   fullWidth
-                  startIcon={generateMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <Download />}
-                  onClick={handleGenerate}
-                  disabled={generateMutation.isPending || !quantity}
+                  size="large"
+                  startIcon={requestMutation.isPending ? <CircularProgress size={20} /> : <ShoppingCart />}
+                  onClick={handleRequest}
+                  disabled={requestMutation.isPending || !requestQuantity}
                 >
-                  Generate & Pay Later
+                  Request Order (\u20b9{requestTotal.toFixed(2)})
                 </Button>
               </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* CBWTF Request Option */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <ShoppingCart color="secondary" sx={{ mr: 1, fontSize: 28 }} />
-                <Typography variant="h6">Request from CBWTF</Typography>
-                <Chip label="Wait time applies" size="small" sx={{ ml: 'auto' }} />
-              </Box>
-              
-              <Typography variant="body2" color="text.secondary" paragraph>
-                Request printed labels from the facility. Higher charges apply for printing and delivery.
-              </Typography>
-
-              <Box sx={{ my: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-                <Typography variant="subtitle2" color="text.secondary">Price per Label</Typography>
-                <Typography variant="h4" color="secondary.main">
-                  ₹{pricing?.cbwtfRequestPrice?.toFixed(2) || '0.00'}
-                </Typography>
-              </Box>
-
-              <Button
-                variant="outlined"
-                color="secondary"
-                fullWidth
-                size="large"
-                startIcon={requestMutation.isPending ? <CircularProgress size={20} /> : <Receipt />}
-                onClick={handleRequest}
-                disabled={requestMutation.isPending || !quantity}
-                sx={{ mt: 2 }}
-              >
-                Request Order (₹{calculateTotal(false).toFixed(2)})
-              </Button>
             </CardContent>
           </Card>
         </Grid>
@@ -372,23 +393,27 @@ const QrLabels: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: getCategoryColor(order.wasteCategory) }} />
-                          {order.wasteCategory}
+                          {order.wasteCategory !== 'MULTI' && (
+                            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: getCategoryColor(order.wasteCategory) }} />
+                          )}
+                          {order.wasteCategory === 'MULTI' ? (
+                            <Chip label="Multi" size="small" variant="outlined" />
+                          ) : order.wasteCategory}
                         </Box>
                       </TableCell>
                       <TableCell>{order.quantity}</TableCell>
                       <TableCell>
                         <Typography variant="body2" fontWeight="bold">
-                          ₹{order.totalAmount.toFixed(2)}
+                          \u20b9{order.totalAmount.toFixed(2)}
                         </Typography>
                       </TableCell>
                       <TableCell>{getStatusChip(order.status)}</TableCell>
                       <TableCell align="right">
                         {order.pdfUrl && (
                           <Tooltip title="Download PDF">
-                            <IconButton 
-                              size="small" 
-                              color="primary" 
+                            <IconButton
+                              size="small"
+                              color="primary"
                               onClick={() => order.pdfUrl && window.open(getDownloadUrl(order.pdfUrl), '_blank')}
                             >
                               <PictureAsPdf />

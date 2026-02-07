@@ -899,6 +899,85 @@ public class PdfService {
         return "/files/" + filename;
     }
 
+    /**
+     * Generates a single PDF with QR labels for multiple waste categories.
+     * Labels for each category are laid out sequentially across pages.
+     *
+     * @param hcf             the HCF entity
+     * @param facility        the facility
+     * @param categoryQrCodes ordered map of category -> qrCode arrays
+     * @return relative URL to the generated PDF
+     */
+    public String generateMultiCategoryLabelBatchPdf(Hcf hcf, Facility facility,
+            Map<String, String[]> categoryQrCodes) {
+        String filename = "labels-" + hcf.getCode() + "-MULTI-" + System.currentTimeMillis() + ".pdf";
+        Path path = baseDir.resolve(filename);
+
+        try (PDDocument document = new PDDocument()) {
+            float margin = 20;
+            float headerHeight = 80;
+            float footerHeight = 40;
+            float pageWidth = PDRectangle.A4.getWidth();
+            float pageHeight = PDRectangle.A4.getHeight();
+            float contentWidth = pageWidth - (2 * margin);
+            float contentHeight = pageHeight - (2 * margin) - headerHeight - footerHeight;
+            float startY = pageHeight - margin - headerHeight;
+
+            int cols = 3;
+            int rows = 3;
+            float gap = 12;
+            float labelWidth = (contentWidth - ((cols - 1) * gap)) / cols;
+            float labelHeight = (contentHeight - ((rows - 1) * gap)) / rows;
+            int labelsPerPage = cols * rows;
+
+            String dateStr = DateTimeFormatter.ofPattern("dd MMM yyyy").format(LocalDate.now());
+
+            // Flatten all categories' QR codes into a single ordered list of (category, qrCode)
+            java.util.List<String[]> allLabels = new java.util.ArrayList<>();
+            for (var entry : categoryQrCodes.entrySet()) {
+                String cat = entry.getKey();
+                for (String qr : entry.getValue()) {
+                    allLabels.add(new String[] { cat, qr });
+                }
+            }
+
+            int totalLabels = allLabels.size();
+            int numPages = (int) Math.ceil((double) totalLabels / labelsPerPage);
+
+            for (int p = 0; p < numPages; p++) {
+                PDPage page = new PDPage(PDRectangle.A4);
+                document.addPage(page);
+
+                try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                    drawCommonHeader(cs, document, "QR LABELS BATCH", "Generated: " + dateStr);
+                    drawCommonFooter(cs, document);
+
+                    int startIdx = p * labelsPerPage;
+                    int endIdx = Math.min(startIdx + labelsPerPage, totalLabels);
+
+                    for (int i = startIdx; i < endIdx; i++) {
+                        int pageIndex = i - startIdx;
+                        int row = pageIndex / cols;
+                        int col = pageIndex % cols;
+
+                        float x = margin + (col * (labelWidth + gap));
+                        float y = startY - ((row + 1) * labelHeight) - (row * gap);
+
+                        String cat = allLabels.get(i)[0];
+                        String qr = allLabels.get(i)[1];
+                        drawProfessionalLabel(document, cs, x, y, labelWidth, labelHeight, hcf, cat, qr);
+                    }
+                    drawCutLines(cs, margin, pageWidth, startY, rows, cols, labelWidth, labelHeight, gap);
+                }
+            }
+
+            document.save(path.toFile());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to write multi-category label PDF", e);
+        }
+        return "/files/" + filename;
+    }
+
     private void drawProfessionalLabel(PDDocument doc, PDPageContentStream cs, float x, float y, float w, float h,
             Hcf hcf, String category, String qrCodeText) throws IOException, com.google.zxing.WriterException {
         // Outline
@@ -966,12 +1045,12 @@ public class PdfService {
         cs.endText();
         bottomY += lineSp;
 
-        // Doctor name
+        // Doctor / Owner name
         if (hcf.getDoctorName() != null && !hcf.getDoctorName().isBlank()) {
             cs.beginText();
             cs.setFont(FONT_REGULAR, detailFontSize);
             cs.setNonStrokingColor(Color.DARK_GRAY);
-            String text = "Dr: " + truncate(hcf.getDoctorName(), 24);
+            String text = truncate(hcf.getDoctorName(), 28);
             float dtw = FONT_REGULAR.getStringWidth(text) / 1000 * detailFontSize;
             cs.newLineAtOffset(x + (w - dtw) / 2, bottomY);
             cs.showText(text);
