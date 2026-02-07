@@ -1033,12 +1033,30 @@ public class PdfService {
         float lineSp = 8f;
         float bottomY = y + 4;
 
-        // Serial number at very bottom
+        // Serial / QR ID at very bottom
         cs.beginText();
         cs.setFont(FONT_MONO, 6);
         cs.setNonStrokingColor(Color.DARK_GRAY);
-        String shortCode = qrCodeText.contains("|") ? qrCodeText.substring(qrCodeText.lastIndexOf("|") + 1)
-                : qrCodeText;
+        String shortCode;
+        if (qrCodeText.contains("|")) {
+            // Legacy pipe-delimited: CBWTF|CODE|CAT|SERIAL
+            shortCode = qrCodeText.substring(qrCodeText.lastIndexOf("|") + 1);
+        } else {
+            // Signed JSON payload — extract qrId for display
+            try {
+                int idx = qrCodeText.indexOf("\"qrId\":\"");
+                if (idx >= 0) {
+                    int start = idx + 8;
+                    int end = qrCodeText.indexOf("\"", start);
+                    String qrId = qrCodeText.substring(start, end).replace("-", "");
+                    shortCode = qrId.substring(qrId.length() - 8).toUpperCase();
+                } else {
+                    shortCode = "QR-LABEL";
+                }
+            } catch (Exception e) {
+                shortCode = "QR-LABEL";
+            }
+        }
         float cw = FONT_MONO.getStringWidth(shortCode) / 1000 * 6;
         cs.newLineAtOffset(x + (w - cw) / 2, bottomY);
         cs.showText(shortCode);

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -174,6 +175,86 @@ public class QrAuthorizationService {
         log.info("QR generated: {} for HCF {} category {}", qr.getId(), hcfId, wasteCategory);
 
         return new QrGenerateResult(qr.getId(), signedPayload.json());
+    }
+
+    /**
+     * Generate QR codes in bulk for a single waste category.
+     * Validates HCF/agreement/facility ONCE, then creates all QrAuthorization + BagLabel records.
+     * More efficient than calling generateQr() in a loop.
+     */
+    @Transactional
+    public List<QrGenerateResult> generateQrBulk(
+            UUID hcfId,
+            String wasteCategory,
+            int quantity,
+            Instant validFrom,
+            Instant validTo,
+            UUID createdBy) {
+
+        Hcf hcf = hcfRepository.findById(hcfId)
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
+
+        Agreement agreement = agreementRepository.findByHcfIdAndStatus(hcfId, "ACTIVE")
+                .stream().findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No active agreement for this HCF"));
+
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            facilityId = agreement.getFacility().getId();
+        } else {
+            if (!agreement.getFacility().getId().equals(facilityId)) {
+                throw new SecurityException("Agreement does not belong to this facility");
+            }
+        }
+
+        QrAuthorization.WasteCategory.valueOf(wasteCategory);
+
+        Facility facility = facilityRepository.findById(facilityId).orElseThrow();
+
+        List<QrGenerateResult> results = new ArrayList<>();
+
+        for (int i = 0; i < quantity; i++) {
+            UUID qrId = UUID.randomUUID();
+
+            QrSigningService.SignedPayload signedPayload = signingService.generateSignedPayload(
+                    qrId, agreement.getId(), hcfId, facilityId,
+                    wasteCategory, validFrom, validTo);
+
+            QrAuthorization qr = new QrAuthorization();
+            qr.setId(qrId);
+            qr.setAgreement(agreement);
+            qr.setHcf(hcf);
+            qr.setFacility(facility);
+            qr.setWasteCategory(wasteCategory);
+            qr.setValidFrom(validFrom);
+            qr.setValidTo(validTo);
+            qr.setStatusEnum(QrAuthorization.Status.ACTIVE);
+            qr.setCreatedBy(createdBy);
+            qr.setCreatedAt(Instant.now());
+            qr.setQrPayload(signedPayload.json());
+            qr.setChecksum(signedPayload.checksum());
+            qrRepository.save(qr);
+
+            BagLabel bagLabel = new BagLabel();
+            bagLabel.setHcf(hcf);
+            bagLabel.setFacility(facility);
+            bagLabel.setCategory(wasteCategory);
+            bagLabel.setSerialNo(generateSerialNo(wasteCategory));
+            bagLabel.setQrCode(signedPayload.json());
+            bagLabel.setStatus("ISSUED");
+            bagLabel.setIssuedAt(Instant.now());
+            bagLabelRepository.save(bagLabel);
+
+            results.add(new QrGenerateResult(qrId, signedPayload.json()));
+        }
+
+        auditLogService.log("QR", null, "QR_BULK_CREATED", createdBy,
+                String.format("{\"hcfId\":\"%s\",\"category\":\"%s\",\"quantity\":%d}",
+                        hcfId, wasteCategory, quantity));
+
+        log.info("Bulk QR generated: {} x {} for HCF {}", quantity, wasteCategory, hcfId);
+
+        return results;
     }
 
     // ============= QR Validation & Lifecycle =============
