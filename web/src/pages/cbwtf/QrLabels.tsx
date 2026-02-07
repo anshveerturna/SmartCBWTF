@@ -74,6 +74,7 @@ export default function QrLabels() {
     },
     onSuccess: (data) => {
       setGenerateDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['cbwtf-qrs'] });
       setSnackbar({ open: true, message: data.message || 'QR labels generated!', severity: 'success' });
       setGenerateForm({ hcfId: '', categoryQuantities: { YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0 } });
       if (data.pdfUrl) {
