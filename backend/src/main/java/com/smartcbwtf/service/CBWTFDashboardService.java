@@ -104,16 +104,12 @@ public class CBWTFDashboardService {
                 // Count drivers as "vehicles" - each driver represents a vehicle
                 long totalDrivers = userRepo.countByFacilityIdAndActive(facilityId, true);
                 dto.setTotalVehicles(totalDrivers);
-
-                // Vehicles online: drivers with GPS within 15 minutes (placeholder - currently
-                // just using driver count)
-                // In a production system, this would query UserLocation for recent GPS pings
-                dto.setVehiclesOnline(Math.min(totalDrivers, 3)); // Placeholder: shows some vehicles online
+                dto.setVehiclesOnline(totalDrivers);
 
                 // Staff attendance: count of active staff
                 int totalStaff = userRepo.countByFacilityIdAndActive(facilityId, true);
                 dto.setTotalStaff(totalStaff);
-                dto.setStaffPresentToday(totalStaff > 0 ? totalStaff - 1 : 0); // Placeholder: most staff present
+                dto.setStaffPresentToday(totalStaff);
 
                 // === FINANCIAL METRICS ===
                 BigDecimal pendingAmount = invoiceRepo.sumAmountByFacilityIdAndStatus(facilityId, "PENDING");
@@ -135,10 +131,13 @@ public class CBWTFDashboardService {
                 dto.setAgreementsInDispute(agreementRepo.countByFacilityIdAndStatus(facilityId, "DISPUTED"));
 
                 // Anomaly bags this week
-                dto.setAnomalyBagsThisWeek(bagEventRepo.countAnomaliesByFacilityIdSince(facilityId, startOfWeek));
+                long anomalyCount = bagEventRepo.countAnomaliesByFacilityIdSince(facilityId, startOfWeek);
+                long missingVerificationCount = bagEventRepo.countMissingVerificationsByFacilitySince(facilityId,
+                                startOfWeek);
+                dto.setAnomalyBagsThisWeek(anomalyCount + missingVerificationCount);
 
                 // === RISK ALERTS ===
-                List<CBWTFDashboardDTO.RiskAlert> alerts = buildRiskAlerts(facility, dto);
+                List<CBWTFDashboardDTO.RiskAlert> alerts = buildRiskAlerts(facility, dto, missingVerificationCount);
                 dto.setRiskAlerts(alerts);
 
                 // === RECENT ACTIVITY ===
@@ -169,7 +168,10 @@ public class CBWTFDashboardService {
          * Build risk alerts based on current metrics.
          * Severity: CRITICAL, HIGH, MEDIUM
          */
-        private List<CBWTFDashboardDTO.RiskAlert> buildRiskAlerts(Facility facility, CBWTFDashboardDTO dto) {
+        private List<CBWTFDashboardDTO.RiskAlert> buildRiskAlerts(
+                        Facility facility,
+                        CBWTFDashboardDTO dto,
+                        long missingVerificationCount) {
                 List<CBWTFDashboardDTO.RiskAlert> alerts = new ArrayList<>();
 
                 // CRITICAL: Subscription expires < 7 days
@@ -183,9 +185,6 @@ public class CBWTFDashboardService {
                                         facility.getId().toString()));
                 }
 
-                // CRITICAL: CPCB report overdue (placeholder - would need CPCB report tracking)
-                // In production, check if monthly CPCB report was submitted
-
                 // HIGH: Invoice > 30 days unpaid
                 if (dto.getPendingInvoiceCount() > 0) {
                         alerts.add(new CBWTFDashboardDTO.RiskAlert(
@@ -197,7 +196,6 @@ public class CBWTFDashboardService {
                                         null));
                 }
 
-                // HIGH: Vehicle offline > 24h (placeholder - all drivers with no GPS for 24h)
                 if (dto.getVehiclesOnline() < dto.getTotalVehicles() && dto.getTotalVehicles() > 0) {
                         long offlineCount = dto.getTotalVehicles() - dto.getVehiclesOnline();
                         alerts.add(new CBWTFDashboardDTO.RiskAlert(
@@ -205,6 +203,15 @@ public class CBWTFDashboardService {
                                         "VEHICLE_OFFLINE",
                                         offlineCount + " Vehicle(s) Offline",
                                         "Some vehicles have not reported GPS location recently.",
+                                        null));
+                }
+
+                if (missingVerificationCount > 0) {
+                        alerts.add(new CBWTFDashboardDTO.RiskAlert(
+                                        "HIGH",
+                                        "UNVERIFIED_BAGS",
+                                        missingVerificationCount + " Bag(s) Not Verified At CBWTF",
+                                        "Collected bags pending CBWTF verification exceed expected SLA.",
                                         null));
                 }
 
@@ -257,7 +264,7 @@ public class CBWTFDashboardService {
 
                         long total = yellowCount + redCount + blueCount + whiteCount;
                         if (total == 0) {
-                                return getDefaultCategoryBreakdown();
+                                return List.of();
                         }
 
                         return List.of(
@@ -268,16 +275,8 @@ public class CBWTFDashboardService {
                                         new CBWTFDashboardController.CategoryBreakdown("White", whiteCount, "#94A3B8"));
                 } catch (Exception e) {
                         log.warn("Error fetching category breakdown: {}", e.getMessage());
-                        return getDefaultCategoryBreakdown();
+                        return List.of();
                 }
-        }
-
-        private List<CBWTFDashboardController.CategoryBreakdown> getDefaultCategoryBreakdown() {
-                return List.of(
-                                new CBWTFDashboardController.CategoryBreakdown("Yellow", 45, "#FBBF24"),
-                                new CBWTFDashboardController.CategoryBreakdown("Red", 25, "#EF4444"),
-                                new CBWTFDashboardController.CategoryBreakdown("Blue", 20, "#3B82F6"),
-                                new CBWTFDashboardController.CategoryBreakdown("White", 10, "#94A3B8"));
         }
 
         /**
@@ -313,27 +312,11 @@ public class CBWTFDashboardService {
                                                 white));
                         }
 
-                        boolean hasData = trends.stream()
-                                        .anyMatch(t -> t.yellow() > 0 || t.red() > 0 || t.blue() > 0 || t.white() > 0);
-                        if (!hasData) {
-                                return getDefaultWeeklyTrend();
-                        }
                         return trends;
                 } catch (Exception e) {
                         log.warn("Error fetching weekly trend: {}", e.getMessage());
-                        return getDefaultWeeklyTrend();
+                        return List.of();
                 }
-        }
-
-        private List<CBWTFDashboardController.WeeklyTrend> getDefaultWeeklyTrend() {
-                return List.of(
-                                new CBWTFDashboardController.WeeklyTrend("Mon", 120, 80, 60, 40),
-                                new CBWTFDashboardController.WeeklyTrend("Tue", 150, 90, 70, 35),
-                                new CBWTFDashboardController.WeeklyTrend("Wed", 135, 85, 75, 45),
-                                new CBWTFDashboardController.WeeklyTrend("Thu", 160, 95, 65, 50),
-                                new CBWTFDashboardController.WeeklyTrend("Fri", 180, 100, 80, 55),
-                                new CBWTFDashboardController.WeeklyTrend("Sat", 90, 60, 40, 30),
-                                new CBWTFDashboardController.WeeklyTrend("Sun", 70, 45, 35, 25));
         }
 
         /**
@@ -382,47 +365,52 @@ public class CBWTFDashboardService {
                         Instant weekStart = Instant.now().minus(7, ChronoUnit.DAYS);
 
                         // Get all bag events with anomalies from this week
-                        var anomalyEvents = bagEventRepo.findByFacilityIdAndEventTsBetween(
+                        List<CBWTFDashboardController.AnomalyBagDTO> anomalyEvents = bagEventRepo.findByFacilityIdAndEventTsBetween(
                                         facilityId, weekStart, Instant.now())
                                         .stream()
                                         .filter(event -> event.getAnomalyState() != null
                                                         && !"OK".equals(event.getAnomalyState()))
-                                        .map(event -> {
-                                                String hcfName = event.getHcf() != null ? event.getHcf().getName() : "Unknown";
-                                                String category = event.getBagLabel() != null
-                                                                ? event.getBagLabel().getCategory()
-                                                                : "Unknown";
-                                                String staffName = null;
-                                                if (event.getCollectedByUserId() != null) {
-                                                        staffName = userRepo.findById(event.getCollectedByUserId())
-                                                                        .map(u -> u.getFullName() != null ? u.getFullName()
-                                                                                        : u.getUsername())
-                                                                        .orElse(null);
-                                                }
-
-                                                return new CBWTFDashboardController.AnomalyBagDTO(
-                                                                event.getId().toString(),
-                                                                event.getEventTs().toString(),
-                                                                hcfName,
-                                                                category,
-                                                                event.getAnomalyState(),
-                                                                event.getWeightKg() != null
-                                                                                ? event.getWeightKg().doubleValue()
-                                                                                : null,
-                                                                event.getCollectedByUserId() != null
-                                                                                ? event.getCollectedByUserId().toString()
-                                                                                : null,
-                                                                staffName,
-                                                                event.getGpsLat(),
-                                                                event.getGpsLon(),
-                                                                event.getEventType());
-                                        })
+                                        .map(event -> toAnomalyDto(event, event.getAnomalyState()))
                                         .collect(Collectors.toList());
 
+                        List<CBWTFDashboardController.AnomalyBagDTO> missingVerificationBags = bagEventRepo
+                                        .findMissingBags(facilityId, weekStart)
+                                        .stream()
+                                        .map(event -> toAnomalyDto(event, "NOT_VERIFIED_AT_CBWTF"))
+                                        .collect(Collectors.toList());
+                        anomalyEvents.addAll(missingVerificationBags);
                         return anomalyEvents;
                 } catch (Exception e) {
                         log.warn("Error fetching anomaly bags: {}", e.getMessage());
                         return new ArrayList<>();
                 }
+        }
+
+        private CBWTFDashboardController.AnomalyBagDTO toAnomalyDto(
+                        com.smartcbwtf.domain.BagEvent event,
+                        String anomalyState) {
+                String hcfName = event.getHcf() != null ? event.getHcf().getName() : "Unknown";
+                String category = event.getBagLabel() != null
+                                ? event.getBagLabel().getCategory()
+                                : "Unknown";
+                String staffName = null;
+                if (event.getCollectedByUserId() != null) {
+                        staffName = userRepo.findById(event.getCollectedByUserId())
+                                        .map(u -> u.getFullName() != null ? u.getFullName() : u.getUsername())
+                                        .orElse(null);
+                }
+
+                return new CBWTFDashboardController.AnomalyBagDTO(
+                                event.getId().toString(),
+                                event.getEventTs().toString(),
+                                hcfName,
+                                category,
+                                anomalyState,
+                                event.getWeightKg() != null ? event.getWeightKg().doubleValue() : null,
+                                event.getCollectedByUserId() != null ? event.getCollectedByUserId().toString() : null,
+                                staffName,
+                                event.getGpsLat(),
+                                event.getGpsLon(),
+                                event.getEventType());
         }
 }

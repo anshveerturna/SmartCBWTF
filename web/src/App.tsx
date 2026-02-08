@@ -200,7 +200,6 @@ const App: React.FC = () => {
                   <Route path="payments" element={<CbwtfPayments />} />
                   <Route path="settings/bank-accounts" element={<CbwtfBankAccounts />} />
                   <Route path="settings/notifications" element={<CbwtfNotificationSettings />} />
-                  <Route path="settings" element={<div>Settings (Coming Soon)</div>} />
                   <Route path="profile" element={<CbwtfProfile />} />
                 </Route>
 
@@ -222,7 +221,7 @@ const App: React.FC = () => {
                   <Route path="reports" element={<HcfReports />} />
                   <Route path="consumables/order" element={<HcfConsumablesOrder />} />
                   <Route path="compliance" element={<HcfComplianceReports />} />
-                  <Route path="bills" element={<div>Bills (Coming Soon)</div>} />
+                  <Route path="bills" element={<Navigate to="../reports" replace />} />
                   <Route path="agreement" element={<HcfAgreement />} />
                   <Route path="profile" element={<HcfProfile />} />
                 </Route>

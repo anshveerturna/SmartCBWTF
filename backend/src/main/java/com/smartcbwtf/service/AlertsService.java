@@ -1,5 +1,6 @@
 package com.smartcbwtf.service;
 
+import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.BagEvent;
 import com.smartcbwtf.domain.BagLabel;
 import com.smartcbwtf.dto.AlertMissingBagDto;
@@ -14,6 +15,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AlertsService {
@@ -28,8 +30,12 @@ public class AlertsService {
     }
 
     public List<AlertMissingBagDto> listMissingBags() {
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            return List.of();
+        }
         Instant cutoff = Instant.now().minus(missingBagHours, ChronoUnit.HOURS);
-        List<BagEvent> missing = bagEventRepository.findMissingBags(cutoff);
+        List<BagEvent> missing = bagEventRepository.findMissingBags(facilityId, cutoff);
         List<AlertMissingBagDto> result = new ArrayList<>();
         for (BagEvent e : missing) {
             BagLabel label = e.getBagLabel();
@@ -49,7 +55,14 @@ public class AlertsService {
     }
 
     public List<AlertMismatchedBagDto> listMismatchedBags() {
-        List<BagEvent> mismatches = bagEventRepository.findByEventTypeAndAnomalyState("CBWTF_VERIFICATION", "MISMATCH");
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            return List.of();
+        }
+        List<BagEvent> mismatches = bagEventRepository.findByFacilityIdAndEventTypeAndAnomalyState(
+                facilityId,
+                "CBWTF_VERIFICATION",
+                "MISMATCH");
         List<AlertMismatchedBagDto> result = new ArrayList<>();
         for (BagEvent v : mismatches) {
             // find latest HCF_COLLECTION for same label

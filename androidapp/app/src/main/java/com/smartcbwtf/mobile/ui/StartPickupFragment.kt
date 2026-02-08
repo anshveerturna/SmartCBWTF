@@ -33,7 +33,7 @@ class StartPickupFragment : Fragment(R.layout.fragment_start_pickup) {
         val adapter = HcfAdapter { hcf ->
             val action = StartPickupFragmentDirections.actionStartPickupFragmentToScanWeighFragment(
                 hcfId = hcf.id,
-                eventType = "COLLECTION"
+                eventType = "HCF_COLLECTION"
             )
             findNavController().navigate(action)
         }

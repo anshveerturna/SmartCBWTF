@@ -38,7 +38,7 @@ public class BagEventController {
      * - 409 Conflict if bag was already verified (idempotency)
      */
     @PostMapping("/verify")
-    @PreAuthorize("hasRole('DRIVER')")
+    @PreAuthorize("hasAnyRole('DRIVER', 'PLANT_OPERATOR')")
     public ResponseEntity<BagVerifyResponse> verify(@Valid @RequestBody BagVerifyRequest request) {
         BagEventService.VerifyResult result = bagEventService.verifyBag(request);
         return ResponseEntity.status(result.getHttpStatus()).body(result.getResponse());

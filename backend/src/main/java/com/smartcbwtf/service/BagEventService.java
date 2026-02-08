@@ -6,6 +6,7 @@ import com.smartcbwtf.domain.BagEvent;
 import com.smartcbwtf.domain.BagLabel;
 import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.domain.Hcf;
+import com.smartcbwtf.domain.QrAuthorization;
 import com.smartcbwtf.dto.BagEventSyncItem;
 import com.smartcbwtf.dto.BagEventSyncRequest;
 import com.smartcbwtf.dto.BagEventSyncResponse;
@@ -15,6 +16,7 @@ import com.smartcbwtf.exception.AgreementNotActiveException;
 import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.repository.BagEventRepository;
 import com.smartcbwtf.repository.BagLabelRepository;
+import com.smartcbwtf.repository.QrAuthorizationRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ public class BagEventService {
 
     private final BagLabelRepository bagLabelRepository;
     private final BagEventRepository bagEventRepository;
+    private final QrAuthorizationRepository qrAuthorizationRepository;
     private final AgreementRepository agreementRepository;
     private final AgreementGuardService agreementGuard;
     private final AuditLogService auditLogService;
@@ -42,6 +45,7 @@ public class BagEventService {
 
     public BagEventService(BagLabelRepository bagLabelRepository,
             BagEventRepository bagEventRepository,
+            QrAuthorizationRepository qrAuthorizationRepository,
             AgreementRepository agreementRepository,
             AgreementGuardService agreementGuard,
             AuditLogService auditLogService,
@@ -51,6 +55,7 @@ public class BagEventService {
             @Value("${app.gps.max-accuracy-m:100}") double maxGpsAccuracyM) {
         this.bagLabelRepository = bagLabelRepository;
         this.bagEventRepository = bagEventRepository;
+        this.qrAuthorizationRepository = qrAuthorizationRepository;
         this.agreementRepository = agreementRepository;
         this.agreementGuard = agreementGuard;
         this.auditLogService = auditLogService;
@@ -75,15 +80,44 @@ public class BagEventService {
                 validateEventType(item.getEventType());
                 String normalizedEventType = item.getEventType().toUpperCase();
                 Instant eventTs = item.getEventTs() != null ? item.getEventTs() : Instant.now();
+                Optional<QrAuthorization> qrAuthorization = findQrAuthorization(label);
 
                 if (bagEventRepository.existsByBagLabelIdAndEventTypeAndEventTs(label.getId(), normalizedEventType,
                         eventTs)) {
-                    throw new IllegalArgumentException("Duplicate event for label and timestamp");
+                    acks.add(new BagEventSyncResponse.Ack(item.getQrCode(), "SUCCESS", "Duplicate event"));
+                    continue;
+                }
+                boolean alreadyRecordedForType = bagEventRepository.existsByBagLabelIdAndEventType(label.getId(),
+                        normalizedEventType);
+                if (alreadyRecordedForType) {
+                    if ("HCF_COLLECTION".equals(normalizedEventType)) {
+                        acks.add(new BagEventSyncResponse.Ack(item.getQrCode(), "SUCCESS", "Bag already collected"));
+                        continue;
+                    }
+                    if ("CBWTF_VERIFICATION".equals(normalizedEventType)) {
+                        acks.add(new BagEventSyncResponse.Ack(item.getQrCode(), "SUCCESS", "Bag already verified"));
+                        continue;
+                    }
                 }
 
                 if ("HCF_COLLECTION".equalsIgnoreCase(item.getEventType())
                         && !"ISSUED".equalsIgnoreCase(label.getStatus())) {
                     throw new IllegalStateException("Label not in ISSUED status");
+                }
+                boolean hasCollectionEvent = bagEventRepository.existsByBagLabelIdAndEventType(label.getId(),
+                        "HCF_COLLECTION");
+                if ("CBWTF_VERIFICATION".equals(normalizedEventType)
+                        && !hasCollectionEvent) {
+                    throw new IllegalStateException("Bag cannot be verified before HCF collection");
+                }
+
+                String qrLifecycleDuplicateMessage = evaluateQrLifecycleStateForSync(
+                        qrAuthorization,
+                        normalizedEventType,
+                        hasCollectionEvent);
+                if (qrLifecycleDuplicateMessage != null) {
+                    acks.add(new BagEventSyncResponse.Ack(item.getQrCode(), "SUCCESS", qrLifecycleDuplicateMessage));
+                    continue;
                 }
 
                 validateFacility(item, label);
@@ -113,6 +147,11 @@ public class BagEventService {
                 }
                 event.setAnomalyState(anomaly);
                 bagEventRepository.save(event);
+                if ("HCF_COLLECTION".equals(normalizedEventType)) {
+                    markQrUsed(qrAuthorization, event);
+                } else if ("CBWTF_VERIFICATION".equals(normalizedEventType)) {
+                    markQrVerified(qrAuthorization, event.getEventTs());
+                }
                 String dataJson = buildAuditDataJson(mismatchResult);
                 auditLogService.log("BAG_EVENT", event.getId(), "CREATE", authenticatedUserId, dataJson);
                 acks.add(new BagEventSyncResponse.Ack(item.getQrCode(), "SUCCESS", anomaly));
@@ -266,6 +305,29 @@ public class BagEventService {
         if (bagEventRepository.existsByBagLabelIdAndEventType(label.getId(), "CBWTF_VERIFICATION")) {
             return new VerifyResult(409, BagVerifyResponse.error("ALREADY_VERIFIED", "Bag has already been verified"));
         }
+        boolean hasCollectionEvent = bagEventRepository.existsByBagLabelIdAndEventType(label.getId(), "HCF_COLLECTION");
+        if (!hasCollectionEvent) {
+            return new VerifyResult(409,
+                    BagVerifyResponse.error("NOT_COLLECTED", "Bag cannot be verified before HCF collection"));
+        }
+
+        Optional<QrAuthorization> qrAuthorization = findQrAuthorization(label);
+        if (qrAuthorization.isPresent()) {
+            QrAuthorization.Status status = qrAuthorization.get().getStatusEnum();
+            if (status == QrAuthorization.Status.VERIFIED) {
+                return new VerifyResult(409,
+                        BagVerifyResponse.error("ALREADY_VERIFIED", "Bag has already been verified"));
+            }
+            if (status != QrAuthorization.Status.USED && status != QrAuthorization.Status.ACTIVE) {
+                return new VerifyResult(409,
+                        BagVerifyResponse.error("QR_INVALID_STATE",
+                                "QR is not in a valid state for verification"));
+            }
+            if (status == QrAuthorization.Status.ACTIVE && !hasCollectionEvent) {
+                return new VerifyResult(409,
+                        BagVerifyResponse.error("NOT_COLLECTED", "Bag cannot be verified before HCF collection"));
+            }
+        }
 
         Facility facility = label.getFacility();
         if (facility == null) {
@@ -316,6 +378,7 @@ public class BagEventService {
         label.setStatus("USED");
         label.setUsedAt(verifiedAt);
         bagLabelRepository.save(label);
+        markQrVerified(qrAuthorization, verifiedAt);
 
         // Audit log
         String dataJson = buildAuditDataJson(mismatchResult);
@@ -336,6 +399,71 @@ public class BagEventService {
             throw new IllegalStateException("Authenticated user context is required");
         }
         return userId;
+    }
+
+    private Optional<QrAuthorization> findQrAuthorization(BagLabel label) {
+        if (label.getFacility() == null || label.getFacility().getId() == null || label.getQrCode() == null) {
+            return Optional.empty();
+        }
+        return qrAuthorizationRepository.findFirstByQrPayloadAndFacilityId(label.getQrCode(), label.getFacility().getId());
+    }
+
+    private String evaluateQrLifecycleStateForSync(Optional<QrAuthorization> qrAuthorization,
+            String eventType,
+            boolean hasCollectionEvent) {
+        if (qrAuthorization.isEmpty()) {
+            return null;
+        }
+        QrAuthorization.Status status = qrAuthorization.get().getStatusEnum();
+        if ("HCF_COLLECTION".equals(eventType)) {
+            if (status == QrAuthorization.Status.USED) {
+                return "Bag already collected";
+            }
+            if (status == QrAuthorization.Status.VERIFIED) {
+                return "Bag already verified";
+            }
+            if (status != QrAuthorization.Status.ACTIVE) {
+                throw new IllegalStateException("QR is not active for collection");
+            }
+            return null;
+        }
+        if ("CBWTF_VERIFICATION".equals(eventType)) {
+            if (status == QrAuthorization.Status.VERIFIED) {
+                return "Bag already verified";
+            }
+            if (status == QrAuthorization.Status.ACTIVE && !hasCollectionEvent) {
+                throw new IllegalStateException("Bag cannot be verified before HCF collection");
+            }
+            if (status != QrAuthorization.Status.USED && status != QrAuthorization.Status.ACTIVE) {
+                throw new IllegalStateException("QR is not in a verifiable state");
+            }
+        }
+        return null;
+    }
+
+    private void markQrUsed(Optional<QrAuthorization> qrAuthorization, BagEvent event) {
+        if (qrAuthorization.isEmpty()) {
+            return;
+        }
+        QrAuthorization qr = qrAuthorization.get();
+        if (qr.getStatusEnum() == QrAuthorization.Status.ACTIVE) {
+            qr.setStatusEnum(QrAuthorization.Status.USED);
+            qr.setUsedAt(event.getEventTs());
+            qr.setPickupEventId(event.getId());
+            qrAuthorizationRepository.save(qr);
+        }
+    }
+
+    private void markQrVerified(Optional<QrAuthorization> qrAuthorization, Instant verifiedAt) {
+        if (qrAuthorization.isEmpty()) {
+            return;
+        }
+        QrAuthorization qr = qrAuthorization.get();
+        if (qr.getStatusEnum() != QrAuthorization.Status.VERIFIED) {
+            qr.setStatusEnum(QrAuthorization.Status.VERIFIED);
+            qr.setVerifiedAt(verifiedAt);
+            qrAuthorizationRepository.save(qr);
+        }
     }
 
     /**

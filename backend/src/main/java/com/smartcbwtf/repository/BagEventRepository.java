@@ -21,10 +21,10 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 	List<BagEvent> findByFacilityIdAndEventTypeAndEventTsBetween(UUID facilityId, String eventType, Instant start,
 			Instant end);
 
-	List<BagEvent> findByEventTypeAndAnomalyState(String eventType, String anomalyState);
+	List<BagEvent> findByFacilityIdAndEventTypeAndAnomalyState(UUID facilityId, String eventType, String anomalyState);
 
-	@Query("select e from BagEvent e where e.eventType = 'HCF_COLLECTION' and e.eventTs < :cutoff and not exists (select 1 from BagEvent v where v.bagLabel = e.bagLabel and v.eventType = 'CBWTF_VERIFICATION')")
-	List<BagEvent> findMissingBags(@Param("cutoff") Instant cutoff);
+	@Query("select e from BagEvent e where e.facility.id = :facilityId and e.eventType = 'HCF_COLLECTION' and e.eventTs < :cutoff and not exists (select 1 from BagEvent v where v.bagLabel = e.bagLabel and v.eventType = 'CBWTF_VERIFICATION')")
+	List<BagEvent> findMissingBags(@Param("facilityId") UUID facilityId, @Param("cutoff") Instant cutoff);
 
 	Optional<BagEvent> findFirstByBagLabelIdAndEventTypeOrderByEventTsDesc(UUID bagLabelId, String eventType);
 
@@ -48,6 +48,9 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 
 	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.facility.id = :facilityId AND e.anomalyState != 'OK' AND e.eventTs >= :since")
 	long countAnomaliesByFacilityIdSince(@Param("facilityId") UUID facilityId, @Param("since") Instant since);
+
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.facility.id = :facilityId AND e.eventType = 'HCF_COLLECTION' AND e.eventTs >= :since AND NOT EXISTS (SELECT 1 FROM BagEvent v WHERE v.bagLabel = e.bagLabel AND v.eventType = 'CBWTF_VERIFICATION')")
+	long countMissingVerificationsByFacilitySince(@Param("facilityId") UUID facilityId, @Param("since") Instant since);
 
 	@Query("SELECT e FROM BagEvent e WHERE e.facility.id = :facilityId ORDER BY e.eventTs DESC LIMIT :limit")
 	List<BagEvent> findRecentByFacilityId(@Param("facilityId") UUID facilityId, @Param("limit") int limit);

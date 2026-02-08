@@ -4,7 +4,7 @@ import apiClient from './client';
 
 export interface RiskAlert {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
-  type: 'SUBSCRIPTION_EXPIRY' | 'CPCB_OVERDUE' | 'INVOICE_OVERDUE' | 'VEHICLE_OFFLINE' | 'AGREEMENT_EXPIRY';
+  type: 'SUBSCRIPTION_EXPIRY' | 'CPCB_OVERDUE' | 'INVOICE_OVERDUE' | 'VEHICLE_OFFLINE' | 'AGREEMENT_EXPIRY' | 'UNVERIFIED_BAGS';
   title: string;
   description: string;
   entityId: string | null;

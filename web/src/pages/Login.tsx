@@ -50,6 +50,18 @@ const getRoleRedirectPath = (role: UserRole): string => {
   }
 };
 
+const extractRoleFromToken = (token: string): UserRole | null => {
+  try {
+    const payloadPart = token.split('.')[1];
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const payload = JSON.parse(atob(padded)) as { role?: UserRole };
+    return payload.role ?? null;
+  } catch {
+    return null;
+  }
+};
+
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login, isLoading } = useAuth();
@@ -76,9 +88,8 @@ const Login: React.FC = () => {
       // Don't use 'from' location as it may be for a different role
       const token = localStorage.getItem(TOKEN_KEY);
       if (token) {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const redirectPath = getRoleRedirectPath(payload.role);
-        console.log('Login successful, redirecting to:', redirectPath, 'for role:', payload.role);
+        const role = extractRoleFromToken(token);
+        const redirectPath = role ? getRoleRedirectPath(role) : '/';
         navigate(redirectPath, { replace: true });
       } else {
         // Fallback to home

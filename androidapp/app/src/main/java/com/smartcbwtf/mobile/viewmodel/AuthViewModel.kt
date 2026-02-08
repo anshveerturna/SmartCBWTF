@@ -3,6 +3,7 @@ package com.smartcbwtf.mobile.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartcbwtf.mobile.repository.AuthRepository
+import com.smartcbwtf.mobile.security.JwtTokenUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +34,12 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.getAuthStateFlow().collect { token ->
                 if (!token.isNullOrBlank()) {
-                    _authState.value = AuthState.Authenticated
+                    if (JwtTokenUtils.isExpired(token)) {
+                        authRepository.logout()
+                        _authState.value = AuthState.Unauthenticated
+                    } else {
+                        _authState.value = AuthState.Authenticated
+                    }
                 } else {
                     _authState.value = AuthState.Unauthenticated
                 }

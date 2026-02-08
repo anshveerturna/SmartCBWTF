@@ -273,24 +273,6 @@ const RiskAlertCard: React.FC<{ alerts: RiskAlert[] }> = ({ alerts }) => {
   );
 };
 
-// Default chart data (used when no data from backend)
-const defaultCategoryData = [
-  { name: 'Yellow', value: 45, color: '#FBBF24' },
-  { name: 'Red', value: 25, color: '#EF4444' },
-  { name: 'Blue', value: 20, color: '#3B82F6' },
-  { name: 'White', value: 10, color: '#94A3B8' },
-];
-
-const defaultTrendData = [
-  { date: 'Mon', yellow: 120, red: 80, blue: 60, white: 40 },
-  { date: 'Tue', yellow: 150, red: 90, blue: 70, white: 35 },
-  { date: 'Wed', yellow: 135, red: 85, blue: 75, white: 45 },
-  { date: 'Thu', yellow: 160, red: 95, blue: 65, white: 50 },
-  { date: 'Fri', yellow: 180, red: 100, blue: 80, white: 55 },
-  { date: 'Sat', yellow: 90, red: 60, blue: 40, white: 30 },
-  { date: 'Sun', yellow: 70, red: 45, blue: 35, white: 25 },
-];
-
 const CbwtfDashboard: React.FC = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -328,8 +310,11 @@ const CbwtfDashboard: React.FC = () => {
     refetchInterval: 60000,
   });
 
-  const chartCategoryData = categoryData || defaultCategoryData;
-  const chartTrendData = trendData || defaultTrendData;
+  const chartCategoryData = categoryData || [];
+  const chartTrendData = trendData || [];
+  const totalCategoryCount = chartCategoryData.reduce((sum, item) => sum + (item.value || 0), 0);
+  const blueCategoryCount = chartCategoryData.find((item) => item.name?.toLowerCase() === 'blue')?.value || 0;
+  const bluePercent = totalCategoryCount > 0 ? (blueCategoryCount / totalCategoryCount) * 100 : 0;
 
   const formatCurrency = (amount: number) => {
     if (amount >= 100000) {
@@ -628,7 +613,7 @@ const CbwtfDashboard: React.FC = () => {
                   Blue Waste Compliance
                 </Typography>
                 <Chip
-                  label="20%"
+                  label={`${bluePercent.toFixed(1)}%`}
                   size="small"
                   sx={{ 
                     background: 'linear-gradient(135deg, #F59E0B, #D97706)',
@@ -638,12 +623,12 @@ const CbwtfDashboard: React.FC = () => {
                   }}
                 />
               </Box>
-              <LinearProgress
-                variant="determinate"
-                value={36}
-                sx={{
-                  height: 10,
-                  borderRadius: 5,
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.min(100, Math.max(0, bluePercent))}
+                  sx={{
+                    height: 10,
+                    borderRadius: 5,
                   bgcolor: alpha('#3B82F6', 0.2),
                   '& .MuiLinearProgress-bar': {
                     background: 'linear-gradient(90deg, #3B82F6, #6366F1)',
@@ -652,7 +637,7 @@ const CbwtfDashboard: React.FC = () => {
                 }}
               />
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Target: 55% | Current: 20%
+                Share of weekly processed bags in Blue category
               </Typography>
             </Box>
           </CardContent>

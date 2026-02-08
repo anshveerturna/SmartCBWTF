@@ -57,6 +57,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [state, setState] = useState<AuthState>(initialState);
   const queryClient = useQueryClient();
 
+  const clearAuthenticatedState = useCallback(() => {
+    tokenStorage.remove();
+    queryClient.clear();
+    setState({
+      isAuthenticated: false,
+      isLoading: false,
+      user: null,
+      error: null,
+    });
+  }, [queryClient]);
+
   // Initialize auth state from stored token
   useEffect(() => {
     const token = tokenStorage.get();
@@ -70,38 +81,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           error: null,
         });
       } else {
-        tokenStorage.remove();
-        setState({
-          isAuthenticated: false,
-          isLoading: false,
-          user: null,
-          error: null,
-        });
+        clearAuthenticatedState();
       }
     } else {
       setState((prev) => ({ ...prev, isLoading: false }));
     }
-  }, []);
+  }, [clearAuthenticatedState]);
 
   // Multi-tab logout sync: listen for token removal in other tabs
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === TOKEN_KEY && e.newValue === null) {
         // Token removed in another tab → force logout this tab
-        queryClient.clear(); // Clear all React Query cache
-        setState({
-          isAuthenticated: false,
-          isLoading: false,
-          user: null,
-          error: null,
-        });
+        clearAuthenticatedState();
         // Hard redirect guarantees termination of privileged state
         window.location.href = '/login';
       }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [queryClient]);
+  }, [clearAuthenticatedState]);
+
+  // Enforce session timeout client-side as soon as JWT expires.
+  useEffect(() => {
+    if (!state.user) return;
+    const expiresAtMs = state.user.exp * 1000;
+    const delayMs = expiresAtMs - Date.now();
+    if (delayMs <= 0) {
+      clearAuthenticatedState();
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+      return;
+    }
+    const timerId = window.setTimeout(() => {
+      clearAuthenticatedState();
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }, delayMs);
+    return () => window.clearTimeout(timerId);
+  }, [state.user, clearAuthenticatedState]);
 
   // Login handler
   const login = useCallback(async (credentials: LoginRequest) => {
@@ -134,15 +154,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Logout handler - clears everything
   const logout = useCallback(() => {
-    tokenStorage.remove();
-    queryClient.clear(); // Clear ALL React Query cached data
-    setState({
-      isAuthenticated: false,
-      isLoading: false,
-      user: null,
-      error: null,
-    });
-  }, [queryClient]);
+    clearAuthenticatedState();
+  }, [clearAuthenticatedState]);
 
   // Update user profile without re-login (for photo and name changes)
   const updateUserProfile = useCallback((updates: Partial<Pick<JwtPayload, 'full_name' | 'profile_photo_url'>>) => {
@@ -191,4 +204,3 @@ export const useAuth = (): AuthContextValue => {
   }
   return context;
 };
-

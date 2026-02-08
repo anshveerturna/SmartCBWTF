@@ -65,4 +65,7 @@ public interface QrAuthorizationRepository extends JpaRepository<QrAuthorization
 
         // Find QR by ID with facility check (tenant isolation)
         Optional<QrAuthorization> findByIdAndFacilityId(UUID id, UUID facilityId);
+
+        // Resolve QR authorization record by signed payload and facility.
+        Optional<QrAuthorization> findFirstByQrPayloadAndFacilityId(String qrPayload, UUID facilityId);
 }
