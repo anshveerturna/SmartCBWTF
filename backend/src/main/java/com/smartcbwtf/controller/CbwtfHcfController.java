@@ -278,8 +278,8 @@ public class CbwtfHcfController {
             return ResponseEntity.notFound().build();
         }
 
-        // Lazy regeneration: if PDF is missing, generate it now
-        agreement = agreementService.regeneratePdfIfMissing(agreement);
+        // Always regenerate fresh PDF with latest branding/settings
+        agreement = agreementService.regeneratePdf(agreement);
 
         if (agreement.getPdfUrl() == null || agreement.getPdfUrl().isBlank()) {
             return ResponseEntity.notFound().build();

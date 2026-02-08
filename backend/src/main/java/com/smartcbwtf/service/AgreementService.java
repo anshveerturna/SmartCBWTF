@@ -143,15 +143,28 @@ public class AgreementService {
                 // Path invalid, regenerate
             }
         }
+        return regeneratePdf(agreement);
+    }
 
-        // Regenerate the PDF
-        log.info("[AGREEMENT] Regenerating PDF for agreement={} (was missing)", agreement.getAgreementNumber());
+    /**
+     * Always regenerate agreement PDF with latest data from branding/settings.
+     * Used on every download to ensure the PDF reflects current facility details.
+     */
+    @Transactional
+    public Agreement regeneratePdf(Agreement agreement) {
+        log.info("[AGREEMENT] Regenerating fresh PDF for agreement={}", agreement.getAgreementNumber());
         FacilityBranding branding = brandingRepository.findById(agreement.getFacility().getId()).orElse(null);
         FacilitySettings settings = settingsRepository.findById(agreement.getFacility().getId()).orElse(null);
+
+        // Update terms text from latest settings if available
+        if (settings != null && settings.getAgreementTermsTemplate() != null) {
+            agreement.setTermsText(settings.getAgreementTermsTemplate());
+        }
+
         String pdfPath = pdfService.generateAgreementPdf(agreement, null, null, branding, settings);
         agreement.setPdfUrl(pdfPath);
         agreementRepository.save(agreement);
-        log.info("[AGREEMENT] PDF regenerated at path={}", pdfPath);
+        log.info("[AGREEMENT] Fresh PDF generated at path={}", pdfPath);
         return agreement;
     }
 }

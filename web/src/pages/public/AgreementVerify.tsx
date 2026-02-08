@@ -30,8 +30,6 @@ interface VerificationResult {
   hcfCode: string | null;
   startDate: string | null;
   endDate: string | null;
-  version: number | null;
-  createdAt: string | null;
   message: string;
 }
 
@@ -107,7 +105,7 @@ const AgreementVerify: React.FC = () => {
           </Typography>
         </Box>
         <Typography variant="body2" sx={{ color: '#4b5563', fontWeight: 500 }}>
-          Bio-Medical Waste Agreement Verification
+          Agreement Verification
         </Typography>
         <Box sx={{ width: 60, height: 3, bgcolor: '#16a34a', borderRadius: 2, mx: 'auto', mt: 1 }} />
       </Box>
@@ -154,9 +152,13 @@ const AgreementVerify: React.FC = () => {
               )}
               <Box>
                 <Typography variant="subtitle1" fontWeight={700}>
-                  {isActive ? 'Agreement Verified & Active' : 'Agreement Verified'}
+                  {isActive ? 'Verified — Agreement Active' : 'Verified — ' + result.status}
                 </Typography>
-                <Typography variant="caption">{result.message}</Typography>
+                <Typography variant="caption">
+                  {isActive
+                    ? 'This agreement has been verified and is currently in effect.'
+                    : 'This agreement has been verified. Current status: ' + result.status + '.'}
+                </Typography>
               </Box>
             </Box>
 
@@ -180,7 +182,6 @@ const AgreementVerify: React.FC = () => {
                     />
                   }
                 />
-                <DetailRow label="Version" value={result.version ? `V${result.version}` : null} />
                 <DetailRow
                   label="Effective From"
                   value={result.startDate ? formatDate(result.startDate) : null}
@@ -195,9 +196,9 @@ const AgreementVerify: React.FC = () => {
 
               <Box sx={{ mt: 3 }} />
 
-              {/* CBWTF (First Party) */}
+              {/* Waste Treatment Facility */}
               <Typography variant="overline" color="text.secondary" fontWeight={600}>
-                CBWTF (First Party)
+                Waste Treatment Facility
               </Typography>
               <Divider sx={{ mb: 2 }} />
 
@@ -208,9 +209,9 @@ const AgreementVerify: React.FC = () => {
 
               <Box sx={{ mt: 3 }} />
 
-              {/* HCF (Second Party) */}
+              {/* Healthcare Facility */}
               <Typography variant="overline" color="text.secondary" fontWeight={600}>
-                HCF (Second Party)
+                Healthcare Facility
               </Typography>
               <Divider sx={{ mb: 2 }} />
 
@@ -223,8 +224,7 @@ const AgreementVerify: React.FC = () => {
 
               {/* Footer */}
               <Typography variant="caption" color="text.disabled" sx={{ display: 'block', textAlign: 'center' }}>
-                Agreement created on{' '}
-                {result.createdAt ? formatDateTime(result.createdAt) : 'N/A'}
+                This verification is provided by SmartCBWTF, a bio-medical waste compliance platform.
               </Typography>
             </CardContent>
           </Card>
@@ -273,19 +273,6 @@ function formatDate(dateStr: string): string {
     });
   } catch {
     return dateStr;
-  }
-}
-
-function formatDateTime(isoStr: string): string {
-  try {
-    const d = new Date(isoStr);
-    return d.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return isoStr;
   }
 }
 
