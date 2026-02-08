@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -18,6 +19,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/cbwtf/alerts")
+@PreAuthorize("hasRole('CBWTF_ADMIN')")
 public class AlertController {
 
     private final AlertService alertService;

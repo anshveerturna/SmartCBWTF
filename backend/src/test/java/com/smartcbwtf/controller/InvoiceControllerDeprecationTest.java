@@ -7,9 +7,15 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import com.smartcbwtf.config.JwtService;
+import com.smartcbwtf.repository.AppUserRepository;
+import com.smartcbwtf.service.FeatureGuardService;
+import com.smartcbwtf.service.SubscriptionService;
+import com.smartcbwtf.service.SystemConfigService;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
@@ -24,11 +30,27 @@ class InvoiceControllerDeprecationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @MockBean
+    private FeatureGuardService featureGuardService;
+
+    @MockBean
+    private JwtService jwtService;
+
+    @MockBean
+    private AppUserRepository appUserRepository;
+
+    @MockBean
+    private SubscriptionService subscriptionService;
+
+    @MockBean
+    private SystemConfigService systemConfigService;
+
     @Test
     @DisplayName("POST /api/invoices/generate should return 410 Gone")
     @WithMockUser(roles = "CBWTF_ADMIN")
     void generateShouldReturn410() throws Exception {
         mockMvc.perform(post("/api/invoices/generate")
+                .with(csrf())
                 .contentType("application/json")
                 .content("{}"))
                 .andExpect(status().isGone())

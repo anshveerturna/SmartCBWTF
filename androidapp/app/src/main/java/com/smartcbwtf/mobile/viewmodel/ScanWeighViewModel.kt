@@ -350,6 +350,9 @@ class ScanWeighViewModel @Inject constructor(
             try {
                 val currentUserId = sessionManager.userId
                 val currentFacilityId = sessionManager.facilityId
+                if (currentUserId.isNullOrBlank()) {
+                    throw IllegalStateException("User session expired. Please log in again.")
+                }
                 Log.d("ScanWeighVM", "Session data: userId=$currentUserId, facilityId=$currentFacilityId")
                 val events = bags.map { bag ->
                     BagEvent(

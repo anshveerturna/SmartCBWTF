@@ -31,7 +31,6 @@ class BillingCalculationServiceTest {
     private static final BigDecimal BASE_GRAMS = new BigDecimal("500.00"); // 500g per bed per day
     private static final BigDecimal BASE_RATE = new BigDecimal("10.00"); // ₹10 per bed per day
     private static final BigDecimal EXCESS_RATE = new BigDecimal("25.00"); // ₹25 per kg excess
-    private static final BigDecimal GST_RATE = new BigDecimal("0.09"); // 9%
 
     @BeforeEach
     void setUp() {
@@ -105,12 +104,12 @@ class BillingCalculationServiceTest {
             // Subtotal = base + 0 = ₹15,000
             assertEquals(new BigDecimal("15000.00"), result.subtotal());
 
-            // GST: 15000 × 0.09 = 1350 each
-            assertEquals(new BigDecimal("1350.00"), result.cgst());
-            assertEquals(new BigDecimal("1350.00"), result.sgst());
+            // GST: 15000 × 0.025 = 375 each
+            assertEquals(new BigDecimal("375.00"), result.cgst());
+            assertEquals(new BigDecimal("375.00"), result.sgst());
 
-            // Total: 15000 + 1350 + 1350 = 17700
-            assertEquals(new BigDecimal("17700.00"), result.totalAmount());
+            // Total: 15000 + 375 + 375 = 15750
+            assertEquals(new BigDecimal("15750.00"), result.totalAmount());
         }
 
         @Test
@@ -170,8 +169,8 @@ class BillingCalculationServiceTest {
             // Subtotal: 15000 + 18750 = 33750
             assertEquals(new BigDecimal("33750.00"), result.subtotal());
 
-            // Total with 18% GST: 33750 × 1.18 = 39825
-            assertEquals(new BigDecimal("39825.00"), result.totalAmount());
+            // Total with 5% GST: 33750 × 1.05 = 35437.50
+            assertEquals(new BigDecimal("35437.50"), result.totalAmount());
         }
     }
 
@@ -241,10 +240,10 @@ class BillingCalculationServiceTest {
 
         @ParameterizedTest
         @CsvSource({
-                "28, 700.000, 14000.00, 16520.00",
-                "29, 725.000, 14500.00, 17110.00",
-                "30, 750.000, 15000.00, 17700.00",
-                "31, 775.000, 15500.00, 18290.00"
+                "28, 700.000, 14000.00, 14700.00",
+                "29, 725.000, 14500.00, 15225.00",
+                "30, 750.000, 15000.00, 15750.00",
+                "31, 775.000, 15500.00, 16275.00"
         })
         @DisplayName("Month length affects calculation proportionally")
         void monthLengthVariation(int days, String allowance, String baseAmt, String total) {
@@ -284,8 +283,8 @@ class BillingCalculationServiceTest {
         void gstRoundsSeparately() {
             // Subtotal that causes rounding in GST
             // Using 33 beds × 10 × 30 = 9900 subtotal
-            // CGST: 9900 × 0.09 = 891.00 (exact)
-            // SGST: 9900 × 0.09 = 891.00 (exact)
+            // CGST: 9900 × 0.025 = 247.50 (exact)
+            // SGST: 9900 × 0.025 = 247.50 (exact)
             BigDecimal pickup = BigDecimal.ZERO;
 
             var result = service.calculate(33, 30, BASE_GRAMS, BASE_RATE, EXCESS_RATE, pickup);
@@ -293,9 +292,9 @@ class BillingCalculationServiceTest {
             // 33 × 500 × 30 / 1000 = 495 kg allowance
             // 33 × 10 × 30 = 9900 base
             assertEquals(new BigDecimal("9900.00"), result.subtotal());
-            assertEquals(new BigDecimal("891.00"), result.cgst());
-            assertEquals(new BigDecimal("891.00"), result.sgst());
-            assertEquals(new BigDecimal("11682.00"), result.totalAmount());
+            assertEquals(new BigDecimal("247.50"), result.cgst());
+            assertEquals(new BigDecimal("247.50"), result.sgst());
+            assertEquals(new BigDecimal("10395.00"), result.totalAmount());
         }
 
         @Test
@@ -375,7 +374,7 @@ class BillingCalculationServiceTest {
         }
 
         @Test
-        @DisplayName("CGST and SGST are equal (both 9%)")
+        @DisplayName("CGST and SGST are equal (both 2.5%)")
         void cgstEqualsSgst() {
             BigDecimal pickup = new BigDecimal("900.000");
 
@@ -385,8 +384,8 @@ class BillingCalculationServiceTest {
         }
 
         @Test
-        @DisplayName("GST is 18% of subtotal (within rounding)")
-        void gstIs18Percent() {
+        @DisplayName("GST is 5% of subtotal (within rounding)")
+        void gstIsFivePercent() {
             BigDecimal pickup = new BigDecimal("800.000");
 
             var result = service.calculate(BEDS, 30, BASE_GRAMS, BASE_RATE, EXCESS_RATE, pickup);
@@ -394,14 +393,14 @@ class BillingCalculationServiceTest {
             // Total GST
             BigDecimal totalGst = result.cgst().add(result.sgst());
 
-            // Expected: subtotal × 0.18
+            // Expected: subtotal × 0.05
             BigDecimal expected = result.subtotal()
-                    .multiply(new BigDecimal("0.18"))
+                    .multiply(new BigDecimal("0.05"))
                     .setScale(2, java.math.RoundingMode.HALF_UP);
 
             // Allow 1 paise tolerance due to separate rounding
             assertTrue(totalGst.subtract(expected).abs().compareTo(new BigDecimal("0.01")) <= 0,
-                    "GST should be 18% of subtotal within 1 paise");
+                    "GST should be 5% of subtotal within 1 paise");
         }
     }
 

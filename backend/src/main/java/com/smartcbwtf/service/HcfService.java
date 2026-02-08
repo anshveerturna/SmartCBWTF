@@ -5,6 +5,8 @@ import com.smartcbwtf.domain.*;
 import com.smartcbwtf.dto.HcfRegistrationRequest;
 import com.smartcbwtf.dto.HcfRegistrationResponse;
 import com.smartcbwtf.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,8 @@ import java.util.UUID;
 
 @Service
 public class HcfService {
+
+    private static final Logger log = LoggerFactory.getLogger(HcfService.class);
 
     private final HcfRepository hcfRepository;
     private final AgreementRepository agreementRepository;
@@ -480,8 +484,7 @@ public class HcfService {
             auditLogService.logWithData("HCF", hcf.getId(), "HCF_REGISTER",
                     request.getRegisteredByUserId(), jsonData, dataHash);
         } catch (Exception e) {
-            // Log error but don't fail registration
-            e.printStackTrace();
+            log.error("Failed to write HCF registration audit log for {}", hcf.getId(), e);
         }
     }
 
@@ -519,8 +522,7 @@ public class HcfService {
                         agreement.getPdfUrl());
             }
         } catch (Exception e) {
-            // Log but don't fail
-            e.printStackTrace();
+            log.warn("Failed to send HCF registration emails for {}", hcf.getId(), e);
         }
     }
 

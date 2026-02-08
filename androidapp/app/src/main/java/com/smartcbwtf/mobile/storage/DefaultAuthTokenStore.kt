@@ -2,6 +2,7 @@ package com.smartcbwtf.mobile.storage
 
 import android.content.SharedPreferences
 import android.util.Log
+import com.smartcbwtf.mobile.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,14 +29,14 @@ class DefaultAuthTokenStore @Inject constructor(
     private var _mustChangePassword: Boolean = prefs.getBoolean(KEY_MUST_CHANGE_PASSWORD, false)
 
     override suspend fun getToken(): String? = withContext(Dispatchers.IO) {
-        val token = prefs.getString(KEY_TOKEN, null)
-        Log.d(TAG, "getToken: ${if (token != null) "present (${token.length} chars)" else "null"}")
-        token
+        prefs.getString(KEY_TOKEN, null)
     }
 
     override suspend fun setToken(token: String?) {
         withContext(Dispatchers.IO) {
-            Log.d(TAG, "setToken: ${if (token != null) "storing (${token.length} chars)" else "clearing"}")
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "setToken: ${if (token != null) "stored" else "cleared"}")
+            }
             prefs.edit().putString(KEY_TOKEN, token).apply()
             _tokenFlow.emit(token)
             
@@ -57,7 +58,6 @@ class DefaultAuthTokenStore @Inject constructor(
     override fun getMustChangePassword(): Boolean {
         // Refresh from storage to ensure we have latest value
         _mustChangePassword = prefs.getBoolean(KEY_MUST_CHANGE_PASSWORD, false)
-        Log.d(TAG, "getMustChangePassword: $_mustChangePassword")
         return _mustChangePassword
     }
 
@@ -68,7 +68,9 @@ class DefaultAuthTokenStore @Inject constructor(
      * SECURITY: This MUST be persisted, not just in-memory, to prevent bypass.
      */
     override fun setMustChangePassword(required: Boolean) {
-        Log.d(TAG, "setMustChangePassword: $required")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "setMustChangePassword: $required")
+        }
         _mustChangePassword = required
         prefs.edit().putBoolean(KEY_MUST_CHANGE_PASSWORD, required).commit() // commit() for immediate persistence
     }
@@ -77,7 +79,9 @@ class DefaultAuthTokenStore @Inject constructor(
      * Clear all auth state (for complete logout).
      */
     fun clearAll() {
-        Log.d(TAG, "clearAll: clearing all auth state")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "clearAll: clearing all auth state")
+        }
         prefs.edit()
             .remove(KEY_TOKEN)
             .remove(KEY_MUST_CHANGE_PASSWORD)

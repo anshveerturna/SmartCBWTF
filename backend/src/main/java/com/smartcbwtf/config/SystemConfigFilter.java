@@ -109,13 +109,13 @@ public class SystemConfigFilter extends OncePerRequestFilter {
             return false;
         }
 
-        // Allow essential auth operations even in readonly mode
+        // Allow only essential auth operations even in readonly mode
         String path = request.getRequestURI();
-        if (path.startsWith("/api/auth/")) {
-            return false; // Allow login, unlock, password change
+        if ("/api/auth/login".equals(path)) {
+            return false;
         }
         if (path.contains("/change-password") || path.contains("/password")) {
-            return false; // Allow password changes
+            return false;
         }
 
         return true; // Block all other mutations

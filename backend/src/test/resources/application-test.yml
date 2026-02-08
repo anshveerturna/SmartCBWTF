@@ -16,10 +16,13 @@ spring:
     enabled: false # Use Hibernate DDL for tests
 
 # JWT settings for tests
-app:
+security:
   jwt:
     secret: test-secret-key-for-testing-purposes-only-must-be-256-bits-long
-    expiration-ms: 86400000
+    issuer: smart-cbwtf-test
+    access-token-ttl-minutes: 60
+
+app:
   geofence:
     hcf-radius-m: 200
     facility-default-radius-m: 200

@@ -4,7 +4,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/smart_cbwtf
     username: smart_cbwtf
-    password: SmartCBWTF2026Secure!
+    password: ${DB_PASSWORD:SmartCBWTF2026Secure!}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -31,7 +31,7 @@ server:
 
 security:
   jwt:
-    secret: ChangeThisToA32ByteOrLongerSecretKey2026Production
+    secret: ${JWT_SECRET:SmartCBWTF2026ProductionSigningKey!SecureHMAC}
     issuer: smart-cbwtf
     access-token-ttl-minutes: 60
 
@@ -56,8 +56,11 @@ app:
     geofence-radius-m: 50
     cooldown-minutes: 5
   email:
-    enabled: false
-    from: noreply@smartcbwtf.com
+    enabled: true
+    from: info@smartcbwtf.com
+    brevo:
+      api-key: ${BREVO_API_KEY:}
+      sender-name: SmartCBWTF
   agreement:
     number:
       prefix: HCF

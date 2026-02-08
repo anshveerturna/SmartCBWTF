@@ -3,6 +3,8 @@ package com.smartcbwtf.controller;
 import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.Attendance;
 import com.smartcbwtf.repository.AttendanceRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +25,7 @@ import java.util.UUID;
 @PreAuthorize("hasRole('CBWTF_ADMIN')")
 public class CbwtfAttendanceController {
 
+        private static final Logger log = LoggerFactory.getLogger(CbwtfAttendanceController.class);
         private final AttendanceRepository attendanceRepository;
 
         public CbwtfAttendanceController(AttendanceRepository attendanceRepository) {
@@ -83,8 +86,7 @@ public class CbwtfAttendanceController {
                                         attendancePage.getTotalPages(),
                                         page));
                 } catch (Exception e) {
-                        // Log the error and return empty list
-                        e.printStackTrace();
+                        log.error("Failed to list attendance records", e);
                         return ResponseEntity.ok(new AttendanceListResponse(
                                         List.of(),
                                         0,

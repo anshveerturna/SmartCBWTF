@@ -19,7 +19,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val apiBaseUrl = project.findProperty("API_BASE_URL") as String? ?: "http://10.0.2.2:8080/api/"
+        val apiBaseUrl = project.findProperty("API_BASE_URL") as String? ?: "https://api.smartcbwtf.com/api/"
         buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
     }
 
@@ -27,13 +27,13 @@ android {
         debug {
             // For physical device, use production API. For emulator, pass -PAPI_BASE_URL=http://10.0.2.2:8080/api/
             val apiBaseUrl = project.findProperty("API_BASE_URL") as String?
-                ?: "http://13.235.98.218:8080/api/"
+                ?: "http://10.0.2.2:8080/api/"
             buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            buildConfigField("String", "BASE_URL", "\"http://13.235.98.218:8080/api/\"")
+            buildConfigField("String", "BASE_URL", "\"https://api.smartcbwtf.com/api/\"")
         }
     }
 

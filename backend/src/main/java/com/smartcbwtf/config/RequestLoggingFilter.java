@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String traceId = UUID.randomUUID().toString();
         response.setHeader(TRACE_HEADER, traceId);
+        MDC.put("traceId", traceId);
 
         long start = System.currentTimeMillis();
         try {
@@ -41,6 +43,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                     status,
                     userId,
                     durationMs);
+            MDC.remove("traceId");
         }
     }
 }

@@ -12,6 +12,8 @@ import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.repository.AttendanceRepository;
 import com.smartcbwtf.repository.FacilityRepository;
 import com.smartcbwtf.repository.HcfRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,8 @@ import java.util.UUID;
 
 @Service
 public class AttendanceService {
+
+    private static final Logger log = LoggerFactory.getLogger(AttendanceService.class);
 
     private final AttendanceRepository attendanceRepository;
     private final HcfRepository hcfRepository;
@@ -168,8 +172,7 @@ public class AttendanceService {
         try {
             routeExecutionService.onAttendanceMarked(attendance);
         } catch (Exception e) {
-            // Log but don't fail attendance - route tracking is secondary
-            // This prevents circular dependency issues at startup
+            log.warn("Route execution update failed for attendance {}: {}", attendance.getId(), e.getMessage());
         }
 
         // Audit log

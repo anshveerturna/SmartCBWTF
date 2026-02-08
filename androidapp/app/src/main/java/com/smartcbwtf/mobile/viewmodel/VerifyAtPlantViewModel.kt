@@ -47,6 +47,10 @@ class VerifyAtPlantViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = SubmissionState.Loading
             try {
+                val currentUserId = sessionManager.userId
+                if (currentUserId.isNullOrBlank()) {
+                    throw IllegalStateException("User session expired. Please log in again.")
+                }
                 val loc = locationHelper.getCurrentLocation()
                 bagEventRepository.record(
                     BagEvent(
@@ -60,7 +64,7 @@ class VerifyAtPlantViewModel @Inject constructor(
                         hcfId = hcfId,
                         facilityId = sessionManager.facilityId,
                         synced = false,
-                        driverId = sessionManager.userId
+                        driverId = currentUserId
                     )
                 )
                 _state.value = SubmissionState.Success

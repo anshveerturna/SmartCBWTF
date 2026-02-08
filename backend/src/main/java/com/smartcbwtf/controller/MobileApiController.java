@@ -11,8 +11,12 @@ import com.smartcbwtf.repository.FacilityRepository;
 import com.smartcbwtf.repository.UserGpsEventRepository;
 import com.smartcbwtf.service.AttendanceService;
 import com.smartcbwtf.service.AuditLogService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -98,7 +102,7 @@ public class MobileApiController {
      * Uses idempotency key per event.
      */
     @PostMapping("/gps/ping")
-    public ResponseEntity<GpsPingResponse> pushGpsEvents(@RequestBody GpsPingRequest request) {
+    public ResponseEntity<GpsPingResponse> pushGpsEvents(@Valid @RequestBody GpsPingRequest request) {
         UUID userId = TenantContext.getUserId();
         UUID facilityId = TenantContext.getTenantId();
 
@@ -136,9 +140,15 @@ public class MobileApiController {
             gpsEvent.setClientEventId(event.clientEventId());
             gpsEvent.setSource("ANDROID_APP");
 
-            gpsEventRepository.save(gpsEvent);
-            successCount++;
-            successIds.add(event.clientEventId());
+            try {
+                gpsEventRepository.save(gpsEvent);
+                successCount++;
+                successIds.add(event.clientEventId());
+            } catch (DataIntegrityViolationException e) {
+                duplicateCount++;
+                successIds.add(event.clientEventId());
+                continue;
+            }
 
             // Track latest for user update
             if (lastRecordedAt == null || event.recordedAt().isAfter(lastRecordedAt)) {
@@ -185,17 +195,17 @@ public class MobileApiController {
             String facilityName) {
     }
 
-    public record GpsPingRequest(List<GpsEventItem> events) {
+    public record GpsPingRequest(@NotEmpty List<@Valid GpsEventItem> events) {
     }
 
     public record GpsEventItem(
-            UUID clientEventId,
-            BigDecimal latitude,
-            BigDecimal longitude,
+            @NotNull UUID clientEventId,
+            @NotNull BigDecimal latitude,
+            @NotNull BigDecimal longitude,
             BigDecimal speed,
             BigDecimal heading,
             BigDecimal accuracyM,
-            Instant recordedAt) {
+            @NotNull Instant recordedAt) {
     }
 
     public record GpsPingResponse(

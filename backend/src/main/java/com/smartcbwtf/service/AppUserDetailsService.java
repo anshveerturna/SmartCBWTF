@@ -25,7 +25,7 @@ public class AppUserDetailsService implements UserDetailsService {
                 .password(user.getPasswordHash())
                 .roles(user.getRole())
                 .accountExpired(false)
-                .accountLocked(false)
+                .accountLocked(user.isLocked())
                 .credentialsExpired(false)
                 .disabled(!user.isActive())
                 .build();

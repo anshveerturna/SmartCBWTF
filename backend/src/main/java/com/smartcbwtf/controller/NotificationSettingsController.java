@@ -4,6 +4,7 @@ import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.FacilityNotificationSettings;
 import com.smartcbwtf.service.NotificationSettingsService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -14,6 +15,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/cbwtf/settings/notifications")
+@PreAuthorize("hasRole('CBWTF_ADMIN')")
 public class NotificationSettingsController {
 
     private final NotificationSettingsService settingsService;

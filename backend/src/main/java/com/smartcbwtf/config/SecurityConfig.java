@@ -36,16 +36,23 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.deny())
+                        .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
+                        .referrerPolicy(referrer -> referrer
+                                .policy(
+                                        org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/actuator/health",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/api/auth/**",
+                                "/api/auth/login",
                                 "/api/health",
                                 "/api/hcfs/register",
                                 "/api/terms/latest", // Public endpoint for mobile app to fetch T&C
-                                "/uploads/**", // Profile photos and other uploaded files
+                                "/uploads/profiles/**", // Public profile photos
+                                "/uploads/branding/**", // Public branding assets
                                 "/files/**", // Generated PDFs (agreements, labels)
                                 "/api/cbwtf/consumables/*/image/view", // Public consumable images
                                 "/error" // Allow error dispatching

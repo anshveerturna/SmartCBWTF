@@ -3,7 +3,9 @@ package com.smartcbwtf.controller;
 import com.smartcbwtf.domain.FacilityTemplate;
 import com.smartcbwtf.dto.TemplateListItem;
 import com.smartcbwtf.service.FacilityTemplateService;
+import com.smartcbwtf.service.TenantAssertionService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,12 +19,17 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/facilities/{facilityId}/templates")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','CBWTF_ADMIN')")
 public class TemplateController {
 
     private final FacilityTemplateService templateService;
+    private final TenantAssertionService tenantAssertionService;
 
-    public TemplateController(FacilityTemplateService templateService) {
+    public TemplateController(
+            FacilityTemplateService templateService,
+            TenantAssertionService tenantAssertionService) {
         this.templateService = templateService;
+        this.tenantAssertionService = tenantAssertionService;
     }
 
     /**
@@ -30,6 +37,7 @@ public class TemplateController {
      */
     @GetMapping
     public ResponseEntity<List<TemplateListItem>> listTemplates(@PathVariable UUID facilityId) {
+        tenantAssertionService.assertCanAccessFacility(facilityId);
         return ResponseEntity.ok(templateService.listTemplates(facilityId));
     }
 
@@ -46,9 +54,11 @@ public class TemplateController {
             @RequestParam(value = "createdByUserId", required = false) UUID createdByUserId,
             @RequestParam(value = "setActive", defaultValue = "false") boolean setActive) {
 
+        tenantAssertionService.assertCanAccessFacility(facilityId);
         try {
+            UUID actorUserId = com.smartcbwtf.config.TenantContext.getUserId();
             FacilityTemplate template = templateService.uploadTemplate(
-                    facilityId, name, templateType, version, file, createdByUserId, setActive);
+                    facilityId, name, templateType, version, file, actorUserId, setActive);
 
             return ResponseEntity.status(201).body(Map.of(
                     "templateId", template.getId(),
@@ -72,11 +82,10 @@ public class TemplateController {
             @PathVariable UUID facilityId,
             @RequestBody Map<String, Object> request) {
 
+        tenantAssertionService.assertCanAccessFacility(facilityId);
         String name = (String) request.get("name");
         String version = (String) request.get("version");
         String htmlContent = (String) request.get("htmlContent");
-        UUID createdByUserId = request.get("createdByUserId") != null ? 
-                UUID.fromString((String) request.get("createdByUserId")) : null;
         boolean setActive = Boolean.TRUE.equals(request.get("setActive"));
 
         if (name == null || version == null || htmlContent == null) {
@@ -84,8 +93,9 @@ public class TemplateController {
         }
 
         try {
+            UUID actorUserId = com.smartcbwtf.config.TenantContext.getUserId();
             FacilityTemplate template = templateService.createHtmlTemplate(
-                    facilityId, name, version, htmlContent, createdByUserId, setActive);
+                    facilityId, name, version, htmlContent, actorUserId, setActive);
 
             return ResponseEntity.status(201).body(Map.of(
                     "templateId", template.getId(),
@@ -109,6 +119,7 @@ public class TemplateController {
             @PathVariable UUID facilityId,
             @PathVariable UUID templateId) {
 
+        tenantAssertionService.assertCanAccessFacility(facilityId);
         try {
             FacilityTemplate template = templateService.activateTemplate(facilityId, templateId);
             return ResponseEntity.ok(Map.of(

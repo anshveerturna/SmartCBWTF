@@ -48,14 +48,15 @@ class DefaultAuthRepository @Inject constructor(
         
         // Extract userId from JWT token and save session data
         val userId = extractUserIdFromJwt(response.accessToken)
+            ?: throw IllegalStateException("Authenticated token is missing user_id claim")
         val facilityId = response.tenantId
         
-        Log.d(TAG, "Login response: userId=$userId, facilityId=$facilityId, role=${response.role}")
+        Log.d(TAG, "Login response accepted for role=${response.role}")
         
         // Save to SessionManager for use in bag events
         sessionManager.saveSession(
             token = response.accessToken,
-            userId = userId ?: "",
+            userId = userId,
             userName = response.fullName,
             userRole = response.role,
             facilityId = facilityId
@@ -82,7 +83,7 @@ class DefaultAuthRepository @Inject constructor(
             val decoded = Base64.decode(paddedPayload, Base64.URL_SAFE or Base64.NO_WRAP)
             val json = JSONObject(String(decoded, Charsets.UTF_8))
             // Use user_id claim (UUID), not sub (username)
-            json.optString("user_id", null)
+            json.optString("user_id", "").takeIf { it.isNotBlank() }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to extract userId from JWT", e)
             null
@@ -105,4 +106,3 @@ class DefaultAuthRepository @Inject constructor(
     
     override fun mustChangePassword(): Boolean = tokenStore.getMustChangePassword()
 }
-

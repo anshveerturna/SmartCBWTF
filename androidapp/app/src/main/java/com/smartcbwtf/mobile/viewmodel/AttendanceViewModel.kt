@@ -203,6 +203,9 @@ class AttendanceViewModel @Inject constructor(
     }
 
     fun markAttendance() {
+        if (_attendanceResult.value is AttendanceResult.Loading) {
+            return
+        }
         val selected = _selectedHcf.value ?: return
         val location = currentLocation ?: return
         

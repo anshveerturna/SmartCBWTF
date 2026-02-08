@@ -29,9 +29,6 @@ interface BagEventDao {
     @Query("UPDATE bag_events SET synced = 1 WHERE id IN (:ids)")
     suspend fun markSynced(ids: List<UUID>)
 
-    @Query("UPDATE bag_events SET synced = 1 WHERE qrCode IN (:qrCodes)")
-    suspend fun markSyncedByQrCodes(qrCodes: List<String>)
-
     @Query("DELETE FROM bag_events WHERE id = :id")
     suspend fun deleteById(id: UUID)
 

@@ -13,6 +13,8 @@ import com.smartcbwtf.repository.BagLabelRepository;
 import com.smartcbwtf.repository.HcfRepository;
 import com.smartcbwtf.repository.InvoiceRepository;
 import com.smartcbwtf.service.HcfAccessGuard;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
 @PreAuthorize("hasRole('HCF_ADMIN')")
 public class HcfDashboardController {
 
+        private static final Logger log = LoggerFactory.getLogger(HcfDashboardController.class);
         private final BagEventRepository bagEventRepository;
         private final InvoiceRepository invoiceRepository;
         private final BagLabelRepository bagLabelRepository;
@@ -246,7 +249,7 @@ public class HcfDashboardController {
 
                         return ResponseEntity.ok("Seeded");
                 } catch (Exception e) {
-                        e.printStackTrace();
+                        log.error("Failed to seed dashboard data", e);
                         return ResponseEntity.internalServerError()
                                         .body("Error: " + e.getMessage() + " | Trace: " + e.toString());
                 }

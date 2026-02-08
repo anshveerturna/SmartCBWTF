@@ -1,5 +1,6 @@
 package com.smartcbwtf.service;
 
+import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.Agreement;
 import com.smartcbwtf.domain.BagEvent;
 import com.smartcbwtf.domain.BagLabel;
@@ -14,6 +15,7 @@ import com.smartcbwtf.exception.AgreementNotActiveException;
 import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.repository.BagEventRepository;
 import com.smartcbwtf.repository.BagLabelRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +63,7 @@ public class BagEventService {
     @Transactional
     public BagEventSyncResponse sync(BagEventSyncRequest request) {
         List<BagEventSyncResponse.Ack> acks = new ArrayList<>();
+        UUID authenticatedUserId = requireAuthenticatedUserId();
         for (BagEventSyncItem item : request.getEvents()) {
             try {
                 BagLabel label = bagLabelRepository.findByQrCode(item.getQrCode())
@@ -95,7 +98,7 @@ public class BagEventService {
                 event.setGpsLat(item.getGpsLat());
                 event.setGpsLon(item.getGpsLon());
                 event.setWeightKg(item.getWeightKg());
-                event.setCollectedByUserId(item.getCollectedByUserId());
+                event.setCollectedByUserId(authenticatedUserId);
                 event.setAppDeviceId(item.getAppDeviceId());
                 event.setNotes(item.getNotes());
 
@@ -111,8 +114,10 @@ public class BagEventService {
                 event.setAnomalyState(anomaly);
                 bagEventRepository.save(event);
                 String dataJson = buildAuditDataJson(mismatchResult);
-                auditLogService.log("BAG_EVENT", event.getId(), "CREATE", item.getCollectedByUserId(), dataJson);
+                auditLogService.log("BAG_EVENT", event.getId(), "CREATE", authenticatedUserId, dataJson);
                 acks.add(new BagEventSyncResponse.Ack(item.getQrCode(), "SUCCESS", anomaly));
+            } catch (DataIntegrityViolationException ex) {
+                acks.add(new BagEventSyncResponse.Ack(item.getQrCode(), "SUCCESS", "Duplicate event"));
             } catch (AgreementNotActiveException ex) {
                 acks.add(new BagEventSyncResponse.Ack(item.getQrCode(), "AGREEMENT_BLOCKED", ex.getMessage()));
             } catch (Exception ex) {
@@ -236,6 +241,11 @@ public class BagEventService {
      */
     @Transactional
     public VerifyResult verifyBag(BagVerifyRequest request) {
+        UUID authenticatedUserId = requireAuthenticatedUserId();
+        if (request.getVerifiedByUserId() != null && !authenticatedUserId.equals(request.getVerifiedByUserId())) {
+            return new VerifyResult(403, BagVerifyResponse.error("USER_ID_MISMATCH", "Verified user does not match token"));
+        }
+
         // Find bag label
         BagLabel label = bagLabelRepository.findByQrCode(request.getQrCode())
                 .orElse(null);
@@ -288,7 +298,7 @@ public class BagEventService {
         event.setGpsLat(request.getGpsLat());
         event.setGpsLon(request.getGpsLon());
         event.setWeightKg(request.getWeightKg());
-        event.setCollectedByUserId(request.getVerifiedByUserId());
+        event.setCollectedByUserId(authenticatedUserId);
         event.setAppDeviceId(request.getDeviceId());
         event.setNotes(request.getNotes());
 
@@ -296,7 +306,11 @@ public class BagEventService {
         MismatchResult mismatchResult = evaluateMismatch(label.getId(), request.getWeightKg(), "OK");
 
         event.setAnomalyState(mismatchResult.getAnomaly());
-        bagEventRepository.save(event);
+        try {
+            bagEventRepository.save(event);
+        } catch (DataIntegrityViolationException ex) {
+            return new VerifyResult(409, BagVerifyResponse.error("ALREADY_VERIFIED", "Bag has already been verified"));
+        }
 
         // Update label status
         label.setStatus("USED");
@@ -305,7 +319,7 @@ public class BagEventService {
 
         // Audit log
         String dataJson = buildAuditDataJson(mismatchResult);
-        auditLogService.log("BAG_EVENT", event.getId(), "VERIFY", request.getVerifiedByUserId(), dataJson);
+        auditLogService.log("BAG_EVENT", event.getId(), "VERIFY", authenticatedUserId, dataJson);
 
         BagVerifyResponse response = BagVerifyResponse.success(
                 label.getId(),
@@ -314,6 +328,14 @@ public class BagEventService {
                 mismatchResult.getDelta());
 
         return new VerifyResult(200, response);
+    }
+
+    private UUID requireAuthenticatedUserId() {
+        UUID userId = TenantContext.getUserId();
+        if (userId == null) {
+            throw new IllegalStateException("Authenticated user context is required");
+        }
+        return userId;
     }
 
     /**

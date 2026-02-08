@@ -4,19 +4,24 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.smartcbwtf.service.SystemConfigService;
 
 import java.security.Key;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.Locale;
 import java.util.Map;
 
 @Component
 public class JwtService {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
     private final Key key;
     private final String issuer;
     private final long defaultAccessTokenTtlMinutes;
@@ -27,10 +32,18 @@ public class JwtService {
             @Value("${security.jwt.issuer}") String issuer,
             @Value("${security.jwt.access-token-ttl-minutes}") long accessTokenTtlMinutes,
             SystemConfigService systemConfigService) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+        String normalizedSecret = secret == null ? "" : secret.toLowerCase(Locale.ROOT);
+        if (secret == null || secret.isBlank() || secret.length() < 32
+                || normalizedSecret.contains("change-this")
+                || normalizedSecret.contains("changethis")) {
+            throw new IllegalStateException(
+                    "security.jwt.secret must be set to a strong 32+ character value via environment");
+        }
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.issuer = issuer;
         this.defaultAccessTokenTtlMinutes = accessTokenTtlMinutes;
         this.systemConfigService = systemConfigService;
+        log.info("JWT service initialized with issuer {}", issuer);
     }
 
     public String generateToken(String subject, Map<String, Object> claims) {
@@ -53,6 +66,7 @@ public class JwtService {
     public Claims parseClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key)
+                .requireIssuer(issuer)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();

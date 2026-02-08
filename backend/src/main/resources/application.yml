@@ -4,7 +4,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/smart_cbwtf
     username: smart_cbwtf
-    password: change-me
+    password: ${DB_PASSWORD:change-me}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -32,8 +32,8 @@ server:
 
 security:
   jwt:
-    # Use a 256-bit+ secret for HMAC-SHA signing; keep this out of VCS in real deployments.
-    secret: "change-this-secret-please-use-32b-minimum-2025"
+    # Override via JWT_SECRET env var in production.
+    secret: ${JWT_SECRET:smartcbwtf-local-dev-signing-key-2025-not-for-prod}
     issuer: "smart-cbwtf"
     access-token-ttl-minutes: 30
 
@@ -66,7 +66,7 @@ app:
     enabled: true # Email sending enabled
     from: info@smartcbwtf.com
     brevo:
-      api-key: ${BREVO_API_KEY:} # Set via environment variable
+      api-key: ${BREVO_API_KEY:}
       sender-name: SmartCBWTF
 
   # Agreement number format configuration

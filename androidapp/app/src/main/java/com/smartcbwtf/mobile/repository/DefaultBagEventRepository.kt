@@ -7,6 +7,7 @@ import com.smartcbwtf.mobile.model.BagEvent
 import com.smartcbwtf.mobile.network.api.BagEventApi
 import com.smartcbwtf.mobile.network.model.BagEventPayload
 import com.smartcbwtf.mobile.network.model.BagEventSyncRequest
+import com.smartcbwtf.mobile.network.model.SyncResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -69,31 +70,29 @@ class DefaultBagEventRepository @Inject constructor(
 
     override suspend fun syncPending() = withContext(ioDispatcher) {
         Log.d(TAG, "syncPending() called")
-        val pending = dao.getPending().firstOrNull()?.map(BagEventEntity::toPayload) ?: emptyList()
-        Log.d(TAG, "Found ${pending.size} pending events to sync")
-        if (pending.isEmpty()) {
+        val pendingEntities = dao.getPending().firstOrNull() ?: emptyList()
+        Log.d(TAG, "Found ${pendingEntities.size} pending events to sync")
+        if (pendingEntities.isEmpty()) {
             Log.d(TAG, "No pending events, returning")
             return@withContext
         }
+        val pendingPayloads = pendingEntities.map(BagEventEntity::toPayload)
 
         // Log payload details
-        pending.forEach { p ->
+        pendingPayloads.forEach { p ->
             Log.d(TAG, "Payload: qr=${p.qrCode}, collectedByUserId=${p.collectedByUserId}, facilityId=${p.facilityId}")
         }
 
         // Wrap in BagEventSyncRequest to match backend format
-        val request = BagEventSyncRequest(events = pending)
-        Log.d(TAG, "Calling api.sync() with ${pending.size} events")
+        val request = BagEventSyncRequest(events = pendingPayloads)
+        Log.d(TAG, "Calling api.sync() with ${pendingPayloads.size} events")
         
         try {
             val response = api.sync(request)
-            Log.d(TAG, "Sync response: successQrCodes=${response.successQrCodes}")
-            
-            // Mark successfully synced events by QR code
-            val successQrCodes = response.successQrCodes
-            if (successQrCodes.isNotEmpty()) {
-                dao.markSyncedByQrCodes(successQrCodes)
-                Log.d(TAG, "Marked ${successQrCodes.size} events as synced")
+            val successIds = resolveSuccessfulEventIds(pendingEntities, response.acks)
+            if (successIds.isNotEmpty()) {
+                dao.markSynced(successIds)
+                Log.d(TAG, "Marked ${successIds.size} events as synced")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Sync failed: ${e.message}", e)
@@ -145,3 +144,23 @@ private fun BagEventEntity.toPayload(): BagEventPayload = BagEventPayload(
     appDeviceId = deviceId,
     notes = null,
 )
+
+internal fun resolveSuccessfulEventIds(
+    pendingEntities: List<BagEventEntity>,
+    acks: List<SyncResponse.Ack>
+): List<UUID> {
+    if (pendingEntities.isEmpty() || acks.isEmpty()) {
+        return emptyList()
+    }
+
+    val resolved = mutableListOf<UUID>()
+    val count = minOf(pendingEntities.size, acks.size)
+    for (index in 0 until count) {
+        val pending = pendingEntities[index]
+        val ack = acks[index]
+        if (ack.status == "SUCCESS" && ack.qrCode == pending.qrCode) {
+            resolved.add(pending.id)
+        }
+    }
+    return resolved
+}

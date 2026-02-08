@@ -5,8 +5,10 @@ import com.smartcbwtf.dto.TermsCreateRequest;
 import com.smartcbwtf.dto.TermsListItem;
 import com.smartcbwtf.dto.TermsResponse;
 import com.smartcbwtf.service.FacilityTermsService;
+import com.smartcbwtf.service.TenantAssertionService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,9 +22,11 @@ import java.util.UUID;
 public class TermsController {
 
     private final FacilityTermsService termsService;
+    private final TenantAssertionService tenantAssertionService;
 
-    public TermsController(FacilityTermsService termsService) {
+    public TermsController(FacilityTermsService termsService, TenantAssertionService tenantAssertionService) {
         this.termsService = termsService;
+        this.tenantAssertionService = tenantAssertionService;
     }
 
     /**
@@ -87,7 +91,9 @@ public class TermsController {
      * List all terms versions for a facility.
      */
     @GetMapping("/facilities/{facilityId}/terms")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CBWTF_ADMIN')")
     public ResponseEntity<List<TermsListItem>> listTerms(@PathVariable UUID facilityId) {
+        tenantAssertionService.assertCanAccessFacility(facilityId);
         return ResponseEntity.ok(termsService.listTerms(facilityId));
     }
 
@@ -95,10 +101,13 @@ public class TermsController {
      * Create a new terms version for a facility.
      */
     @PostMapping("/facilities/{facilityId}/terms")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CBWTF_ADMIN')")
     public ResponseEntity<TermsResponse> createTerms(
             @PathVariable UUID facilityId,
             @Valid @RequestBody TermsCreateRequest request) {
-        
+
+        tenantAssertionService.assertCanAccessFacility(facilityId);
+        request.setCreatedByUserId(com.smartcbwtf.config.TenantContext.getUserId());
         FacilityTerms terms = termsService.createTerms(facilityId, request);
         TermsResponse response = new TermsResponse(
                 terms.getId(),
@@ -116,10 +125,12 @@ public class TermsController {
      * Activate a specific terms version.
      */
     @PatchMapping("/facilities/{facilityId}/terms/{termsId}/activate")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CBWTF_ADMIN')")
     public ResponseEntity<TermsResponse> activateTerms(
             @PathVariable UUID facilityId,
             @PathVariable UUID termsId) {
-        
+
+        tenantAssertionService.assertCanAccessFacility(facilityId);
         FacilityTerms terms = termsService.activateTerms(facilityId, termsId);
         TermsResponse response = new TermsResponse(
                 terms.getId(),

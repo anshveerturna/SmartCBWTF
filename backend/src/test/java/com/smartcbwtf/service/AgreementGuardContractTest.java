@@ -1,5 +1,6 @@
 package com.smartcbwtf.service;
 
+import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.*;
 import com.smartcbwtf.dto.*;
 import com.smartcbwtf.exception.AgreementBlockedException;
@@ -54,6 +55,7 @@ public class AgreementGuardContractTest {
     private Facility testFacility;
     private Hcf testHcf;
     private Agreement testAgreement;
+    private UUID authenticatedUserId;
 
     @BeforeEach
     void setupTestData() {
@@ -90,6 +92,19 @@ public class AgreementGuardContractTest {
         testAgreement.setEndDate(LocalDate.now().plusMonths(11));
         testAgreement.setPerBedPerDayRate(BigDecimal.valueOf(50));
         testAgreement = agreementRepo.save(testAgreement);
+
+        authenticatedUserId = UUID.randomUUID();
+        TenantContext.set(new TenantContext.TenantInfo(
+                authenticatedUserId,
+                testFacility.getId(),
+                testHcf.getId(),
+                "DRIVER",
+                "agreement-guard-test"));
+    }
+
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
     }
 
     // ====== CONTRACT TEST 1: QR Generation for EXPIRED Agreement ======

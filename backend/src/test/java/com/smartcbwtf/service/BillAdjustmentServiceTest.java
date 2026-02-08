@@ -83,13 +83,13 @@ class BillAdjustmentServiceTest {
 
         // Mock facility
         Facility facility = mock(Facility.class);
-        when(facility.getId()).thenReturn(UUID.randomUUID());
-        when(facility.getContactEmail()).thenReturn("test@facility.com");
+        lenient().when(facility.getId()).thenReturn(UUID.randomUUID());
+        lenient().when(facility.getContactEmail()).thenReturn("test@facility.com");
         bill.setFacility(facility);
 
         // Mock agreement
         Agreement agreement = mock(Agreement.class);
-        when(agreement.getHcf()).thenReturn(null);
+        lenient().when(agreement.getHcf()).thenReturn(null);
         bill.setAgreement(agreement);
 
         return bill;

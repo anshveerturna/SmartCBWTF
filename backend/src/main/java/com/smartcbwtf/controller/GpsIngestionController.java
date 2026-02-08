@@ -5,6 +5,7 @@ import com.smartcbwtf.service.GpsIngestionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -22,6 +23,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/internal/gps")
+@PreAuthorize("hasRole('SUPER_ADMIN')")
 public class GpsIngestionController {
 
     private static final Logger log = LoggerFactory.getLogger(GpsIngestionController.class);

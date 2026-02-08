@@ -281,9 +281,8 @@ public class AppUser {
     }
 
     public void lockAccount(int lockoutMinutes) {
-        // Lock indefinitely - only admin can unlock
-        // Using 100 years in the future as "infinite"
-        this.lockedUntil = Instant.now().plusSeconds(100L * 365L * 24L * 60L * 60L);
+        int effectiveMinutes = Math.max(1, lockoutMinutes);
+        this.lockedUntil = Instant.now().plusSeconds(effectiveMinutes * 60L);
     }
 
     public void unlockAccount() {
