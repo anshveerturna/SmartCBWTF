@@ -325,6 +325,8 @@ export interface AgreementRulesDTO {
   agreementNumberSequenceDigits: number;
   agreementNumberIncludeFacilityCode: boolean;
   agreementNumberIncludeYear: boolean;
+  // Agreement Terms & Conditions Template
+  agreementTermsTemplate: string;
 }
 
 export interface OperationalRulesDTO {
@@ -428,6 +430,24 @@ export const updatePaymentReminders = async (data: PaymentReminderDTO): Promise<
 
 export const updateAgreementRules = async (data: AgreementRulesDTO): Promise<void> => {
   await apiClient.put('/api/cbwtf/settings/agreement-rules', data);
+};
+
+export const updateAgreementTermsTemplate = async (termsTemplate: string): Promise<void> => {
+  await apiClient.put('/api/cbwtf/settings/agreement-terms', { termsTemplate });
+};
+
+export const downloadHcfAgreementPdf = async (hcfId: string): Promise<Blob> => {
+  const response = await apiClient.get(`/api/cbwtf/hcfs/${hcfId}/agreement/pdf`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const downloadQrLabelPdf = async (qrId: string): Promise<Blob> => {
+  const response = await apiClient.get(`/api/cbwtf/qr/${qrId}/label-pdf`, {
+    responseType: 'blob',
+  });
+  return response.data;
 };
 
 export const previewAgreementNumber = async (params?: {

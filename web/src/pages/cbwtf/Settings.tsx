@@ -305,6 +305,18 @@ export default function Settings() {
               />
             </SettingRow>
 
+            <SettingRow label="Official Email" description="Primary contact email for the CBWTF, displayed on agreements and official documents.">
+              <TextField
+                fullWidth
+                size="small"
+                type="email"
+                value={legalForm.officialEmail || ''}
+                onChange={(e) => setLegalForm({ ...legalForm, officialEmail: e.target.value })}
+                placeholder="info@example.com"
+                sx={{ maxWidth: 320 }}
+              />
+            </SettingRow>
+
             <SettingRow label="Official Phone" description="Primary contact phone number." noBorder>
               <TextField
                 fullWidth

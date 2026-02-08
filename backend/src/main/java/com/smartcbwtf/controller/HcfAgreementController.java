@@ -6,6 +6,7 @@ import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.service.HcfAccessGuard;
+import com.smartcbwtf.service.AgreementService;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -34,10 +35,13 @@ public class HcfAgreementController {
 
     private final AgreementRepository agreementRepository;
     private final HcfAccessGuard accessGuard;
+    private final AgreementService agreementService;
 
-    public HcfAgreementController(AgreementRepository agreementRepository, HcfAccessGuard accessGuard) {
+    public HcfAgreementController(AgreementRepository agreementRepository, HcfAccessGuard accessGuard,
+            AgreementService agreementService) {
         this.agreementRepository = agreementRepository;
         this.accessGuard = accessGuard;
+        this.agreementService = agreementService;
     }
 
     @GetMapping
@@ -64,12 +68,26 @@ public class HcfAgreementController {
         Agreement agreement = agreementRepository.findActiveByHcfId(hcfId)
                 .orElse(null);
 
-        if (agreement == null || agreement.getPdfUrl() == null || agreement.getPdfUrl().isBlank()) {
+        if (agreement == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Lazy regeneration: if PDF is missing, generate it now
+        agreement = agreementService.regeneratePdfIfMissing(agreement);
+
+        if (agreement.getPdfUrl() == null || agreement.getPdfUrl().isBlank()) {
             return ResponseEntity.notFound().build();
         }
 
         try {
-            Path filePath = Paths.get(agreement.getPdfUrl().replaceFirst("^/", ""));
+            // Handle both absolute paths and relative paths (legacy)
+            String pdfUrl = agreement.getPdfUrl();
+            Path filePath;
+            if (pdfUrl.startsWith("/")) {
+                filePath = Paths.get(pdfUrl);
+            } else {
+                filePath = Paths.get(pdfUrl.replaceFirst("^/", ""));
+            }
             Resource resource = new UrlResource(filePath.toUri());
 
             if (resource.exists() && resource.isReadable()) {

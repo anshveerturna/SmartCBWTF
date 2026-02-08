@@ -55,6 +55,7 @@ public class SecurityConfig {
                                 "/uploads/branding/**", // Public branding assets
                                 "/files/**", // Generated PDFs (agreements, labels)
                                 "/api/cbwtf/consumables/*/image/view", // Public consumable images
+                                "/api/public/**", // Public verification endpoints (QR scan)
                                 "/error" // Allow error dispatching
                         ).permitAll()
                         .anyRequest().authenticated())

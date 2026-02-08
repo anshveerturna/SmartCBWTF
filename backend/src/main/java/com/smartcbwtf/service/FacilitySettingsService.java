@@ -424,7 +424,8 @@ public class FacilitySettingsService {
                                                 s.getAgreementNumberSeparator(),
                                                 s.getAgreementNumberSequenceDigits(),
                                                 s.getAgreementNumberIncludeFacilityCode(),
-                                                s.getAgreementNumberIncludeYear()),
+                                                s.getAgreementNumberIncludeYear(),
+                                                s.getAgreementTermsTemplate()),
                                 new OperationalRulesDTO(
                                                 s.getQrValidityDays(), s.getAllowMultipleActiveQrs(),
                                                 s.getRequireCbwtfVerification(),
@@ -468,6 +469,30 @@ public class FacilitySettingsService {
 
         private String str(Object o) {
                 return o == null ? null : o.toString();
+        }
+
+        /**
+         * Update agreement terms template text.
+         * This is the default T&C that gets embedded into new agreement PDFs.
+         */
+        public void updateAgreementTermsTemplate(String termsTemplate, String ipAddress) {
+                UUID facilityId = TenantContext.getTenantId();
+                FacilitySettings settings = getOrCreateSettings(facilityId);
+
+                String oldValue = settings.getAgreementTermsTemplate();
+                settings.setAgreementTermsTemplate(termsTemplate);
+                settingsRepository.save(settings);
+
+                // Audit log
+                auditIfChanged("AGREEMENT_RULES", "agreementTermsTemplate",
+                                oldValue != null ? truncateForAudit(oldValue) : null,
+                                termsTemplate != null ? truncateForAudit(termsTemplate) : null,
+                                facilityId, ipAddress);
+        }
+
+        private String truncateForAudit(String val) {
+                if (val == null) return null;
+                return val.length() > 200 ? val.substring(0, 200) + "..." : val;
         }
 
         /**

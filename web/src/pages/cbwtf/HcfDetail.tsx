@@ -29,6 +29,7 @@ import {
   AttachMoney as BillingIcon,
   Assessment as StatsIcon,
   Edit as EditIcon,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
 
 import apiClient from '../../api/client';
@@ -36,6 +37,7 @@ import {
   getHcfDetail,
   updateHcfLocation,
   renewAgreement,
+  downloadHcfAgreementPdf,
   type UpdateLocationRequest,
   type RenewAgreementRequest,
 } from '../../api/cbwtf';
@@ -902,6 +904,31 @@ export default function HcfDetailPage() {
                     <Box>
                       <Typography variant="caption" color="text.secondary">Rate per Bed/Day</Typography>
                       <Typography>{formatCurrency(hcf.agreement.perBedPerDayRate)}</Typography>
+                    </Box>
+                    <Box sx={{ pt: 1 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<PdfIcon />}
+                        onClick={async () => {
+                          try {
+                            const blob = await downloadHcfAgreementPdf(id!);
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            const safeNum = (hcf.agreement?.agreementNumber || 'document').replace(/\//g, '_');
+                            link.setAttribute('download', `Agreement_${safeNum}.pdf`);
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            window.URL.revokeObjectURL(url);
+                          } catch {
+                            setSnackbar({ open: true, message: 'Failed to download agreement PDF. It may still be generating.', severity: 'error' });
+                          }
+                        }}
+                      >
+                        Download Agreement PDF
+                      </Button>
                     </Box>
                   </Stack>
                 ) : (

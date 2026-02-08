@@ -2,23 +2,36 @@ package com.smartcbwtf.service;
 
 import com.smartcbwtf.domain.Agreement;
 import com.smartcbwtf.domain.Facility;
+import com.smartcbwtf.domain.FacilityBranding;
+import com.smartcbwtf.domain.FacilitySettings;
 import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.dto.HcfApprovalRequest;
 import com.smartcbwtf.dto.HcfApprovalResponse;
 import com.smartcbwtf.repository.AgreementRepository;
+import com.smartcbwtf.repository.FacilityBrandingRepository;
 import com.smartcbwtf.repository.FacilityRepository;
+import com.smartcbwtf.repository.FacilitySettingsRepository;
 import com.smartcbwtf.repository.HcfRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Year;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 public class AgreementService {
 
+    private static final Logger log = LoggerFactory.getLogger(AgreementService.class);
+
     private final AgreementRepository agreementRepository;
     private final FacilityRepository facilityRepository;
+    private final FacilityBrandingRepository brandingRepository;
+    private final FacilitySettingsRepository settingsRepository;
     private final HcfRepository hcfRepository;
     private final PdfService pdfService;
     private final EmailService emailService;
@@ -26,12 +39,16 @@ public class AgreementService {
 
     public AgreementService(AgreementRepository agreementRepository,
             FacilityRepository facilityRepository,
+            FacilityBrandingRepository brandingRepository,
+            FacilitySettingsRepository settingsRepository,
             HcfRepository hcfRepository,
             PdfService pdfService,
             EmailService emailService,
             AuditLogService auditLogService) {
         this.agreementRepository = agreementRepository;
         this.facilityRepository = facilityRepository;
+        this.brandingRepository = brandingRepository;
+        this.settingsRepository = settingsRepository;
         this.hcfRepository = hcfRepository;
         this.pdfService = pdfService;
         this.emailService = emailService;
@@ -52,36 +69,51 @@ public class AgreementService {
         agreement.setEndDate(request.getEndDate());
         agreement.setPerBedPerDayRate(request.getPerBedPerDayRate());
         agreement.setStatus("ACTIVE");
+
+        // Set terms text from facility settings if available
+        FacilitySettings settings = settingsRepository.findById(facility.getId()).orElse(null);
+        if (settings != null && settings.getAgreementTermsTemplate() != null) {
+            agreement.setTermsText(settings.getAgreementTermsTemplate());
+        }
+
         agreementRepository.save(agreement);
 
         hcf.setStatus("ACTIVE");
         hcfRepository.save(hcf);
 
-        String pdfPath = pdfService.generateAgreementPdf(agreement);
+        // Generate professional agreement PDF with branding
+        FacilityBranding branding = brandingRepository.findById(facility.getId()).orElse(null);
+        String pdfPath = pdfService.generateAgreementPdf(agreement, null, null, branding, settings);
         agreement.setPdfUrl(pdfPath);
         agreementRepository.save(agreement);
 
         auditLogService.log("AGREEMENT", agreement.getId(), "APPROVE", null, null);
 
-        // Send Global Template Email
+        // Send agreement email with PDF attachment
         try {
             java.util.Map<String, String> emailData = new java.util.HashMap<>();
             emailData.put("hcfName", hcf.getName());
             emailData.put("facilityName", facility.getName());
             emailData.put("agreementNumber", agreementNumber);
             emailData.put("effectiveDate", agreement.getStartDate().toString());
-            emailData.put("expiryDate", agreement.getEndDate().toString());
+            emailData.put("expiryDate",
+                    agreement.getEndDate() != null ? agreement.getEndDate().toString() : "Until Terminated");
 
-            emailService.sendTemplateEmail(hcf.getContactEmail(), "AGREEMENT_APPROVED", emailData, null);
+            // Send with PDF attachment
+            List<String> attachments = pdfPath != null ? List.of(pdfPath) : null;
+            emailService.sendTemplateEmail(hcf.getContactEmail(), "AGREEMENT_APPROVED", emailData, attachments);
 
-            // Also notify facility if configured (using legacy for now as no template
-            // exists for this internal notif)
+            log.info("[AGREEMENT] Sent agreement PDF to HCF email={} agreementNumber={}", hcf.getContactEmail(),
+                    agreementNumber);
+
+            // Also notify facility if configured
             if (facility.getContactEmail() != null) {
                 emailService.sendEmail(facility.getContactEmail(), "Agreement Approved Notification",
                         "Agreement " + agreementNumber + " for " + hcf.getName() + " has been approved.");
             }
         } catch (Exception e) {
             // Log but don't fail transaction
+            log.error("[AGREEMENT] Failed to send approval email for {}: {}", agreementNumber, e.getMessage());
             auditLogService.log("EMAIL", agreement.getId(), "SEND_FAILURE", null,
                     "Failed to send approval email: " + e.getMessage());
         }
@@ -92,5 +124,34 @@ public class AgreementService {
     private String generateAgreementNumber(String facilityCode) {
         long seq = agreementRepository.count() + 1;
         return facilityCode + "-" + Year.now().getValue() + "-" + String.format("%05d", seq);
+    }
+
+    /**
+     * Regenerate agreement PDF if it's missing (null/blank pdfUrl or file doesn't exist on disk).
+     * Used for lazy PDF generation on first download for agreements created before PDF generation existed.
+     * Returns the (possibly updated) agreement.
+     */
+    @Transactional
+    public Agreement regeneratePdfIfMissing(Agreement agreement) {
+        // Check if PDF already exists on disk
+        if (agreement.getPdfUrl() != null && !agreement.getPdfUrl().isBlank()) {
+            try {
+                if (Files.exists(Paths.get(agreement.getPdfUrl()))) {
+                    return agreement; // PDF exists, nothing to do
+                }
+            } catch (Exception e) {
+                // Path invalid, regenerate
+            }
+        }
+
+        // Regenerate the PDF
+        log.info("[AGREEMENT] Regenerating PDF for agreement={} (was missing)", agreement.getAgreementNumber());
+        FacilityBranding branding = brandingRepository.findById(agreement.getFacility().getId()).orElse(null);
+        FacilitySettings settings = settingsRepository.findById(agreement.getFacility().getId()).orElse(null);
+        String pdfPath = pdfService.generateAgreementPdf(agreement, null, null, branding, settings);
+        agreement.setPdfUrl(pdfPath);
+        agreementRepository.save(agreement);
+        log.info("[AGREEMENT] PDF regenerated at path={}", pdfPath);
+        return agreement;
     }
 }

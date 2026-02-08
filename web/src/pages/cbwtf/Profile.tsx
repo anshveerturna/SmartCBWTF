@@ -51,8 +51,6 @@ const CbwtfProfilePage: React.FC = () => {
 
   const [formData, setFormData] = useState({
     fullName: '',
-    email: '',
-    phone: '',
   });
 
   useEffect(() => {
@@ -66,8 +64,6 @@ const CbwtfProfilePage: React.FC = () => {
       setProfile(data);
       setFormData({
         fullName: data.fullName || '',
-        email: data.email || '',
-        phone: data.phone || '',
       });
     } catch {
       setError('Failed to load profile');
@@ -285,25 +281,6 @@ const CbwtfProfilePage: React.FC = () => {
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
               />
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </Grid>
-              </Grid>
             </Stack>
 
             <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>

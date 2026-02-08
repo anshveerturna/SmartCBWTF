@@ -185,6 +185,31 @@ public class FacilitySettingsController {
     }
 
     /**
+     * Get the agreement terms template.
+     */
+    @GetMapping("/agreement-terms")
+    public ResponseEntity<Map<String, String>> getAgreementTerms() {
+        UUID facilityId = TenantContext.getTenantId();
+        FacilitySettings settings = facilitySettingsRepository.findById(facilityId).orElse(null);
+        String terms = settings != null ? settings.getAgreementTermsTemplate() : null;
+        return ResponseEntity.ok(Map.of("termsTemplate", terms != null ? terms : ""));
+    }
+
+    /**
+     * Update the agreement terms template.
+     * This is the default T&C text that gets embedded into new agreement PDFs.
+     */
+    @PutMapping("/agreement-terms")
+    public ResponseEntity<Void> updateAgreementTerms(
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request) {
+        String ipAddress = extractIpAddress(request);
+        String termsTemplate = body.get("termsTemplate");
+        settingsService.updateAgreementTermsTemplate(termsTemplate, ipAddress);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
      * Extract client IP address from request.
      * Checks X-Forwarded-For header for reverse proxy scenarios.
      */

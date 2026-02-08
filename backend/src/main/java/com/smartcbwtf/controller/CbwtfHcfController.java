@@ -3,12 +3,22 @@ package com.smartcbwtf.controller;
 import com.smartcbwtf.dto.*;
 import com.smartcbwtf.service.CbwtfHcfService;
 import com.smartcbwtf.service.BillingConfigService;
+import com.smartcbwtf.service.AgreementService;
 import com.smartcbwtf.config.TenantContext;
+import com.smartcbwtf.domain.Agreement;
+import com.smartcbwtf.repository.AgreementRepository;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.MalformedURLException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,10 +37,15 @@ public class CbwtfHcfController {
 
     private final CbwtfHcfService hcfService;
     private final BillingConfigService billingConfigService;
+    private final AgreementRepository agreementRepository;
+    private final AgreementService agreementService;
 
-    public CbwtfHcfController(CbwtfHcfService hcfService, BillingConfigService billingConfigService) {
+    public CbwtfHcfController(CbwtfHcfService hcfService, BillingConfigService billingConfigService,
+            AgreementRepository agreementRepository, AgreementService agreementService) {
         this.hcfService = hcfService;
         this.billingConfigService = billingConfigService;
+        this.agreementRepository = agreementRepository;
+        this.agreementService = agreementService;
     }
 
     /**
@@ -245,5 +260,52 @@ public class CbwtfHcfController {
     public ResponseEntity<?> enablePortalAccess(@PathVariable("id") UUID id) {
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(hcfService.enablePortalAccessForSmallHcf(id, facilityId));
+    }
+
+    /**
+     * Download agreement PDF for a specific HCF.
+     * CBWTF Admin can download agreement PDFs for any of their HCFs.
+     */
+    @GetMapping("/{id}/agreement/pdf")
+    public ResponseEntity<Resource> downloadAgreementPdf(@PathVariable("id") UUID id) {
+        UUID facilityId = TenantContext.getTenantId();
+
+        // Find active agreement for this HCF under this facility
+        Agreement agreement = agreementRepository.findActiveByHcfAndFacility(id, facilityId)
+                .orElse(null);
+
+        if (agreement == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Lazy regeneration: if PDF is missing, generate it now
+        agreement = agreementService.regeneratePdfIfMissing(agreement);
+
+        if (agreement.getPdfUrl() == null || agreement.getPdfUrl().isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            String pdfUrl = agreement.getPdfUrl();
+            Path filePath;
+            if (pdfUrl.startsWith("/")) {
+                filePath = Paths.get(pdfUrl);
+            } else {
+                filePath = Paths.get(pdfUrl.replaceFirst("^/", ""));
+            }
+
+            Resource resource = new UrlResource(filePath.toUri());
+            if (resource.exists() && resource.isReadable()) {
+                String safeNumber = agreement.getAgreementNumber().replace("/", "_");
+                String filename = "Agreement_" + safeNumber + ".pdf";
+                return ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                        .body(resource);
+            }
+            return ResponseEntity.notFound().build();
+        } catch (MalformedURLException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

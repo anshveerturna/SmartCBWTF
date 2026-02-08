@@ -42,7 +42,7 @@ public class QrOrderService {
 
     // Default pricing (can be overridden via config)
     private static final BigDecimal DEFAULT_SELF_PRICE = new BigDecimal("5.00");
-    private static final BigDecimal DEFAULT_CBWTF_PRICE = new BigDecimal("10.00");
+    private static final BigDecimal DEFAULT_CBWTF_PRICE = new BigDecimal("5.00");
     private static final int DEFAULT_MAX_QUANTITY = 500;
 
     public QrOrderService(

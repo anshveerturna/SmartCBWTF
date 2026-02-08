@@ -1,15 +1,22 @@
 package com.smartcbwtf.controller;
 
 import com.smartcbwtf.config.TenantContext;
+import com.smartcbwtf.domain.QrAuthorization;
 import com.smartcbwtf.dto.*;
+import com.smartcbwtf.service.PdfService;
 import com.smartcbwtf.service.QrAuthorizationService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,9 +34,11 @@ public class CbwtfQrController {
     private static final Logger log = LoggerFactory.getLogger(CbwtfQrController.class);
 
     private final QrAuthorizationService qrService;
+    private final PdfService pdfService;
 
-    public CbwtfQrController(QrAuthorizationService qrService) {
+    public CbwtfQrController(QrAuthorizationService qrService, PdfService pdfService) {
         this.qrService = qrService;
+        this.pdfService = pdfService;
     }
 
     /**
@@ -107,5 +116,31 @@ public class CbwtfQrController {
 
         log.info("QR {} revoked by user {}", id, userId);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Download a single QR label as PDF — uses the exact same layout as batch label PDF.
+     */
+    @GetMapping("/{id}/label-pdf")
+    public ResponseEntity<Resource> downloadLabelPdf(@PathVariable("id") UUID id) {
+        QrAuthorization qr = qrService.getQr(id)
+                .orElseThrow(() -> new IllegalArgumentException("QR not found"));
+
+        String pdfUrl = pdfService.generateSingleLabelPdf(
+                qr.getHcf(), qr.getFacility(), qr.getWasteCategory(), qr.getQrPayload());
+
+        // pdfUrl is like /files/label-xxx.pdf — resolve to actual file
+        String filename = pdfUrl.replace("/files/", "");
+        File file = new File("files/" + filename);
+        if (!file.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Resource resource = new FileSystemResource(file);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + file.getName() + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(resource);
     }
 }

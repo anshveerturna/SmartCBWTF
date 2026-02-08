@@ -171,7 +171,6 @@ const Agreement: React.FC = () => {
           variant="contained"
           startIcon={<Download />}
           onClick={handleDownloadPdf}
-          disabled={!agreement.pdfAvailable}
         >
           Download PDF
         </Button>

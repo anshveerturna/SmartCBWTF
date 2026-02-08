@@ -234,7 +234,7 @@ const QrLabels: React.FC = () => {
               <Box sx={{ my: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
                 <Typography variant="subtitle2" color="text.secondary">Price per Label</Typography>
                 <Typography variant="h4" color="primary.main">
-                  \u20b9{pricing?.selfGeneratePrice?.toFixed(2) || '0.00'}
+                  ₹{pricing?.selfGeneratePrice?.toFixed(2) || '0.00'}
                 </Typography>
               </Box>
 
@@ -267,7 +267,7 @@ const QrLabels: React.FC = () => {
 
               <Alert severity={totalSelfLabels > (pricing?.maxQuantity || 500) ? 'error' : 'info'} sx={{ mb: 2, py: 0.5 }}>
                 <strong>Total: {totalSelfLabels} labels</strong> &bull; {Math.ceil(totalSelfLabels / 9)} page(s)
-                &bull; Charge: \u20b9{selfTotal.toFixed(2)}
+                &bull; Charge: ₹{selfTotal.toFixed(2)}
               </Alert>
 
               <Button
@@ -300,7 +300,7 @@ const QrLabels: React.FC = () => {
               <Box sx={{ my: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
                 <Typography variant="subtitle2" color="text.secondary">Price per Label</Typography>
                 <Typography variant="h4" color="secondary.main">
-                  \u20b9{pricing?.cbwtfRequestPrice?.toFixed(2) || '0.00'}
+                  ₹{pricing?.cbwtfRequestPrice?.toFixed(2) || '0.00'}
                 </Typography>
               </Box>
 
@@ -330,7 +330,7 @@ const QrLabels: React.FC = () => {
                   fullWidth
                   value={requestQuantity}
                   onChange={(e) => setRequestQuantity(parseInt(e.target.value) || 0)}
-                  helperText={`Total Charge: \u20b9${requestTotal.toFixed(2)}`}
+                  helperText={`Total Charge: ₹${requestTotal.toFixed(2)}`}
                 />
 
                 <Button
@@ -342,7 +342,7 @@ const QrLabels: React.FC = () => {
                   onClick={handleRequest}
                   disabled={requestMutation.isPending || !requestQuantity}
                 >
-                  Request Order (\u20b9{requestTotal.toFixed(2)})
+                  Request Order (₹{requestTotal.toFixed(2)})
                 </Button>
               </Stack>
             </CardContent>
@@ -404,7 +404,7 @@ const QrLabels: React.FC = () => {
                       <TableCell>{order.quantity}</TableCell>
                       <TableCell>
                         <Typography variant="body2" fontWeight="bold">
-                          \u20b9{order.totalAmount.toFixed(2)}
+                          ₹{order.totalAmount.toFixed(2)}
                         </Typography>
                       </TableCell>
                       <TableCell>{getStatusChip(order.status)}</TableCell>

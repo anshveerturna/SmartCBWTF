@@ -3,6 +3,8 @@ package com.smartcbwtf.service;
 import com.smartcbwtf.domain.Agreement;
 import com.smartcbwtf.domain.Invoice;
 import com.smartcbwtf.domain.Facility;
+import com.smartcbwtf.domain.FacilityBranding;
+import com.smartcbwtf.domain.FacilitySettings;
 import com.smartcbwtf.domain.FacilityTemplate;
 import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.domain.BagEvent;
@@ -55,9 +57,9 @@ public class PdfService {
     private static final PDType1Font FONT_REGULAR = PDType1Font.HELVETICA;
     private static final PDType1Font FONT_MONO = PDType1Font.COURIER;
 
-    // Colors
-    private static final Color COL_PRIMARY = new Color(0, 51, 102); // Navy Blue
-    private static final Color COL_ACCENT = new Color(220, 38, 38); // Red
+    // Colors (SmartCBWTF Green Theme)
+    private static final Color COL_PRIMARY = new Color(22, 163, 74); // SmartCBWTF Green
+    private static final Color COL_ACCENT = new Color(21, 128, 61); // Dark Green Accent
     private static final Color COL_GREY_LIGHT = new Color(245, 245, 245);
     private static final Color COL_GREY_HEADER = new Color(230, 230, 230);
     private static final Color COL_DARK_TEXT = new Color(30, 30, 30);
@@ -654,16 +656,30 @@ public class PdfService {
     }
 
     // ============================================================================================
-    // LEGACY METHODS (Restored for Backward Compatibility)
+    // AGREEMENT PDF GENERATION (Professional Enterprise-Grade)
     // ============================================================================================
 
     public String generateAgreementPdf(Agreement agreement) {
-        return generateAgreementPdf(agreement, null, null);
+        return generateAgreementPdf(agreement, null, null, null, null);
     }
 
     public String generateAgreementPdf(Agreement agreement, FacilityTemplate template, String templateContent) {
+        return generateAgreementPdf(agreement, template, templateContent, null, null);
+    }
+
+    /**
+     * Generate a professional agreement PDF with CBWTF branding, full details, and
+     * terms & conditions.
+     * 
+     * @return relative path to the generated PDF file
+     */
+    public String generateAgreementPdf(Agreement agreement, FacilityTemplate template, String templateContent,
+            FacilityBranding branding, FacilitySettings settings) {
         Facility facility = agreement.getFacility();
         Hcf hcf = agreement.getHcf();
+
+        // Sanitize agreement number for filesystem (replace / with _)
+        String safeAgreementNumber = agreement.getAgreementNumber().replace("/", "_").replace("\\", "_");
 
         Path facilityDir = agreementsDir.resolve(facility.getCode());
         try {
@@ -672,23 +688,671 @@ public class PdfService {
             throw new RuntimeException("Failed to create facility directory", e);
         }
 
-        String filename = agreement.getAgreementNumber() + ".pdf";
+        String filename = safeAgreementNumber + ".pdf";
         Path path = facilityDir.resolve(filename);
 
-        Map<String, String> variables = buildTemplateVariables(agreement, hcf, facility);
-
         try {
-            if (template != null && templateContent != null && "HTML".equals(template.getTemplateType())) {
-                String processedHtml = processTemplate(templateContent, variables);
-                renderHtmlToPdf(processedHtml, path);
-            } else {
-                renderAgreementPdf(path, agreement, hcf, facility, variables);
-            }
+            renderProfessionalAgreementPdf(path, agreement, hcf, facility, branding, settings);
         } catch (IOException e) {
             throw new RuntimeException("Failed to write agreement PDF", e);
         }
 
-        return "/files/agreements/" + facility.getCode() + "/" + filename;
+        return path.toAbsolutePath().toString();
+    }
+
+    /**
+     * Renders a full professional agreement PDF document.
+     * Multi-page capable with proper sections, branding, and T&C.
+     */
+    private void renderProfessionalAgreementPdf(Path path, Agreement agreement, Hcf hcf, Facility facility,
+            FacilityBranding branding, FacilitySettings settings) throws IOException {
+
+        try (PDDocument document = new PDDocument()) {
+            float margin = MARGIN_LEFT;
+            float contentWidth = CONTENT_WIDTH;
+            float pageTop = PAGE_HEIGHT - MARGIN_TOP;
+
+            // ========= PAGE 1 =========
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
+            PDPageContentStream cs = new PDPageContentStream(document, page);
+
+            float y = pageTop;
+
+            // === HEADER (Logo + Facility Info + Compact QR) ===
+            y = drawAgreementHeader(cs, document, y, facility, branding, settings, agreement);
+
+            // === DOCUMENT TITLE (centered, elegant) ===
+            y -= 22;
+            String titleLine1 = "AGREEMENT FOR BIO-MEDICAL WASTE";
+            String titleLine2 = "MANAGEMENT SERVICES";
+            float t1W = FONT_BOLD.getStringWidth(titleLine1) / 1000 * 14;
+            float t2W = FONT_BOLD.getStringWidth(titleLine2) / 1000 * 12;
+            drawText(cs, FONT_BOLD, 14, COL_DARK_TEXT, margin + (contentWidth - t1W) / 2, y, titleLine1);
+            y -= 17;
+            drawText(cs, FONT_BOLD, 12, COL_DARK_TEXT, margin + (contentWidth - t2W) / 2, y, titleLine2);
+            y -= 20;
+
+            // === Reference line with decorative rules ===
+            String refText = "Agreement No: " + nullSafe(agreement.getAgreementNumber())
+                    + "     |     Date: " + formatDate(LocalDate.now());
+            float refW = FONT_REGULAR.getStringWidth(refText) / 1000 * 9;
+            float refX = margin + (contentWidth - refW) / 2;
+            cs.setStrokingColor(new Color(200, 220, 200));
+            cs.setLineWidth(0.5f);
+            if (refX - margin > 50) {
+                cs.moveTo(margin + 30, y + 4);
+                cs.lineTo(refX - 10, y + 4);
+                cs.stroke();
+            }
+            drawText(cs, FONT_REGULAR, 9, COL_ACCENT, refX, y, refText);
+            if (PAGE_WIDTH - MARGIN_RIGHT - refX - refW > 50) {
+                cs.moveTo(refX + refW + 10, y + 4);
+                cs.lineTo(PAGE_WIDTH - MARGIN_RIGHT - 30, y + 4);
+                cs.stroke();
+            }
+            y -= 25;
+
+            // === PARTY DETAILS (two professional cards side by side) ===
+            y = drawPartyDetailsCards(cs, y, facility, hcf, settings);
+            y -= 18;
+
+            // === AGREEMENT DETAILS ===
+            if (y < MARGIN_BOTTOM + 180) {
+                drawAgreementFooter(cs, document);
+                cs.close();
+                page = new PDPage(PDRectangle.A4);
+                document.addPage(page);
+                cs = new PDPageContentStream(document, page);
+                y = pageTop - 20;
+            }
+
+            y = drawSectionTitle(cs, y, "AGREEMENT DETAILS");
+            y -= 5;
+
+            String billingModel = hcf.getBillingModel() != null ? hcf.getBillingModel().name() : "BEDDED";
+            String rateStr = agreement.getPerBedPerDayRate() != null
+                    ? "Rs. " + agreement.getPerBedPerDayRate().toPlainString()
+                    : "N/A";
+
+            String[][] agreementFields = {
+                    { "Agreement Number", nullSafe(agreement.getAgreementNumber()) },
+                    { "Effective From", formatDate(agreement.getStartDate()) },
+                    { "Valid Until",
+                            agreement.getEndDate() != null ? formatDate(agreement.getEndDate()) : "Until Terminated" },
+                    { "Billing Model", billingModel },
+                    { "Rate (Per Bed / Day)", rateStr },
+                    { "Agreement Version", "V" + (agreement.getVersion() != null ? agreement.getVersion() : 1) },
+            };
+            y = drawKeyValueTable(cs, y, margin, contentWidth, agreementFields);
+
+            y -= 20;
+
+            // === TERMS & CONDITIONS ===
+            if (y < MARGIN_BOTTOM + 100) {
+                drawAgreementFooter(cs, document);
+                cs.close();
+                page = new PDPage(PDRectangle.A4);
+                document.addPage(page);
+                cs = new PDPageContentStream(document, page);
+                y = pageTop - 20;
+            }
+
+            y = drawSectionTitle(cs, y, "TERMS & CONDITIONS");
+            y -= 10;
+
+            // Get terms text (priority: agreement.termsText > settings template > default)
+            String termsText = agreement.getTermsText();
+            if (termsText == null || termsText.isBlank()) {
+                if (settings != null && settings.getAgreementTermsTemplate() != null
+                        && !settings.getAgreementTermsTemplate().isBlank()) {
+                    termsText = settings.getAgreementTermsTemplate();
+                } else {
+                    termsText = getDefaultTermsText();
+                }
+            }
+
+            // Render T&C with proper clause formatting
+            String[] termsLines = termsText.split("\n");
+            for (String line : termsLines) {
+                line = line.trim();
+                if (line.isEmpty()) {
+                    y -= 7;
+                    continue;
+                }
+
+                boolean isNumberedClause = line.matches("^\\d+\\.\\s.*");
+                float textIndent = margin + 12;
+                float wrapW = contentWidth - 24;
+
+                if (isNumberedClause) {
+                    int dotIdx = line.indexOf('.');
+                    String clauseNum = line.substring(0, dotIdx + 1);
+                    String clauseBody = line.substring(dotIdx + 1).trim();
+                    float numWidth = FONT_BOLD.getStringWidth(clauseNum + "  ") / 1000 * 9;
+
+                    java.util.List<String> wrapped = wordWrap(clauseBody, FONT_REGULAR, 9, wrapW - numWidth);
+                    boolean firstLine = true;
+                    for (String wl : wrapped) {
+                        if (y < MARGIN_BOTTOM + 50) {
+                            drawAgreementFooter(cs, document);
+                            cs.close();
+                            page = new PDPage(PDRectangle.A4);
+                            document.addPage(page);
+                            cs = new PDPageContentStream(document, page);
+                            y = pageTop - 20;
+                        }
+                        if (firstLine) {
+                            drawText(cs, FONT_BOLD, 9, COL_PRIMARY, textIndent, y, clauseNum);
+                            drawText(cs, FONT_REGULAR, 9, COL_DARK_TEXT, textIndent + numWidth, y, wl);
+                            firstLine = false;
+                        } else {
+                            drawText(cs, FONT_REGULAR, 9, COL_DARK_TEXT, textIndent + numWidth, y, wl);
+                        }
+                        y -= 13;
+                    }
+                    y -= 4;
+                } else {
+                    java.util.List<String> wrapped = wordWrap(line, FONT_REGULAR, 9, wrapW);
+                    for (String wl : wrapped) {
+                        if (y < MARGIN_BOTTOM + 50) {
+                            drawAgreementFooter(cs, document);
+                            cs.close();
+                            page = new PDPage(PDRectangle.A4);
+                            document.addPage(page);
+                            cs = new PDPageContentStream(document, page);
+                            y = pageTop - 20;
+                        }
+                        drawText(cs, FONT_REGULAR, 9, COL_DARK_TEXT, textIndent, y, wl);
+                        y -= 13;
+                    }
+                    y -= 3;
+                }
+            }
+
+            y -= 25;
+
+            // === DOCUMENT VERIFICATION ===
+            if (y < MARGIN_BOTTOM + 140) {
+                drawAgreementFooter(cs, document);
+                cs.close();
+                page = new PDPage(PDRectangle.A4);
+                document.addPage(page);
+                cs = new PDPageContentStream(document, page);
+                y = pageTop - 20;
+            }
+
+            y = drawSectionTitle(cs, y, "DOCUMENT VERIFICATION");
+            y -= 12;
+
+            try {
+                String verificationUrl = "https://portal.smartcbwtf.com/verify/agreement/" + agreement.getId();
+                byte[] qrBytes = generateQrImage(verificationUrl, 250, 250);
+                PDImageXObject qrImage = PDImageXObject.createFromByteArray(document, qrBytes, "verify-qr");
+                float qrSize = 80;
+
+                // Verification card background
+                cs.setNonStrokingColor(new Color(248, 252, 248));
+                cs.addRect(margin, y - qrSize - 12, contentWidth, qrSize + 18);
+                cs.fill();
+                cs.setStrokingColor(new Color(220, 235, 220));
+                cs.setLineWidth(0.5f);
+                cs.addRect(margin, y - qrSize - 12, contentWidth, qrSize + 18);
+                cs.stroke();
+
+                cs.drawImage(qrImage, margin + 14, y - qrSize - 2, qrSize, qrSize);
+
+                float textX = margin + qrSize + 30;
+                drawText(cs, FONT_BOLD, 10, COL_DARK_TEXT, textX, y - 14,
+                        "Scan to Verify Agreement Authenticity");
+                drawText(cs, FONT_REGULAR, 8, COL_PRIMARY, textX, y - 28, verificationUrl);
+                drawText(cs, FONT_REGULAR, 8, COL_LIGHT_TEXT, textX, y - 44,
+                        "Agreement ID: " + agreement.getId().toString().substring(0, 8) + "...");
+                drawText(cs, FONT_REGULAR, 8, COL_LIGHT_TEXT, textX, y - 58,
+                        "This QR code links to a public verification page");
+                drawText(cs, FONT_REGULAR, 8, COL_LIGHT_TEXT, textX, y - 70,
+                        "confirming the authenticity and validity of this agreement.");
+
+                y -= (qrSize + 30);
+            } catch (com.google.zxing.WriterException e) {
+                drawText(cs, FONT_REGULAR, 8, COL_LIGHT_TEXT, margin + 14, y - 14,
+                        "Verification QR code could not be generated.");
+                y -= 30;
+            }
+
+            // Footer on last page
+            drawAgreementFooter(cs, document);
+            cs.close();
+
+            document.save(path.toFile());
+        }
+    }
+
+    /**
+     * Draw the agreement header with CBWTF logo and branding.
+     */
+    private float drawAgreementHeader(PDPageContentStream cs, PDDocument doc, float y,
+            Facility facility, FacilityBranding branding, FacilitySettings settings,
+            Agreement agreement) throws IOException {
+
+        float logoEndX = MARGIN_LEFT;
+
+        // Try to load CBWTF logo from branding or settings
+        byte[] logoBytes = null;
+        if (branding != null && branding.getLogoUrl() != null) {
+            try {
+                Path logoPath = Paths.get(branding.getLogoUrl());
+                if (Files.exists(logoPath)) {
+                    logoBytes = Files.readAllBytes(logoPath);
+                }
+            } catch (Exception e) {
+                // Fallback silently
+            }
+        }
+        // Fallback: try logo from settings
+        if (logoBytes == null && settings != null && settings.getLogoUrl() != null) {
+            try {
+                Path logoPath = Paths.get(settings.getLogoUrl());
+                if (Files.exists(logoPath)) {
+                    logoBytes = Files.readAllBytes(logoPath);
+                }
+            } catch (Exception e) {
+                // Fallback silently
+            }
+        }
+        // Fallback: try uploads/logos directory
+        if (logoBytes == null && facility != null) {
+            try {
+                Path logosDir = Paths.get("uploads", "logos");
+                if (Files.exists(logosDir)) {
+                    try (var stream = Files.list(logosDir)) {
+                        var firstLogoDir = stream.filter(Files::isDirectory).findFirst();
+                        if (firstLogoDir.isPresent()) {
+                            try (var files = Files.list(firstLogoDir.get())) {
+                                var logoFile = files.filter(f -> {
+                                    String name = f.getFileName().toString().toLowerCase();
+                                    return name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg");
+                                }).findFirst();
+                                if (logoFile.isPresent()) {
+                                    logoBytes = Files.readAllBytes(logoFile.get());
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Fallback silently
+            }
+        }
+
+        if (logoBytes != null) {
+            try {
+                PDImageXObject logo = PDImageXObject.createFromByteArray(doc, logoBytes, "cbwtf-logo");
+                float imgW = logo.getWidth();
+                float imgH = logo.getHeight();
+                float targetH = 55;
+                float scale = targetH / imgH;
+                if (imgW * scale > 120) {
+                    scale = 120 / imgW;
+                }
+                float finalW = imgW * scale;
+                float finalH = imgH * scale;
+                cs.drawImage(logo, MARGIN_LEFT, y - finalH + 5, finalW, finalH);
+                logoEndX = MARGIN_LEFT + finalW + 12;
+            } catch (Exception e) {
+                // Logo render failed, continue without it
+            }
+        }
+
+        // Compact verification QR in top-right corner
+        if (agreement != null) {
+            try {
+                String verUrl = "https://portal.smartcbwtf.com/verify/agreement/" + agreement.getId();
+                byte[] qrBytes = generateQrImage(verUrl, 150, 150);
+                PDImageXObject qrImg = PDImageXObject.createFromByteArray(doc, qrBytes, "header-qr");
+                float qrSz = 48;
+                cs.drawImage(qrImg, PAGE_WIDTH - MARGIN_RIGHT - qrSz, y - qrSz + 8, qrSz, qrSz);
+                drawText(cs, FONT_REGULAR, 6, COL_LIGHT_TEXT,
+                        PAGE_WIDTH - MARGIN_RIGHT - qrSz, y - qrSz, "Verify");
+            } catch (Exception e) {
+                // QR not critical for header
+            }
+        }
+
+        // Facility Name (bold, large)
+        String facilityName = settings != null && settings.getLegalName() != null
+                ? settings.getLegalName()
+                : facility.getName();
+        drawText(cs, FONT_BOLD, 14, COL_PRIMARY, logoEndX, y, nullSafe(facilityName));
+
+        // Subtitle
+        drawText(cs, FONT_REGULAR, 9, COL_LIGHT_TEXT, logoEndX, y - 16,
+                "Common Bio-Medical Waste Treatment Facility");
+
+        // Address
+        String address = settings != null && settings.getRegisteredAddress() != null
+                ? settings.getRegisteredAddress()
+                : nullSafe(facility.getAddress());
+        // Truncate address for header line
+        if (address.length() > 70) {
+            address = address.substring(0, 68) + "..";
+        }
+        drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, logoEndX, y - 28, address);
+
+        // Phone + Email on one line (from Settings, not Profile)
+        String phone = settings != null && settings.getOfficialPhone() != null ? settings.getOfficialPhone()
+                : nullSafe(facility.getContactPhone(), "");
+        String email = settings != null && settings.getOfficialEmail() != null ? settings.getOfficialEmail()
+                : nullSafe(facility.getContactEmail(), "");
+        StringBuilder contactBuilder = new StringBuilder();
+        if (!phone.isEmpty()) contactBuilder.append("Ph: ").append(phone);
+        if (!email.isEmpty()) {
+            if (contactBuilder.length() > 0) contactBuilder.append("   |   ");
+            contactBuilder.append("Email: ").append(email);
+        }
+        if (contactBuilder.length() > 0) {
+            drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, logoEndX, y - 39, contactBuilder.toString());
+        }
+
+        y -= 50;
+
+        // Divider line
+        cs.setLineWidth(1.5f);
+        cs.setStrokingColor(COL_PRIMARY);
+        cs.moveTo(MARGIN_LEFT, y);
+        cs.lineTo(PAGE_WIDTH - MARGIN_RIGHT, y);
+        cs.stroke();
+
+        // Thin accent line below
+        cs.setLineWidth(0.5f);
+        cs.setStrokingColor(COL_ACCENT);
+        cs.moveTo(MARGIN_LEFT, y - 2);
+        cs.lineTo(PAGE_WIDTH - MARGIN_RIGHT, y - 2);
+        cs.stroke();
+
+        return y - 5;
+    }
+
+    /**
+     * Draw minimalist SmartCBWTF footer branding.
+     */
+    private void drawAgreementFooter(PDPageContentStream cs, PDDocument doc) throws IOException {
+        float y = MARGIN_BOTTOM / 2 + 8;
+
+        // Green thin separator
+        cs.setLineWidth(0.5f);
+        cs.setStrokingColor(COL_PRIMARY);
+        cs.moveTo(MARGIN_LEFT, y + 12);
+        cs.lineTo(PAGE_WIDTH - MARGIN_RIGHT, y + 12);
+        cs.stroke();
+
+        // Left: SmartCBWTF logo + branding
+        float logoDrawnWidth = 0;
+        try {
+            byte[] logoBytes = null;
+            try (java.io.InputStream is = getClass().getResourceAsStream("/smartcbwtf_logo.png")) {
+                if (is != null) logoBytes = is.readAllBytes();
+            }
+            if (logoBytes == null) {
+                Path localPath = Paths.get("src/main/resources/smartcbwtf_logo.png");
+                if (Files.exists(localPath)) logoBytes = Files.readAllBytes(localPath);
+            }
+            if (logoBytes != null) {
+                PDImageXObject logo = PDImageXObject.createFromByteArray(doc, logoBytes, "footer-logo");
+                float maxH = 14;
+                float scale = maxH / logo.getHeight();
+                float w = logo.getWidth() * scale;
+                cs.drawImage(logo, MARGIN_LEFT, y - 4, w, maxH);
+                logoDrawnWidth = w + 4;
+            }
+        } catch (Exception ignored) { }
+
+        drawText(cs, FONT_BOLD, 7, COL_PRIMARY, MARGIN_LEFT + logoDrawnWidth, y,
+                "SmartCBWTF");
+        drawText(cs, FONT_REGULAR, 6, new Color(120, 120, 120), MARGIN_LEFT + logoDrawnWidth + 48, y,
+                "| Bio-Medical Waste Compliance Platform");
+
+        // Center: Page number
+        String pageStr = "Page " + doc.getNumberOfPages();
+        float pw = FONT_REGULAR.getStringWidth(pageStr) / 1000 * 7;
+        drawText(cs, FONT_REGULAR, 7, new Color(160, 160, 160), (PAGE_WIDTH - pw) / 2, y, pageStr);
+
+        // Right: timestamp
+        String ts = DATE_FMT.format(LocalDate.now());
+        float tw = FONT_REGULAR.getStringWidth(ts) / 1000 * 7;
+        drawText(cs, FONT_REGULAR, 7, new Color(160, 160, 160), PAGE_WIDTH - MARGIN_RIGHT - tw, y, ts);
+    }
+
+    /**
+     * Draw a section title with colored left bar.
+     */
+    private float drawSectionTitle(PDPageContentStream cs, float y, String title) throws IOException {
+        // Left accent bar
+        cs.setNonStrokingColor(COL_PRIMARY);
+        cs.addRect(MARGIN_LEFT, y - 18, 3, 18);
+        cs.fill();
+
+        // Light green background
+        cs.setNonStrokingColor(new Color(245, 251, 245));
+        cs.addRect(MARGIN_LEFT + 3, y - 18, CONTENT_WIDTH - 3, 18);
+        cs.fill();
+
+        // Subtle bottom border
+        cs.setStrokingColor(new Color(215, 230, 215));
+        cs.setLineWidth(0.3f);
+        cs.moveTo(MARGIN_LEFT, y - 18);
+        cs.lineTo(MARGIN_LEFT + CONTENT_WIDTH, y - 18);
+        cs.stroke();
+
+        drawText(cs, FONT_BOLD, 10, COL_ACCENT, MARGIN_LEFT + 10, y - 13, title);
+        return y - 24;
+    }
+
+    /**
+     * Draw a two-column key-value table.
+     */
+    private float drawKeyValueTable(PDPageContentStream cs, float y, float x, float width, String[][] rows)
+            throws IOException {
+        float labelWidth = 140;
+        float rowHeight = 16;
+        boolean alt = false;
+
+        for (String[] row : rows) {
+            // Alternate row background
+            if (alt) {
+                cs.setNonStrokingColor(new Color(250, 250, 252));
+                cs.addRect(x, y - rowHeight + 3, width, rowHeight);
+                cs.fill();
+            }
+
+            drawText(cs, FONT_BOLD, 9, COL_LIGHT_TEXT, x + 8, y - 9, row[0]);
+            // Value — handle long text
+            String value = row[1];
+            if (value != null && value.length() > 65) {
+                value = value.substring(0, 63) + "..";
+            }
+            drawText(cs, FONT_REGULAR, 9, COL_DARK_TEXT, x + labelWidth, y - 9, nullSafe(value));
+
+            y -= rowHeight;
+            alt = !alt;
+        }
+
+        return y;
+    }
+
+    /**
+     * Draw two side-by-side professional detail cards for CBWTF and HCF parties.
+     */
+    private float drawPartyDetailsCards(PDPageContentStream cs, float y,
+            Facility facility, Hcf hcf, FacilitySettings settings) throws IOException {
+
+        float colGap = 14;
+        float colWidth = (CONTENT_WIDTH - colGap) / 2;
+        float leftX = MARGIN_LEFT;
+        float rightX = MARGIN_LEFT + colWidth + colGap;
+
+        // CBWTF data
+        String[][] cbwtfData = {
+                { "Facility Name", nullSafe(facility.getName()) },
+                { "Facility Code", nullSafe(facility.getCode()) },
+                { "Address", settings != null && settings.getRegisteredAddress() != null
+                        ? settings.getRegisteredAddress() : nullSafe(facility.getAddress()) },
+                { "Phone", settings != null && settings.getOfficialPhone() != null
+                        ? settings.getOfficialPhone() : nullSafe(facility.getContactPhone()) },
+                { "Email", settings != null && settings.getOfficialEmail() != null
+                        ? settings.getOfficialEmail() : nullSafe(facility.getContactEmail()) },
+                { "PAN", settings != null ? nullSafe(settings.getPan(), "N/A")
+                        : nullSafe(facility.getPanNumber(), "N/A") },
+                { "GSTIN", settings != null ? nullSafe(settings.getGstin(), "N/A")
+                        : nullSafe(facility.getGstNumber(), "N/A") },
+                { "Auth No", settings != null ? nullSafe(settings.getAuthorizationNumber(), "N/A") : "N/A" },
+        };
+
+        // HCF data
+        String hcfType = hcf.getHcfType() != null ? hcf.getHcfType().name().replace("_", " ") : "N/A";
+        String bedInfo = (hcf.getNumberOfBeds() != null ? hcf.getNumberOfBeds().toString() : "0")
+                + " (" + (Boolean.TRUE.equals(hcf.getBedded()) ? "Bedded" : "Non-Bedded") + ")";
+
+        String[][] hcfData = {
+                { "Facility Name", nullSafe(hcf.getName()) },
+                { "Facility Code", nullSafe(hcf.getCode()) },
+                { "Doctor/Owner", nullSafe(hcf.getDoctorName(), "N/A") },
+                { "Address", nullSafe(hcf.getAddress()) },
+                { "State / PIN", nullSafe(hcf.getState(), "") + " " + nullSafe(hcf.getPincode(), "") },
+                { "Phone", nullSafe(hcf.getContactPhone(), "N/A") },
+                { "Email", nullSafe(hcf.getContactEmail(), "N/A") },
+                { "PAN", nullSafe(hcf.getPanNo(), "N/A") },
+                { "GSTIN", nullSafe(hcf.getGstNo(), "N/A") },
+                { "Category", hcfType },
+                { "Beds", bedInfo },
+                { "PCB Auth", nullSafe(hcf.getPcbAuthorizationNo(), "N/A") },
+        };
+
+        int maxRows = Math.max(cbwtfData.length, hcfData.length);
+        float rowH = 14;
+        float headerH = 22;
+        float padBottom = 8;
+        float cardH = headerH + (maxRows * rowH) + padBottom;
+
+        // Left card background
+        cs.setNonStrokingColor(new Color(252, 253, 252));
+        cs.addRect(leftX, y - cardH, colWidth, cardH);
+        cs.fill();
+        // Green top accent
+        cs.setNonStrokingColor(COL_PRIMARY);
+        cs.addRect(leftX, y - 2, colWidth, 2);
+        cs.fill();
+        // Border
+        cs.setStrokingColor(new Color(215, 225, 215));
+        cs.setLineWidth(0.4f);
+        cs.addRect(leftX, y - cardH, colWidth, cardH);
+        cs.stroke();
+
+        // Right card background
+        cs.setNonStrokingColor(new Color(252, 253, 252));
+        cs.addRect(rightX, y - cardH, colWidth, cardH);
+        cs.fill();
+        cs.setNonStrokingColor(COL_PRIMARY);
+        cs.addRect(rightX, y - 2, colWidth, 2);
+        cs.fill();
+        cs.setStrokingColor(new Color(215, 225, 215));
+        cs.setLineWidth(0.4f);
+        cs.addRect(rightX, y - cardH, colWidth, cardH);
+        cs.stroke();
+
+        // Card headers
+        float headY = y - 14;
+        drawText(cs, FONT_BOLD, 9, COL_PRIMARY, leftX + 8, headY, "CBWTF DETAILS");
+        drawText(cs, FONT_BOLD, 9, COL_PRIMARY, rightX + 8, headY, "HCF DETAILS");
+
+        // Header separator
+        float sepY = y - headerH;
+        cs.setStrokingColor(new Color(215, 225, 215));
+        cs.setLineWidth(0.3f);
+        cs.moveTo(leftX + 6, sepY);
+        cs.lineTo(leftX + colWidth - 6, sepY);
+        cs.stroke();
+        cs.moveTo(rightX + 6, sepY);
+        cs.lineTo(rightX + colWidth - 6, sepY);
+        cs.stroke();
+
+        // Render CBWTF data
+        float labelW = 82;
+        int maxValLen = (int) ((colWidth - labelW - 18) / 3.8);
+        float dY = sepY - 12;
+        for (String[] row : cbwtfData) {
+            drawText(cs, FONT_REGULAR, 8, COL_LIGHT_TEXT, leftX + 8, dY, row[0]);
+            drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, leftX + labelW + 8, dY,
+                    truncate(nullSafe(row[1]), maxValLen));
+            dY -= rowH;
+        }
+
+        // Render HCF data
+        dY = sepY - 12;
+        for (String[] row : hcfData) {
+            drawText(cs, FONT_REGULAR, 8, COL_LIGHT_TEXT, rightX + 8, dY, row[0]);
+            drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, rightX + labelW + 8, dY,
+                    truncate(nullSafe(row[1]), maxValLen));
+            dY -= rowH;
+        }
+
+        return y - cardH - 3;
+    }
+
+    /**
+     * Word-wrap text to fit within a given width.
+     */
+    private java.util.List<String> wordWrap(String text, PDFont font, int fontSize, float maxWidth) throws IOException {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        if (text == null || text.isEmpty()) {
+            return lines;
+        }
+
+        String[] words = text.split("\\s+");
+        StringBuilder currentLine = new StringBuilder();
+
+        for (String word : words) {
+            String testLine = currentLine.length() == 0 ? word : currentLine + " " + word;
+            float testWidth = font.getStringWidth(testLine) / 1000 * fontSize;
+
+            if (testWidth > maxWidth && currentLine.length() > 0) {
+                lines.add(currentLine.toString());
+                currentLine = new StringBuilder(word);
+            } else {
+                currentLine = new StringBuilder(testLine);
+            }
+        }
+
+        if (currentLine.length() > 0) {
+            lines.add(currentLine.toString());
+        }
+
+        return lines;
+    }
+
+    /**
+     * Default terms & conditions text used when no custom template is set.
+     */
+    private String getDefaultTermsText() {
+        return "1. The CBWTF agrees to collect, transport, and dispose of bio-medical waste generated by the HCF "
+                + "in accordance with the Bio-Medical Waste Management Rules, 2016 and subsequent amendments.\n\n"
+                + "2. The HCF shall segregate bio-medical waste at the point of generation into the prescribed "
+                + "color-coded categories (Yellow, Red, Blue, White) as per CPCB guidelines.\n\n"
+                + "3. The CBWTF shall provide collection services as per the mutually agreed schedule. Any changes "
+                + "to the schedule must be communicated at least 48 hours in advance.\n\n"
+                + "4. The HCF shall ensure that bio-medical waste is stored in designated areas and is handed over "
+                + "to the CBWTF collection staff in properly sealed, labeled bags/containers.\n\n"
+                + "5. The billing shall be computed based on the agreed rate structure. Invoices will be generated "
+                + "monthly and payment is due within the grace period specified by the CBWTF.\n\n"
+                + "6. Both parties shall maintain records of waste collected, transported, and disposed of, and "
+                + "shall make such records available for inspection by regulatory authorities.\n\n"
+                + "7. The CBWTF shall issue a certificate of disposal/treatment to the HCF on a monthly basis.\n\n"
+                + "8. Either party may terminate this agreement by providing 30 days written notice. Outstanding "
+                + "dues, if any, must be cleared before termination.\n\n"
+                + "9. Any dispute arising out of this agreement shall be resolved through mutual consultation. If "
+                + "unresolved, disputes shall be referred to the jurisdictional authority.\n\n"
+                + "10. This agreement is subject to the provisions of the Bio-Medical Waste Management Rules, "
+                + "2016, and any amendments thereof.";
     }
 
     private Map<String, String> buildTemplateVariables(Agreement agreement, Hcf hcf, Facility facility) {
@@ -749,71 +1413,6 @@ public class PdfService {
 
         String[] lines = text.split("\n");
         renderSimplePdf(outputPath, "AGREEMENT", lines);
-    }
-
-    private void renderAgreementPdf(Path path, Agreement agreement, Hcf hcf, Facility facility,
-            Map<String, String> vars) throws IOException {
-        try (PDDocument document = new PDDocument()) {
-            PDPage page = new PDPage(PDRectangle.A4);
-            document.addPage(page);
-
-            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
-                float y = 780;
-                float margin = 50;
-                float lineHeight = 14;
-
-                cs.beginText();
-                cs.setFont(FONT_BOLD, 12);
-                cs.setNonStrokingColor(Color.BLACK);
-                cs.newLineAtOffset(margin, y);
-                cs.showText(facility.getName());
-                y -= lineHeight;
-                cs.setFont(FONT_REGULAR, 9);
-                cs.newLineAtOffset(0, -lineHeight);
-                cs.showText(nullSafe(facility.getAddress()));
-                cs.endText();
-
-                y -= 30;
-
-                cs.beginText();
-                cs.setFont(FONT_BOLD, 14);
-                cs.newLineAtOffset(margin, y);
-                cs.showText("AGREEMENT FORM");
-                cs.endText();
-
-                // ... [Rest of layout logic simplified for brevity, assuming standard
-                // structure] ...
-                // Re-implementing the core loop for Key-Value pairs
-                y -= 40;
-
-                String[][] hcfFields = {
-                        { "HCF Name", vars.get("HCF_NAME") },
-                        { "HCF Address", vars.get("HCF_ADDRESS") },
-                        { "Agreement No", vars.get("AGREEMENT_NUMBER") }
-                };
-
-                for (String[] field : hcfFields) {
-                    cs.beginText();
-                    cs.setFont(FONT_BOLD, 9);
-                    cs.newLineAtOffset(margin, y);
-                    cs.showText(field[0] + ":");
-                    cs.setFont(FONT_REGULAR, 9);
-                    cs.newLineAtOffset(130, 0);
-                    cs.showText(truncate(field[1], 60));
-                    cs.endText();
-                    y -= lineHeight;
-                }
-
-                // Footer
-                cs.beginText();
-                cs.setFont(FONT_REGULAR, 8);
-                cs.newLineAtOffset(margin, 50);
-                cs.showText("Generated by SmartCBWTF");
-                cs.endText();
-            }
-
-            document.save(path.toFile());
-        }
     }
 
     public String generateInvoicePdf(Invoice invoice) {
@@ -974,6 +1573,54 @@ public class PdfService {
             document.save(path.toFile());
         } catch (Exception e) {
             throw new RuntimeException("Failed to write multi-category label PDF", e);
+        }
+        return "/files/" + filename;
+    }
+
+    /**
+     * Generates a single QR label PDF using the exact same layout as the batch PDF.
+     * The label is rendered at the same size as in the 3x3 grid, centered on an A4 page.
+     */
+    public String generateSingleLabelPdf(Hcf hcf, Facility facility, String category, String qrCodeText) {
+        String filename = "label-" + hcf.getCode() + "-" + category + "-" + System.currentTimeMillis() + ".pdf";
+        Path path = baseDir.resolve(filename);
+
+        try (PDDocument document = new PDDocument()) {
+            // Use the exact same layout constants as generateLabelBatchPdf
+            float margin = 20;
+            float headerHeight = 80;
+            float footerHeight = 40;
+            float pageWidth = PDRectangle.A4.getWidth();
+            float pageHeight = PDRectangle.A4.getHeight();
+            float contentWidth = pageWidth - (2 * margin);
+            float contentHeight = pageHeight - (2 * margin) - headerHeight - footerHeight;
+            float startY = pageHeight - margin - headerHeight;
+
+            int cols = 3;
+            int rows = 3;
+            float gap = 12;
+            float labelWidth = (contentWidth - ((cols - 1) * gap)) / cols;
+            float labelHeight = (contentHeight - ((rows - 1) * gap)) / rows;
+
+            String dateStr = DateTimeFormatter.ofPattern("dd MMM yyyy").format(LocalDate.now());
+
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
+
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                drawCommonHeader(cs, document, "QR LABEL", "Generated: " + dateStr);
+                drawCommonFooter(cs, document);
+
+                // Place the single label in the top-left cell (same position as first label in batch)
+                float x = margin;
+                float y = startY - labelHeight;
+
+                drawProfessionalLabel(document, cs, x, y, labelWidth, labelHeight, hcf, category, qrCodeText);
+            }
+
+            document.save(path.toFile());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to write single label PDF", e);
         }
         return "/files/" + filename;
     }

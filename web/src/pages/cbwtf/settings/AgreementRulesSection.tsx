@@ -14,8 +14,8 @@ import {
   Paper,
   Chip,
 } from '@mui/material';
-import { Save as SaveIcon, Preview as PreviewIcon } from '@mui/icons-material';
-import { type AgreementRulesDTO, updateAgreementRules, previewAgreementNumber } from '../../../api/cbwtf';
+import { Save as SaveIcon, Preview as PreviewIcon, Article as TermsIcon } from '@mui/icons-material';
+import { type AgreementRulesDTO, updateAgreementRules, updateAgreementTermsTemplate, previewAgreementNumber } from '../../../api/cbwtf';
 
 interface Props {
   data: AgreementRulesDTO;
@@ -25,6 +25,9 @@ interface Props {
 const AgreementRulesSection = ({ data, onSave }: Props) => {
   const [formData, setFormData] = useState<AgreementRulesDTO>(data);
   const [error, setError] = useState<string | null>(null);
+  const [termsTemplate, setTermsTemplate] = useState<string>(data.agreementTermsTemplate || '');
+  const [termsError, setTermsError] = useState<string | null>(null);
+  const [termsSaved, setTermsSaved] = useState(false);
   const [previewDebounce, setPreviewDebounce] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   // Live preview of agreement number
@@ -67,6 +70,18 @@ const AgreementRulesSection = ({ data, onSave }: Props) => {
     },
     onError: (err: Error) => {
       setError(err.message || 'Failed to update agreement rules');
+    }
+  });
+
+  const termsMutation = useMutation({
+    mutationFn: (template: string) => updateAgreementTermsTemplate(template),
+    onSuccess: () => {
+      setTermsSaved(true);
+      setTermsError(null);
+      setTimeout(() => setTermsSaved(false), 3000);
+    },
+    onError: (err: Error) => {
+      setTermsError(err.message || 'Failed to update terms template');
     }
   });
 
@@ -255,6 +270,53 @@ const AgreementRulesSection = ({ data, onSave }: Props) => {
           </Box>
         </Grid>
       </Grid>
+
+      {/* Agreement Terms & Conditions Template */}
+      <Divider sx={{ my: 4 }} />
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <TermsIcon color="primary" />
+          <Typography variant="h6">Agreement Terms &amp; Conditions Template</Typography>
+        </Box>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={termsMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
+          onClick={() => termsMutation.mutate(termsTemplate)}
+          disabled={termsMutation.isPending}
+        >
+          Save Terms
+        </Button>
+      </Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        These terms &amp; conditions will be embedded in every agreement PDF generated for new HCFs. 
+        Each clause should be on a new line. Numbering is applied automatically.
+      </Typography>
+
+      {termsError && (
+        <Alert severity="error" sx={{ mb: 2 }}>{termsError}</Alert>
+      )}
+      {termsSaved && (
+        <Alert severity="success" sx={{ mb: 2 }}>Terms template saved successfully</Alert>
+      )}
+
+      <TextField
+        fullWidth
+        multiline
+        minRows={10}
+        maxRows={25}
+        value={termsTemplate}
+        onChange={(e) => setTermsTemplate(e.target.value)}
+        placeholder={"The CBWTF shall collect, transport, and dispose of biomedical waste...\nThe HCF shall segregate biomedical waste as per BMWM Rules...\nThe agreement shall be valid for the period specified above..."}
+        sx={{
+          '& .MuiInputBase-root': {
+            fontFamily: 'monospace',
+            fontSize: '0.875rem',
+            lineHeight: 1.8,
+          },
+        }}
+        helperText={`${termsTemplate.split('\n').filter(l => l.trim()).length} clause(s) — each non-empty line becomes a numbered clause in the PDF`}
+      />
     </Box>
   );
 };

@@ -125,6 +125,9 @@ public class FacilitySettings {
     @Column(name = "agreement_number_include_year", nullable = false)
     private Boolean agreementNumberIncludeYear = true;
 
+    @Column(name = "agreement_terms_template", columnDefinition = "TEXT")
+    private String agreementTermsTemplate;
+
     // ==================== Section 5: QR & Operational Rules ====================
     @Column(name = "qr_validity_days", nullable = false)
     private Integer qrValidityDays = 30;
@@ -562,6 +565,14 @@ public class FacilitySettings {
 
     public void setAgreementNumberIncludeYear(Boolean agreementNumberIncludeYear) {
         this.agreementNumberIncludeYear = agreementNumberIncludeYear;
+    }
+
+    public String getAgreementTermsTemplate() {
+        return agreementTermsTemplate;
+    }
+
+    public void setAgreementTermsTemplate(String agreementTermsTemplate) {
+        this.agreementTermsTemplate = agreementTermsTemplate;
     }
 
     public Integer getQrValidityDays() {

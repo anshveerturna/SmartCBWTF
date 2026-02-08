@@ -18,5 +18,7 @@ public record AgreementRulesDTO(
         @Size(min = 1, max = 5) String agreementNumberSeparator,
         @Min(1) @Max(10) Integer agreementNumberSequenceDigits,
         Boolean agreementNumberIncludeFacilityCode,
-        Boolean agreementNumberIncludeYear) {
+        Boolean agreementNumberIncludeYear,
+        // Agreement Terms Template
+        String agreementTermsTemplate) {
 }

@@ -10,7 +10,7 @@ import {
   Add as AddIcon, QrCode as QrIcon, Block as RevokeIcon, Visibility as ViewIcon,
   Download as DownloadIcon, PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
-import { listQrs, revokeQr, getHcfList, generateLabelsForHcf, type QrDetail } from '../../api/cbwtf';
+import { listQrs, revokeQr, getHcfList, generateLabelsForHcf, downloadQrLabelPdf, type QrDetail } from '../../api/cbwtf';
 import QRCode from 'qrcode';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -138,6 +138,23 @@ export default function QrLabels() {
       link.download = 'QR-' + selectedQr.hcfName + '-' + selectedQr.wasteCategory + '.png';
       link.href = qrImageUrl;
       link.click();
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!selectedQr) return;
+    try {
+      const blob = await downloadQrLabelPdf(selectedQr.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `QR-${selectedQr.hcfName}-${selectedQr.wasteCategory}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to download QR label PDF', severity: 'error' });
     }
   };
 
@@ -365,6 +382,9 @@ export default function QrLabels() {
           <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
           <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadQr}>
             Download PNG
+          </Button>
+          <Button variant="outlined" startIcon={<PdfIcon />} onClick={handleDownloadPdf} color="secondary">
+            Download PDF
           </Button>
         </DialogActions>
       </Dialog>
