@@ -50,25 +50,14 @@ const getStatusColor = (status: string | null) => {
   }
 };
 
-const getDuesColor = (duesStatus: string | null) => {
-  switch (duesStatus) {
-    case 'CLEAR':
-      return 'success';
-    case 'PENDING':
-      return 'warning';
-    case 'DISPUTED':
-      return 'error';
-    default:
-      return 'default';
-  }
-};
-
 const formatDate = (dateString: string | null) => {
   if (!dateString) return '-';
   return new Date(dateString).toLocaleDateString('en-IN', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 };
 
@@ -95,11 +84,25 @@ export default function HcfListSmall() {
     const citySet = new Set<string>();
     const stateSet = new Set<string>();
     const typeSet = new Set<string>();
+    
     allHcfs.forEach((hcf) => {
-      if (hcf.city) citySet.add(hcf.city);
-      if (hcf.state) stateSet.add(hcf.state);
-      if (hcf.hcfType) typeSet.add(hcf.hcfType);
+      // Small HCFs only for filters
+      let isSmallHcf = false;
+      if (hcf.bedAccessCategory === 'BEDS_0_TO_30') {
+        isSmallHcf = true;
+      } else if (hcf.bedAccessCategory === 'ABOVE_30_BEDS') {
+        isSmallHcf = false;
+      } else {
+        isSmallHcf = hcf.numberOfBeds === null || hcf.numberOfBeds <= 30;
+      }
+
+      if (isSmallHcf) {
+        if (hcf.city) citySet.add(hcf.city);
+        if (hcf.state) stateSet.add(hcf.state);
+        if (hcf.hcfType) typeSet.add(hcf.hcfType);
+      }
     });
+
     return {
       cities: Array.from(citySet).sort(),
       states: Array.from(stateSet).sort(),
@@ -128,13 +131,14 @@ export default function HcfListSmall() {
       
       if (!isSmallHcf) return false;
 
-      // Search filter
-      const searchLower = searchQuery.toLowerCase();
+      // Search filter - now includes address
+      const searchLower = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !searchQuery ||
         hcf.name.toLowerCase().includes(searchLower) ||
         hcf.code.toLowerCase().includes(searchLower) ||
-        (hcf.agreementNumber && hcf.agreementNumber.toLowerCase().includes(searchLower));
+        (hcf.agreementNumber && hcf.agreementNumber.toLowerCase().includes(searchLower)) ||
+        (hcf.address && hcf.address.toLowerCase().includes(searchLower));
 
       // Status filter
       const matchesStatus =
@@ -142,11 +146,11 @@ export default function HcfListSmall() {
 
       // City filter
       const matchesCity =
-        cityFilter === 'all' || hcf.city === cityFilter;
+        cityFilter === 'all' || (hcf.city && hcf.city === cityFilter);
 
       // State filter
       const matchesState =
-        stateFilter === 'all' || hcf.state === stateFilter;
+        stateFilter === 'all' || (hcf.state && hcf.state === stateFilter);
 
       // HCF Type filter
       const matchesType =
@@ -205,7 +209,7 @@ export default function HcfListSmall() {
         <CardContent>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flexWrap="wrap">
             <TextField
-              placeholder="Search by name, code, or agreement..."
+              placeholder="Search by name, code, agreement, or address..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               size="small"
@@ -286,7 +290,7 @@ export default function HcfListSmall() {
               <TableCell sx={{ fontWeight: 'bold' }}>Code</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Agreement #</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Dues</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>City</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Beds</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Last Pickup</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
@@ -335,12 +339,9 @@ export default function HcfListSmall() {
                     />
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={hcf.duesStatus || 'N/A'}
-                      color={getDuesColor(hcf.duesStatus) as any}
-                      size="small"
-                      variant="outlined"
-                    />
+                    <Typography variant="body2">
+                      {hcf.city || '-'}
+                    </Typography>
                   </TableCell>
                   <TableCell>{hcf.numberOfBeds || '0'}</TableCell>
                   <TableCell>

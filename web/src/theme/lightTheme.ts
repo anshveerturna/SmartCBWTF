@@ -13,58 +13,74 @@ declare module '@mui/material/styles' {
 
 // Light theme palette - matches Android app design
 // From androidapp colors.xml: Teal primary, clean whites, soft grays
+// Light theme palette - Enterprise Clean
 const lightPalette = {
   mode: 'light' as const,
   primary: {
-    main: '#00695C',     // Teal 800 - Android primary_color
-    light: '#26A69A',    // Teal 400 - secondary_color
-    dark: '#004D40',     // Teal 900 - primary_color_variant
+    main: '#0F766E',     // Teal 700 - Deep, professional teal
+    light: '#14B8A6',    // Teal 500
+    dark: '#0D5E56',     // Teal 800
     contrastText: '#FFFFFF',
   },
   secondary: {
-    main: '#00796B',     // verifyAccent
-    light: '#4DB6AC',    // pickupCardGradientEnd
-    dark: '#00503D',     // primary_color_dark
+    main: '#475569',     // Slate 600 - Professional secondary
+    light: '#94A3B8',    // Slate 400
+    dark: '#334155',     // Slate 700
     contrastText: '#FFFFFF',
   },
   ...semanticColors,
   background: {
-    default: '#F5F7FA',  // Android background_color
-    paper: '#FFFFFF',    // Android surface_color
+    default: '#F1F5F9',  // Slate 100 - Crisp light gray background
+    paper: '#FFFFFF',    // Pure white surfaces
   },
   text: {
-    primary: '#102027',  // Android text_primary
-    secondary: '#546E7A', // Android text_secondary
+    primary: '#0F172A',  // Slate 900 - High contrast text
+    secondary: '#64748B', // Slate 500 - Subtler secondary text
   },
-  divider: '#E5E7EB',    // Android divider_color
+  divider: '#E2E8F0',    // Slate 200 - Subtle dividers
   waste: wasteColors,
 };
 
 // Light theme component overrides
 const lightComponents = {
+  MuiCssBaseline: {
+    styleOverrides: {
+      body: {
+        scrollbarColor: '#CBD5E1 #F1F5F9',
+        '&::-webkit-scrollbar, & *::-webkit-scrollbar': {
+          width: '8px',
+          height: '8px',
+        },
+        '&::-webkit-scrollbar-thumb, & *::-webkit-scrollbar-thumb': {
+          borderRadius: 8,
+          backgroundColor: '#CBD5E1',
+          minHeight: 24,
+        },
+        '&::-webkit-scrollbar-track, & *::-webkit-scrollbar-track': {
+          backgroundColor: '#F1F5F9',
+        },
+      },
+    },
+  },
   MuiButton: {
     styleOverrides: {
       root: {
-        borderRadius: 8,
-        padding: '10px 20px',
+        borderRadius: 6, // Tighter radius
+        textTransform: 'none',
+        fontWeight: 600,
         boxShadow: 'none',
         '&:hover': {
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          boxShadow: 'none',
         },
       },
       containedPrimary: {
-        background: 'linear-gradient(135deg, #00695C 0%, #004D40 100%)',
+        backgroundColor: '#0F766E',
         '&:hover': {
-          background: 'linear-gradient(135deg, #00796B 0%, #00695C 100%)',
+          backgroundColor: '#0D5E56',
         },
       },
-      outlinedPrimary: {
-        borderColor: '#00695C',
-        color: '#00695C',
-        '&:hover': {
-          backgroundColor: alpha('#00695C', 0.04),
-          borderColor: '#004D40',
-        },
+      outlined: {
+        borderWidth: '1px !important', // Ensure visible border
       },
     },
   },
@@ -73,8 +89,9 @@ const lightComponents = {
       root: {
         backgroundImage: 'none',
         backgroundColor: '#FFFFFF',
-        border: `1px solid ${alpha('#000', 0.08)}`,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)',
+        border: '1px solid #E2E8F0', // Crisp border
+        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', // Very subtle shadow
+        borderRadius: 8,
       },
     },
   },
@@ -83,36 +100,42 @@ const lightComponents = {
       root: {
         backgroundImage: 'none',
       },
+      elevation1: {
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+      },
     },
   },
   MuiAppBar: {
     styleOverrides: {
       root: {
-        backgroundImage: 'none',
         backgroundColor: '#FFFFFF',
-        borderBottom: '1px solid #E5E7EB',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-        color: '#102027',
+        color: '#0F172A',
+        borderBottom: '1px solid #E2E8F0',
+        boxShadow: 'none',
       },
     },
   },
   MuiDrawer: {
     styleOverrides: {
       paper: {
-        backgroundColor: '#F5F7FA',
-        borderRight: '1px solid #E5E7EB',
+        backgroundColor: '#FFFFFF',
+        borderRight: '1px solid #E2E8F0',
       },
     },
   },
   MuiTableCell: {
     styleOverrides: {
       root: {
-        borderBottom: '1px solid #E5E7EB',
+        borderBottom: '1px solid #E2E8F0',
+        padding: '12px 16px',
       },
       head: {
         backgroundColor: '#F8FAFC',
+        color: '#475569',
         fontWeight: 600,
-        color: '#374151',
+        textTransform: 'uppercase',
+        fontSize: '0.75rem',
+        letterSpacing: '0.05em',
       },
     },
   },
@@ -120,7 +143,7 @@ const lightComponents = {
     styleOverrides: {
       root: {
         '&:hover': {
-          backgroundColor: alpha('#00695C', 0.04),
+          backgroundColor: '#F8FAFC',
         },
       },
     },
@@ -128,8 +151,16 @@ const lightComponents = {
   MuiChip: {
     styleOverrides: {
       root: {
-        borderRadius: 6,
+        borderRadius: 4,
+        fontWeight: 500,
       },
+      filled: {
+        border: '1px solid transparent',
+      },
+      outlined: {
+        border: '1px solid #E2E8F0',
+        backgroundColor: '#FFFFFF',
+      }
     },
   },
   MuiTextField: {
@@ -138,14 +169,27 @@ const lightComponents = {
         '& .MuiOutlinedInput-root': {
           backgroundColor: '#FFFFFF',
           '& fieldset': {
-            borderColor: '#E5E7EB',
+            borderColor: '#E2E8F0',
+            borderWidth: 1,
           },
           '&:hover fieldset': {
-            borderColor: '#00695C',
+            borderColor: '#CBD5E1',
           },
           '&.Mui-focused fieldset': {
-            borderColor: '#00695C',
+            borderColor: '#0F766E',
+            borderWidth: 1,
+            boxShadow: '0 0 0 1px #0F766E', // Focus ring
           },
+        },
+      },
+    },
+  },
+  MuiInputLabel: {
+    styleOverrides: {
+      root: {
+        color: '#64748B',
+        '&.Mui-focused': {
+          color: '#0F766E',
         },
       },
     },
@@ -153,77 +197,48 @@ const lightComponents = {
   MuiDialog: {
     styleOverrides: {
       paper: {
-        backgroundImage: 'none',
-        backgroundColor: '#FFFFFF',
-        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
-      },
-    },
-  },
-  MuiTooltip: {
-    styleOverrides: {
-      tooltip: {
-        backgroundColor: '#374151',
-        color: '#FFFFFF',
-        fontSize: '0.75rem',
-      },
-    },
-  },
-  MuiAlert: {
-    styleOverrides: {
-      root: {
         borderRadius: 8,
-      },
-    },
-  },
-  MuiDataGrid: {
-    styleOverrides: {
-      root: {
-        border: '1px solid #E5E7EB',
-        backgroundColor: '#FFFFFF',
-        '& .MuiDataGrid-columnHeaders': {
-          backgroundColor: '#F8FAFC',
-          borderBottom: '1px solid #E5E7EB',
-        },
-        '& .MuiDataGrid-cell': {
-          borderBottom: '1px solid #F3F4F6',
-        },
-        '& .MuiDataGrid-row:hover': {
-          backgroundColor: alpha('#00695C', 0.04),
-        },
-        '& .MuiDataGrid-row.Mui-selected': {
-          backgroundColor: '#E0F2F1', // mint_glow from Android
-        },
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        border: '1px solid #E2E8F0',
       },
     },
   },
   MuiListItemButton: {
     styleOverrides: {
       root: {
-        '&:hover': {
-          backgroundColor: alpha('#00695C', 0.08),
-        },
+        borderRadius: 6,
+        margin: '2px 8px',
         '&.Mui-selected': {
-          backgroundColor: '#E0F2F1',
+          backgroundColor: alpha('#0F766E', 0.1),
+          color: '#0F766E',
           '&:hover': {
-            backgroundColor: '#B2DFDB',
+            backgroundColor: alpha('#0F766E', 0.15),
+          },
+          '& .MuiListItemIcon-root': {
+            color: '#0F766E',
           },
         },
+        '&:hover': {
+          backgroundColor: '#F1F5F9',
+        },
       },
     },
   },
-  MuiTabs: {
-    styleOverrides: {
-      indicator: {
-        backgroundColor: '#00695C',
-      },
-    },
-  },
-  MuiTab: {
+  MuiListItemIcon: {
     styleOverrides: {
       root: {
-        '&.Mui-selected': {
-          color: '#00695C',
-        },
+        minWidth: 36,
+        color: '#64748B',
+      },
+    },
+  },
+  MuiTooltip: {
+    styleOverrides: {
+      tooltip: {
+        backgroundColor: '#1E293B',
+        color: '#FFFFFF',
+        borderRadius: 4,
+        fontSize: '0.75rem',
       },
     },
   },

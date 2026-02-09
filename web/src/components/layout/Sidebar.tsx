@@ -167,40 +167,42 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
     // Special handling for HCF routes to match detail pages
     let isActive = location.pathname === item.path;
     
-    // For HCF list routes, also match when viewing HCF detail pages
-    // HCF detail pages are /cbwtf/hcfs/{uuid} and we need to check referring context
-    // Since we don't have HCF bed count here, match /hcfs/ prefix but not /hcfs/small or /hcfs/large
     if (!isActive && item.path === '/cbwtf/hcfs/small') {
-      // This is complex - for now, don't auto-match detail pages since we can't know bed count
-      // The back navigation was already fixed to go to correct list
+      // Logic matching existing check
     }
     if (!isActive && item.path === '/cbwtf/hcfs/large') {
-      // Same as above
+      // Logic matching existing check
     }
     
     // For other routes, use startsWith for nested page matching
     if (!isActive && location.pathname.startsWith(item.path) && item.path !== '/cbwtf/hcfs/small' && item.path !== '/cbwtf/hcfs/large') {
       isActive = true;
     }
+
     return (
-      <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
+      <ListItem key={item.path} disablePadding sx={{ display: 'block', mb: 0.5 }}>
         <ListItemButton
           onClick={() => handleNavigate(item.path)}
           sx={{
-            borderRadius: 2,
-            px: 2,
-            py: 1,
-            bgcolor: isActive ? (theme) => alpha(theme.palette.primary.main, 0.12) : 'transparent',
+            py: 1.25,
+            px: 2.5,
+            minHeight: 44,
+            borderRadius: 0, // Square edges for professional look
+            borderLeft: isActive ? '3px solid' : '3px solid transparent',
+            borderColor: isActive ? 'primary.main' : 'transparent',
+            bgcolor: isActive ? (theme) => alpha(theme.palette.primary.main, 0.04) : 'transparent',
             color: isActive ? 'primary.main' : 'text.secondary',
             '&:hover': {
-              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+              bgcolor: (theme) => alpha(theme.palette.text.primary, 0.04), // Subtle gray hover
             },
+            transition: 'all 0.2s',
           }}
         >
           <ListItemIcon
             sx={{
               minWidth: 36,
               color: isActive ? 'primary.main' : 'text.secondary',
+              transition: 'color 0.2s',
             }}
           >
             {item.icon}
@@ -208,16 +210,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
           <ListItemText
             primary={item.label}
             primaryTypographyProps={{
-              fontSize: '0.85rem',
-              fontWeight: isActive ? 600 : 400,
+              fontSize: '0.875rem',
+              fontWeight: isActive ? 600 : 500,
             }}
           />
           {item.badge !== undefined && item.badge > 0 && (
             <Chip
               label={item.badge}
               size="small"
-              color="error"
-              sx={{ height: 20, minWidth: 20, fontSize: '0.7rem' }}
+              color="error" // Keep error for badges as they are usually alerts
+              sx={{ 
+                height: 20, 
+                minWidth: 20, 
+                fontSize: '0.7rem',
+                fontWeight: 700
+              }}
             />
           )}
         </ListItemButton>
@@ -315,10 +322,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
         {user?.role === 'TOP_MANAGEMENT' && renderFlatNav(getTopManagementItems())}
       </Box>
 
-      {/* Footer */}
-      <Box sx={{ p: 2 }}>
-        <Typography variant="caption" color="text.secondary">
-          © 2025 SmartCBWTF
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem', fontWeight: 500 }}>
+          © 2026 SmartCBWTF
         </Typography>
       </Box>
     </Box>

@@ -50,25 +50,14 @@ const getStatusColor = (status: string | null) => {
   }
 };
 
-const getDuesColor = (duesStatus: string | null) => {
-  switch (duesStatus) {
-    case 'CLEAR':
-      return 'success';
-    case 'PENDING':
-      return 'warning';
-    case 'DISPUTED':
-      return 'error';
-    default:
-      return 'default';
-  }
-};
-
 const formatDate = (dateString: string | null) => {
   if (!dateString) return '-';
   return new Date(dateString).toLocaleDateString('en-IN', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 };
 
@@ -80,11 +69,42 @@ export default function HcfListLarge() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [cityFilter, setCityFilter] = useState<string>('all');
+  const [stateFilter, setStateFilter] = useState<string>('all');
 
   const { data: allHcfs, isLoading, error } = useQuery({
     queryKey: ['cbwtf-hcfs'],
     queryFn: getHcfList,
   });
+
+  // Get unique cities and states for filter dropdowns
+  const { cities, states } = useMemo(() => {
+    if (!allHcfs) return { cities: [], states: [] };
+    const citySet = new Set<string>();
+    const stateSet = new Set<string>();
+    
+    allHcfs.forEach((hcf) => {
+      // Large HCFs only for filters
+      let isLargeHcf = false;
+      if (hcf.bedAccessCategory === 'ABOVE_30_BEDS') {
+        isLargeHcf = true;
+      } else if (hcf.bedAccessCategory === 'BEDS_0_TO_30') {
+        isLargeHcf = false;
+      } else {
+        isLargeHcf = hcf.numberOfBeds !== null && hcf.numberOfBeds > 30;
+      }
+
+      if (isLargeHcf) {
+        if (hcf.city) citySet.add(hcf.city);
+        if (hcf.state) stateSet.add(hcf.state);
+      }
+    });
+
+    return {
+      cities: Array.from(citySet).sort(),
+      states: Array.from(stateSet).sort(),
+    };
+  }, [allHcfs]);
 
   // Filter to only show above 30 beds HCFs
   const filteredHcfs = useMemo(() => {
@@ -107,21 +127,30 @@ export default function HcfListLarge() {
       
       if (!isLargeHcf) return false;
 
-      // Search filter
-      const searchLower = searchQuery.toLowerCase();
+      // Search filter - now includes address
+      const searchLower = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !searchQuery ||
         hcf.name.toLowerCase().includes(searchLower) ||
         hcf.code.toLowerCase().includes(searchLower) ||
-        (hcf.agreementNumber && hcf.agreementNumber.toLowerCase().includes(searchLower));
+        (hcf.agreementNumber && hcf.agreementNumber.toLowerCase().includes(searchLower)) ||
+        (hcf.address && hcf.address.toLowerCase().includes(searchLower));
 
       // Status filter
       const matchesStatus =
         statusFilter === 'all' || hcf.agreementStatus === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      // City filter
+      const matchesCity =
+        cityFilter === 'all' || (hcf.city && hcf.city === cityFilter);
+
+      // State filter
+      const matchesState =
+        stateFilter === 'all' || (hcf.state && hcf.state === stateFilter);
+
+      return matchesSearch && matchesStatus && matchesCity && matchesState;
     });
-  }, [allHcfs, searchQuery, statusFilter]);
+  }, [allHcfs, searchQuery, statusFilter, cityFilter, stateFilter]);
 
   if (isLoading) {
     return (
@@ -170,9 +199,9 @@ export default function HcfListLarge() {
       {/* Filters */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flexWrap="wrap">
             <TextField
-              placeholder="Search by name, code, or agreement..."
+              placeholder="Search by name, code, agreement, or address..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               size="small"
@@ -185,7 +214,7 @@ export default function HcfListLarge() {
                 ),
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 180 }}>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
               <InputLabel>Status</InputLabel>
               <Select
                 value={statusFilter}
@@ -197,6 +226,32 @@ export default function HcfListLarge() {
                 <MenuItem value="EXPIRED">Expired</MenuItem>
                 <MenuItem value="TERMINATED">Terminated</MenuItem>
                 <MenuItem value="DISPUTED">Disputed</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 130 }}>
+              <InputLabel>City</InputLabel>
+              <Select
+                value={cityFilter}
+                label="City"
+                onChange={(e) => setCityFilter(e.target.value)}
+              >
+                <MenuItem value="all">All Cities</MenuItem>
+                {cities.map((city) => (
+                  <MenuItem key={city} value={city}>{city}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 130 }}>
+              <InputLabel>State</InputLabel>
+              <Select
+                value={stateFilter}
+                label="State"
+                onChange={(e) => setStateFilter(e.target.value)}
+              >
+                <MenuItem value="all">All States</MenuItem>
+                {states.map((state) => (
+                  <MenuItem key={state} value={state}>{state}</MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Stack>
@@ -212,7 +267,7 @@ export default function HcfListLarge() {
               <TableCell sx={{ fontWeight: 'bold' }}>Code</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Agreement #</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Dues</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>City</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Beds</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Last Pickup</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
@@ -261,12 +316,9 @@ export default function HcfListLarge() {
                     />
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={hcf.duesStatus || 'N/A'}
-                      color={getDuesColor(hcf.duesStatus) as any}
-                      size="small"
-                      variant="outlined"
-                    />
+                    <Typography variant="body2">
+                      {hcf.city || '-'}
+                    </Typography>
                   </TableCell>
                   <TableCell>
                     <Typography fontWeight="medium">{hcf.numberOfBeds || '-'}</Typography>

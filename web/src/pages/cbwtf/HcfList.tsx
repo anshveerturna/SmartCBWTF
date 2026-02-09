@@ -203,7 +203,7 @@ export default function HcfList() {
       <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: 'grey.100' }}>
+            <TableRow>
               <TableCell sx={{ fontWeight: 'bold' }}>HCF Name</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Code</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Agreement #</TableCell>

@@ -231,51 +231,57 @@ const Analytics = () => {
           <Grid container spacing={3} sx={{ mb: 3 }}>
             {/* Total Waste Card */}
             <Grid item xs={12} sm={6} md={4}>
-              <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                <CardContent>
-                  <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
                     Total Waste Collected
                   </Typography>
-                  <Typography variant="h3" sx={{ color: '#fff', fontWeight: 700 }}>
-                    {Number(totalWaste?.totalWeightKg || 0).toFixed(2)}
-                  </Typography>
-                  <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.9)' }}>
-                    KG
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                    <Typography variant="h3" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                      {Number(totalWaste?.totalWeightKg || 0).toFixed(2)}
+                    </Typography>
+                    <Typography variant="h6" color="text.secondary">
+                      KG
+                    </Typography>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
 
             {/* Active HCFs Card */}
             <Grid item xs={12} sm={6} md={4}>
-              <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' }}>
-                <CardContent>
-                  <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
                     Active HCFs
                   </Typography>
-                  <Typography variant="h3" sx={{ color: '#fff', fontWeight: 700 }}>
-                    {hcfOptions?.length || 0}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)' }}>
-                    With ACTIVE agreements
-                  </Typography>
+                  <Box>
+                    <Typography variant="h3" sx={{ fontWeight: 700, color: 'success.main' }}>
+                      {hcfOptions?.length || 0}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      With ACTIVE agreements
+                    </Typography>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
 
             {/* Categories Tracked Card */}
             <Grid item xs={12} sm={6} md={4}>
-              <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
-                <CardContent>
-                  <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
                     Categories Tracked
                   </Typography>
-                  <Typography variant="h3" sx={{ color: '#fff', fontWeight: 700 }}>
-                    {categoryData?.categories?.length || 0}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)' }}>
-                    Waste categories
-                  </Typography>
+                  <Box>
+                    <Typography variant="h3" sx={{ fontWeight: 700, color: 'info.main' }}>
+                      {categoryData?.categories?.length || 0}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Waste categories
+                    </Typography>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>

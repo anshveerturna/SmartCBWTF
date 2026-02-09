@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -26,6 +26,7 @@ import {
   Select,
   MenuItem,
   InputLabel,
+  Autocomplete,
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -37,6 +38,7 @@ import {
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { State, City } from 'country-state-city';
 import { registerHcf, uploadRentAgreement, getFacilitySettings, type CbwtfAdminHcfRegistrationRequest } from '../../api/cbwtf';
 
 // Custom location marker icon
@@ -119,6 +121,7 @@ export default function HcfRegister() {
     address: '',
     pincode: '',
     state: '',
+    stateCode: '',
     city: '',
     doctorName: '',
     contactPhone: '',
@@ -145,6 +148,13 @@ export default function HcfRegister() {
   });
 
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // States and Cities data
+  const states = useMemo(() => State.getStatesOfCountry('IN'), []);
+  const cities = useMemo(() => {
+    if (!form.stateCode) return [];
+    return City.getCitiesOfState('IN', form.stateCode);
+  }, [form.stateCode]);
 
   // Auto-compute agreement end date from settings
   useEffect(() => {
@@ -307,19 +317,95 @@ export default function HcfRegister() {
                     />
                   </Grid>
                   <Grid item xs={6}>
-                    <TextField
-                      label="State *"
-                      fullWidth
-                      value={form.state}
-                      onChange={handleInputChange('state')}
+                     <Autocomplete
+                      options={states}
+                      getOptionLabel={(option) => option.name}
+                      value={states.find((s) => s.name === form.state) || null}
+                      onChange={(_, newValue) => {
+                        setForm({
+                          ...form,
+                          state: newValue ? newValue.name : '',
+                          stateCode: newValue ? newValue.isoCode : '',
+                          city: '', // Reset city when state changes
+                        });
+                      }}
+                      componentsProps={{
+                        popper: {
+                          modifiers: [
+                            {
+                              name: 'flip',
+                              enabled: false,
+                            },
+                            {
+                              name: 'preventOverflow',
+                              options: {
+                                boundary: 'window',
+                              },
+                            },
+                          ],
+                        },
+                      }}
+                      ListboxProps={{ style: { maxHeight: 250 } }}
+                      renderInput={(params) => (
+                        <TextField 
+                          {...params} 
+                          label="State"
+                          required 
+                          fullWidth 
+                          sx={{
+                             '& .MuiInputLabel-root': {
+                               bgcolor: 'background.paper',
+                               px: 0.5,
+                             }
+                          }}
+                        />
+                      )}
+                      isOptionEqualToValue={(option, value) => option.name === value.name}
                     />
                   </Grid>
                   <Grid item xs={6}>
-                    <TextField
-                      label="City"
-                      fullWidth
-                      value={form.city}
-                      onChange={handleInputChange('city')}
+                    <Autocomplete
+                      options={cities}
+                      getOptionLabel={(option) => option.name}
+                      disabled={!form.stateCode}
+                      value={cities.find(c => c.name === form.city) || null}
+                      onChange={(_, newValue) => {
+                        setForm({
+                          ...form,
+                          city: newValue ? newValue.name : '',
+                        });
+                      }}
+                       componentsProps={{
+                        popper: {
+                          modifiers: [
+                            {
+                              name: 'flip',
+                              enabled: false,
+                            },
+                            {
+                              name: 'preventOverflow',
+                              options: {
+                                boundary: 'window',
+                              },
+                            },
+                          ],
+                        },
+                      }}
+                      ListboxProps={{ style: { maxHeight: 250 } }}
+                      renderInput={(params) => (
+                        <TextField 
+                          {...params} 
+                          label="City" 
+                          fullWidth 
+                          sx={{
+                             '& .MuiInputLabel-root': {
+                               bgcolor: 'background.paper',
+                               px: 0.5,
+                             }
+                          }}
+                        />
+                      )}
+                      isOptionEqualToValue={(option, value) => option.name === value.name}
                     />
                   </Grid>
                   <Grid item xs={6}>
@@ -508,7 +594,7 @@ export default function HcfRegister() {
                             <>
                               <CheckIcon color="success" />
                               <Box sx={{ flex: 1 }}>
-                                <Typography variant="body2" fontWeight="medium">
+                              <Typography variant="body2" fontWeight="medium">
                                   {rentAgreementFile?.name || 'Rent Agreement'}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">

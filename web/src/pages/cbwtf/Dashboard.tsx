@@ -83,143 +83,84 @@ const MetricCard: React.FC<MetricCardProps> = ({
   trend,
   gradient,
   loading = false,
-  glowColor,
+  glowColor, // Unused in new design but kept for prop compatibility
   onClick,
   clickable = false,
 }) => {
   const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
-  
+  const primaryColor = gradient[0];
+
   return (
     <Card
       onClick={clickable ? onClick : undefined}
       sx={{
-        position: 'relative',
-        overflow: 'hidden',
+        height: '100%',
         cursor: clickable ? 'pointer' : 'default',
-        background: isDark 
-          ? `linear-gradient(135deg, ${alpha(gradient[0], 0.15)} 0%, ${alpha(gradient[1], 0.08)} 100%)`
-          : `linear-gradient(135deg, ${alpha(gradient[0], 0.08)} 0%, ${alpha(gradient[1], 0.03)} 100%)`,
-        border: `1px solid ${alpha(gradient[0], isDark ? 0.3 : 0.2)}`,
-        backdropFilter: 'blur(10px)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.2s',
         '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: glowColor 
-            ? `0 20px 40px ${alpha(glowColor, 0.3)}, 0 0 60px ${alpha(glowColor, 0.1)}`
-            : `0 20px 40px ${alpha(gradient[0], 0.25)}`,
-          border: `1px solid ${alpha(gradient[0], 0.5)}`,
+          borderColor: primaryColor,
+          transform: clickable ? 'translateY(-2px)' : 'none',
+          boxShadow: clickable ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : undefined,
         },
       }}
     >
-      {/* Gradient accent line at top */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 4,
-          background: `linear-gradient(90deg, ${gradient[0]}, ${gradient[1]})`,
-        }}
-      />
-      
-      <CardContent sx={{ p: 3, pt: 3.5 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: 'text.secondary',
-                fontWeight: 500,
-                letterSpacing: '0.02em',
-                textTransform: 'uppercase',
-                fontSize: '0.7rem',
-                mb: 1,
-              }}
-            >
-              {title}
-            </Typography>
-            {loading ? (
-              <Skeleton width={80} height={48} sx={{ borderRadius: 1 }} />
-            ) : (
-              <Typography 
-                variant="h3" 
-                sx={{ 
-                  fontWeight: 800,
-                  background: `linear-gradient(135deg, ${gradient[0]} 0%, ${gradient[1]} 100%)`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1,
-                  mb: 0.5,
-                }}
-              >
-                {value}
-              </Typography>
-            )}
-            {subtitle && (
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  color: 'text.secondary',
-                  fontWeight: 400,
-                  display: 'block',
-                  mt: 0.5,
-                }}
-              >
-                {subtitle}
-              </Typography>
-            )}
-            {trend && (
-              <Box 
-                sx={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  mt: 1.5, 
-                  gap: 0.5,
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: 2,
-                  bgcolor: trend.value >= 0 
-                    ? alpha('#10B981', 0.15) 
-                    : alpha('#EF4444', 0.15),
-                }}
-              >
-                {trend.value >= 0 ? (
-                  <TrendingUp sx={{ fontSize: 16, color: '#10B981' }} />
-                ) : (
-                  <TrendingDown sx={{ fontSize: 16, color: '#EF4444' }} />
-                )}
-                <Typography
-                  variant="caption"
-                  sx={{ 
-                    color: trend.value >= 0 ? '#10B981' : '#EF4444',
-                    fontWeight: 600,
-                  }}
-                >
-                  {Math.abs(trend.value)}% {trend.label}
-                </Typography>
-              </Box>
-            )}
-          </Box>
+      <CardContent sx={{ p: '20px !important' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
           <Box
             sx={{
-              width: 56,
-              height: 56,
-              borderRadius: 3,
-              background: `linear-gradient(135deg, ${gradient[0]} 0%, ${gradient[1]} 100%)`,
+              width: 40,
+              height: 40,
+              borderRadius: 1.5,
+              bgcolor: alpha(primaryColor, 0.1),
+              color: primaryColor,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff',
-              boxShadow: `0 8px 24px ${alpha(gradient[0], 0.4)}`,
-              flexShrink: 0,
             }}
           >
-            {icon}
+            {React.cloneElement(icon as any, { fontSize: 'small' })}
           </Box>
+          {trend && (
+            <Chip
+              icon={trend.value >= 0 ? <TrendingUp /> : <TrendingDown />}
+              label={`${Math.abs(trend.value)}%`}
+              size="small"
+              sx={{
+                height: 24,
+                bgcolor: trend.value >= 0 ? alpha(theme.palette.success.main, 0.1) : alpha(theme.palette.error.main, 0.1),
+                color: trend.value >= 0 ? 'success.main' : 'error.main',
+                fontWeight: 600,
+                border: 'none',
+                '& .MuiChip-icon': {
+                  fontSize: '0.875rem',
+                  color: 'inherit',
+                },
+              }}
+            />
+          )}
+        </Box>
+
+        <Box>
+          <Typography 
+            variant="body2" 
+            color="text.secondary" 
+            fontWeight={500}
+            sx={{ mb: 0.5 }}
+          >
+            {title}
+          </Typography>
+          {loading ? (
+            <Skeleton width={100} height={40} />
+          ) : (
+            <Typography variant="h4" fontWeight={600} color="text.primary">
+              {value}
+            </Typography>
+          )}
+          {subtitle && (
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              {subtitle}
+            </Typography>
+          )}
         </Box>
       </CardContent>
     </Card>
@@ -231,39 +172,23 @@ const RiskAlertCard: React.FC<{ alerts: RiskAlert[] }> = ({ alerts }) => {
   if (alerts.length === 0) return null;
 
   return (
-    <Card 
-      sx={{ 
-        mb: 4,
-        background: 'linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(249,115,22,0.05) 100%)',
-        border: '1px solid rgba(239,68,68,0.3)',
-      }}
-    >
-      <CardContent sx={{ p: 3 }}>
-        <Typography 
-          variant="h6" 
-          sx={{ 
-            mb: 2, 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 1,
-            fontWeight: 700,
-          }}
-        >
-          <WarningIcon sx={{ color: '#F59E0B' }} />
-          Risk Alerts ({alerts.length})
-        </Typography>
-        <Stack spacing={2}>
+    <Card sx={{ mb: 4, bgcolor: 'background.paper', borderColor: 'warning.light' }}>
+      <CardContent sx={{ p: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <WarningIcon color="warning" />
+          <Typography variant="h6" fontWeight={600}>
+            Risk Alerts ({alerts.length})
+          </Typography>
+        </Box>
+        <Stack spacing={1}>
           {alerts.map((alert, index) => (
             <Alert 
               key={index} 
               severity={alert.severity === 'CRITICAL' ? 'error' : 'warning'}
-              icon={<ErrorOutline />}
-              sx={{
-                borderRadius: 2,
-                '& .MuiAlert-message': { width: '100%' },
-              }}
+              icon={<ErrorOutline fontSize="small" />}
+              sx={{ py: 0, alignItems: 'center' }}
             >
-              <AlertTitle sx={{ fontWeight: 600 }}>{alert.title}</AlertTitle>
+              <AlertTitle sx={{ fontSize: '0.875rem', fontWeight: 600, mb: 0 }}>{alert.title}</AlertTitle>
               {alert.description}
             </Alert>
           ))}
@@ -359,37 +284,20 @@ const CbwtfDashboard: React.FC = () => {
         }}
       >
         <Box>
-          <Typography 
-            variant="h3" 
-            sx={{ 
-              fontWeight: 800, 
-              letterSpacing: '-0.02em',
-              background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A855F7 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
-            {isLoading ? <Skeleton width={250} /> : 'Welcome back'}
+          <Typography variant="h4" fontWeight={700} color="text.primary" gutterBottom>
+            {isLoading ? <Skeleton width={200} /> : 'Welcome back'}
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5, fontWeight: 400 }}>
-            {isLoading ? <Skeleton width={350} /> : `Real-time overview of ${dashboard?.facilityName || 'your facility'}`}
+          <Typography variant="body1" color="text.secondary">
+            {isLoading ? <Skeleton width={300} /> : `Overview for ${dashboard?.facilityName || 'your facility'}`}
           </Typography>
         </Box>
         {dashboard && (
           <Chip 
-            label={`${dashboard.subscriptionPlan} • ${dashboard.subscriptionDaysLeft >= 0 ? `${dashboard.subscriptionDaysLeft} days left` : 'Unlimited'}`}
-            sx={{
-              background: dashboard.subscriptionDaysLeft < 7 && dashboard.subscriptionDaysLeft >= 0 
-                ? 'linear-gradient(135deg, #EF4444 0%, #F97316 100%)'
-                : 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              height: 36,
-              px: 1,
-            }}
-            icon={<ScheduleIcon sx={{ color: '#fff !important' }} />}
+            label={dashboard.subscriptionDaysLeft >= 0 ? `${dashboard.subscriptionDaysLeft} days left` : 'Unlimited'}
+            color={dashboard.subscriptionDaysLeft < 7 && dashboard.subscriptionDaysLeft >= 0 ? 'error' : 'primary'}
+            variant="filled"
+            icon={<ScheduleIcon />}
+            sx={{ fontWeight: 600 }}
           />
         )}
       </Box>
@@ -540,24 +448,20 @@ const CbwtfDashboard: React.FC = () => {
         }}
       >
         {/* Category Breakdown Pie Chart */}
-        <Card 
-          sx={{ 
-            overflow: 'hidden',
-            background: isDark 
-              ? 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.05) 100%)'
-              : undefined,
-            border: isDark ? '1px solid rgba(99,102,241,0.2)' : undefined,
-          }}
-        >
-          <CardContent sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 1, fontWeight: 700 }}>
-              Waste by Category
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Weekly distribution
-            </Typography>
-            <Box sx={{ height: 260, minHeight: 260, position: 'relative' }}>
-              <ResponsiveContainer width="100%" height={260}>
+        {/* Category Breakdown Pie Chart */}
+        <Card sx={{ height: '100%' }}>
+          <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="h6" fontWeight={700}>
+                Waste by Category
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Weekly distribution
+              </Typography>
+            </Box>
+            
+            <Box sx={{ flexGrow: 1, minHeight: 260, position: 'relative' }}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={chartCategoryData}
@@ -565,149 +469,99 @@ const CbwtfDashboard: React.FC = () => {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={55}
+                    innerRadius={60}
                     outerRadius={90}
-                    paddingAngle={3}
-                    strokeWidth={0}
+                    paddingAngle={2}
                   >
                     {chartCategoryData.map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`} 
                         fill={entry.color}
-                        style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' }}
+                        strokeWidth={0}
                       />
                     ))}
                   </Pie>
                   <Tooltip 
                     contentStyle={{
-                      backgroundColor: isDark ? '#1E293B' : '#fff',
-                      border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-                      borderRadius: 12,
-                      boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-                      padding: '12px 16px',
+                      backgroundColor: theme.palette.background.paper,
+                      borderColor: theme.palette.divider,
+                      borderRadius: 8,
+                      boxShadow: theme.shadows[2],
+                      color: theme.palette.text.primary,
                     }}
-                    itemStyle={{
-                      color: isDark ? '#E2E8F0' : '#1E293B',
-                      fontWeight: 600,
-                    }}
-                    labelStyle={{
-                      color: isDark ? '#94A3B8' : '#64748B',
-                      fontWeight: 500,
-                      marginBottom: 4,
-                    }}
-                    formatter={(value, name) => [`${value ?? 0}%`, name as string]}
                   />
-                  <Legend 
-                    verticalAlign="bottom" 
-                    height={36}
-                    formatter={(value) => <span style={{ color: isDark ? '#94A3B8' : '#64748B' }}>{value}</span>}
-                  />
+                  <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
             </Box>
             
             {/* Blue Waste Compliance */}
-            <Box sx={{ mt: 2, p: 2, bgcolor: alpha('#3B82F6', 0.08), borderRadius: 2 }}>
+            <Box sx={{ mt: 3, p: 2, bgcolor: alpha('#3B82F6', 0.04), borderRadius: 2, border: `1px solid ${alpha('#3B82F6', 0.1)}` }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, alignItems: 'center' }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                <Typography variant="body2" fontWeight={600} color="primary">
                   Blue Waste Compliance
                 </Typography>
                 <Chip
                   label={`${bluePercent.toFixed(1)}%`}
                   size="small"
-                  sx={{ 
-                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-                    color: '#fff',
-                    fontWeight: 600,
-                    height: 24,
-                  }}
+                  color="primary"
+                  sx={{ height: 24, fontWeight: 700 }}
                 />
               </Box>
                 <LinearProgress
                   variant="determinate"
                   value={Math.min(100, Math.max(0, bluePercent))}
                   sx={{
-                    height: 10,
-                    borderRadius: 5,
-                  bgcolor: alpha('#3B82F6', 0.2),
-                  '& .MuiLinearProgress-bar': {
-                    background: 'linear-gradient(90deg, #3B82F6, #6366F1)',
-                    borderRadius: 5,
-                  },
+                    height: 8,
+                    borderRadius: 4,
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
                 }}
               />
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Share of weekly processed bags in Blue category
-              </Typography>
             </Box>
           </CardContent>
         </Card>
 
         {/* Weekly Trend Area Chart */}
-        <Card 
-          sx={{ 
-            overflow: 'hidden',
-            background: isDark 
-              ? 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.05) 100%)'
-              : undefined,
-            border: isDark ? '1px solid rgba(99,102,241,0.2)' : undefined,
-          }}
-        >
+        <Card sx={{ height: '100%' }}>
           <CardContent sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 1, fontWeight: 700 }}>
-              Weekly Collection Trend
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Bags processed by category
-            </Typography>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="h6" fontWeight={700}>
+                Weekly Collection Trend
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Bags processed by category
+              </Typography>
+            </Box>
             <Box sx={{ height: 320, minHeight: 320, position: 'relative' }}>
               <ResponsiveContainer width="100%" height={320}>
                 <AreaChart data={chartTrendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorYellow" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#FBBF24" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#FBBF24" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorRed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#EF4444" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorBlue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorWhite" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#94A3B8" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#94A3B8" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#E2E8F0'} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
                   <XAxis 
                     dataKey="date" 
-                    stroke={isDark ? '#64748B' : '#94A3B8'}
-                    tick={{ fill: isDark ? '#94A3B8' : '#64748B' }}
+                    stroke={theme.palette.text.secondary}
+                    tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
                   />
                   <YAxis 
-                    stroke={isDark ? '#64748B' : '#94A3B8'}
-                    tick={{ fill: isDark ? '#94A3B8' : '#64748B' }}
+                    stroke={theme.palette.text.secondary}
+                    tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: isDark ? '#1E293B' : '#fff',
-                      border: 'none',
-                      borderRadius: 12,
-                      boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+                      backgroundColor: theme.palette.background.paper,
+                      borderColor: theme.palette.divider,
+                      borderRadius: 8,
+                      boxShadow: theme.shadows[2],
                     }}
                   />
-                  <Legend 
-                    verticalAlign="top" 
-                    height={36}
-                    formatter={(value) => <span style={{ color: isDark ? '#94A3B8' : '#64748B', textTransform: 'capitalize' }}>{value}</span>}
-                  />
-                  <Area type="monotone" dataKey="yellow" stroke="#FBBF24" strokeWidth={2} fill="url(#colorYellow)" />
-                  <Area type="monotone" dataKey="red" stroke="#EF4444" strokeWidth={2} fill="url(#colorRed)" />
-                  <Area type="monotone" dataKey="blue" stroke="#3B82F6" strokeWidth={2} fill="url(#colorBlue)" />
-                  <Area type="monotone" dataKey="white" stroke="#94A3B8" strokeWidth={2} fill="url(#colorWhite)" />
+                  <Legend verticalAlign="top" height={36} />
+                  <Area type="monotone" dataKey="yellow" stroke="#FBBF24" fill="#FBBF24" fillOpacity={0.1} strokeWidth={2} />
+                  <Area type="monotone" dataKey="red" stroke="#EF4444" fill="#EF4444" fillOpacity={0.1} strokeWidth={2} />
+                  <Area type="monotone" dataKey="blue" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.1} strokeWidth={2} />
+                  <Area type="monotone" dataKey="white" stroke="#94A3B8" fill="#94A3B8" fillOpacity={0.1} strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </Box>
@@ -738,13 +592,6 @@ const CbwtfDashboard: React.FC = () => {
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
                 Recent Activity
               </Typography>
-              <Chip 
-                label="Real-time" 
-                size="small" 
-                color="success" 
-                variant="outlined" 
-                sx={{ height: 24, fontSize: '0.7rem' }} 
-              />
             </Box>
 
             {isLoading ? (
