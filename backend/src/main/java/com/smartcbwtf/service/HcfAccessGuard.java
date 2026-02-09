@@ -25,9 +25,12 @@ public class HcfAccessGuard {
     private static final Logger log = LoggerFactory.getLogger(HcfAccessGuard.class);
 
     private final HcfRepository hcfRepository;
+    private final com.smartcbwtf.repository.AgreementRepository agreementRepository;
 
-    public HcfAccessGuard(HcfRepository hcfRepository) {
+    public HcfAccessGuard(HcfRepository hcfRepository,
+            com.smartcbwtf.repository.AgreementRepository agreementRepository) {
         this.hcfRepository = hcfRepository;
+        this.agreementRepository = agreementRepository;
     }
 
     /**
@@ -62,6 +65,23 @@ public class HcfAccessGuard {
                     hcfId, hcf.getApprovalStatus());
             return AccessCheckResult.denied("ACCESS_DENIED_NOT_APPROVED",
                     "Portal Access Unavailable — HCF Pending Approval");
+        }
+
+        // Check active agreement validity
+        java.util.Optional<com.smartcbwtf.domain.Agreement> activeAgreementOpt = agreementRepository
+                .findActiveByHcfId(hcfId);
+        if (activeAgreementOpt.isEmpty()) {
+            log.warn("HCF portal access denied - no active agreement: hcfId={}", hcfId);
+            return AccessCheckResult.denied("NO_ACTIVE_AGREEMENT",
+                    "Portal Access Unavailable — No Active Service Agreement");
+        }
+
+        com.smartcbwtf.domain.Agreement agreement = activeAgreementOpt.get();
+        if (agreement.getEndDate() != null && agreement.getEndDate().isBefore(java.time.LocalDate.now())) {
+            log.warn("HCF portal access denied - agreement expired: hcfId={}, endDate={}", hcfId,
+                    agreement.getEndDate());
+            return AccessCheckResult.denied("AGREEMENT_EXPIRED",
+                    "Portal Access Unavailable — Service Agreement Expired on " + agreement.getEndDate());
         }
 
         log.debug("HCF portal access granted: hcfId={}", hcfId);

@@ -27,6 +27,7 @@ import {
   MenuItem,
   InputLabel,
   Autocomplete,
+  Chip,
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -243,6 +244,13 @@ export default function HcfRegister() {
     mutation.mutate(request);
   };
 
+  const labelFixSx = {
+    '& .MuiInputLabel-root': {
+      bgcolor: 'background.paper',
+      px: 0.5,
+    },
+  };
+
   const isFormValid = () => {
     return (
       form.name.trim() &&
@@ -289,6 +297,7 @@ export default function HcfRegister() {
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
                     <TextField
+                      sx={labelFixSx}
                       label="HCF Name *"
                       fullWidth
                       value={form.name}
@@ -297,6 +306,7 @@ export default function HcfRegister() {
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
+                      sx={labelFixSx}
                       label="Address *"
                       fullWidth
                       multiline
@@ -307,6 +317,7 @@ export default function HcfRegister() {
                   </Grid>
                   <Grid item xs={6}>
                     <TextField
+                      sx={labelFixSx}
                       label="Pincode *"
                       fullWidth
                       value={form.pincode}
@@ -352,12 +363,7 @@ export default function HcfRegister() {
                           label="State"
                           required 
                           fullWidth 
-                          sx={{
-                             '& .MuiInputLabel-root': {
-                               bgcolor: 'background.paper',
-                               px: 0.5,
-                             }
-                          }}
+                          sx={labelFixSx}
                         />
                       )}
                       isOptionEqualToValue={(option, value) => option.name === value.name}
@@ -397,12 +403,7 @@ export default function HcfRegister() {
                           {...params} 
                           label="City" 
                           fullWidth 
-                          sx={{
-                             '& .MuiInputLabel-root': {
-                               bgcolor: 'background.paper',
-                               px: 0.5,
-                             }
-                          }}
+                          sx={labelFixSx}
                         />
                       )}
                       isOptionEqualToValue={(option, value) => option.name === value.name}
@@ -426,6 +427,7 @@ export default function HcfRegister() {
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
+                      sx={labelFixSx}
                       label="Doctor/Owner Name *"
                       fullWidth
                       value={form.doctorName}
@@ -434,6 +436,7 @@ export default function HcfRegister() {
                   </Grid>
                   <Grid item xs={6}>
                     <TextField
+                      sx={labelFixSx}
                       label="Contact Phone *"
                       fullWidth
                       value={form.contactPhone}
@@ -442,6 +445,7 @@ export default function HcfRegister() {
                   </Grid>
                   <Grid item xs={6}>
                     <TextField
+                      sx={labelFixSx}
                       label="Email *"
                       fullWidth
                       type="email"
@@ -462,6 +466,7 @@ export default function HcfRegister() {
                 <Grid container spacing={2}>
                   <Grid item xs={4}>
                     <TextField
+                      sx={labelFixSx}
                       label="PAN Number"
                       fullWidth
                       value={form.panNo}
@@ -473,6 +478,7 @@ export default function HcfRegister() {
                   </Grid>
                   <Grid item xs={4}>
                     <TextField
+                      sx={labelFixSx}
                       label="GST Number"
                       fullWidth
                       value={form.gstNo}
@@ -482,6 +488,7 @@ export default function HcfRegister() {
                   </Grid>
                   <Grid item xs={4}>
                     <TextField
+                      sx={labelFixSx}
                       label="Aadhar Number"
                       fullWidth
                       value={form.aadharNo}
@@ -634,7 +641,7 @@ export default function HcfRegister() {
                       type="number"
                       value={form.numberOfBeds}
                       onChange={handleInputChange('numberOfBeds')}
-                      sx={{ width: 200 }}
+                      sx={{ width: 200, ...labelFixSx }}
                     />
                   )}
 
@@ -647,7 +654,7 @@ export default function HcfRegister() {
                       InputProps={{
                         startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                       }}
-                      sx={{ width: 200 }}
+                      sx={{ width: 200, ...labelFixSx }}
                     />
                     <TextField
                       label="Tax Rate (GST %)"
@@ -658,7 +665,7 @@ export default function HcfRegister() {
                         endAdornment: <InputAdornment position="end">%</InputAdornment>,
                       }}
                       helperText="Default 5%"
-                      sx={{ width: 150 }}
+                      sx={{ width: 150, ...labelFixSx }}
                     />
                   </Stack>
                 </Stack>
@@ -672,8 +679,46 @@ export default function HcfRegister() {
                   Agreement Period
                 </Typography>
                 <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="body2" color="text.secondary">
+                        Quick Select Validity:
+                      </Typography>
+                      <Chip
+                        label="3 Months"
+                        onClick={() => {
+                          const endDate = computeEndDate(form.agreementStartDate, 3);
+                          setForm({ ...form, agreementEndDate: endDate });
+                        }}
+                        color="primary"
+                        variant="outlined"
+                        clickable
+                      />
+                      <Chip
+                        label="6 Months"
+                        onClick={() => {
+                          const endDate = computeEndDate(form.agreementStartDate, 6);
+                          setForm({ ...form, agreementEndDate: endDate });
+                        }}
+                        color="primary"
+                        variant="outlined"
+                        clickable
+                      />
+                      <Chip
+                        label="1 Year"
+                        onClick={() => {
+                          const endDate = computeEndDate(form.agreementStartDate, 12);
+                          setForm({ ...form, agreementEndDate: endDate });
+                        }}
+                        color="primary"
+                        variant="outlined"
+                        clickable
+                      />
+                    </Stack>
+                  </Grid>
                   <Grid item xs={4}>
                     <TextField
+                      sx={labelFixSx}
                       label="Start Date *"
                       type="date"
                       fullWidth
@@ -684,6 +729,7 @@ export default function HcfRegister() {
                   </Grid>
                   <Grid item xs={4}>
                     <TextField
+                      sx={labelFixSx}
                       label="End Date *"
                       type="date"
                       fullWidth
@@ -694,7 +740,8 @@ export default function HcfRegister() {
                   </Grid>
                   <Grid item xs={4}>
                     <TextField
-                      label="Excess Rate per Kg (above 277g/bed/day)"
+                      sx={labelFixSx}
+                      label="Excess Rate per Kg"
                       type="number"
                       fullWidth
                       value={form.excessRatePerKg}
@@ -707,6 +754,7 @@ export default function HcfRegister() {
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
+                      sx={labelFixSx}
                       label="Custom Agreement Number (Optional)"
                       fullWidth
                       value={form.customAgreementNumber}
@@ -726,6 +774,7 @@ export default function HcfRegister() {
                   Additional Notes
                 </Typography>
                 <TextField
+                  sx={labelFixSx}
                   label="Notes (optional)"
                   fullWidth
                   multiline
@@ -778,6 +827,7 @@ export default function HcfRegister() {
                   </Typography>
                   <Stack direction="row" spacing={2}>
                     <TextField
+                      sx={labelFixSx}
                       label="Latitude"
                       fullWidth
                       type="number"
@@ -794,6 +844,7 @@ export default function HcfRegister() {
                       }}
                     />
                     <TextField
+                      sx={labelFixSx}
                       label="Longitude"
                       fullWidth
                       type="number"

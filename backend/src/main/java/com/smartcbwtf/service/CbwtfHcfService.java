@@ -466,7 +466,8 @@ public class CbwtfHcfService {
         agreement.setDuesStatus(Agreement.DuesStatus.CLEAR.name());
         agreement.setStartDate(LocalDate.now());
         agreement.setEndDate(LocalDate.now().plusYears(1));
-        agreement.setPerBedPerDayRate(request.getPerBedPerDayRate());
+        agreement.setPerBedPerDayRate(
+                request.getPerBedPerDayRate() != null ? request.getPerBedPerDayRate() : BigDecimal.ZERO);
         agreement.setCreatedAt(Instant.now());
         agreementRepository.save(agreement);
 
@@ -592,7 +593,8 @@ public class CbwtfHcfService {
         newAgreement.setDuesStatus(Agreement.DuesStatus.CLEAR.name());
         newAgreement.setStartDate(request.getStartDate());
         newAgreement.setEndDate(request.getEndDate());
-        newAgreement.setPerBedPerDayRate(request.getPerBedPerDayRate());
+        newAgreement.setPerBedPerDayRate(
+                request.getPerBedPerDayRate() != null ? request.getPerBedPerDayRate() : BigDecimal.ZERO);
         newAgreement.setVersion(oldAgreement.getVersion() + 1);
         newAgreement.setCreatedAt(Instant.now());
         newAgreement.setUpdatedAt(Instant.now());
@@ -751,7 +753,8 @@ public class CbwtfHcfService {
         agreement.setDuesStatus(Agreement.DuesStatus.CLEAR.name());
         agreement.setStartDate(request.getAgreementStartDate());
         agreement.setEndDate(request.getAgreementEndDate());
-        agreement.setPerBedPerDayRate(request.getPerBedPerDayRate());
+        agreement.setPerBedPerDayRate(
+                request.getPerBedPerDayRate() != null ? request.getPerBedPerDayRate() : BigDecimal.ZERO);
         agreement.setCreatedAt(Instant.now());
         agreement.setUpdatedAt(Instant.now());
         agreementRepository.save(agreement);
@@ -761,7 +764,8 @@ public class CbwtfHcfService {
         config.setAgreement(agreement);
         config.setBaseGramsPerBedPerDay(277); // Standard 277g/bed/day waste allowance
         config.setBaseRatePerBedPerDay(request.getPerBedPerDayRate() != null
-                ? request.getPerBedPerDayRate() : BigDecimal.ZERO);
+                ? request.getPerBedPerDayRate()
+                : BigDecimal.ZERO);
         config.setEffectiveFrom(request.getAgreementStartDate());
         config.setCreatedBy(adminUserId);
         billingConfigRepository.save(config);
