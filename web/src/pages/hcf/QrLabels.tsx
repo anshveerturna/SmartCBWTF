@@ -102,7 +102,13 @@ const QrLabels: React.FC = () => {
     },
   });
 
-  // Generate mutation (multi-category)
+  // Validity Date
+  const [validUntil, setValidUntil] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().split('T')[0];
+  });
+
   const generateMutation = useMutation({
     mutationFn: async () => {
       const filtered: Record<string, number> = {};
@@ -111,6 +117,7 @@ const QrLabels: React.FC = () => {
       }
       const res = await apiClient.post('/api/hcf/qr-orders/generate', {
         categoryQuantities: filtered,
+        validUntil,
       });
       return res.data;
     },
@@ -264,6 +271,21 @@ const QrLabels: React.FC = () => {
                   </Box>
                 ))}
               </Stack>
+
+              <TextField
+                label="Valid Until"
+                type="date"
+                fullWidth
+                value={validUntil}
+                onChange={(e) => setValidUntil(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                inputProps={{
+                  min: new Date().toISOString().split('T')[0],
+                  max: new Date(Date.now() + 31 * 86400000).toISOString().split('T')[0]
+                }}
+                helperText="Max validity: 1 month from today"
+                sx={{ mb: 2 }}
+              />
 
               <Alert severity={totalSelfLabels > (pricing?.maxQuantity || 500) ? 'error' : 'info'} sx={{ mb: 2, py: 0.5 }}>
                 <strong>Total: {totalSelfLabels} labels</strong> &bull; {Math.ceil(totalSelfLabels / 9)} page(s)

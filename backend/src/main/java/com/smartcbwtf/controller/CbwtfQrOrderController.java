@@ -57,13 +57,14 @@ public class CbwtfQrOrderController {
             // Remove zero-quantity entries
             categoryQuantities.entrySet().removeIf(e -> e.getValue() == null || e.getValue() <= 0);
             if (categoryQuantities.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "At least one category with quantity > 0 required"));
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "At least one category with quantity > 0 required"));
             }
 
             int totalQty = categoryQuantities.values().stream().mapToInt(Integer::intValue).sum();
 
             var result = qrOrderService.adminDirectGenerateMulti(
-                    request.hcfId(), categoryQuantities, adminUserId);
+                    request.hcfId(), categoryQuantities, adminUserId, request.validUntil());
 
             log.info("CBWTF admin generated {} QR labels ({}) for HCF {}", totalQty, categoryQuantities.keySet(),
                     request.hcfId());
@@ -171,7 +172,8 @@ public class CbwtfQrOrderController {
             UUID hcfId,
             String wasteCategory,
             int quantity,
-            Map<String, Integer> categoryQuantities) {
+            Map<String, Integer> categoryQuantities,
+            java.time.LocalDate validUntil) {
     }
 
     public record QrOrderDTO(

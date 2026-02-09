@@ -25,126 +25,134 @@ import java.util.UUID;
 @Service
 public class LabelService {
 
-    private final HcfRepository hcfRepository;
-    private final FacilityRepository facilityRepository;
-    private final AgreementRepository agreementRepository;
-    private final AgreementGuardService agreementGuard;
-    private final PdfService pdfService;
-    private final AuditLogService auditLogService;
-    private final QrAuthorizationService qrAuthService;
+        private final HcfRepository hcfRepository;
+        private final FacilityRepository facilityRepository;
+        private final AgreementRepository agreementRepository;
+        private final AgreementGuardService agreementGuard;
+        private final PdfService pdfService;
+        private final AuditLogService auditLogService;
+        private final QrAuthorizationService qrAuthService;
 
-    public LabelService(HcfRepository hcfRepository,
-            FacilityRepository facilityRepository,
-            AgreementRepository agreementRepository,
-            AgreementGuardService agreementGuard,
-            PdfService pdfService,
-            AuditLogService auditLogService,
-            QrAuthorizationService qrAuthService) {
-        this.hcfRepository = hcfRepository;
-        this.facilityRepository = facilityRepository;
-        this.agreementRepository = agreementRepository;
-        this.agreementGuard = agreementGuard;
-        this.pdfService = pdfService;
-        this.auditLogService = auditLogService;
-        this.qrAuthService = qrAuthService;
-    }
-
-    @Transactional
-    public LabelIssueResponse issue(LabelIssueRequest request) {
-        Hcf hcf = hcfRepository.findById(request.getHcfId()).orElseThrow();
-        Facility facility = facilityRepository.findById(request.getFacilityId()).orElseThrow();
-
-        // *** CRITICAL: Agreement Guard Check ***
-        Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcf.getId(), facility.getId())
-                .orElseThrow(() -> new IllegalStateException("No active agreement for HCF under this facility"));
-        agreementGuard.assertAgreementActive(agreement.getId(), "LABEL_ISSUE");
-
-        int quantity = request.getQuantity();
-
-        // Determine validity period from agreement
-        Instant validFrom = Instant.now();
-        Instant validTo;
-        if (agreement.getEndDate() != null) {
-            validTo = agreement.getEndDate().plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
-        } else {
-            validTo = validFrom.plus(365, ChronoUnit.DAYS);
+        public LabelService(HcfRepository hcfRepository,
+                        FacilityRepository facilityRepository,
+                        AgreementRepository agreementRepository,
+                        AgreementGuardService agreementGuard,
+                        PdfService pdfService,
+                        AuditLogService auditLogService,
+                        QrAuthorizationService qrAuthService) {
+                this.hcfRepository = hcfRepository;
+                this.facilityRepository = facilityRepository;
+                this.agreementRepository = agreementRepository;
+                this.agreementGuard = agreementGuard;
+                this.pdfService = pdfService;
+                this.auditLogService = auditLogService;
+                this.qrAuthService = qrAuthService;
         }
 
-        UUID createdBy = TenantContext.getUserId();
+        @Transactional
+        public LabelIssueResponse issue(LabelIssueRequest request) {
+                Hcf hcf = hcfRepository.findById(request.getHcfId()).orElseThrow();
+                Facility facility = facilityRepository.findById(request.getFacilityId()).orElseThrow();
 
-        // Generate signed QR codes via QrAuthorizationService
-        // This creates proper QrAuthorization + BagLabel records for each label
-        // QR payload includes: qrId, agreementId, hcfId, facilityId, wasteCategory, validFrom, validTo, checksum
-        List<QrAuthorizationService.QrGenerateResult> qrResults =
-                qrAuthService.generateQrBulk(request.getHcfId(), request.getCategory(),
-                        quantity, validFrom, validTo, createdBy);
+                // *** CRITICAL: Agreement Guard Check ***
+                Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcf.getId(), facility.getId())
+                                .orElseThrow(() -> new IllegalStateException(
+                                                "No active agreement for HCF under this facility"));
+                agreementGuard.assertAgreementActive(agreement.getId(), "LABEL_ISSUE");
 
-        List<String> qrCodes = qrResults.stream()
-                .map(QrAuthorizationService.QrGenerateResult::qrPayloadJson)
-                .toList();
+                int quantity = request.getQuantity();
 
-        String pdfUrl = pdfService.generateLabelBatchPdf(hcf, facility, request.getCategory(),
-                qrCodes.toArray(new String[0]));
+                // Determine validity period from agreement
+                Instant validFrom = Instant.now();
+                Instant validTo;
+                if (agreement.getEndDate() != null) {
+                        validTo = agreement.getEndDate().plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+                } else {
+                        validTo = validFrom.plus(365, ChronoUnit.DAYS);
+                }
 
-        auditLogService.log("BAG_LABEL", null, "ISSUE", null,
-                "{\"quantity\":" + quantity + ",\"agreementId\":\"" + agreement.getId() + "\"}");
+                UUID createdBy = TenantContext.getUserId();
 
-        return new LabelIssueResponse(hcf.getId(), facility.getId(), request.getCategory(), quantity, qrCodes, pdfUrl);
-    }
+                // Generate signed QR codes via QrAuthorizationService
+                // This creates proper QrAuthorization + BagLabel records for each label
+                // QR payload includes: qrId, agreementId, hcfId, facilityId, wasteCategory,
+                // validFrom, validTo, checksum
+                List<QrAuthorizationService.QrGenerateResult> qrResults = qrAuthService.generateQrBulk(
+                                request.getHcfId(), request.getCategory(),
+                                quantity, validFrom, validTo, createdBy);
 
-    /**
-     * Issue labels for multiple waste categories and produce a single combined PDF.
-     * Uses QrAuthorizationService to create proper signed QR codes with full
-     * payload (qrId, agreementId, hcfId, facilityId, wasteCategory, validity, checksum).
-     */
-    @Transactional
-    public LabelIssueResponse issueMultiCategory(UUID hcfId, UUID facilityId,
-            Map<String, Integer> categoryQuantities) {
-        Hcf hcf = hcfRepository.findById(hcfId).orElseThrow();
-        Facility facility = facilityRepository.findById(facilityId).orElseThrow();
+                List<String> qrCodes = qrResults.stream()
+                                .map(QrAuthorizationService.QrGenerateResult::qrPayloadJson)
+                                .toList();
 
-        Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcf.getId(), facility.getId())
-                .orElseThrow(() -> new IllegalStateException("No active agreement for HCF under this facility"));
-        agreementGuard.assertAgreementActive(agreement.getId(), "LABEL_ISSUE");
+                String pdfUrl = pdfService.generateLabelBatchPdf(hcf, facility, request.getCategory(),
+                                qrCodes.toArray(new String[0]), request.getValidUntil());
 
-        // Determine validity period from agreement
-        Instant validFrom = Instant.now();
-        Instant validTo;
-        if (agreement.getEndDate() != null) {
-            validTo = agreement.getEndDate().plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
-        } else {
-            validTo = validFrom.plus(365, ChronoUnit.DAYS);
+                auditLogService.log("BAG_LABEL", null, "ISSUE", null,
+                                "{\"quantity\":" + quantity + ",\"agreementId\":\"" + agreement.getId() + "\"}");
+
+                return new LabelIssueResponse(hcf.getId(), facility.getId(), request.getCategory(), quantity, qrCodes,
+                                pdfUrl);
         }
 
-        UUID createdBy = TenantContext.getUserId();
+        /**
+         * Issue labels for multiple waste categories and produce a single combined PDF.
+         * Uses QrAuthorizationService to create proper signed QR codes with full
+         * payload (qrId, agreementId, hcfId, facilityId, wasteCategory, validity,
+         * checksum).
+         */
+        @Transactional
+        public LabelIssueResponse issueMultiCategory(UUID hcfId, UUID facilityId,
+                        Map<String, Integer> categoryQuantities, java.time.LocalDate validUntil) {
+                Hcf hcf = hcfRepository.findById(hcfId).orElseThrow();
+                Facility facility = facilityRepository.findById(facilityId).orElseThrow();
 
-        int totalQuantity = 0;
-        List<String> allQrCodes = new ArrayList<>();
-        Map<String, String[]> categoryQrCodes = new LinkedHashMap<>();
+                Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcf.getId(), facility.getId())
+                                .orElseThrow(() -> new IllegalStateException(
+                                                "No active agreement for HCF under this facility"));
+                agreementGuard.assertAgreementActive(agreement.getId(), "LABEL_ISSUE");
 
-        for (var entry : categoryQuantities.entrySet()) {
-            String category = entry.getKey();
-            int qty = entry.getValue();
-            if (qty <= 0) continue;
+                // Determine validity period from agreement
+                Instant validFrom = Instant.now();
+                Instant validTo;
+                if (agreement.getEndDate() != null) {
+                        validTo = agreement.getEndDate().plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+                } else {
+                        validTo = validFrom.plus(365, ChronoUnit.DAYS);
+                }
 
-            List<QrAuthorizationService.QrGenerateResult> qrResults =
-                    qrAuthService.generateQrBulk(hcfId, category, qty, validFrom, validTo, createdBy);
+                UUID createdBy = TenantContext.getUserId();
 
-            String[] payloads = qrResults.stream()
-                    .map(QrAuthorizationService.QrGenerateResult::qrPayloadJson)
-                    .toArray(String[]::new);
+                int totalQuantity = 0;
+                List<String> allQrCodes = new ArrayList<>();
+                Map<String, String[]> categoryQrCodes = new LinkedHashMap<>();
 
-            allQrCodes.addAll(Arrays.asList(payloads));
-            categoryQrCodes.put(category, payloads);
-            totalQuantity += qty;
+                for (var entry : categoryQuantities.entrySet()) {
+                        String category = entry.getKey();
+                        int qty = entry.getValue();
+                        if (qty <= 0)
+                                continue;
+
+                        List<QrAuthorizationService.QrGenerateResult> qrResults = qrAuthService.generateQrBulk(hcfId,
+                                        category, qty, validFrom, validTo, createdBy);
+
+                        String[] payloads = qrResults.stream()
+                                        .map(QrAuthorizationService.QrGenerateResult::qrPayloadJson)
+                                        .toArray(String[]::new);
+
+                        allQrCodes.addAll(Arrays.asList(payloads));
+                        categoryQrCodes.put(category, payloads);
+                        totalQuantity += qty;
+                }
+
+                String pdfUrl = pdfService.generateMultiCategoryLabelBatchPdf(hcf, facility, categoryQrCodes,
+                                validUntil);
+
+                auditLogService.log("BAG_LABEL", null, "ISSUE_MULTI", null,
+                                "{\"totalQuantity\":" + totalQuantity + ",\"categories\":" + categoryQuantities.size()
+                                                + ",\"agreementId\":\"" + agreement.getId() + "\"}");
+
+                return new LabelIssueResponse(hcf.getId(), facility.getId(), "MULTI", totalQuantity, allQrCodes,
+                                pdfUrl);
         }
-
-        String pdfUrl = pdfService.generateMultiCategoryLabelBatchPdf(hcf, facility, categoryQrCodes);
-
-        auditLogService.log("BAG_LABEL", null, "ISSUE_MULTI", null,
-                "{\"totalQuantity\":" + totalQuantity + ",\"categories\":" + categoryQuantities.size()
-                        + ",\"agreementId\":\"" + agreement.getId() + "\"}");
-
-        return new LabelIssueResponse(hcf.getId(), facility.getId(), "MULTI", totalQuantity, allQrCodes, pdfUrl);
-    }
 }

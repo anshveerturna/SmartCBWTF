@@ -35,6 +35,7 @@ export default function QrLabels() {
   const [generateForm, setGenerateForm] = useState({
     hcfId: '',
     categoryQuantities: { YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0 } as Record<string, number>,
+    validUntil: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
   });
 
   const totalLabels = Object.values(generateForm.categoryQuantities).reduce((sum, q) => sum + (q || 0), 0);
@@ -70,13 +71,18 @@ export default function QrLabels() {
       return generateLabelsForHcf({
         hcfId: generateForm.hcfId,
         categoryQuantities: filtered,
+        validUntil: generateForm.validUntil,
       });
     },
     onSuccess: (data) => {
       setGenerateDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['cbwtf-qrs'] });
       setSnackbar({ open: true, message: data.message || 'QR labels generated!', severity: 'success' });
-      setGenerateForm({ hcfId: '', categoryQuantities: { YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0 } });
+      setGenerateForm({ 
+        hcfId: '', 
+        categoryQuantities: { YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0 },
+        validUntil: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+      });
       if (data.pdfUrl) {
         window.open(getDownloadUrl(data.pdfUrl), '_blank');
       }
@@ -335,6 +341,20 @@ export default function QrLabels() {
                 </Typography>
               </Box>
             ))}
+
+            <TextField
+              label="Valid Until"
+              type="date"
+              fullWidth
+              value={generateForm.validUntil}
+              onChange={(e) => setGenerateForm({ ...generateForm, validUntil: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ 
+                min: new Date().toISOString().split('T')[0],
+                max: new Date(Date.now() + 31 * 86400000).toISOString().split('T')[0]
+              }}
+              helperText="Max validity: 1 month from today"
+            />
 
             <Alert severity={totalLabels > 500 ? 'error' : 'info'} sx={{ py: 0.5 }}>
               <strong>Total: {totalLabels} labels</strong> &mdash;{' '}

@@ -761,7 +761,8 @@ public class PdfService {
                 String rateStr = agreement.getPerBedPerDayRate() != null
                         ? "Rs. " + agreement.getPerBedPerDayRate().toPlainString() + " /bed/day"
                         : "N/A";
-                String validUntil = agreement.getEndDate() != null ? formatDate(agreement.getEndDate()) : "Until Terminated";
+                String validUntil = agreement.getEndDate() != null ? formatDate(agreement.getEndDate())
+                        : "Until Terminated";
 
                 // 2-column layout: 3 rows
                 String[][] leftCol = {
@@ -855,7 +856,8 @@ public class PdfService {
                         String clauseBody = line.substring(dotIdx + 1).trim();
                         String clauseNum = line.substring(0, dotIdx + 1);
                         float numWidth = FONT_BOLD.getStringWidth(clauseNum + " ") / 1000 * tcFontSize;
-                        java.util.List<String> wrapped = wordWrap(clauseBody, FONT_REGULAR, tcFontSize, wrapW - numWidth);
+                        java.util.List<String> wrapped = wordWrap(clauseBody, FONT_REGULAR, tcFontSize,
+                                wrapW - numWidth);
                         contentHeight += wrapped.size() * tcLineH + tcClauseGap;
                     } else {
                         java.util.List<String> wrapped = wordWrap(line, FONT_REGULAR, tcFontSize, wrapW);
@@ -866,8 +868,10 @@ public class PdfService {
                 float tcCardH = headerReserve + contentHeight + cardPadBottom;
                 // Cap to available space (don't overflow past footer)
                 float maxCardH = y - MARGIN_BOTTOM - 48;
-                if (tcCardH > maxCardH) tcCardH = maxCardH;
-                if (tcCardH < 40) tcCardH = 40;
+                if (tcCardH > maxCardH)
+                    tcCardH = maxCardH;
+                if (tcCardH < 40)
+                    tcCardH = 40;
 
                 // Card background + accent bar + border
                 cs.setNonStrokingColor(new Color(252, 253, 252));
@@ -899,7 +903,8 @@ public class PdfService {
                         tcY -= tcEmptyLineH;
                         continue;
                     }
-                    if (tcY < tcMinY) break;
+                    if (tcY < tcMinY)
+                        break;
 
                     boolean isNumberedClause = line.matches("^\\d+\\.\\s.*");
                     if (isNumberedClause) {
@@ -908,10 +913,12 @@ public class PdfService {
                         String clauseBody = line.substring(dotIdx + 1).trim();
                         float numWidth = FONT_BOLD.getStringWidth(clauseNum + " ") / 1000 * tcFontSize;
 
-                        java.util.List<String> wrapped = wordWrap(clauseBody, FONT_REGULAR, tcFontSize, wrapW - numWidth);
+                        java.util.List<String> wrapped = wordWrap(clauseBody, FONT_REGULAR, tcFontSize,
+                                wrapW - numWidth);
                         boolean first = true;
                         for (String wl : wrapped) {
-                            if (tcY < tcMinY) break;
+                            if (tcY < tcMinY)
+                                break;
                             if (first) {
                                 drawText(cs, FONT_BOLD, tcFontSize, COL_PRIMARY, textIndent, tcY, clauseNum);
                                 drawText(cs, FONT_REGULAR, tcFontSize, COL_DARK_TEXT, textIndent + numWidth, tcY, wl);
@@ -925,7 +932,8 @@ public class PdfService {
                     } else {
                         java.util.List<String> wrapped = wordWrap(line, FONT_REGULAR, tcFontSize, wrapW);
                         for (String wl : wrapped) {
-                            if (tcY < tcMinY) break;
+                            if (tcY < tcMinY)
+                                break;
                             drawText(cs, FONT_REGULAR, tcFontSize, COL_DARK_TEXT, textIndent, tcY, wl);
                             tcY -= tcLineH;
                         }
@@ -956,7 +964,8 @@ public class PdfService {
         if (branding != null && branding.getLogoUrl() != null) {
             try {
                 String logoUrl = branding.getLogoUrl();
-                if (logoUrl.startsWith("/")) logoUrl = logoUrl.substring(1);
+                if (logoUrl.startsWith("/"))
+                    logoUrl = logoUrl.substring(1);
                 Path logoPath = Paths.get(logoUrl);
                 if (Files.exists(logoPath)) {
                     logoBytes = Files.readAllBytes(logoPath);
@@ -969,7 +978,8 @@ public class PdfService {
         if (logoBytes == null && settings != null && settings.getLogoUrl() != null) {
             try {
                 String logoUrl = settings.getLogoUrl();
-                if (logoUrl.startsWith("/")) logoUrl = logoUrl.substring(1);
+                if (logoUrl.startsWith("/"))
+                    logoUrl = logoUrl.substring(1);
                 Path logoPath = Paths.get(logoUrl);
                 if (Files.exists(logoPath)) {
                     logoBytes = Files.readAllBytes(logoPath);
@@ -1035,9 +1045,11 @@ public class PdfService {
         String email = settings != null && settings.getOfficialEmail() != null ? settings.getOfficialEmail()
                 : nullSafe(facility.getContactEmail(), "");
         StringBuilder contactBuilder = new StringBuilder();
-        if (!phone.isEmpty()) contactBuilder.append("Ph: ").append(phone);
+        if (!phone.isEmpty())
+            contactBuilder.append("Ph: ").append(phone);
         if (!email.isEmpty()) {
-            if (contactBuilder.length() > 0) contactBuilder.append("  |  ");
+            if (contactBuilder.length() > 0)
+                contactBuilder.append("  |  ");
             contactBuilder.append("Email: ").append(email);
         }
         if (contactBuilder.length() > 0) {
@@ -1064,7 +1076,8 @@ public class PdfService {
     }
 
     /**
-     * Draw SmartCBWTF footer with branding, digital signature notice, and copyright.
+     * Draw SmartCBWTF footer with branding, digital signature notice, and
+     * copyright.
      */
     private void drawAgreementFooter(PDPageContentStream cs, PDDocument doc) throws IOException {
         float y = MARGIN_BOTTOM / 2 + 14;
@@ -1081,11 +1094,13 @@ public class PdfService {
         try {
             byte[] logoBytes = null;
             try (java.io.InputStream is = getClass().getResourceAsStream("/smartcbwtf_logo.png")) {
-                if (is != null) logoBytes = is.readAllBytes();
+                if (is != null)
+                    logoBytes = is.readAllBytes();
             }
             if (logoBytes == null) {
                 Path localPath = Paths.get("src/main/resources/smartcbwtf_logo.png");
-                if (Files.exists(localPath)) logoBytes = Files.readAllBytes(localPath);
+                if (Files.exists(localPath))
+                    logoBytes = Files.readAllBytes(localPath);
             }
             if (logoBytes != null) {
                 PDImageXObject logo = PDImageXObject.createFromByteArray(doc, logoBytes, "footer-logo");
@@ -1095,7 +1110,8 @@ public class PdfService {
                 cs.drawImage(logo, MARGIN_LEFT, y + 6, w, maxH);
                 logoDrawnWidth = w + 4;
             }
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
 
         drawText(cs, FONT_BOLD, 6, COL_PRIMARY, MARGIN_LEFT + logoDrawnWidth, y + 10,
                 "SmartCBWTF");
@@ -1189,17 +1205,22 @@ public class PdfService {
         float rightX = MARGIN_LEFT + colWidth + colGap;
 
         // CBWTF data (compact — merge PAN/GSTIN)
-        String cbwtfPanGstin = (settings != null ? nullSafe(settings.getPan(), "-") : nullSafe(facility.getPanNumber(), "-"))
-                + " / " + (settings != null ? nullSafe(settings.getGstin(), "-") : nullSafe(facility.getGstNumber(), "-"));
+        String cbwtfPanGstin = (settings != null ? nullSafe(settings.getPan(), "-")
+                : nullSafe(facility.getPanNumber(), "-"))
+                + " / "
+                + (settings != null ? nullSafe(settings.getGstin(), "-") : nullSafe(facility.getGstNumber(), "-"));
         String[][] cbwtfData = {
                 { "Name", nullSafe(facility.getName()) },
                 { "Code", nullSafe(facility.getCode()) },
                 { "Address", settings != null && settings.getRegisteredAddress() != null
-                        ? settings.getRegisteredAddress() : nullSafe(facility.getAddress()) },
+                        ? settings.getRegisteredAddress()
+                        : nullSafe(facility.getAddress()) },
                 { "Phone", settings != null && settings.getOfficialPhone() != null
-                        ? settings.getOfficialPhone() : nullSafe(facility.getContactPhone()) },
+                        ? settings.getOfficialPhone()
+                        : nullSafe(facility.getContactPhone()) },
                 { "Email", settings != null && settings.getOfficialEmail() != null
-                        ? settings.getOfficialEmail() : nullSafe(facility.getContactEmail()) },
+                        ? settings.getOfficialEmail()
+                        : nullSafe(facility.getContactEmail()) },
                 { "PAN / GSTIN", cbwtfPanGstin },
                 { "Auth No", settings != null ? nullSafe(settings.getAuthorizationNumber(), "N/A") : "N/A" },
         };
@@ -1210,7 +1231,8 @@ public class PdfService {
                 + " (" + (Boolean.TRUE.equals(hcf.getBedded()) ? "Bedded" : "Non-Bedded") + ")";
         String hcfAddr = nullSafe(hcf.getAddress());
         String statePin = nullSafe(hcf.getState(), "") + " " + nullSafe(hcf.getPincode(), "");
-        if (!statePin.isBlank()) hcfAddr = hcfAddr + ", " + statePin.trim();
+        if (!statePin.isBlank())
+            hcfAddr = hcfAddr + ", " + statePin.trim();
 
         String[][] hcfData = {
                 { "Name", nullSafe(hcf.getName()) },
@@ -1428,7 +1450,8 @@ public class PdfService {
         return path.toString();
     }
 
-    public String generateLabelBatchPdf(Hcf hcf, Facility facility, String category, String[] qrCodes) {
+    public String generateLabelBatchPdf(Hcf hcf, Facility facility, String category, String[] qrCodes,
+            java.time.LocalDate validUntil) {
         String filename = "labels-" + hcf.getCode() + "-" + category + "-" + System.currentTimeMillis() + ".pdf";
         Path path = baseDir.resolve(filename);
 
@@ -1478,7 +1501,8 @@ public class PdfService {
                         float x = margin + (col * (labelWidth + gap));
                         float y = startY - ((row + 1) * labelHeight) - (row * gap);
 
-                        drawProfessionalLabel(document, cs, x, y, labelWidth, labelHeight, hcf, category, qrCodes[i]);
+                        drawProfessionalLabel(document, cs, x, y, labelWidth, labelHeight, hcf, category, qrCodes[i],
+                                validUntil);
                     }
                     // Cut lines logic adjusted for new Y range?
                     // To keep it simple, we draw cut lines for the whole grid area
@@ -1504,7 +1528,7 @@ public class PdfService {
      * @return relative URL to the generated PDF
      */
     public String generateMultiCategoryLabelBatchPdf(Hcf hcf, Facility facility,
-            Map<String, String[]> categoryQrCodes) {
+            Map<String, String[]> categoryQrCodes, java.time.LocalDate validUntil) {
         String filename = "labels-" + hcf.getCode() + "-MULTI-" + System.currentTimeMillis() + ".pdf";
         Path path = baseDir.resolve(filename);
 
@@ -1527,7 +1551,8 @@ public class PdfService {
 
             String dateStr = DateTimeFormatter.ofPattern("dd MMM yyyy").format(LocalDate.now());
 
-            // Flatten all categories' QR codes into a single ordered list of (category, qrCode)
+            // Flatten all categories' QR codes into a single ordered list of (category,
+            // qrCode)
             java.util.List<String[]> allLabels = new java.util.ArrayList<>();
             for (var entry : categoryQrCodes.entrySet()) {
                 String cat = entry.getKey();
@@ -1560,7 +1585,7 @@ public class PdfService {
 
                         String cat = allLabels.get(i)[0];
                         String qr = allLabels.get(i)[1];
-                        drawProfessionalLabel(document, cs, x, y, labelWidth, labelHeight, hcf, cat, qr);
+                        drawProfessionalLabel(document, cs, x, y, labelWidth, labelHeight, hcf, cat, qr, validUntil);
                     }
                     drawCutLines(cs, margin, pageWidth, startY, rows, cols, labelWidth, labelHeight, gap);
                 }
@@ -1575,7 +1600,8 @@ public class PdfService {
 
     /**
      * Generates a single QR label PDF using the exact same layout as the batch PDF.
-     * The label is rendered at the same size as in the 3x3 grid, centered on an A4 page.
+     * The label is rendered at the same size as in the 3x3 grid, centered on an A4
+     * page.
      */
     public String generateSingleLabelPdf(Hcf hcf, Facility facility, String category, String qrCodeText) {
         String filename = "label-" + hcf.getCode() + "-" + category + "-" + System.currentTimeMillis() + ".pdf";
@@ -1607,7 +1633,8 @@ public class PdfService {
                 drawCommonHeader(cs, document, "QR LABEL", "Generated: " + dateStr);
                 drawCommonFooter(cs, document);
 
-                // Place the single label in the top-left cell (same position as first label in batch)
+                // Place the single label in the top-left cell (same position as first label in
+                // batch)
                 float x = margin;
                 float y = startY - labelHeight;
 
@@ -1622,7 +1649,8 @@ public class PdfService {
     }
 
     private void drawProfessionalLabel(PDDocument doc, PDPageContentStream cs, float x, float y, float w, float h,
-            Hcf hcf, String category, String qrCodeText) throws IOException, com.google.zxing.WriterException {
+            Hcf hcf, String category, String qrCodeText, java.time.LocalDate validUntil)
+            throws IOException, com.google.zxing.WriterException {
         // Outline
         cs.setStrokingColor(Color.LIGHT_GRAY);
         cs.setLineWidth(0.5f);
@@ -1745,7 +1773,6 @@ public class PdfService {
             bottomY += lineSp;
         }
 
-        // HCF Address
         if (hcf.getAddress() != null && !hcf.getAddress().isBlank()) {
             cs.beginText();
             cs.setFont(FONT_REGULAR, detailFontSize);
@@ -1758,10 +1785,26 @@ public class PdfService {
             bottomY += lineSp;
         }
 
-        // QR Code Image - fills remaining space between header section and detail section
+        // Valid Until
+        if (validUntil != null) {
+            cs.beginText();
+            cs.setFont(FONT_BOLD, detailFontSize);
+            cs.setNonStrokingColor(Color.RED.darker());
+            String text = "Valid Until: "
+                    + java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy").format(validUntil);
+            float vtw = FONT_BOLD.getStringWidth(text) / 1000 * detailFontSize;
+            cs.newLineAtOffset(x + (w - vtw) / 2, bottomY);
+            cs.showText(text);
+            cs.endText();
+            bottomY += lineSp;
+        }
+
+        // QR Code Image - fills remaining space between header section and detail
+        // section
         float qrAvailableHeight = (y + h - 38) - bottomY - 2;
         float qrSize = Math.min(qrAvailableHeight, w - 16);
-        if (qrSize < 40) qrSize = 40;
+        if (qrSize < 40)
+            qrSize = 40;
 
         byte[] qrBytes = generateQrImage(qrCodeText, 300, 300);
         PDImageXObject qrImage = PDImageXObject.createFromByteArray(doc, qrBytes, "qr");

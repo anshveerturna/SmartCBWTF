@@ -19,12 +19,45 @@ public class LabelIssueRequest {
     @Min(1)
     private int quantity;
 
-    public UUID getHcfId() { return hcfId; }
-    public void setHcfId(UUID hcfId) { this.hcfId = hcfId; }
-    public UUID getFacilityId() { return facilityId; }
-    public void setFacilityId(UUID facilityId) { this.facilityId = facilityId; }
-    public String getCategory() { return category; }
-    public void setCategory(String category) { this.category = category; }
-    public int getQuantity() { return quantity; }
-    public void setQuantity(int quantity) { this.quantity = quantity; }
+    private java.time.LocalDate validUntil;
+
+    public UUID getHcfId() {
+        return hcfId;
+    }
+
+    public void setHcfId(UUID hcfId) {
+        this.hcfId = hcfId;
+    }
+
+    public UUID getFacilityId() {
+        return facilityId;
+    }
+
+    public void setFacilityId(UUID facilityId) {
+        this.facilityId = facilityId;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    public java.time.LocalDate getValidUntil() {
+        return validUntil;
+    }
+
+    public void setValidUntil(java.time.LocalDate validUntil) {
+        this.validUntil = validUntil;
+    }
 }

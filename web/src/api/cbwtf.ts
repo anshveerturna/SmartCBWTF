@@ -994,6 +994,7 @@ export interface GenerateLabelsForHcfRequest {
   wasteCategory?: string;
   quantity?: number;
   categoryQuantities: Record<string, number>;
+  validUntil?: string;
 }
 
 export interface GenerateLabelsForHcfResponse {

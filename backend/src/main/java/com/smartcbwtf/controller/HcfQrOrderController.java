@@ -81,7 +81,8 @@ public class HcfQrOrderController {
 
     /**
      * Self-generate QR labels (lower price, immediate).
-     * Supports single category (wasteCategory + quantity) or multi-category (categoryQuantities map).
+     * Supports single category (wasteCategory + quantity) or multi-category
+     * (categoryQuantities map).
      */
     @PostMapping("/generate")
     public ResponseEntity<?> selfGenerate(@RequestBody QrOrderRequest request) {
@@ -105,12 +106,13 @@ public class HcfQrOrderController {
 
             categoryQuantities.entrySet().removeIf(e -> e.getValue() == null || e.getValue() <= 0);
             if (categoryQuantities.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "At least one category with quantity > 0 required"));
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "At least one category with quantity > 0 required"));
             }
 
             int totalQty = categoryQuantities.values().stream().mapToInt(Integer::intValue).sum();
 
-            var result = qrOrderService.selfGenerateMulti(hcfId, categoryQuantities);
+            var result = qrOrderService.selfGenerateMulti(hcfId, categoryQuantities, request.validUntil());
 
             log.info("QR self-generated: orderId={}, hcfId={}, categories={}, totalQty={}",
                     result.order().getId(), hcfId, categoryQuantities.keySet(), totalQty);
@@ -147,7 +149,8 @@ public class HcfQrOrderController {
             String wasteCategory,
             Integer quantity,
             String notes,
-            Map<String, Integer> categoryQuantities) {
+            Map<String, Integer> categoryQuantities,
+            java.time.LocalDate validUntil) {
     }
 
     public record QrOrderDTO(

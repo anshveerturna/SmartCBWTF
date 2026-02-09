@@ -3,6 +3,7 @@ package com.smartcbwtf.domain;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -65,6 +66,9 @@ public class QrLabelOrder {
 
     @Column(name = "pdf_url")
     private String pdfUrl;
+
+    @Column(name = "valid_until")
+    private LocalDate validUntil;
 
     @Column(name = "created_at")
     private Instant createdAt;
@@ -205,6 +209,14 @@ public class QrLabelOrder {
 
     public void setPdfUrl(String pdfUrl) {
         this.pdfUrl = pdfUrl;
+    }
+
+    public LocalDate getValidUntil() {
+        return validUntil;
+    }
+
+    public void setValidUntil(LocalDate validUntil) {
+        this.validUntil = validUntil;
     }
 
     public Instant getCreatedAt() {
