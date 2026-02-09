@@ -156,7 +156,7 @@ const darkComponents = {
         borderRadius: 4,
         fontWeight: 500,
       },
-      filled: {
+      filledDefault: {
         border: '1px solid transparent',
         backgroundColor: '#334155',
       },

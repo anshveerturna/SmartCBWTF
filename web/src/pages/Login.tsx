@@ -101,6 +101,13 @@ const Login: React.FC = () => {
     }
   };
 
+  const labelFixSx = {
+    '& .MuiInputLabel-root': {
+      bgcolor: 'background.paper',
+      px: 0.5,
+    },
+  };
+
   return (
     <Box
       sx={{
@@ -184,6 +191,7 @@ const Login: React.FC = () => {
               margin="normal"
               error={!!errors.username}
               helperText={errors.username?.message}
+              sx={labelFixSx}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -203,6 +211,7 @@ const Login: React.FC = () => {
               margin="normal"
               error={!!errors.password}
               helperText={errors.password?.message}
+              sx={labelFixSx}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
