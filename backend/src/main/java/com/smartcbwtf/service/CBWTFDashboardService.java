@@ -149,6 +149,8 @@ public class CBWTFDashboardService {
                                                 event.getHcf() != null ? event.getHcf().getName() : null,
                                                 event.getEventType(),
                                                 event.getAnomalyState(),
+                                                event.getBagLabel() != null ? event.getBagLabel().getCategory()
+                                                                : "UNKNOWN",
                                                 event.getEventTs()))
                                 .collect(Collectors.toList());
                 dto.setRecentBagEvents(recentEvents);
@@ -365,8 +367,9 @@ public class CBWTFDashboardService {
                         Instant weekStart = Instant.now().minus(7, ChronoUnit.DAYS);
 
                         // Get all bag events with anomalies from this week
-                        List<CBWTFDashboardController.AnomalyBagDTO> anomalyEvents = bagEventRepo.findByFacilityIdAndEventTsBetween(
-                                        facilityId, weekStart, Instant.now())
+                        List<CBWTFDashboardController.AnomalyBagDTO> anomalyEvents = bagEventRepo
+                                        .findByFacilityIdAndEventTsBetween(
+                                                        facilityId, weekStart, Instant.now())
                                         .stream()
                                         .filter(event -> event.getAnomalyState() != null
                                                         && !"OK".equals(event.getAnomalyState()))

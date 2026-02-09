@@ -15,6 +15,7 @@ export interface RecentBagEvent {
   hcfName: string | null;
   eventType: string;
   anomalyState: string | null;
+  wasteCategory?: string; // Added from backend update
   eventTs: string;
 }
 

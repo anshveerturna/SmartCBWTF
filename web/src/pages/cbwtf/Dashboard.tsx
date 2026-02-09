@@ -734,51 +734,130 @@ const CbwtfDashboard: React.FC = () => {
           }}
         >
           <CardContent sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
-              Recent Activity
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Recent Activity
+              </Typography>
+              <Chip 
+                label="Real-time" 
+                size="small" 
+                color="success" 
+                variant="outlined" 
+                sx={{ height: 24, fontSize: '0.7rem' }} 
+              />
+            </Box>
+
             {isLoading ? (
               <Stack spacing={2}>
                 {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} height={50} sx={{ borderRadius: 2 }} />
+                  <Skeleton key={i} height={60} sx={{ borderRadius: 2 }} />
                 ))}
               </Stack>
             ) : dashboard?.recentBagEvents && dashboard.recentBagEvents.length > 0 ? (
-              <Stack divider={<Divider sx={{ opacity: 0.5 }} />} spacing={0}>
-                {dashboard.recentBagEvents.slice(0, 5).map((event, index) => (
-                  <Box 
-                    key={index} 
-                    sx={{ 
-                      py: 2,
-                      '&:hover': { bgcolor: alpha('#6366F1', 0.05) },
-                      borderRadius: 1,
-                      px: 1,
-                      mx: -1,
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="body2" fontWeight={600}>
-                        {event.qrCode || 'Unknown QR'}
-                      </Typography>
-                      <Chip 
-                        label={event.eventType.replace('_', ' ')} 
-                        size="small" 
-                        sx={{
-                          background: event.anomalyState && event.anomalyState !== 'NONE' 
-                            ? 'linear-gradient(135deg, #EF4444, #DC2626)'
-                            : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
-                          color: '#fff',
-                          fontWeight: 600,
-                          fontSize: '0.7rem',
+              <Box sx={{ maxHeight: 400, overflowY: 'auto', pr: 1 }}>
+                <Stack spacing={1.5}>
+                  {dashboard.recentBagEvents.map((event, index) => {
+                    const category = (event.wasteCategory || 'UNKNOWN').toUpperCase();
+                    
+                    // Determine color based on category
+                    // Default: Purple for dark mode, Green for light mode
+                    let color = isDark ? '#6366F1' : '#10B981'; 
+                    let bgColor = alpha(color, 0.1);
+                    
+                    if (category === 'YELLOW') {
+                      color = '#F59E0B';
+                      bgColor = alpha('#F59E0B', 0.1);
+                    } else if (category === 'RED') {
+                      color = '#EF4444';
+                      bgColor = alpha('#EF4444', 0.1);
+                    } else if (category === 'BLUE') {
+                      color = '#3B82F6';
+                      bgColor = alpha('#3B82F6', 0.1);
+                    } else if (category === 'WHITE') {
+                      color = '#64748B'; // Slate
+                      bgColor = alpha('#64748B', 0.1);
+                    }
+
+                    // Explicit timestamp format as requested
+                    const timestamp = event.eventTs ? new Date(event.eventTs).toLocaleString('en-US', {
+                      month: 'short', day: 'numeric', year: 'numeric',
+                      hour: 'numeric', minute: 'numeric', hour12: true
+                    }) : '';
+
+                    return (
+                      <Box 
+                        key={index} 
+                        sx={{ 
+                          p: 1.5,
+                          borderRadius: 2,
+                          bgcolor: isDark ? alpha(color, 0.05) : alpha(color, 0.02),
+                          border: `1px solid ${alpha(color, 0.1)}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 2,
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            bgcolor: isDark ? alpha(color, 0.1) : alpha(color, 0.05),
+                            transform: 'translateX(4px)',
+                          }
                         }}
-                      />
-                    </Box>
-                    <Typography variant="caption" color="text.secondary">
-                      {event.hcfName || 'Unknown HCF'} • {new Date(event.eventTs).toLocaleString()}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
+                      >
+                        {/* Icon Box */}
+                        <Box 
+                          sx={{ 
+                            width: 40, 
+                            height: 40, 
+                            borderRadius: '50%', 
+                            bgcolor: bgColor,
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            color: color,
+                            flexShrink: 0,
+                          }}
+                        >
+                         {event.eventType === 'PICKUP_COMPLETED' ? (
+                           <LocalShipping fontSize="small" />
+                         ) : event.eventType === 'BAG_SCANNED' ? (
+                           <QrCodeIcon fontSize="small" />
+                         ) : (
+                           <InventoryIcon fontSize="small" />
+                         )}
+                        </Box>
+
+                        {/* Content */}
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Typography variant="body2" fontWeight={600} noWrap>
+                               {event.eventType.replace(/_/g, ' ')}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', ml: 1 }}>
+                              {timestamp}
+                            </Typography>
+                          </Box>
+                          
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                            <Chip 
+                              label={category} 
+                              size="small" 
+                              sx={{ 
+                                height: 20, 
+                                fontSize: '0.65rem', 
+                                fontWeight: 700,
+                                bgcolor: color,
+                                color: '#fff',
+                              }} 
+                            />
+                            <Typography variant="caption" color="text.secondary" noWrap>
+                               • {event.hcfName || 'Unknown HCF'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Box>
             ) : (
               <Box sx={{ py: 4, textAlign: 'center' }}>
                 <Typography variant="body2" color="text.secondary">

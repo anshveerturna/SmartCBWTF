@@ -275,16 +275,19 @@ public class CBWTFDashboardDTO {
         private String hcfName;
         private String eventType;
         private String anomalyState;
+        private String wasteCategory;
         private Instant eventTs;
 
         public RecentBagEvent() {
         }
 
-        public RecentBagEvent(String qrCode, String hcfName, String eventType, String anomalyState, Instant eventTs) {
+        public RecentBagEvent(String qrCode, String hcfName, String eventType, String anomalyState,
+                String wasteCategory, Instant eventTs) {
             this.qrCode = qrCode;
             this.hcfName = hcfName;
             this.eventType = eventType;
             this.anomalyState = anomalyState;
+            this.wasteCategory = wasteCategory;
             this.eventTs = eventTs;
         }
 
@@ -318,6 +321,14 @@ public class CBWTFDashboardDTO {
 
         public void setAnomalyState(String anomalyState) {
             this.anomalyState = anomalyState;
+        }
+
+        public String getWasteCategory() {
+            return wasteCategory;
+        }
+
+        public void setWasteCategory(String wasteCategory) {
+            this.wasteCategory = wasteCategory;
         }
 
         public Instant getEventTs() {
