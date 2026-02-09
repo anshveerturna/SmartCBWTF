@@ -1603,7 +1603,8 @@ public class PdfService {
      * The label is rendered at the same size as in the 3x3 grid, centered on an A4
      * page.
      */
-    public String generateSingleLabelPdf(Hcf hcf, Facility facility, String category, String qrCodeText) {
+    public String generateSingleLabelPdf(Hcf hcf, Facility facility, String category, String qrCodeText,
+            java.time.LocalDate validUntil) {
         String filename = "label-" + hcf.getCode() + "-" + category + "-" + System.currentTimeMillis() + ".pdf";
         Path path = baseDir.resolve(filename);
 
@@ -1638,7 +1639,8 @@ public class PdfService {
                 float x = margin;
                 float y = startY - labelHeight;
 
-                drawProfessionalLabel(document, cs, x, y, labelWidth, labelHeight, hcf, category, qrCodeText);
+                drawProfessionalLabel(document, cs, x, y, labelWidth, labelHeight, hcf, category, qrCodeText,
+                        validUntil);
             }
 
             document.save(path.toFile());

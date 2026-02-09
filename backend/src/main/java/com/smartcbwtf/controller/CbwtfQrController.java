@@ -119,7 +119,8 @@ public class CbwtfQrController {
     }
 
     /**
-     * Download a single QR label as PDF — uses the exact same layout as batch label PDF.
+     * Download a single QR label as PDF — uses the exact same layout as batch label
+     * PDF.
      */
     @GetMapping("/{id}/label-pdf")
     public ResponseEntity<Resource> downloadLabelPdf(@PathVariable("id") UUID id) {
@@ -127,7 +128,8 @@ public class CbwtfQrController {
                 .orElseThrow(() -> new IllegalArgumentException("QR not found"));
 
         String pdfUrl = pdfService.generateSingleLabelPdf(
-                qr.getHcf(), qr.getFacility(), qr.getWasteCategory(), qr.getQrPayload());
+                qr.getHcf(), qr.getFacility(), qr.getWasteCategory(), qr.getQrPayload(),
+                java.time.LocalDate.ofInstant(qr.getValidTo(), java.time.ZoneId.of("UTC")));
 
         // pdfUrl is like /files/label-xxx.pdf — resolve to actual file
         String filename = pdfUrl.replace("/files/", "");
