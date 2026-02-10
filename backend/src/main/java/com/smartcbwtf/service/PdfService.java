@@ -757,10 +757,27 @@ public class PdfService {
                 float cardPadX = 10;
                 float cardPadTop = 18;
                 float cardRowH = 16;
+
+                // Logic for Billing Model & Rate Display
                 String billingModel = hcf.getBillingModel() != null ? hcf.getBillingModel().name() : "BEDDED";
-                String rateStr = agreement.getPerBedPerDayRate() != null
-                        ? "Rs. " + agreement.getPerBedPerDayRate().toPlainString() + " /bed/day"
-                        : "N/A";
+                if (Boolean.FALSE.equals(hcf.getBedded())) {
+                    billingModel = "FIXED (Non-Bedded)";
+                }
+
+                String rateStr;
+                if (hcf.getBillingModel() == com.smartcbwtf.domain.BillingModel.FIXED_MONTHLY
+                        || Boolean.FALSE.equals(hcf.getBedded())) {
+                    String monthly = hcf.getMonthlyCharges() != null ? hcf.getMonthlyCharges().toString() : "0";
+                    // Show Tax Rate
+                    double taxRate = hcf.getTaxRate() != null ? hcf.getTaxRate() : 18.0; // Default to 18 if null, or
+                                                                                         // use existing default
+                    rateStr = "Rs. " + monthly + " /Month + " + String.format("%.0f%%", taxRate) + " GST";
+                } else {
+                    rateStr = agreement.getPerBedPerDayRate() != null
+                            ? "Rs. " + agreement.getPerBedPerDayRate().toPlainString() + " /bed/day"
+                            : "N/A";
+                }
+
                 String validUntil = agreement.getEndDate() != null ? formatDate(agreement.getEndDate())
                         : "Until Terminated";
 
@@ -805,8 +822,13 @@ public class PdfService {
                 for (int i = 0; i < maxDetailRows; i++) {
                     if (i < leftCol.length) {
                         drawText(cs, FONT_BOLD, 8, COL_LIGHT_TEXT, margin + cardPadX, dY, leftCol[i][0]);
-                        drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, margin + cardPadX + lblW, dY,
-                                truncate(nullSafe(leftCol[i][1]), 35));
+                        // Wrap rate string if it's long
+                        String val = nullSafe(leftCol[i][1]);
+                        if (val.length() > 35) {
+                            drawText(cs, FONT_REGULAR, 7, COL_DARK_TEXT, margin + cardPadX + lblW, dY, val);
+                        } else {
+                            drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, margin + cardPadX + lblW, dY, val);
+                        }
                     }
                     if (i < rightCol.length) {
                         drawText(cs, FONT_BOLD, 8, COL_LIGHT_TEXT, margin + halfW + cardPadX, dY, rightCol[i][0]);
@@ -854,8 +876,11 @@ public class PdfService {
                     if (isNumberedClause) {
                         int dotIdx = line.indexOf('.');
                         String clauseBody = line.substring(dotIdx + 1).trim();
-                        String clauseNum = line.substring(0, dotIdx + 1);
-                        float numWidth = FONT_BOLD.getStringWidth(clauseNum + " ") / 1000 * tcFontSize;
+                        // String clauseNum = line.substring(0, dotIdx + 1);
+                        // float numWidth = FONT_BOLD.getStringWidth(clauseNum + " ") / 1000 *
+                        // tcFontSize;
+                        // Approx width for number
+                        float numWidth = 20;
                         java.util.List<String> wrapped = wordWrap(clauseBody, FONT_REGULAR, tcFontSize,
                                 wrapW - numWidth);
                         contentHeight += wrapped.size() * tcLineH + tcClauseGap;
@@ -1010,7 +1035,7 @@ public class PdfService {
         // Verification QR in top-right corner — trust mark
         if (agreement != null) {
             try {
-                String verUrl = "https://www.smartcbwtf.com/verify/agreement/" + agreement.getId();
+                String verUrl = "https://portal.smartcbwtf.com/verify/agreement/" + agreement.getId();
                 byte[] qrBytes = generateQrImage(verUrl, 200, 200);
                 PDImageXObject qrImg = PDImageXObject.createFromByteArray(doc, qrBytes, "header-qr");
                 float qrSz = 52;
@@ -1030,16 +1055,21 @@ public class PdfService {
         drawText(cs, FONT_REGULAR, 8, COL_LIGHT_TEXT, logoEndX, y - 15,
                 "Common Bio-Medical Waste Treatment Facility");
 
-        // Address
+        // Address - Multi-line wrapping
         String address = settings != null && settings.getRegisteredAddress() != null
                 ? settings.getRegisteredAddress()
                 : nullSafe(facility.getAddress());
-        if (address.length() > 75) {
-            address = address.substring(0, 73) + "..";
-        }
-        drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, logoEndX, y - 27, address);
 
-        // Phone + Email on one line
+        float addrW = (PAGE_WIDTH - MARGIN_RIGHT - 70) - logoEndX; // Available width for address
+        java.util.List<String> addrLines = wordWrap(address, FONT_REGULAR, 8, addrW);
+
+        float addrY = y - 27;
+        for (String line : addrLines) {
+            drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, logoEndX, addrY, line);
+            addrY -= 10;
+        }
+
+        // Phone + Email on one line (below address)
         String phone = settings != null && settings.getOfficialPhone() != null ? settings.getOfficialPhone()
                 : nullSafe(facility.getContactPhone(), "");
         String email = settings != null && settings.getOfficialEmail() != null ? settings.getOfficialEmail()
@@ -1053,10 +1083,10 @@ public class PdfService {
             contactBuilder.append("Email: ").append(email);
         }
         if (contactBuilder.length() > 0) {
-            drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, logoEndX, y - 38, contactBuilder.toString());
+            drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, logoEndX, addrY - 2, contactBuilder.toString());
         }
 
-        y -= 48;
+        y -= Math.max(48, (y - addrY) + 20); // Dynamic height adjustment
 
         // Divider line
         cs.setLineWidth(1.2f);
@@ -1209,12 +1239,16 @@ public class PdfService {
                 : nullSafe(facility.getPanNumber(), "-"))
                 + " / "
                 + (settings != null ? nullSafe(settings.getGstin(), "-") : nullSafe(facility.getGstNumber(), "-"));
+
+        // Addrs
+        String cbwtfAddr = settings != null && settings.getRegisteredAddress() != null
+                ? settings.getRegisteredAddress()
+                : nullSafe(facility.getAddress());
+
         String[][] cbwtfData = {
                 { "Name", nullSafe(facility.getName()) },
                 { "Code", nullSafe(facility.getCode()) },
-                { "Address", settings != null && settings.getRegisteredAddress() != null
-                        ? settings.getRegisteredAddress()
-                        : nullSafe(facility.getAddress()) },
+                { "Address", cbwtfAddr }, // Will wrap this
                 { "Phone", settings != null && settings.getOfficialPhone() != null
                         ? settings.getOfficialPhone()
                         : nullSafe(facility.getContactPhone()) },
@@ -1238,7 +1272,7 @@ public class PdfService {
                 { "Name", nullSafe(hcf.getName()) },
                 { "Code", nullSafe(hcf.getCode()) },
                 { "Doctor", nullSafe(hcf.getDoctorName(), "N/A") },
-                { "Address", hcfAddr },
+                { "Address", hcfAddr }, // Will wrap this
                 { "Phone", nullSafe(hcf.getContactPhone(), "N/A") },
                 { "Email", nullSafe(hcf.getContactEmail(), "N/A") },
                 { "PAN / GSTIN", nullSafe(hcf.getPanNo(), "-") + " / " + nullSafe(hcf.getGstNo(), "-") },
@@ -1246,10 +1280,33 @@ public class PdfService {
                 { "PCB Auth", nullSafe(hcf.getPcbAuthorizationNo(), "N/A") },
         };
 
-        int maxRows = Math.max(cbwtfData.length, hcfData.length);
+        // Prepare Wrapping for Adresses to determine height
         float rowH = 13;
         float headerH = 20;
         float padBottom = 6;
+        float labelW = 78;
+        float valW = colWidth - labelW - 10;
+
+        // Calculate dynamic height based on wrapped lines
+        int cbwtfTotalRows = 0;
+        for (String[] row : cbwtfData) {
+            if (row[0].equals("Address")) {
+                cbwtfTotalRows += wordWrap(row[1], FONT_REGULAR, 8, valW).size();
+            } else {
+                cbwtfTotalRows++;
+            }
+        }
+
+        int hcfTotalRows = 0;
+        for (String[] row : hcfData) {
+            if (row[0].equals("Address")) {
+                hcfTotalRows += wordWrap(row[1], FONT_REGULAR, 8, valW).size();
+            } else {
+                hcfTotalRows++;
+            }
+        }
+
+        int maxRows = Math.max(cbwtfTotalRows, hcfTotalRows);
         float cardH = headerH + (maxRows * rowH) + padBottom;
 
         // Left card background
@@ -1294,24 +1351,44 @@ public class PdfService {
         cs.lineTo(rightX + colWidth - 6, sepY);
         cs.stroke();
 
-        // Render CBWTF data
-        float labelW = 78;
-        int maxValLen = (int) ((colWidth - labelW - 16) / 3.8);
+        // Render CBWTF data with wrapping
         float dY = sepY - 11;
         for (String[] row : cbwtfData) {
-            drawText(cs, FONT_REGULAR, 8, COL_LIGHT_TEXT, leftX + 8, dY, row[0]);
-            drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, leftX + labelW + 8, dY,
-                    truncate(nullSafe(row[1]), maxValLen));
-            dY -= rowH;
+            String label = row[0];
+            String val = nullSafe(row[1]);
+
+            drawText(cs, FONT_REGULAR, 8, COL_LIGHT_TEXT, leftX + 8, dY, label);
+
+            if (label.equals("Address")) {
+                java.util.List<String> lines = wordWrap(val, FONT_REGULAR, 8, valW);
+                for (String line : lines) {
+                    drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, leftX + labelW + 8, dY, line);
+                    dY -= rowH;
+                }
+            } else {
+                drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, leftX + labelW + 8, dY, truncate(val, 38));
+                dY -= rowH;
+            }
         }
 
-        // Render HCF data
+        // Render HCF data with wrapping
         dY = sepY - 11;
         for (String[] row : hcfData) {
-            drawText(cs, FONT_REGULAR, 8, COL_LIGHT_TEXT, rightX + 8, dY, row[0]);
-            drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, rightX + labelW + 8, dY,
-                    truncate(nullSafe(row[1]), maxValLen));
-            dY -= rowH;
+            String label = row[0];
+            String val = nullSafe(row[1]);
+
+            drawText(cs, FONT_REGULAR, 8, COL_LIGHT_TEXT, rightX + 8, dY, label);
+
+            if (label.equals("Address")) {
+                java.util.List<String> lines = wordWrap(val, FONT_REGULAR, 8, valW);
+                for (String line : lines) {
+                    drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, rightX + labelW + 8, dY, line);
+                    dY -= rowH;
+                }
+            } else {
+                drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, rightX + labelW + 8, dY, truncate(val, 38));
+                dY -= rowH;
+            }
         }
 
         return y - cardH - 3;
