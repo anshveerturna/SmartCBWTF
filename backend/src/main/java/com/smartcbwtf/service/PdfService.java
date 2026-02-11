@@ -762,15 +762,26 @@ public class PdfService {
                 String billingModel = hcf.getBillingModel() != null ? hcf.getBillingModel().name() : "BEDDED";
                 if (Boolean.FALSE.equals(hcf.getBedded())) {
                     billingModel = "FIXED (Non-Bedded)";
+                } else if (Boolean.TRUE.equals(hcf.getBedded()) && hcf.getMonthlyCharges() != null
+                        && hcf.getMonthlyCharges().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                    billingModel = "FIXED (Bedded)";
                 }
 
                 String rateStr;
-                if (hcf.getBillingModel() == com.smartcbwtf.domain.BillingModel.FIXED_MONTHLY
-                        || Boolean.FALSE.equals(hcf.getBedded())) {
-                    String monthly = hcf.getMonthlyCharges() != null ? hcf.getMonthlyCharges().toString() : "0";
+                // PRIORITIZE MONTHLY CHARGE DISPLAY IF PRESENT
+                if (hcf.getMonthlyCharges() != null
+                        && hcf.getMonthlyCharges().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                    String monthly = hcf.getMonthlyCharges().toString();
                     // Show Tax Rate
-                    double taxRate = hcf.getTaxRate() != null ? hcf.getTaxRate() : 18.0; // Default to 18 if null, or
-                                                                                         // use existing default
+                    double taxRate = hcf.getTaxRate() != null ? hcf.getTaxRate() : 5.0; // Default to 5.0%
+                    rateStr = "Rs. " + monthly + " /Month + " + String.format("%.0f%%", taxRate) + " GST";
+                } else if (hcf.getBillingModel() == com.smartcbwtf.domain.BillingModel.FIXED_MONTHLY
+                        || Boolean.FALSE.equals(hcf.getBedded())) {
+                    // Fallback for old fixed logic where maybe monthly charges weren't set but
+                    // model was
+                    // fixed
+                    String monthly = hcf.getMonthlyCharges() != null ? hcf.getMonthlyCharges().toString() : "0";
+                    double taxRate = hcf.getTaxRate() != null ? hcf.getTaxRate() : 5.0;
                     rateStr = "Rs. " + monthly + " /Month + " + String.format("%.0f%%", taxRate) + " GST";
                 } else {
                     rateStr = agreement.getPerBedPerDayRate() != null
