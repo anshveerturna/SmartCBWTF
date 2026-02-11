@@ -8,6 +8,8 @@ import com.smartcbwtf.repository.FacilitySettingsRepository;
 import com.smartcbwtf.repository.SettingsAuditLogRepository;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.repository.BankAccountRepository;
+import com.smartcbwtf.repository.FacilityRepository;
+import com.smartcbwtf.domain.Facility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -32,16 +34,19 @@ public class FacilitySettingsService {
         private final SettingsAuditLogRepository auditLogRepository;
         private final AppUserRepository userRepository;
         private final BankAccountRepository bankAccountRepository;
+        private final FacilityRepository facilityRepository;
 
         public FacilitySettingsService(
                         FacilitySettingsRepository settingsRepository,
                         SettingsAuditLogRepository auditLogRepository,
                         AppUserRepository userRepository,
-                        BankAccountRepository bankAccountRepository) {
+                        BankAccountRepository bankAccountRepository,
+                        FacilityRepository facilityRepository) {
                 this.settingsRepository = settingsRepository;
                 this.auditLogRepository = auditLogRepository;
                 this.userRepository = userRepository;
                 this.bankAccountRepository = bankAccountRepository;
+                this.facilityRepository = facilityRepository;
         }
 
         /**
@@ -384,9 +389,68 @@ public class FacilitySettingsService {
         private FacilitySettings getOrCreateSettings(UUID facilityId) {
                 return settingsRepository.findById(facilityId)
                                 .orElseGet(() -> {
+                                        log.info("Creating new FacilitySettings for facilityId: {}", facilityId);
                                         FacilitySettings newSettings = new FacilitySettings();
-                                        newSettings.setFacilityId(facilityId);
-                                        return settingsRepository.save(newSettings);
+
+                                        Facility facility = facilityRepository.findById(facilityId)
+                                                        .orElseThrow(() -> new RuntimeException(
+                                                                        "Facility not found: " + facilityId));
+
+                                        log.info("Found Facility entity: {} (ID: {})", facility.getName(),
+                                                        facility.getId());
+
+                                        // Set reference to ensure Hibernate maps ID correctly
+                                        newSettings.setFacility(facility);
+
+                                        // ROBUST POPULATION: Ensure all NOT NULL DB columns are populated
+                                        // 1. Legal & Identity
+                                        if (newSettings.getLegalName() == null) {
+                                                newSettings.setLegalName(facility.getName());
+                                        }
+                                        if (newSettings.getTradeName() == null) {
+                                                newSettings.setTradeName(facility.getName());
+                                        }
+
+                                        // 2. Legacy Sender Fields (Database has NOT NULL constraint)
+                                        if (newSettings.getSenderName() == null) {
+                                                newSettings.setSenderName(facility.getName());
+                                        }
+                                        if (newSettings.getSenderEmail() == null) {
+                                                String email = facility.getContactEmail();
+                                                if (email == null || email.isBlank()) {
+                                                        email = "no-reply-" + facility.getCode().toLowerCase()
+                                                                        + "@smartcbwtf.com";
+                                                }
+                                                newSettings.setSenderEmail(email);
+                                        }
+
+                                        // 3. Sender Slug (Required for getResolvedSenderEmail)
+                                        if (newSettings.getSenderSlug() == null) {
+                                                String slug = FacilitySettings.generateSenderSlug(facility.getName());
+                                                newSettings.setSenderSlug(slug);
+                                        }
+
+                                        // 4. Contact Info
+                                        if (newSettings.getOfficialEmail() == null
+                                                        && facility.getContactEmail() != null) {
+                                                newSettings.setOfficialEmail(facility.getContactEmail());
+                                        }
+                                        if (newSettings.getOfficialPhone() == null
+                                                        && facility.getContactPhone() != null) {
+                                                newSettings.setOfficialPhone(facility.getContactPhone());
+                                        }
+
+                                        // DO NOT set facilityId manually; @MapsId handles it during persist
+
+                                        log.info("Saving newFacilitySettings with facility set: {}",
+                                                        newSettings.getFacility() != null);
+
+                                        try {
+                                                return settingsRepository.save(newSettings);
+                                        } catch (Exception e) {
+                                                log.error("Failed to save FacilitySettings", e);
+                                                throw e;
+                                        }
                                 });
         }
 
@@ -491,7 +555,8 @@ public class FacilitySettingsService {
         }
 
         private String truncateForAudit(String val) {
-                if (val == null) return null;
+                if (val == null)
+                        return null;
                 return val.length() > 200 ? val.substring(0, 200) + "..." : val;
         }
 
