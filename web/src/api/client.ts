@@ -2,7 +2,7 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { ApiError } from '../types/api';
 
 // API Base URL - configurable via environment
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 // Create axios instance
 const apiClient = axios.create({

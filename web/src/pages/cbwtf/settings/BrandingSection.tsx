@@ -21,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getBranding, updateBranding, uploadLogo, deleteLogo } from '../../../api/cbwtf';
+import { API_BASE_URL } from '../../../api/client';
 import type { BrandingDTO } from '../../../api/cbwtf';
 import { useTheme } from '@mui/material/styles';
 
@@ -157,6 +158,12 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
     });
   };
 
+  const getLogoSrc = (url: string | undefined) => {
+    if (!url) return undefined;
+    if (url.startsWith('http') || url.startsWith('blob:')) return url;
+    return `${API_BASE_URL}${url}`;
+  };
+
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -190,7 +197,7 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
           {currentBranding.logoUrl && !imageError ? (
             <Box
               component="img"
-              src={currentBranding.logoUrl}
+              src={getLogoSrc(currentBranding.logoUrl)}
               alt="Company logo"
               onError={() => setImageError(true)}
               sx={{
