@@ -914,7 +914,9 @@ public class PdfService {
                 // Cap to available space — reserve room below for bank details + QR (~110px)
                 // plus footer (~48px) in download mode, or declaration + signatures (~100px) in
                 // print mode
-                float reserveBelow = printMode ? 100 : 160;
+                // In print mode: QR (110) + Signatures (100) + Grid/Spacing (40) = ~250
+                // In download mode: QR (110) + Footer Spacing (50) = ~160
+                float reserveBelow = printMode ? 250 : 160;
                 float maxCardH = y - MARGIN_BOTTOM - reserveBelow;
                 if (maxCardH < 100)
                     maxCardH = 100; // Minimum reasonable height
@@ -1044,7 +1046,19 @@ public class PdfService {
 
             // === UPI PAYMENT QR + BANK DETAILS (below T&C) ===
             {
-                y -= 5;
+                // In Download Mode, push QR/Bank details to the bottom if there's extra space
+                // Footer line is at ~39. QR height ~110. Target Y ~160.
+                if (!printMode) {
+                    float targetY = 160;
+                    if (y - 5 > targetY) {
+                        y = targetY;
+                    } else {
+                        y -= 5;
+                    }
+                } else {
+                    y -= 5;
+                }
+
                 try {
                     byte[] qrBytes = null;
                     // Try loading QR from settings URL (uploaded file) first

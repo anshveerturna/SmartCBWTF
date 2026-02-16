@@ -53,6 +53,7 @@ public class SecurityConfig {
                                 "/api/terms/latest", // Public endpoint for mobile app to fetch T&C
                                 "/uploads/profiles/**", // Public profile photos
                                 "/uploads/branding/**", // Public branding assets
+                                "/uploads/payment-qr/**", // Public payment QR codes
                                 "/files/**", // Generated PDFs (agreements, labels)
                                 "/api/cbwtf/consumables/*/image/view", // Public consumable images
                                 "/api/public/**", // Public verification endpoints (QR scan)
