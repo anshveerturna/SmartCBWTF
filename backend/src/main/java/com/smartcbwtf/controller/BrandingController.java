@@ -65,6 +65,26 @@ public class BrandingController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * Upload a payment QR code image.
+     */
+    @PostMapping("/payment-qr")
+    public ResponseEntity<Map<String, String>> uploadPaymentQr(
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest request) throws IOException {
+        String qrUrl = brandingService.uploadPaymentQr(file, extractIpAddress(request));
+        return ResponseEntity.ok(Map.of("paymentQrUrl", qrUrl, "message", "Payment QR uploaded successfully"));
+    }
+
+    /**
+     * Delete payment QR code.
+     */
+    @DeleteMapping("/payment-qr")
+    public ResponseEntity<Void> deletePaymentQr(HttpServletRequest request) {
+        brandingService.deletePaymentQr(extractIpAddress(request));
+        return ResponseEntity.ok().build();
+    }
+
     private String extractIpAddress(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isBlank()) {

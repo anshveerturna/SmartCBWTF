@@ -309,6 +309,12 @@ export interface FinancialSettingsDTO {
   sgstPercent: number;
   igstPercent: number;
   gstEnabled: boolean;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankName?: string;
+  bankBranch?: string;
+  bankIfsc?: string;
+  paymentQrUrl?: string;
 }
 
 export interface PaymentReminderDTO {
@@ -439,6 +445,13 @@ export const updateAgreementTermsTemplate = async (termsTemplate: string): Promi
 
 export const downloadHcfAgreementPdf = async (hcfId: string): Promise<Blob> => {
   const response = await apiClient.get(`/api/cbwtf/hcfs/${hcfId}/agreement/pdf`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const downloadHcfAgreementPrintPdf = async (hcfId: string): Promise<Blob> => {
+  const response = await apiClient.get(`/api/cbwtf/hcfs/${hcfId}/agreement/print-pdf`, {
     responseType: 'blob',
   });
   return response.data;
@@ -730,6 +743,7 @@ export interface UpdateHcfRequest {
   aadharNo?: string;
   pcbAuthorizationNo?: string;
   monthlyCharges?: number;
+  occupancy?: number;
   bedded?: boolean;
   otherNotes?: string;
 }
@@ -877,6 +891,7 @@ export interface CbwtfAdminHcfRegistrationRequest {
   bedded: boolean;
   numberOfBeds?: number;
   monthlyCharges?: number;
+  occupancy?: number;
   otherNotes?: string;
   gpsLat: number;
   gpsLon: number;
@@ -1364,6 +1379,19 @@ export const uploadLogo = async (file: File): Promise<{ logoUrl: string }> => {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
   return response.data;
+};
+
+export const uploadPaymentQr = async (file: File): Promise<{ paymentQrUrl: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post('/api/cbwtf/branding/payment-qr', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};
+
+export const deletePaymentQr = async (): Promise<void> => {
+  await apiClient.delete('/api/cbwtf/branding/payment-qr');
 };
 
 export const deleteLogo = async (): Promise<void> => {

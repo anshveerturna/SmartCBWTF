@@ -50,7 +50,12 @@ public class Hcf {
     private Boolean bedded;
     private String pcbAuthorizationNo;
 
-    // Tax rate percentage (e.g., 5.0 = 5% GST). Used in invoice and bill generation.
+    // Occupancy percentage (e.g., 50.0 = 50%). Acts as discount on monthly charges.
+    @Column(name = "occupancy")
+    private Double occupancy;
+
+    // Tax rate percentage (e.g., 5.0 = 5% GST). Used in invoice and bill
+    // generation.
     @Column(name = "tax_rate")
     private Double taxRate = 5.0;
 
@@ -326,6 +331,14 @@ public class Hcf {
 
     public void setPcbAuthorizationNo(String pcbAuthorizationNo) {
         this.pcbAuthorizationNo = pcbAuthorizationNo;
+    }
+
+    public Double getOccupancy() {
+        return occupancy;
+    }
+
+    public void setOccupancy(Double occupancy) {
+        this.occupancy = occupancy;
     }
 
     public Double getTaxRate() {

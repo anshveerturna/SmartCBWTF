@@ -692,9 +692,39 @@ public class PdfService {
         Path path = facilityDir.resolve(filename);
 
         try {
-            renderProfessionalAgreementPdf(path, agreement, hcf, facility, branding, settings);
+            renderProfessionalAgreementPdf(path, agreement, hcf, facility, branding, settings, false);
         } catch (IOException e) {
             throw new RuntimeException("Failed to write agreement PDF", e);
+        }
+
+        return path.toAbsolutePath().toString();
+    }
+
+    /**
+     * Generate a printable (letterhead) agreement PDF — no header/footer branding,
+     * but includes declaration and signature blocks.
+     */
+    public String generatePrintableAgreementPdf(Agreement agreement, FacilityBranding branding,
+            FacilitySettings settings) {
+        Facility facility = agreement.getFacility();
+        Hcf hcf = agreement.getHcf();
+
+        String safeAgreementNumber = agreement.getAgreementNumber().replace("/", "_").replace("\\", "_");
+
+        Path facilityDir = agreementsDir.resolve(facility.getCode());
+        try {
+            Files.createDirectories(facilityDir);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create facility directory", e);
+        }
+
+        String filename = safeAgreementNumber + "_print.pdf";
+        Path path = facilityDir.resolve(filename);
+
+        try {
+            renderProfessionalAgreementPdf(path, agreement, hcf, facility, branding, settings, true);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to write printable agreement PDF", e);
         }
 
         return path.toAbsolutePath().toString();
@@ -705,7 +735,7 @@ public class PdfService {
      * Multi-page capable with proper sections, branding, and T&C.
      */
     private void renderProfessionalAgreementPdf(Path path, Agreement agreement, Hcf hcf, Facility facility,
-            FacilityBranding branding, FacilitySettings settings) throws IOException {
+            FacilityBranding branding, FacilitySettings settings, boolean printMode) throws IOException {
 
         try (PDDocument document = new PDDocument()) {
             float margin = MARGIN_LEFT;
@@ -720,7 +750,12 @@ public class PdfService {
             float y = pageTop;
 
             // === HEADER (Logo + Facility Info + Compact QR) ===
-            y = drawAgreementHeader(cs, document, y, facility, branding, settings, agreement);
+            if (!printMode) {
+                y = drawAgreementHeader(cs, document, y, facility, branding, settings, agreement);
+            } else {
+                // In print mode, leave whitespace for letterhead but skip drawing
+                y -= 60;
+            }
 
             // === DOCUMENT TITLE ===
             y -= 16;
@@ -771,15 +806,20 @@ public class PdfService {
                 // PRIORITIZE MONTHLY CHARGE DISPLAY IF PRESENT
                 if (hcf.getMonthlyCharges() != null
                         && hcf.getMonthlyCharges().compareTo(java.math.BigDecimal.ZERO) > 0) {
-                    String monthly = hcf.getMonthlyCharges().toString();
-                    // Show Tax Rate
-                    double taxRate = hcf.getTaxRate() != null ? hcf.getTaxRate() : 5.0; // Default to 5.0%
-                    rateStr = "Rs. " + monthly + " /Month + " + String.format("%.0f%%", taxRate) + " GST";
+                    java.math.BigDecimal displayMonthly = hcf.getMonthlyCharges();
+                    String occupancySuffix = "";
+                    // Apply occupancy discount if set
+                    if (hcf.getOccupancy() != null && hcf.getOccupancy() > 0) {
+                        displayMonthly = displayMonthly.multiply(
+                                java.math.BigDecimal.valueOf(hcf.getOccupancy() / 100.0))
+                                .setScale(0, java.math.RoundingMode.HALF_UP);
+                        occupancySuffix = " (Occupancy: " + String.format("%.0f%%", hcf.getOccupancy()) + ")";
+                    }
+                    double taxRate = hcf.getTaxRate() != null ? hcf.getTaxRate() : 5.0;
+                    rateStr = "Rs. " + displayMonthly.toPlainString() + " /Month + "
+                            + String.format("%.0f%%", taxRate) + " GST" + occupancySuffix;
                 } else if (hcf.getBillingModel() == com.smartcbwtf.domain.BillingModel.FIXED_MONTHLY
                         || Boolean.FALSE.equals(hcf.getBedded())) {
-                    // Fallback for old fixed logic where maybe monthly charges weren't set but
-                    // model was
-                    // fixed
                     String monthly = hcf.getMonthlyCharges() != null ? hcf.getMonthlyCharges().toString() : "0";
                     double taxRate = hcf.getTaxRate() != null ? hcf.getTaxRate() : 5.0;
                     rateStr = "Rs. " + monthly + " /Month + " + String.format("%.0f%%", taxRate) + " GST";
@@ -869,43 +909,66 @@ public class PdfService {
                 float wrapW = contentWidth - 24;
                 float headerReserve = 28; // card header + separator
                 float cardPadBottom = 10;
+
+                // Determine max height available
+                // Cap to available space — reserve room below for bank details + QR (~110px)
+                // plus footer (~48px) in download mode, or declaration + signatures (~100px) in
+                // print mode
+                float reserveBelow = printMode ? 100 : 160;
+                float maxCardH = y - MARGIN_BOTTOM - reserveBelow;
+                if (maxCardH < 100)
+                    maxCardH = 100; // Minimum reasonable height
+
                 int tcFontSize = 8;
                 float tcLineH = 11;
                 float tcClauseGap = 3;
                 float tcEmptyLineH = 5;
-
-                // --- Pre-calculate content height (dry run) ---
-                float contentHeight = 0;
                 String[] termsLines = termsText.split("\n");
-                for (String line : termsLines) {
-                    line = line.trim();
-                    if (line.isEmpty()) {
-                        contentHeight += tcEmptyLineH;
-                        continue;
+                float contentHeight = 0;
+
+                // --- Auto-size Loop: Decrease font until it fits or hits min size 5pt ---
+                while (tcFontSize >= 5) {
+                    tcLineH = tcFontSize * 1.35f;
+                    tcClauseGap = tcFontSize * 0.4f;
+                    tcEmptyLineH = tcFontSize * 0.6f;
+
+                    contentHeight = 0;
+                    for (String line : termsLines) {
+                        line = line.trim();
+                        if (line.isEmpty()) {
+                            contentHeight += tcEmptyLineH;
+                            continue;
+                        }
+                        boolean isNumberedClause = line.matches("^\\d+\\.\\s.*");
+                        if (isNumberedClause) {
+                            int dotIdx = line.indexOf('.');
+                            String clauseBody = line.substring(dotIdx + 1).trim();
+
+                            // Approx width for number "99. "
+                            float numWidth = FONT_BOLD.getStringWidth("99. ") / 1000 * tcFontSize;
+
+                            java.util.List<String> wrapped = wordWrap(clauseBody, FONT_REGULAR, tcFontSize,
+                                    wrapW - numWidth);
+                            contentHeight += wrapped.size() * tcLineH + tcClauseGap;
+                        } else {
+                            java.util.List<String> wrapped = wordWrap(line, FONT_REGULAR, tcFontSize, wrapW);
+                            contentHeight += wrapped.size() * tcLineH + tcClauseGap;
+                        }
                     }
-                    boolean isNumberedClause = line.matches("^\\d+\\.\\s.*");
-                    if (isNumberedClause) {
-                        int dotIdx = line.indexOf('.');
-                        String clauseBody = line.substring(dotIdx + 1).trim();
-                        // String clauseNum = line.substring(0, dotIdx + 1);
-                        // float numWidth = FONT_BOLD.getStringWidth(clauseNum + " ") / 1000 *
-                        // tcFontSize;
-                        // Approx width for number
-                        float numWidth = 20;
-                        java.util.List<String> wrapped = wordWrap(clauseBody, FONT_REGULAR, tcFontSize,
-                                wrapW - numWidth);
-                        contentHeight += wrapped.size() * tcLineH + tcClauseGap;
-                    } else {
-                        java.util.List<String> wrapped = wordWrap(line, FONT_REGULAR, tcFontSize, wrapW);
-                        contentHeight += wrapped.size() * tcLineH + tcClauseGap;
+
+                    // Check if fit
+                    if (headerReserve + contentHeight + cardPadBottom <= maxCardH) {
+                        break;
                     }
+                    tcFontSize--;
                 }
 
                 float tcCardH = headerReserve + contentHeight + cardPadBottom;
-                // Cap to available space (don't overflow past footer)
-                float maxCardH = y - MARGIN_BOTTOM - 48;
                 if (tcCardH > maxCardH)
                     tcCardH = maxCardH;
+                if (tcCardH < 40)
+                    tcCardH = 40;
+                tcCardH = maxCardH;
                 if (tcCardH < 40)
                     tcCardH = 40;
 
@@ -976,14 +1039,134 @@ public class PdfService {
                         tcY -= tcClauseGap;
                     }
                 }
+                y -= tcCardH; // Move below the T&C card
+            }
+
+            // === UPI PAYMENT QR + BANK DETAILS (below T&C) ===
+            {
+                y -= 5;
+                try {
+                    byte[] qrBytes = null;
+                    // Try loading QR from settings URL (uploaded file) first
+                    String qrUrlFromSettings = settings != null ? settings.getPaymentQrUrl() : null;
+                    if (qrUrlFromSettings != null && !qrUrlFromSettings.isBlank()) {
+                        // The URL is like /uploads/payment-qr/{facilityId}/filename.jpg — strip leading
+                        // slash for file path
+                        Path qrPath = Paths.get(
+                                qrUrlFromSettings.startsWith("/") ? qrUrlFromSettings.substring(1) : qrUrlFromSettings);
+                        if (Files.exists(qrPath)) {
+                            qrBytes = Files.readAllBytes(qrPath);
+                        }
+                    }
+                    // Fallback: try classpath resource
+                    if (qrBytes == null) {
+                        try (java.io.InputStream is = getClass().getResourceAsStream("/upi_payment_qr.jpg")) {
+                            if (is != null)
+                                qrBytes = is.readAllBytes();
+                        }
+                    }
+                    if (qrBytes != null) {
+                        PDImageXObject qrImg = PDImageXObject.createFromByteArray(document, qrBytes, "upi-qr");
+                        float qrSize = 80;
+                        float qrX = PAGE_WIDTH - MARGIN_RIGHT - qrSize;
+                        float qrY = y - qrSize;
+                        cs.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+                        // Label above QR
+                        drawText(cs, FONT_BOLD, 8, COL_PRIMARY, qrX, y - 2, "UPI PAYMENT");
+
+                        // Bank details to the left of QR — use settings if available, else defaults
+                        String bankAccName = (settings != null && settings.getBankAccountName() != null
+                                && !settings.getBankAccountName().isBlank())
+                                        ? settings.getBankAccountName()
+                                        : "Global Environmental Solutions";
+                        String bankAccNo = (settings != null && settings.getBankAccountNumber() != null
+                                && !settings.getBankAccountNumber().isBlank())
+                                        ? settings.getBankAccountNumber()
+                                        : "505105010010646";
+                        String bankIfsc = (settings != null && settings.getBankIfsc() != null
+                                && !settings.getBankIfsc().isBlank())
+                                        ? settings.getBankIfsc()
+                                        : "UBIN0816914";
+                        String bankNameStr = (settings != null && settings.getBankName() != null
+                                && !settings.getBankName().isBlank())
+                                        ? settings.getBankName()
+                                        : "Union Bank of India";
+                        String bankBranchStr = (settings != null && settings.getBankBranch() != null
+                                && !settings.getBankBranch().isBlank())
+                                        ? settings.getBankBranch()
+                                        : "Rudrapur";
+
+                        float bankX = margin;
+                        float bankY = y - 2;
+                        drawText(cs, FONT_BOLD, 8, COL_PRIMARY, bankX, bankY, "BANK DETAILS");
+                        bankY -= 12;
+                        drawText(cs, FONT_REGULAR, 7, COL_DARK_TEXT, bankX, bankY,
+                                "Account Name: " + bankAccName);
+                        bankY -= 10;
+                        drawText(cs, FONT_REGULAR, 7, COL_DARK_TEXT, bankX, bankY, "Account No: " + bankAccNo);
+                        bankY -= 10;
+                        drawText(cs, FONT_REGULAR, 7, COL_DARK_TEXT, bankX, bankY, "IFSC Code: " + bankIfsc);
+                        bankY -= 10;
+                        drawText(cs, FONT_REGULAR, 7, COL_DARK_TEXT, bankX, bankY, "Bank: " + bankNameStr);
+                        bankY -= 10;
+                        drawText(cs, FONT_REGULAR, 7, COL_DARK_TEXT, bankX, bankY, "Branch: " + bankBranchStr);
+
+                        y = Math.min(y - qrSize - 10, bankY - 10);
+                    }
+                } catch (Exception ignored) {
+                    // UPI QR render failed, continue
+                }
+            }
+
+            // === DECLARATION + SIGNATURES (print mode only) ===
+            if (printMode) {
+                y -= 10;
+                // Declaration text
+                String decl = "I/We hereby declare that the information furnished above is true and correct "
+                        + "to the best of my/our knowledge and belief. I/We agree to abide by the terms "
+                        + "and conditions mentioned herein.";
+                java.util.List<String> declLines = wordWrap(decl, FONT_REGULAR, 8, CONTENT_WIDTH);
+                for (String dl : declLines) {
+                    drawText(cs, FONT_REGULAR, 8, COL_DARK_TEXT, margin, y, dl);
+                    y -= 11;
+                }
+
+                y -= 20;
+
+                // Signature blocks — two columns
+                float sigColW = CONTENT_WIDTH / 2 - 10;
+                float leftX = margin;
+                float rightX = margin + sigColW + 20;
+
+                // Left signature: Service Provider
+                drawText(cs, FONT_BOLD, 8, COL_DARK_TEXT, leftX, y, "For Global Environmental Solutions");
+                y -= 40;
+                cs.setStrokingColor(COL_DARK_TEXT);
+                cs.setLineWidth(0.5f);
+                cs.moveTo(leftX, y);
+                cs.lineTo(leftX + sigColW - 20, y);
+                cs.stroke();
+                drawText(cs, FONT_REGULAR, 7, COL_LIGHT_TEXT, leftX, y - 10, "Authorised Signatory");
+
+                // Right signature: Healthcare Facility
+                float sigY = y + 40;
+                drawText(cs, FONT_BOLD, 8, COL_DARK_TEXT, rightX, sigY, "For Healthcare Facility");
+                cs.moveTo(rightX, y);
+                cs.lineTo(rightX + sigColW - 20, y);
+                cs.stroke();
+                drawText(cs, FONT_REGULAR, 7, COL_LIGHT_TEXT, rightX, y - 10, "Authorised Signatory");
             }
 
             // Footer on the single page
-            drawAgreementFooter(cs, document);
+            if (!printMode) {
+                drawAgreementFooter(cs, document);
+            }
             cs.close();
 
             document.save(path.toFile());
         }
+
     }
 
     /**
@@ -1279,6 +1462,7 @@ public class PdfService {
         if (!statePin.isBlank())
             hcfAddr = hcfAddr + ", " + statePin.trim();
 
+        String occupancyStr = hcf.getOccupancy() != null ? String.format("%.0f%%", hcf.getOccupancy()) : "N/A";
         String[][] hcfData = {
                 { "Name", nullSafe(hcf.getName()) },
                 { "Code", nullSafe(hcf.getCode()) },
@@ -1289,6 +1473,7 @@ public class PdfService {
                 { "PAN / GSTIN", nullSafe(hcf.getPanNo(), "-") + " / " + nullSafe(hcf.getGstNo(), "-") },
                 { "Type / Beds", hcfType + " / " + bedInfo },
                 { "PCB Auth", nullSafe(hcf.getPcbAuthorizationNo(), "N/A") },
+                { "Occupancy", occupancyStr },
         };
 
         // Prepare Wrapping for Adresses to determine height
@@ -1440,25 +1625,21 @@ public class PdfService {
      * Default terms & conditions text used when no custom template is set.
      */
     private String getDefaultTermsText() {
-        return "1. The CBWTF agrees to collect, transport, and dispose of bio-medical waste generated by the HCF "
-                + "in accordance with the Bio-Medical Waste Management Rules, 2016 and subsequent amendments.\n\n"
-                + "2. The HCF shall segregate bio-medical waste at the point of generation into the prescribed "
-                + "color-coded categories (Yellow, Red, Blue, White) as per CPCB guidelines.\n\n"
-                + "3. The CBWTF shall provide collection services as per the mutually agreed schedule. Any changes "
-                + "to the schedule must be communicated at least 48 hours in advance.\n\n"
-                + "4. The HCF shall ensure that bio-medical waste is stored in designated areas and is handed over "
-                + "to the CBWTF collection staff in properly sealed, labeled bags/containers.\n\n"
-                + "5. The billing shall be computed based on the agreed rate structure. Invoices will be generated "
-                + "monthly and payment is due within the grace period specified by the CBWTF.\n\n"
-                + "6. Both parties shall maintain records of waste collected, transported, and disposed of, and "
-                + "shall make such records available for inspection by regulatory authorities.\n\n"
-                + "7. The CBWTF shall issue a certificate of disposal/treatment to the HCF on a monthly basis.\n\n"
-                + "8. Either party may terminate this agreement by providing 30 days written notice. Outstanding "
-                + "dues, if any, must be cleared before termination.\n\n"
-                + "9. Any dispute arising out of this agreement shall be resolved through mutual consultation. If "
-                + "unresolved, disputes shall be referred to the jurisdictional authority.\n\n"
-                + "10. This agreement is subject to the provisions of the Bio-Medical Waste Management Rules, "
-                + "2016, and any amendments thereof.";
+        return "TERMS OF PAYMENT:\n"
+                + "1. Payment shall be made on a monthly basis, due within 15 days of invoice generation.\n\n"
+                + "2. Any delay in payment beyond the due date may attract a late payment surcharge as determined by the CBWTF.\n\n"
+                + "3. The HCF shall clear all outstanding dues before the expiry or termination of this agreement.\n\n"
+                + "SERVICE PROVIDER RESPONSIBILITIES:\n"
+                + "4. The CBWTF shall collect, transport, and dispose of bio-medical waste in compliance with the Bio-Medical Waste Management Rules, 2016 and subsequent amendments.\n\n"
+                + "5. The CBWTF shall provide color-coded bags, bins, and other collection materials as per CPCB guidelines.\n\n"
+                + "6. The CBWTF shall maintain proper records of waste collected, transported, and treated, and shall furnish monthly certificates of disposal.\n\n"
+                + "7. The CBWTF shall ensure timely collection as per the mutually agreed schedule. Any changes to the schedule shall be communicated at least 48 hours in advance.\n\n"
+                + "WASTE GENERATOR RESPONSIBILITIES:\n"
+                + "8. The HCF shall segregate bio-medical waste at the point of generation into the prescribed color-coded categories (Yellow, Red, Blue, White) as per CPCB guidelines.\n\n"
+                + "9. The HCF shall ensure that bio-medical waste is stored safely in designated areas and handed over to the CBWTF collection staff in properly sealed, labeled bags/containers.\n\n"
+                + "10. The HCF shall not mix bio-medical waste with general/municipal waste under any circumstances.\n\n"
+                + "11. The HCF shall cooperate with the CBWTF and regulatory authorities for inspections, audits, and compliance verification.\n\n"
+                + "12. Either party may terminate this agreement by providing 30 days written notice. Outstanding dues must be cleared before termination.";
     }
 
     private Map<String, String> buildTemplateVariables(Agreement agreement, Hcf hcf, Facility facility) {

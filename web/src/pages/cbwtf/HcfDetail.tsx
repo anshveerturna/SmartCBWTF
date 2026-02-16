@@ -38,6 +38,7 @@ import {
   updateHcfLocation,
   renewAgreement,
   downloadHcfAgreementPdf,
+  downloadHcfAgreementPrintPdf,
   type UpdateLocationRequest,
   type RenewAgreementRequest,
 } from '../../api/cbwtf';
@@ -928,6 +929,32 @@ export default function HcfDetailPage() {
                         }}
                       >
                         Download Agreement PDF
+                      </Button>
+                    </Box>
+                    <Box sx={{ pt: 1 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="secondary"
+                        startIcon={<PdfIcon />}
+                        onClick={async () => {
+                          try {
+                            const blob = await downloadHcfAgreementPrintPdf(id!);
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            const safeNum = (hcf.agreement?.agreementNumber || 'document').replace(/\//g, '_');
+                            link.setAttribute('download', `Agreement_Print_${safeNum}.pdf`);
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            window.URL.revokeObjectURL(url);
+                          } catch {
+                            setSnackbar({ open: true, message: 'Failed to download print agreement PDF.', severity: 'error' });
+                          }
+                        }}
+                      >
+                        Print Agreement PDF
                       </Button>
                     </Box>
                   </Stack>

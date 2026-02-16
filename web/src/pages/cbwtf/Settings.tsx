@@ -36,9 +36,11 @@ import {
   Description as AgreementIcon,
   Timeline as AuditIcon,
   Palette as BrandingIcon,
+  AccountBalance as FinancialIcon,
 } from '@mui/icons-material';
 import BrandingSection from './settings/BrandingSection';
 import AgreementRulesSection from './settings/AgreementRulesSection';
+import FinancialSettingsSection from './settings/FinancialSettingsSection';
 import dayjs from 'dayjs';
 import {
   getFacilitySettings,
@@ -56,6 +58,7 @@ const TABS = [
   { key: 'legal', label: 'Legal & Profile', icon: <LegalIcon /> },
   { key: 'agreement', label: 'Agreements', icon: <AgreementIcon /> },
   { key: 'branding', label: 'Branding', icon: <BrandingIcon /> },
+  { key: 'financial', label: 'Financial & Billing', icon: <FinancialIcon /> },
   { key: 'audit', label: 'Audit History', icon: <AuditIcon /> },
 ];
 
@@ -163,7 +166,7 @@ export default function Settings() {
   const { data: auditData, isLoading: auditLoading } = useQuery({
     queryKey: ['settings-audit', auditPage, auditRowsPerPage],
     queryFn: () => getSettingsAuditHistory(undefined, auditPage, auditRowsPerPage),
-    enabled: activeTab === 3,
+    enabled: activeTab === 4,
   });
 
   useEffect(() => {
@@ -354,7 +357,16 @@ export default function Settings() {
       case 2: // Branding
         return <BrandingSection onSettingsChange={() => queryClient.invalidateQueries({ queryKey: ['settings-audit'] })} />;
 
-      case 3: // Audit History
+      case 3: // Financial & Billing
+        return settings ? (
+          <FinancialSettingsSection
+            data={settings.financial}
+            lockedFields={lockedFields}
+            onSave={() => queryClient.invalidateQueries({ queryKey: ['facility-settings'] })}
+          />
+        ) : null;
+
+      case 4: // Audit History
         return (
           <Box>
             <SectionHeader title="Configuration History" description="Complete audit log of all settings changes with timestamps and user information." />

@@ -3,10 +3,12 @@ package com.smartcbwtf.service;
 import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.BrandingSnapshot;
 import com.smartcbwtf.domain.FacilityBranding;
+import com.smartcbwtf.domain.FacilitySettings;
 import com.smartcbwtf.domain.SettingsAuditLog;
 import com.smartcbwtf.dto.settings.BrandingDTO;
 import com.smartcbwtf.repository.BrandingSnapshotRepository;
 import com.smartcbwtf.repository.FacilityBrandingRepository;
+import com.smartcbwtf.repository.FacilitySettingsRepository;
 import com.smartcbwtf.repository.SettingsAuditLogRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,17 +35,21 @@ public class BrandingService {
 
     private static final Logger log = LoggerFactory.getLogger(BrandingService.class);
     private static final String LOGO_UPLOAD_DIR = "uploads/branding";
+    private static final String PAYMENT_QR_UPLOAD_DIR = "uploads/payment-qr";
 
     private final FacilityBrandingRepository brandingRepository;
     private final BrandingSnapshotRepository snapshotRepository;
     private final SettingsAuditLogRepository auditLogRepository;
+    private final FacilitySettingsRepository settingsRepository;
 
     public BrandingService(FacilityBrandingRepository brandingRepository,
             BrandingSnapshotRepository snapshotRepository,
-            SettingsAuditLogRepository auditLogRepository) {
+            SettingsAuditLogRepository auditLogRepository,
+            FacilitySettingsRepository settingsRepository) {
         this.brandingRepository = brandingRepository;
         this.snapshotRepository = snapshotRepository;
         this.auditLogRepository = auditLogRepository;
+        this.settingsRepository = settingsRepository;
     }
 
     /**
@@ -128,6 +134,68 @@ public class BrandingService {
         log.info("Uploaded logo for facility {}: {} (checksum: {})", facilityId, logoUrl, checksum);
 
         return logoUrl;
+    }
+
+    /**
+     * Upload a payment QR code image.
+     * Saves the image and stores the URL in FacilitySettings.
+     */
+    public String uploadPaymentQr(MultipartFile file, String ipAddress) throws IOException {
+        UUID facilityId = TenantContext.getTenantId();
+
+        // Validate file
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.equals("image/png") && !contentType.equals("image/jpeg"))) {
+            throw new IllegalArgumentException("Only PNG and JPEG images are allowed");
+        }
+
+        if (file.getSize() > 2 * 1024 * 1024) { // 2MB limit
+            throw new IllegalArgumentException("Payment QR file must be under 2MB");
+        }
+
+        // Create directory if not exists
+        Path uploadDir = Paths.get(PAYMENT_QR_UPLOAD_DIR, facilityId.toString());
+        Files.createDirectories(uploadDir);
+
+        // Save file
+        String extension = contentType.equals("image/png") ? ".png" : ".jpg";
+        String filename = "payment_qr_" + System.currentTimeMillis() + extension;
+        Path filePath = uploadDir.resolve(filename);
+        Files.write(filePath, file.getBytes());
+
+        // Update settings
+        FacilitySettings settings = settingsRepository.findById(facilityId)
+                .orElseThrow(() -> new IllegalStateException("Facility settings not found"));
+
+        String oldUrl = settings.getPaymentQrUrl();
+        String qrUrl = "/" + PAYMENT_QR_UPLOAD_DIR + "/" + facilityId.toString() + "/" + filename;
+        settings.setPaymentQrUrl(qrUrl);
+        settingsRepository.save(settings);
+
+        auditLog(facilityId, "financial", "paymentQrUrl", oldUrl, qrUrl, ipAddress);
+
+        log.info("Uploaded payment QR for facility {}: {}", facilityId, qrUrl);
+
+        return qrUrl;
+    }
+
+    /**
+     * Delete payment QR code.
+     */
+    public void deletePaymentQr(String ipAddress) {
+        UUID facilityId = TenantContext.getTenantId();
+        FacilitySettings settings = settingsRepository.findById(facilityId)
+                .orElseThrow(() -> new IllegalStateException("Facility settings not found"));
+
+        if (settings.getPaymentQrUrl() != null) {
+            String oldUrl = settings.getPaymentQrUrl();
+            settings.setPaymentQrUrl(null);
+            settingsRepository.save(settings);
+
+            auditLog(facilityId, "financial", "paymentQrUrl", oldUrl, null, ipAddress);
+
+            log.info("Deleted payment QR for facility {}", facilityId);
+        }
     }
 
     /**

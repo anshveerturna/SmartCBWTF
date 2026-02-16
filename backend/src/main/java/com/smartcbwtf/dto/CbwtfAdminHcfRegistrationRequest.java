@@ -69,6 +69,8 @@ public class CbwtfAdminHcfRegistrationRequest {
 
     private BigDecimal monthlyCharges;
 
+    private Double occupancy;
+
     private String otherNotes;
 
     // Location (set via map picker)
@@ -85,7 +87,8 @@ public class CbwtfAdminHcfRegistrationRequest {
     @NotNull(message = "Agreement end date is required")
     private LocalDate agreementEndDate;
 
-    // Per-bed rate for billing (optional - only for bedded facilities without monthly charges)
+    // Per-bed rate for billing (optional - only for bedded facilities without
+    // monthly charges)
     private BigDecimal perBedPerDayRate;
 
     // Excess rate per kg for waste above 277g/bed/day allowance
@@ -216,6 +219,14 @@ public class CbwtfAdminHcfRegistrationRequest {
 
     public void setMonthlyCharges(BigDecimal monthlyCharges) {
         this.monthlyCharges = monthlyCharges;
+    }
+
+    public Double getOccupancy() {
+        return occupancy;
+    }
+
+    public void setOccupancy(Double occupancy) {
+        this.occupancy = occupancy;
     }
 
     public String getOtherNotes() {

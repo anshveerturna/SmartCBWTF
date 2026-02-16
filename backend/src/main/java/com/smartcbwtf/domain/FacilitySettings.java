@@ -92,6 +92,24 @@ public class FacilitySettings {
     @Column(name = "gst_enabled", nullable = false)
     private Boolean gstEnabled = true;
 
+    @Column(name = "bank_account_name", length = 200)
+    private String bankAccountName;
+
+    @Column(name = "bank_account_number", length = 50)
+    private String bankAccountNumber;
+
+    @Column(name = "bank_name", length = 200)
+    private String bankName;
+
+    @Column(name = "bank_branch", length = 200)
+    private String bankBranch;
+
+    @Column(name = "bank_ifsc", length = 20)
+    private String bankIfsc;
+
+    @Column(name = "payment_qr_url", length = 512)
+    private String paymentQrUrl;
+
     // ==================== Section 3: Payment & Reminders ====================
     @Column(name = "grace_period_days", nullable = false)
     private Integer gracePeriodDays = 7;
@@ -493,6 +511,54 @@ public class FacilitySettings {
 
     public void setGracePeriodDays(Integer gracePeriodDays) {
         this.gracePeriodDays = gracePeriodDays;
+    }
+
+    public String getBankAccountName() {
+        return bankAccountName;
+    }
+
+    public void setBankAccountName(String bankAccountName) {
+        this.bankAccountName = bankAccountName;
+    }
+
+    public String getBankAccountNumber() {
+        return bankAccountNumber;
+    }
+
+    public void setBankAccountNumber(String bankAccountNumber) {
+        this.bankAccountNumber = bankAccountNumber;
+    }
+
+    public String getBankName() {
+        return bankName;
+    }
+
+    public void setBankName(String bankName) {
+        this.bankName = bankName;
+    }
+
+    public String getBankBranch() {
+        return bankBranch;
+    }
+
+    public void setBankBranch(String bankBranch) {
+        this.bankBranch = bankBranch;
+    }
+
+    public String getBankIfsc() {
+        return bankIfsc;
+    }
+
+    public void setBankIfsc(String bankIfsc) {
+        this.bankIfsc = bankIfsc;
+    }
+
+    public String getPaymentQrUrl() {
+        return paymentQrUrl;
+    }
+
+    public void setPaymentQrUrl(String paymentQrUrl) {
+        this.paymentQrUrl = paymentQrUrl;
     }
 
     public Boolean getAutoAlertEscalation() {

@@ -308,4 +308,45 @@ public class CbwtfHcfController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    /**
+     * Download printable (letterhead) agreement PDF for a specific HCF.
+     * Omits header/footer branding for printing on pre-printed letterhead.
+     * Includes declaration and signature blocks.
+     */
+    @GetMapping("/{id}/agreement/print-pdf")
+    public ResponseEntity<Resource> downloadAgreementPrintPdf(@PathVariable("id") UUID id) {
+        UUID facilityId = TenantContext.getTenantId();
+
+        Agreement agreement = agreementRepository.findActiveByHcfAndFacility(id, facilityId)
+                .orElse(null);
+
+        if (agreement == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            String pdfPath = agreementService.generatePrintPdf(agreement);
+
+            Path filePath;
+            if (pdfPath.startsWith("/")) {
+                filePath = Paths.get(pdfPath);
+            } else {
+                filePath = Paths.get(pdfPath.replaceFirst("^/", ""));
+            }
+
+            Resource resource = new UrlResource(filePath.toUri());
+            if (resource.exists() && resource.isReadable()) {
+                String safeNumber = agreement.getAgreementNumber().replace("/", "_");
+                String filename = "Agreement_Print_" + safeNumber + ".pdf";
+                return ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                        .body(resource);
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

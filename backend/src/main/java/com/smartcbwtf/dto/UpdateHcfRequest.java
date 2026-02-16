@@ -31,6 +31,7 @@ public class UpdateHcfRequest {
     private String aadharNo;
     private String pcbAuthorizationNo;
     private BigDecimal monthlyCharges;
+    private Double occupancy;
     private Boolean bedded;
     private String otherNotes;
 
@@ -121,6 +122,14 @@ public class UpdateHcfRequest {
 
     public void setMonthlyCharges(BigDecimal monthlyCharges) {
         this.monthlyCharges = monthlyCharges;
+    }
+
+    public Double getOccupancy() {
+        return occupancy;
+    }
+
+    public void setOccupancy(Double occupancy) {
+        this.occupancy = occupancy;
     }
 
     public Boolean getBedded() {

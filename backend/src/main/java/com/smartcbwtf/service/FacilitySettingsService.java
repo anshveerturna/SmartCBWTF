@@ -186,6 +186,26 @@ public class FacilitySettingsService {
                 settings.setIgstPercent(dto.igstPercent());
                 settings.setGstEnabled(dto.gstEnabled());
 
+                // Bank details
+                auditIfChanged("financial", "bankAccountName", str(settings.getBankAccountName()),
+                                str(dto.bankAccountName()),
+                                facilityId, ipAddress);
+                auditIfChanged("financial", "bankAccountNumber", str(settings.getBankAccountNumber()),
+                                str(dto.bankAccountNumber()),
+                                facilityId, ipAddress);
+                auditIfChanged("financial", "bankName", str(settings.getBankName()), str(dto.bankName()),
+                                facilityId, ipAddress);
+                auditIfChanged("financial", "bankBranch", str(settings.getBankBranch()), str(dto.bankBranch()),
+                                facilityId, ipAddress);
+                auditIfChanged("financial", "bankIfsc", str(settings.getBankIfsc()), str(dto.bankIfsc()),
+                                facilityId, ipAddress);
+
+                settings.setBankAccountName(dto.bankAccountName());
+                settings.setBankAccountNumber(dto.bankAccountNumber());
+                settings.setBankName(dto.bankName());
+                settings.setBankBranch(dto.bankBranch());
+                settings.setBankIfsc(dto.bankIfsc());
+
                 settingsRepository.save(settings);
                 log.info("Updated financial settings for facility {}", facilityId);
         }
@@ -478,7 +498,10 @@ public class FacilitySettingsService {
                                                 s.getSignatureChecksum()),
                                 new FinancialSettingsDTO(
                                                 s.getCgstPercent(), s.getSgstPercent(), s.getIgstPercent(),
-                                                s.getGstEnabled()),
+                                                s.getGstEnabled(),
+                                                s.getBankAccountName(), s.getBankAccountNumber(),
+                                                s.getBankName(), s.getBankBranch(), s.getBankIfsc(),
+                                                s.getPaymentQrUrl()),
                                 new PaymentReminderDTO(s.getGracePeriodDays(), s.getAutoAlertEscalation()),
                                 new AgreementRulesDTO(
                                                 s.getDefaultAgreementValidityMonths(),

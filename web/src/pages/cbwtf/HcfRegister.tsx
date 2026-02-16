@@ -135,6 +135,7 @@ export default function HcfRegister() {
     bedded: false,
     numberOfBeds: '',
     monthlyCharges: '',
+    occupancy: '',
     otherNotes: '',
     agreementStartDate: new Date().toISOString().split('T')[0],
     agreementEndDate: '',
@@ -224,6 +225,7 @@ export default function HcfRegister() {
       bedded: form.bedded,
       numberOfBeds: form.bedded ? parseInt(form.numberOfBeds) || undefined : undefined,
       monthlyCharges: form.monthlyCharges ? parseFloat(form.monthlyCharges) : undefined,
+      occupancy: form.occupancy ? parseFloat(form.occupancy) : undefined,
       otherNotes: form.otherNotes || undefined,
       gpsLat: location.lat,
       gpsLon: location.lng,
@@ -665,6 +667,17 @@ export default function HcfRegister() {
                         endAdornment: <InputAdornment position="end">%</InputAdornment>,
                       }}
                       helperText="Default 5%"
+                      sx={{ width: 150, ...labelFixSx }}
+                    />
+                    <TextField
+                      label="Occupancy (%)"
+                      type="number"
+                      value={form.occupancy}
+                      onChange={handleInputChange('occupancy')}
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                      }}
+                      helperText="Discount percentage"
                       sx={{ width: 150, ...labelFixSx }}
                     />
                   </Stack>

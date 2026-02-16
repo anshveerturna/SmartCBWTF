@@ -235,6 +235,9 @@ public class CbwtfHcfService {
         if (request.getMonthlyCharges() != null) {
             hcf.setMonthlyCharges(request.getMonthlyCharges());
         }
+        if (request.getOccupancy() != null) {
+            hcf.setOccupancy(request.getOccupancy());
+        }
         if (request.getBedded() != null) {
             hcf.setBedded(request.getBedded());
         }
@@ -685,6 +688,7 @@ public class CbwtfHcfService {
         hcf.setBedded(request.getBedded());
         hcf.setNumberOfBeds(request.getNumberOfBeds());
         hcf.setMonthlyCharges(request.getMonthlyCharges());
+        hcf.setOccupancy(request.getOccupancy());
         hcf.setOtherNotes(request.getOtherNotes());
         hcf.setGpsLat(request.getGpsLat());
         hcf.setGpsLon(request.getGpsLon());

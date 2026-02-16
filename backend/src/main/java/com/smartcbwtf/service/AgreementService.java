@@ -127,8 +127,10 @@ public class AgreementService {
     }
 
     /**
-     * Regenerate agreement PDF if it's missing (null/blank pdfUrl or file doesn't exist on disk).
-     * Used for lazy PDF generation on first download for agreements created before PDF generation existed.
+     * Regenerate agreement PDF if it's missing (null/blank pdfUrl or file doesn't
+     * exist on disk).
+     * Used for lazy PDF generation on first download for agreements created before
+     * PDF generation existed.
      * Returns the (possibly updated) agreement.
      */
     @Transactional
@@ -166,5 +168,25 @@ public class AgreementService {
         agreementRepository.save(agreement);
         log.info("[AGREEMENT] Fresh PDF generated at path={}", pdfPath);
         return agreement;
+    }
+
+    /**
+     * Generate a printable (letterhead) agreement PDF — no header/footer branding,
+     * includes declaration and signature blocks.
+     * Returns the absolute path to the generated file.
+     */
+    public String generatePrintPdf(Agreement agreement) {
+        log.info("[AGREEMENT] Generating print PDF for agreement={}", agreement.getAgreementNumber());
+        FacilityBranding branding = brandingRepository.findById(agreement.getFacility().getId()).orElse(null);
+        FacilitySettings settings = settingsRepository.findById(agreement.getFacility().getId()).orElse(null);
+
+        // Update terms text from latest settings if available
+        if (settings != null && settings.getAgreementTermsTemplate() != null) {
+            agreement.setTermsText(settings.getAgreementTermsTemplate());
+        }
+
+        String pdfPath = pdfService.generatePrintableAgreementPdf(agreement, branding, settings);
+        log.info("[AGREEMENT] Print PDF generated at path={}", pdfPath);
+        return pdfPath;
     }
 }

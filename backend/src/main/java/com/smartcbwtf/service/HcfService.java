@@ -395,6 +395,7 @@ public class HcfService {
         hcf.setGstNo(request.getGstNo());
         hcf.setAadharNo(request.getAadharNo());
         hcf.setMonthlyCharges(request.getMonthlyCharges());
+        hcf.setOccupancy(request.getOccupancy());
         hcf.setBedded(request.getBedded());
         hcf.setPcbAuthorizationNo(request.getPcbAuthorizationNo());
         hcf.setOtherNotes(request.getOtherNotes());

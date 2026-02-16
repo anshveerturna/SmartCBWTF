@@ -38,6 +38,8 @@ public class HcfRegistrationRequest {
 
     private BigDecimal monthlyCharges;
 
+    private Double occupancy;
+
     @NotNull(message = "Bedded status is required")
     private Boolean bedded;
 
@@ -195,6 +197,14 @@ public class HcfRegistrationRequest {
 
     public void setPcbAuthorizationNo(String pcbAuthorizationNo) {
         this.pcbAuthorizationNo = pcbAuthorizationNo;
+    }
+
+    public Double getOccupancy() {
+        return occupancy;
+    }
+
+    public void setOccupancy(Double occupancy) {
+        this.occupancy = occupancy;
     }
 
     public String getOwnershipType() {
