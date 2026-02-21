@@ -177,8 +177,7 @@ const lightComponents = {
           },
           '&.Mui-focused fieldset': {
             borderColor: '#0F766E',
-            borderWidth: 1,
-            boxShadow: '0 0 0 1px #0F766E', // Focus ring
+            borderWidth: 2,
           },
         },
       },

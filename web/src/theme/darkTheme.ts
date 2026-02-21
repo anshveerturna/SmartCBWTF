@@ -179,8 +179,7 @@ const darkComponents = {
           },
           '&.Mui-focused fieldset': {
             borderColor: '#818CF8',
-            borderWidth: 1,
-            boxShadow: '0 0 0 1px #818CF8',
+            borderWidth: 2,
           },
         },
       },

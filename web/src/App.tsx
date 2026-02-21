@@ -77,6 +77,9 @@ const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 // Public pages
 const AgreementVerify = lazy(() => import('./pages/public/AgreementVerify'));
 
+// Standalone Tools
+const TemporaryQrGenerator = lazy(() => import('./pages/shared/TemporaryQrGenerator'));
+
 // Loading fallback
 const PageLoader: React.FC = () => (
   <Box
@@ -117,6 +120,7 @@ const App: React.FC = () => {
                 <Route path="/blocked" element={<Blocked />} />
                 <Route path="/change-password" element={<ChangePassword />} />
                 <Route path="/verify/agreement/:id" element={<AgreementVerify />} />
+                <Route path="/temporary-qr" element={<TemporaryQrGenerator />} />
 
                 {/* SuperAdmin Routes */}
                 <Route
