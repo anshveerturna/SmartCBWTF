@@ -914,25 +914,26 @@ public class PdfService {
                 // Cap to available space — reserve room below for bank details + QR (~110px)
                 // plus footer (~48px) in download mode, or declaration + signatures (~100px) in
                 // print mode
-                // In print mode: QR (110) + Signatures (100) + Grid/Spacing (40) = ~250
-                // In download mode: QR (110) + Footer Spacing (50) = ~160
-                float reserveBelow = printMode ? 250 : 160;
+                // Print Mode: QR (110) + Gap(10) + Decl(33) + Gap(15) + Sig(45) = ~213. Reserve
+                // 200.
+                // Download Mode: QR (110) + Footer Spacing(5) = ~115. Reserve 115.
+                float reserveBelow = printMode ? 200 : 115;
                 float maxCardH = y - MARGIN_BOTTOM - reserveBelow;
                 if (maxCardH < 100)
                     maxCardH = 100; // Minimum reasonable height
 
                 int tcFontSize = 8;
                 float tcLineH = 11;
-                float tcClauseGap = 3;
-                float tcEmptyLineH = 5;
+                float tcClauseGap = 2; // Reduced
+                float tcEmptyLineH = 4; // Reduced
                 String[] termsLines = termsText.split("\n");
                 float contentHeight = 0;
 
                 // --- Auto-size Loop: Decrease font until it fits or hits min size 5pt ---
                 while (tcFontSize >= 5) {
-                    tcLineH = tcFontSize * 1.35f;
-                    tcClauseGap = tcFontSize * 0.4f;
-                    tcEmptyLineH = tcFontSize * 0.6f;
+                    tcLineH = tcFontSize * 1.25f; // Relaxed spacing (was 1.15f, originally 1.35f)
+                    tcClauseGap = tcFontSize * 0.4f; // Relaxed gap
+                    tcEmptyLineH = tcFontSize * 0.6f; // Relaxed gap
 
                     contentHeight = 0;
                     for (String line : termsLines) {
@@ -1046,15 +1047,15 @@ public class PdfService {
 
             // === UPI PAYMENT QR + BANK DETAILS (below T&C) ===
             {
-                // In Download Mode, push QR/Bank details to the bottom if there's extra space
-                // Footer line is at ~39. QR height ~110. Target Y ~160.
-                if (!printMode) {
-                    float targetY = 160;
-                    if (y - 5 > targetY) {
-                        y = targetY;
-                    } else {
-                        y -= 5;
-                    }
+                // In Download Mode AND Print Mode, push QR/Bank details to the bottom to
+                // maximize space
+                // Footer Line Y ~ 39. Padding 5.
+                // Print Mode Target Y: 39 + 5 + Sig(45) + Gap(15) + Decl(33) + Gap(10) +
+                // QR(110) = ~257 -> 200 (absolute extreme)
+                // Download Mode Target Y: 39 + 5 + QR(110) = ~154 -> 165
+                float targetY = printMode ? 200 : 165;
+                if (y - 5 > targetY) {
+                    y = targetY;
                 } else {
                     y -= 5;
                 }
@@ -1093,7 +1094,7 @@ public class PdfService {
                         String bankAccName = (settings != null && settings.getBankAccountName() != null
                                 && !settings.getBankAccountName().isBlank())
                                         ? settings.getBankAccountName()
-                                        : "Global Environmental Solutions";
+                                        : facility.getName();
                         String bankAccNo = (settings != null && settings.getBankAccountNumber() != null
                                 && !settings.getBankAccountNumber().isBlank())
                                         ? settings.getBankAccountNumber()
@@ -1146,7 +1147,7 @@ public class PdfService {
                     y -= 11;
                 }
 
-                y -= 20;
+                y -= 15; // Gap before signatures (reduced from 20)
 
                 // Signature blocks — two columns
                 float sigColW = CONTENT_WIDTH / 2 - 10;
@@ -1154,22 +1155,22 @@ public class PdfService {
                 float rightX = margin + sigColW + 20;
 
                 // Left signature: Service Provider
-                drawText(cs, FONT_BOLD, 8, COL_DARK_TEXT, leftX, y, "For Global Environmental Solutions");
-                y -= 40;
+                drawText(cs, FONT_BOLD, 8, COL_DARK_TEXT, leftX, y, "For " + facility.getName());
+                y -= 30; // Reduced from 40
                 cs.setStrokingColor(COL_DARK_TEXT);
                 cs.setLineWidth(0.5f);
                 cs.moveTo(leftX, y);
                 cs.lineTo(leftX + sigColW - 20, y);
                 cs.stroke();
-                drawText(cs, FONT_REGULAR, 7, COL_LIGHT_TEXT, leftX, y - 10, "Authorised Signatory");
+                drawText(cs, FONT_REGULAR, 7, COL_LIGHT_TEXT, leftX, y - 8, "Authorised Signatory"); // Reduced from 10
 
                 // Right signature: Healthcare Facility
-                float sigY = y + 40;
+                float sigY = y + 30; // Sync with left
                 drawText(cs, FONT_BOLD, 8, COL_DARK_TEXT, rightX, sigY, "For Healthcare Facility");
                 cs.moveTo(rightX, y);
                 cs.lineTo(rightX + sigColW - 20, y);
                 cs.stroke();
-                drawText(cs, FONT_REGULAR, 7, COL_LIGHT_TEXT, rightX, y - 10, "Authorised Signatory");
+                drawText(cs, FONT_REGULAR, 7, COL_LIGHT_TEXT, rightX, y - 8, "Authorised Signatory"); // Reduced from 10
             }
 
             // Footer on the single page

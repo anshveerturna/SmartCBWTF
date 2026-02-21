@@ -128,8 +128,10 @@ public class HcfService {
         // Create audit log
         createAuditLog(request, hcf, agreement, termsVersion);
 
-        // Send email (non-blocking)
-        sendRegistrationEmail(hcf, agreement, facility);
+        // Send email (non-blocking) only if ACTIVE
+        if (Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
+            sendRegistrationEmail(hcf, agreement, facility);
+        }
 
         // Build response
         HcfRegistrationResponse response = new HcfRegistrationResponse("PENDING_APPROVAL", hcf.getId(), hcf.getCode())
@@ -458,7 +460,11 @@ public class HcfService {
         agreement.setTermsAcceptedAt(Instant.now());
         agreement.setTermsAcceptedBy(acceptedBy);
 
-        agreement.setStatus("ACTIVE");
+        if (startDate.isAfter(LocalDate.now())) {
+            agreement.setStatus(Agreement.Status.UPCOMING.name());
+        } else {
+            agreement.setStatus(Agreement.Status.ACTIVE.name());
+        }
         agreement.setCreatedAt(Instant.now());
         agreement.setUpdatedAt(Instant.now());
 
@@ -489,7 +495,7 @@ public class HcfService {
         }
     }
 
-    private void sendRegistrationEmail(Hcf hcf, Agreement agreement, Facility facility) {
+    public void sendRegistrationEmail(Hcf hcf, Agreement agreement, Facility facility) {
         try {
             // Body for facility admin notification
             String body = String.format(

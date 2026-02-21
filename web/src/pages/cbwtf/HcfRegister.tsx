@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import dayjs from 'dayjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -779,6 +780,61 @@ export default function HcfRegister() {
                 </Grid>
               </CardContent>
             </Card>
+
+            {/* Bill Amount Calculator */}
+            {!form.bedded && form.monthlyCharges && Number(form.monthlyCharges) > 0 && form.agreementStartDate && form.agreementEndDate && (
+              (() => {
+                const months = dayjs(form.agreementEndDate).diff(dayjs(form.agreementStartDate), 'month', true);
+                if (months <= 0) return null;
+                const occValue = Number(form.occupancy) || 0;
+                const occFactor = occValue > 0 ? (occValue / 100) : 1;
+                const taxValue = Number(form.taxRate) || 5;
+                const monthly = Number(form.monthlyCharges) || 0;
+
+                const discountedMonthly = monthly * occFactor;
+                const subtotal = discountedMonthly * months;
+                const gst = subtotal * (taxValue / 100);
+                const total = subtotal + gst;
+
+                return (
+                  <Card sx={{ bgcolor: 'info.main', color: 'info.contrastText', mb: 3 }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                        Estimated First Bill
+                      </Typography>
+                      <Stack spacing={1}>
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="body2">Base Monthly:</Typography>
+                          <Typography variant="body2">₹{monthly.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</Typography>
+                        </Box>
+                        {occValue > 0 && (
+                          <Box display="flex" justifyContent="space-between">
+                            <Typography variant="body2">After Occupancy ({occValue}%):</Typography>
+                            <Typography variant="body2">₹{discountedMonthly.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/mo</Typography>
+                          </Box>
+                        )}
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="body2">Duration:</Typography>
+                          <Typography variant="body2">{months.toFixed(1)} Months</Typography>
+                        </Box>
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="body2">Subtotal:</Typography>
+                          <Typography variant="body2">₹{subtotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</Typography>
+                        </Box>
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="body2">GST ({taxValue}%):</Typography>
+                          <Typography variant="body2">₹{gst.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</Typography>
+                        </Box>
+                        <Box display="flex" justifyContent="space-between" mt={1} pt={1} borderTop="1px dashed" borderColor="info.light">
+                          <Typography variant="subtitle1" fontWeight="bold">Total Estimated Bill:</Typography>
+                          <Typography variant="subtitle1" fontWeight="bold">₹{total.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</Typography>
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                );
+              })()
+            )}
 
             {/* Notes */}
             <Card>

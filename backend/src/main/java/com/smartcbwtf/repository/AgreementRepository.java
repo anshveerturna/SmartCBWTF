@@ -79,4 +79,7 @@ public interface AgreementRepository extends JpaRepository<Agreement, UUID> {
 
         // Find agreements by status and end date (for expiration)
         List<Agreement> findByStatusAndEndDateBefore(String status, java.time.LocalDate endDate);
+
+        // Find agreements by status and start date (for activation of upcoming)
+        List<Agreement> findByStatusAndStartDateLessThanEqual(String status, java.time.LocalDate startDate);
 }

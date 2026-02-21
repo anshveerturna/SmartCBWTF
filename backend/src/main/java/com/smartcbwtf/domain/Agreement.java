@@ -24,6 +24,7 @@ public class Agreement {
     // Status enum - Agreement lifecycle
     public enum Status {
         ACTIVE, // Contract in force
+        UPCOMING, // Contract starts in the future
         EXPIRED, // End date passed
         TERMINATED, // Manually ended early
         DISPUTED // Legal dispute open

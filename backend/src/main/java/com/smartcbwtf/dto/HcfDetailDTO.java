@@ -21,6 +21,8 @@ public class HcfDetailDTO {
     private String code;
     private String name;
     private String address;
+    private String state;
+    private String pincode;
     private String contactPhone;
     private String contactEmail;
     private Integer numberOfBeds;
@@ -33,6 +35,7 @@ public class HcfDetailDTO {
     private String pcbAuthorizationNo;
     private String aadharNo;
     private BigDecimal monthlyCharges;
+    private Double occupancy;
     private Boolean bedded;
     private String otherNotes;
     private Double registrationGpsLat;
@@ -239,6 +242,8 @@ public class HcfDetailDTO {
         dto.code = hcf.getCode();
         dto.name = hcf.getName();
         dto.address = hcf.getAddress();
+        dto.state = hcf.getState();
+        dto.pincode = hcf.getPincode();
         dto.contactPhone = hcf.getContactPhone();
         dto.contactEmail = hcf.getContactEmail();
         dto.numberOfBeds = hcf.getNumberOfBeds();
@@ -252,6 +257,7 @@ public class HcfDetailDTO {
         dto.pcbAuthorizationNo = hcf.getPcbAuthorizationNo();
         dto.aadharNo = hcf.getAadharNo();
         dto.monthlyCharges = hcf.getMonthlyCharges();
+        dto.occupancy = hcf.getOccupancy();
         dto.bedded = hcf.getBedded();
         dto.otherNotes = hcf.getOtherNotes();
         dto.registrationGpsLat = hcf.getRegistrationGpsLat();
@@ -301,6 +307,22 @@ public class HcfDetailDTO {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getPincode() {
+        return pincode;
+    }
+
+    public void setPincode(String pincode) {
+        this.pincode = pincode;
     }
 
     public String getContactPhone() {
@@ -397,6 +419,14 @@ public class HcfDetailDTO {
 
     public void setMonthlyCharges(BigDecimal monthlyCharges) {
         this.monthlyCharges = monthlyCharges;
+    }
+
+    public Double getOccupancy() {
+        return occupancy;
+    }
+
+    public void setOccupancy(Double occupancy) {
+        this.occupancy = occupancy;
     }
 
     public Boolean getBedded() {

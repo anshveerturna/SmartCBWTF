@@ -21,6 +21,9 @@ public class RenewAgreementRequest {
     @Positive(message = "Bed rate must be positive")
     private BigDecimal perBedPerDayRate;
 
+    @Positive(message = "Monthly charges must be positive")
+    private BigDecimal monthlyCharges;
+
     public LocalDate getStartDate() {
         return startDate;
     }
@@ -43,5 +46,13 @@ public class RenewAgreementRequest {
 
     public void setPerBedPerDayRate(BigDecimal perBedPerDayRate) {
         this.perBedPerDayRate = perBedPerDayRate;
+    }
+
+    public BigDecimal getMonthlyCharges() {
+        return monthlyCharges;
+    }
+
+    public void setMonthlyCharges(BigDecimal monthlyCharges) {
+        this.monthlyCharges = monthlyCharges;
     }
 }

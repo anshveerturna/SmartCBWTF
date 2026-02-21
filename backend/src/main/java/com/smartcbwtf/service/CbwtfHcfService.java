@@ -95,8 +95,14 @@ public class CbwtfHcfService {
                             !today.isBefore(startDate) && !today.isAfter(endDate);
 
                     if (shouldBeActive && !Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
-                        agreement.setStatus(Agreement.Status.ACTIVE.name());
-                        hcf.setStatus("ACTIVE");
+                        if (agreement.getStartDate().isAfter(LocalDate.now())) {
+                            agreement.setStatus(Agreement.Status.UPCOMING.name());
+                            hcf.setStatus("INACTIVE"); // Or UPCOMING if Hcf has such status, let's keep it INACTIVE
+                                                       // since it's not active yet.
+                        } else {
+                            agreement.setStatus(Agreement.Status.ACTIVE.name());
+                            hcf.setStatus("ACTIVE");
+                        }
                         agreement.setUpdatedAt(Instant.now());
                         hcf.setUpdatedAt(Instant.now());
                         agreementRepository.save(agreement);
@@ -152,8 +158,15 @@ public class CbwtfHcfService {
 
         boolean statusCorrected = false;
         if (shouldBeActive && !Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
-            agreement.setStatus(Agreement.Status.ACTIVE.name());
-            hcf.setStatus("ACTIVE");
+            if (agreement.getStartDate().isAfter(LocalDate.now())) {
+                agreement.setStatus(Agreement.Status.UPCOMING.name());
+                // Leave hcf status as is, or INACTIVE if new. Let's not touch HCF status
+                // incorrectly.
+                // Usually it starts PENDING_APPROVAL.
+            } else {
+                agreement.setStatus(Agreement.Status.ACTIVE.name());
+                hcf.setStatus("ACTIVE");
+            }
             statusCorrected = true;
             log.info("Auto-corrected agreement {} status to ACTIVE (within validity period)",
                     agreement.getAgreementNumber());
@@ -584,6 +597,11 @@ public class CbwtfHcfService {
         }
 
         Hcf hcf = oldAgreement.getHcf();
+        if (request.getMonthlyCharges() != null) {
+            hcf.setMonthlyCharges(request.getMonthlyCharges());
+            hcfRepository.save(hcf); // Update HCF's monthly charges for future billing
+        }
+
         Facility facility = facilityRepository.findById(facilityId)
                 .orElseThrow(() -> new IllegalArgumentException("Facility not found"));
 
@@ -592,7 +610,11 @@ public class CbwtfHcfService {
         newAgreement.setHcf(hcf);
         newAgreement.setFacility(facility);
         newAgreement.setAgreementNumber(agreementNumberGenerator.generateNextAgreementNumber(facility));
-        newAgreement.setStatus(Agreement.Status.ACTIVE.name());
+        if (request.getStartDate().isAfter(LocalDate.now())) {
+            newAgreement.setStatus(Agreement.Status.UPCOMING.name());
+        } else {
+            newAgreement.setStatus(Agreement.Status.ACTIVE.name());
+        }
         newAgreement.setDuesStatus(Agreement.DuesStatus.CLEAR.name());
         newAgreement.setStartDate(request.getStartDate());
         newAgreement.setEndDate(request.getEndDate());

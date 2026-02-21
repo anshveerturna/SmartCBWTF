@@ -1,8 +1,10 @@
 package com.smartcbwtf.scheduler;
 
 import com.smartcbwtf.domain.Agreement;
+import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.service.AuditLogService;
+import com.smartcbwtf.service.HcfService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,10 +25,13 @@ public class AgreementExpirationScheduler {
 
     private final AgreementRepository agreementRepository;
     private final AuditLogService auditLogService;
+    private final HcfService hcfService;
 
-    public AgreementExpirationScheduler(AgreementRepository agreementRepository, AuditLogService auditLogService) {
+    public AgreementExpirationScheduler(AgreementRepository agreementRepository, AuditLogService auditLogService,
+            HcfService hcfService) {
         this.agreementRepository = agreementRepository;
         this.auditLogService = auditLogService;
+        this.hcfService = hcfService;
     }
 
     /**
@@ -61,6 +66,49 @@ public class AgreementExpirationScheduler {
 
         if (!expiredAgreements.isEmpty()) {
             log.info("Expired {} agreements.", expiredAgreements.size());
+        }
+    }
+
+    /**
+     * Run daily at 00:05 AM to activate UPCOMING agreements that have reached their
+     * start date.
+     */
+    @Scheduled(cron = "0 5 0 * * ?")
+    @Transactional
+    public void activateUpcomingAgreements() {
+        log.info("Running upcoming agreement activation check...");
+
+        LocalDate today = LocalDate.now();
+        List<Agreement> upcomingAgreements = agreementRepository.findByStatusAndStartDateLessThanEqual("UPCOMING",
+                today);
+
+        for (Agreement agreement : upcomingAgreements) {
+            try {
+                log.info("Activating UPCOMING agreement {} (started on {})", agreement.getAgreementNumber(),
+                        agreement.getStartDate());
+
+                agreement.setStatus("ACTIVE");
+                agreement.getHcf().setStatus("ACTIVE"); // Ensure HCF reflects active status
+                agreementRepository.save(agreement);
+
+                auditLogService.log(
+                        "AGREEMENT",
+                        agreement.getId(),
+                        "AGREEMENT_ACTIVATED",
+                        null,
+                        "Auto-activated UPCOMING agreement. Start date: " + agreement.getStartDate());
+
+                // Dispatch deferred registration email
+                Facility facility = agreement.getFacility();
+                hcfService.sendRegistrationEmail(agreement.getHcf(), agreement, facility);
+
+            } catch (Exception e) {
+                log.error("Failed to activate UPCOMING agreement {}", agreement.getId(), e);
+            }
+        }
+
+        if (!upcomingAgreements.isEmpty()) {
+            log.info("Activated {} UPCOMING agreements.", upcomingAgreements.size());
         }
     }
 }

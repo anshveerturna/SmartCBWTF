@@ -714,7 +714,11 @@ export interface HcfDetail {
   gstNo: string | null;
   pcbAuthorizationNo: string | null;
   aadharNo: string | null;
+  city: string | null;
+  seatCount: number | null;
   monthlyCharges: number | null;
+  occupancy: number | null;
+  billingModel: string | null;
   bedded: boolean | null;
   otherNotes: string | null;
   registrationGpsLat: number | null;
@@ -866,6 +870,7 @@ export interface RenewAgreementRequest {
   startDate: string;
   endDate: string;
   perBedPerDayRate: number;
+  monthlyCharges?: number;
 }
 
 export const renewAgreement = async (id: string, data: RenewAgreementRequest): Promise<HcfDetail> => {
