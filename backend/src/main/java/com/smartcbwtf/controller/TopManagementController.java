@@ -18,15 +18,20 @@ public class TopManagementController {
 
     private final DuesClearanceRequestRepository requestRepository;
     private final HcfRepository hcfRepository;
+    private final com.smartcbwtf.service.CbwtfHcfService cbwtfHcfService;
 
     public TopManagementController(
             DuesClearanceRequestRepository requestRepository,
-            HcfRepository hcfRepository) {
+            HcfRepository hcfRepository,
+            com.smartcbwtf.service.CbwtfHcfService cbwtfHcfService) {
         this.requestRepository = requestRepository;
         this.hcfRepository = hcfRepository;
+        this.cbwtfHcfService = cbwtfHcfService;
     }
 
-    @GetMapping
+    // ==================== DUES CLEARANCE APPROVALS ====================
+
+    @GetMapping("/dues")
     public ResponseEntity<List<Map<String, Object>>> listPendingApprovals() {
         // List only those submitted by CBWTF Admin
         List<DuesClearanceRequest> requests = requestRepository
@@ -34,13 +39,13 @@ public class TopManagementController {
         return ResponseEntity.ok(requests.stream().map(this::toDTO).toList());
     }
 
-    @PostMapping("/{id}/approve")
+    @PostMapping("/dues/{id}/approve")
     @Transactional
     public ResponseEntity<?> approveRequest(@PathVariable UUID id) {
         return processApproval(id, true, null);
     }
 
-    @PostMapping("/{id}/reject")
+    @PostMapping("/dues/{id}/reject")
     @Transactional
     public ResponseEntity<?> rejectRequest(
             @PathVariable UUID id,
@@ -48,7 +53,7 @@ public class TopManagementController {
         return processApproval(id, false, payload.get("reason"));
     }
 
-    @PostMapping("/approve-all")
+    @PostMapping("/dues/approve-all")
     @Transactional
     public ResponseEntity<?> approveAll() {
         List<DuesClearanceRequest> pending = requestRepository
@@ -114,5 +119,65 @@ public class TopManagementController {
         map.put("cbwtfNotes", req.getCbwtfNotes());
         // Add CBWTF Admin info if needed
         return map;
+    }
+
+    // ==================== HCF REGISTRATION APPROVALS ====================
+
+    @GetMapping("/hcfs")
+    public ResponseEntity<List<Map<String, Object>>> listPendingHcfApprovals() {
+        // Use custom native query or filter in memory
+        // hcfRepository.findByStatus("PENDING_APPROVAL", pageable) is paginated. We
+        // need all.
+        // Let's filter manually using custom logic or a custom query.
+        List<Hcf> hcfs = hcfRepository.findAll();
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        for (Hcf hcf : hcfs) {
+            // Check status PENDING_APPROVAL
+            if ("PENDING_APPROVAL".equals(hcf.getStatus())) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", hcf.getId());
+                map.put("name", hcf.getName());
+                map.put("code", hcf.getCode());
+                map.put("address", hcf.getAddress());
+                map.put("contactEmail", hcf.getContactEmail());
+                map.put("contactPhone", hcf.getContactPhone());
+                map.put("numberOfBeds", hcf.getNumberOfBeds());
+                map.put("monthlyCharges", hcf.getMonthlyCharges());
+                map.put("requestedAt", hcf.getCreatedAt());
+
+                response.add(map);
+            }
+        }
+
+        // Sort by requestedAt descending
+        response.sort((a, b) -> {
+            Instant ia = (Instant) a.get("requestedAt");
+            Instant ib = (Instant) b.get("requestedAt");
+            if (ia == null && ib == null)
+                return 0;
+            if (ia == null)
+                return 1;
+            if (ib == null)
+                return -1;
+            return ib.compareTo(ia); // descending
+        });
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/hcfs/{id}/approve")
+    public ResponseEntity<?> approveHcfRegistration(@PathVariable UUID id) {
+        cbwtfHcfService.approveHcfByTopManagement(id);
+        return ResponseEntity.ok(Map.of("message", "HCF successfully approved."));
+    }
+
+    @PostMapping("/hcfs/{id}/reject")
+    public ResponseEntity<?> rejectHcfRegistration(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> payload) {
+        String reason = payload.get("reason");
+        cbwtfHcfService.rejectHcfByTopManagement(id, reason);
+        return ResponseEntity.ok(Map.of("message", "HCF successfully rejected."));
     }
 }

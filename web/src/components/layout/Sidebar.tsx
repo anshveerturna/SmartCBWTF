@@ -137,6 +137,7 @@ const getHcfAdminItems = (): NavItem[] => [
 ];
 
 const getTopManagementItems = (): NavItem[] => [
+  { path: '/management/hcfs', label: 'HCF Approvals', icon: <HcfIcon />, roles: ['TOP_MANAGEMENT'] },
   { path: '/management/dues-approvals', label: 'Dues Approvals', icon: <CheckCircleIcon />, roles: ['TOP_MANAGEMENT'] },
 ];
 

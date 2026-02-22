@@ -821,7 +821,7 @@ export default function HcfDetailPage() {
                           {(() => {
                             const months = dayjs(hcf.agreement.endDate).diff(dayjs(hcf.agreement.startDate), 'month', true);
                             if (months <= 0) return '-';
-                            const occFactor = (hcf.occupancy && hcf.occupancy > 0) ? (hcf.occupancy / 100) : 1;
+                            const occFactor = (hcf.occupancy && hcf.occupancy > 0) ? (1 - (hcf.occupancy / 100)) : 1;
                             const discountedMonthly = hcf.monthlyCharges * occFactor;
                             const subtotal = discountedMonthly * months;
                             const gst = subtotal * 0.05; // 5% GST

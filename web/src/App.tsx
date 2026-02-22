@@ -66,6 +66,7 @@ const HcfComplianceReports = lazy(() => import('./pages/hcf/ComplianceReports'))
 const CbwtfDuesVerification = lazy(() => import('./pages/cbwtf/DuesVerification'));
 // Management pages
 const ManagementDuesApprovals = lazy(() => import('./pages/management/DuesApprovals'));
+const ManagementHcfApprovals = lazy(() => import('./pages/management/ManagementHcfApprovals'));
 // CBWTF Finance pages
 const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
 const FinanceBills = lazy(() => import('./pages/cbwtf/finance/Bills'));
@@ -244,7 +245,8 @@ const App: React.FC = () => {
                     </ProtectedRoute>
                   }
                 >
-                  <Route index element={<Navigate to="dues-approvals" replace />} />
+                  <Route index element={<Navigate to="hcfs" replace />} />
+                  <Route path="hcfs" element={<ManagementHcfApprovals />} />
                   <Route path="dues-approvals" element={<ManagementDuesApprovals />} />
                 </Route>
 

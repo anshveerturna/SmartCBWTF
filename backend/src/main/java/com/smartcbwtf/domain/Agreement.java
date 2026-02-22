@@ -25,6 +25,7 @@ public class Agreement {
     public enum Status {
         ACTIVE, // Contract in force
         UPCOMING, // Contract starts in the future
+        PENDING_APPROVAL, // Awaiting Top Management approval
         EXPIRED, // End date passed
         TERMINATED, // Manually ended early
         DISPUTED // Legal dispute open

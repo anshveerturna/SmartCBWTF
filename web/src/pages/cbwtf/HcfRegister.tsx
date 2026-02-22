@@ -192,11 +192,11 @@ export default function HcfRegister() {
     mutationFn: (data: CbwtfAdminHcfRegistrationRequest) => registerHcf(data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['cbwtf-hcfs'] });
-      setSnackbar({ open: true, message: 'HCF registered successfully!', severity: 'success' });
-      setTimeout(() => navigate(`/cbwtf/hcfs/${data.id}`), 1500);
+      setSnackbar({ open: true, message: 'HCF registration requested successfully, pending Top Management approval!', severity: 'success' });
+      setTimeout(() => navigate(data.bedded ? '/cbwtf/hcfs/large' : '/cbwtf/hcfs/small'), 1500);
     },
     onError: (error: Error) => {
-      setSnackbar({ open: true, message: error.message || 'Failed to register HCF', severity: 'error' });
+      setSnackbar({ open: true, message: error.message || 'Failed to request HCF registration', severity: 'error' });
     },
   });
 
@@ -787,7 +787,7 @@ export default function HcfRegister() {
                 const months = dayjs(form.agreementEndDate).diff(dayjs(form.agreementStartDate), 'month', true);
                 if (months <= 0) return null;
                 const occValue = Number(form.occupancy) || 0;
-                const occFactor = occValue > 0 ? (occValue / 100) : 1;
+                const occFactor = occValue > 0 ? (1 - (occValue / 100)) : 1;
                 const taxValue = Number(form.taxRate) || 5;
                 const monthly = Number(form.monthlyCharges) || 0;
 
@@ -800,7 +800,7 @@ export default function HcfRegister() {
                   <Card sx={{ bgcolor: 'info.main', color: 'info.contrastText', mb: 3 }}>
                     <CardContent>
                       <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                        Estimated First Bill
+                        Final Bill
                       </Typography>
                       <Stack spacing={1}>
                         <Box display="flex" justifyContent="space-between">
@@ -809,7 +809,7 @@ export default function HcfRegister() {
                         </Box>
                         {occValue > 0 && (
                           <Box display="flex" justifyContent="space-between">
-                            <Typography variant="body2">After Occupancy ({occValue}%):</Typography>
+                            <Typography variant="body2">After Occupancy Discount ({occValue}%):</Typography>
                             <Typography variant="body2">₹{discountedMonthly.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/mo</Typography>
                           </Box>
                         )}
@@ -826,7 +826,7 @@ export default function HcfRegister() {
                           <Typography variant="body2">₹{gst.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</Typography>
                         </Box>
                         <Box display="flex" justifyContent="space-between" mt={1} pt={1} borderTop="1px dashed" borderColor="info.light">
-                          <Typography variant="subtitle1" fontWeight="bold">Total Estimated Bill:</Typography>
+                          <Typography variant="subtitle1" fontWeight="bold">Total Bill Amount:</Typography>
                           <Typography variant="subtitle1" fontWeight="bold">₹{total.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</Typography>
                         </Box>
                       </Stack>
@@ -938,19 +938,24 @@ export default function HcfRegister() {
       </Grid>
 
       {/* Action Buttons */}
-      <Box display="flex" justifyContent="flex-end" gap={2} mt={4}>
-        <Button variant="outlined" onClick={() => navigate('/cbwtf/hcfs')}>
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          size="large"
-          onClick={handleSubmit}
-          disabled={!isFormValid() || mutation.isPending}
-          startIcon={mutation.isPending && <CircularProgress size={20} color="inherit" />}
-        >
-          {mutation.isPending ? 'Registering...' : 'Register HCF'}
-        </Button>
+      <Box mt={4}>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <strong>Note:</strong> Only request to register an HCF if the payment has been received. Your request is subject to Top Management approval and may be rejected.
+        </Alert>
+        <Box display="flex" justifyContent="flex-end" gap={2}>
+          <Button variant="outlined" onClick={() => navigate('/cbwtf/hcfs')}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={handleSubmit}
+            disabled={!isFormValid() || mutation.isPending}
+            startIcon={mutation.isPending && <CircularProgress size={20} color="inherit" />}
+          >
+            {mutation.isPending ? 'Requesting...' : 'Request to Register HCF'}
+          </Button>
+        </Box>
       </Box>
 
       {/* Snackbar */}

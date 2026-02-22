@@ -94,7 +94,11 @@ public class CbwtfHcfService {
                     boolean shouldBeActive = startDate != null && endDate != null &&
                             !today.isBefore(startDate) && !today.isAfter(endDate);
 
-                    if (shouldBeActive && !Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
+                    // Do not auto-correct agreements that are explicitly pending approval
+                    boolean isPendingApproval = Agreement.Status.PENDING_APPROVAL.name().equals(agreement.getStatus());
+
+                    if (shouldBeActive && !isPendingApproval
+                            && !Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
                         if (agreement.getStartDate().isAfter(LocalDate.now())) {
                             agreement.setStatus(Agreement.Status.UPCOMING.name());
                             hcf.setStatus("INACTIVE"); // Or UPCOMING if Hcf has such status, let's keep it INACTIVE
@@ -156,8 +160,11 @@ public class CbwtfHcfService {
         boolean shouldBeActive = startDate != null && endDate != null &&
                 !today.isBefore(startDate) && !today.isAfter(endDate);
 
+        // Do not auto-correct agreements that are explicitly pending approval
+        boolean isPendingApproval = Agreement.Status.PENDING_APPROVAL.name().equals(agreement.getStatus());
+
         boolean statusCorrected = false;
-        if (shouldBeActive && !Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
+        if (shouldBeActive && !isPendingApproval && !Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
             if (agreement.getStartDate().isAfter(LocalDate.now())) {
                 agreement.setStatus(Agreement.Status.UPCOMING.name());
                 // Leave hcf status as is, or INACTIVE if new. Let's not touch HCF status
@@ -478,7 +485,7 @@ public class CbwtfHcfService {
         agreement.setHcf(hcf);
         agreement.setFacility(facility);
         agreement.setAgreementNumber(agreementNumberGenerator.generateNextAgreementNumber(facility));
-        agreement.setStatus(Agreement.Status.ACTIVE.name());
+        agreement.setStatus(Agreement.Status.PENDING_APPROVAL.name()); // Forwarding to Top Management
         agreement.setDuesStatus(Agreement.DuesStatus.CLEAR.name());
         agreement.setStartDate(LocalDate.now());
         agreement.setEndDate(LocalDate.now().plusYears(1));
@@ -487,8 +494,8 @@ public class CbwtfHcfService {
         agreement.setCreatedAt(Instant.now());
         agreementRepository.save(agreement);
 
-        // Update HCF status
-        hcf.setStatus("ACTIVE");
+        // Update HCF status - remains pending for Top Management
+        hcf.setStatus("PENDING_APPROVAL");
         hcf.setUpdatedAt(Instant.now());
         hcfRepository.save(hcf);
 
@@ -502,35 +509,14 @@ public class CbwtfHcfService {
         config.setCreatedBy(UUID.randomUUID()); // TODO: Get from security context
         billingConfigRepository.save(config);
 
-        // Create HCF portal admin user for 30+ bed HCFs
-        String generatedPassword = null;
-        if (hcf.isPortalEligible()) {
-            generatedPassword = generateRandomPassword();
-            AppUser hcfAdmin = new AppUser();
-            hcfAdmin.setUsername(agreement.getAgreementNumber());
-            hcfAdmin.setPasswordHash(passwordEncoder.encode(generatedPassword));
-            hcfAdmin.setRole("HCF_ADMIN");
-            hcfAdmin.setHcf(hcf);
-            hcfAdmin.setFullName(hcf.getName() + " Admin");
-            hcfAdmin.setEmail(hcf.getContactEmail());
-            hcfAdmin.setActive(true);
-            hcfAdmin.setCreatedAt(Instant.now());
-            hcfAdmin.setUpdatedAt(Instant.now());
-            userRepository.save(hcfAdmin);
-            log.info("Created HCF_ADMIN user on approval: username={}", agreement.getAgreementNumber());
-
-            // Send credentials email
-            sendCredentialsEmail(hcf.getName(), hcf.getContactEmail(), agreement.getAgreementNumber(),
-                    generatedPassword);
-        }
-
-        // Send HCF approval email (for all HCFs, regardless of portal eligibility)
-        sendHcfApprovalEmail(hcf, agreement);
+        // Send an internal notification instead? For now, we defer standard hcfApproval
+        // emails to Top Management.
 
         // Audit log
-        auditLogService.log("HCF", hcfId, "HCF_APPROVED", null,
-                "Agreement " + agreement.getAgreementNumber() + " created");
-        log.info("HCF {} approved, agreement {} created", hcfId, agreement.getAgreementNumber());
+        auditLogService.log("HCF", hcfId, "HCF_REGISTRATION_REQUESTED", null,
+                "Agreement " + agreement.getAgreementNumber() + " created and forwarded to Top Management");
+        log.info("HCF {} checked by CBWTF, agreement {} created and pending top management", hcfId,
+                agreement.getAgreementNumber());
 
         return getHcfDetail(hcfId, facilityId);
     }
@@ -731,8 +717,8 @@ public class CbwtfHcfService {
             }
         }
 
-        hcf.setStatus("ACTIVE"); // Auto-approved for admin registration
-        hcf.setApprovalStatus(com.smartcbwtf.domain.ApprovalStatus.APPROVED); // Portal access enabled
+        hcf.setStatus("PENDING_APPROVAL"); // Changed from ACTIVE
+        hcf.setApprovalStatus(com.smartcbwtf.domain.ApprovalStatus.PENDING); // Awaiting approval
         hcf.setCreatedAt(Instant.now());
         hcf.setUpdatedAt(Instant.now());
 
@@ -775,7 +761,7 @@ public class CbwtfHcfService {
             }
         }
         agreement.setAgreementNumber(agreementNum);
-        agreement.setStatus(Agreement.Status.ACTIVE.name());
+        agreement.setStatus(Agreement.Status.PENDING_APPROVAL.name()); // Forwarding to Top Management
         agreement.setDuesStatus(Agreement.DuesStatus.CLEAR.name());
         agreement.setStartDate(request.getAgreementStartDate());
         agreement.setEndDate(request.getAgreementEndDate());
@@ -796,40 +782,15 @@ public class CbwtfHcfService {
         config.setCreatedBy(adminUserId);
         billingConfigRepository.save(config);
 
-        // 7.5 Create HCF portal admin user for 30+ bed HCFs
-        String generatedPassword = null;
-        if (hcf.isPortalEligible()) {
-            generatedPassword = generateRandomPassword();
-            AppUser hcfAdmin = new AppUser();
-            hcfAdmin.setUsername(agreement.getAgreementNumber()); // Agreement number as username
-            hcfAdmin.setPasswordHash(passwordEncoder.encode(generatedPassword));
-            hcfAdmin.setRole("HCF_ADMIN");
-            hcfAdmin.setHcf(hcf);
-            hcfAdmin.setFullName(hcf.getName() + " Admin");
-            hcfAdmin.setEmail(hcf.getContactEmail());
-            hcfAdmin.setActive(true);
-            hcfAdmin.setCreatedAt(Instant.now());
-            hcfAdmin.setUpdatedAt(Instant.now());
-            userRepository.save(hcfAdmin);
-            log.info("Created HCF_ADMIN user for portal: username={}", agreement.getAgreementNumber());
-
-            // Send credentials email
-            sendCredentialsEmail(hcf.getName(), hcf.getContactEmail(), agreement.getAgreementNumber(),
-                    generatedPassword);
-        }
-
         // 8. Audit log with distinct event type
         String auditDetails = String.format(
-                "Admin registered HCF. Agreement: %s, Source: CBWTF_PORTAL, Admin: %s%s",
-                agreement.getAgreementNumber(), adminUserId,
-                generatedPassword != null ? ", Portal user created" : "");
-        auditLogService.log("HCF", hcf.getId(), "HCF_REGISTERED_BY_ADMIN", adminUserId, auditDetails);
-        log.info("HCF {} registered by admin {}, agreement {} created",
+                "Admin requested HCF Registration. Agreement: %s, Source: CBWTF_PORTAL, Admin: %s",
+                agreement.getAgreementNumber(), adminUserId);
+        auditLogService.log("HCF", hcf.getId(), "HCF_REGISTRATION_REQUESTED", adminUserId, auditDetails);
+        log.info("HCF {} registration requested by admin {}, agreement {} created (Pending Top Management)",
                 hcf.getId(), adminUserId, agreement.getAgreementNumber());
 
-        // Send HCF approval/registration confirmation email (for ALL HCFs)
-        sendHcfApprovalEmail(hcf, agreement);
-
+        // Defer HcfApprovalEmail to TopManagement
         return getHcfDetail(hcf.getId(), facilityId);
     }
 
@@ -844,6 +805,116 @@ public class CbwtfHcfService {
             sb.append(chars.charAt(random.nextInt(chars.length())));
         }
         return sb.toString();
+    }
+
+    /**
+     * Top Management Approval of HCF Registration.
+     * Transitions HCF and Agreement from PENDING_APPROVAL to ACTIVE.
+     * Generates portal credentials and dispatches welcome emails.
+     */
+    @Transactional
+    public void approveHcfByTopManagement(UUID hcfId) {
+        Hcf hcf = hcfRepository.findById(hcfId)
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
+
+        if (!"PENDING_APPROVAL".equals(hcf.getStatus())) {
+            throw new IllegalStateException("HCF is not pending approval");
+        }
+
+        Agreement agreement = agreementRepository.findAllByHcfId(hcfId)
+                .stream()
+                .filter(a -> "PENDING_APPROVAL".equals(a.getStatus()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Pending Agreement not found for HCF"));
+
+        // Update Statuses
+        hcf.setStatus("ACTIVE");
+        hcf.setApprovalStatus(com.smartcbwtf.domain.ApprovalStatus.APPROVED);
+        hcf.setUpdatedAt(Instant.now());
+
+        agreement.setStatus(Agreement.Status.ACTIVE.name());
+        agreement.setUpdatedAt(Instant.now());
+
+        hcfRepository.save(hcf);
+        agreementRepository.save(agreement);
+
+        // Create HCF portal admin user for eligible HCFs
+        String generatedPassword = null;
+        if (hcf.isPortalEligible()) {
+            generatedPassword = generateRandomPassword();
+            AppUser hcfAdmin = new AppUser();
+            hcfAdmin.setUsername(agreement.getAgreementNumber()); // Agreement number as username
+            hcfAdmin.setPasswordHash(passwordEncoder.encode(generatedPassword));
+            hcfAdmin.setRole("HCF_ADMIN");
+            hcfAdmin.setHcf(hcf);
+            hcfAdmin.setFullName(hcf.getName() + " Admin");
+            hcfAdmin.setEmail(hcf.getContactEmail());
+            hcfAdmin.setActive(true);
+            hcfAdmin.setCreatedAt(Instant.now());
+            hcfAdmin.setUpdatedAt(Instant.now());
+            userRepository.save(hcfAdmin);
+            log.info("Created HCF_ADMIN user for portal after TopMgmt approval: username={}",
+                    agreement.getAgreementNumber());
+
+            // Send credentials email
+            sendCredentialsEmail(hcf.getName(), hcf.getContactEmail(), agreement.getAgreementNumber(),
+                    generatedPassword);
+        }
+
+        // Send HCF approval and registration confirmation email
+        sendHcfApprovalEmail(hcf, agreement);
+
+        // Audit log
+        UUID adminUserId = com.smartcbwtf.config.TenantContext.get().userId();
+        auditLogService.log("HCF", hcf.getId(), "HCF_APPROVED_TOP_MGMT", adminUserId, "HCF and Agreement Activated");
+        log.info("HCF {} approved by Top Management {}", hcf.getId(), adminUserId);
+    }
+
+    /**
+     * Top Management Rejection of HCF Registration.
+     * Marks HCF as REJECTED and deletes staging Agreement records.
+     */
+    @Transactional
+    public void rejectHcfByTopManagement(UUID hcfId, String reason) {
+        Hcf hcf = hcfRepository.findById(hcfId)
+                .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
+
+        if (!"PENDING_APPROVAL".equals(hcf.getStatus())) {
+            throw new IllegalStateException("HCF is not pending approval");
+        }
+
+        hcf.setStatus("REJECTED");
+        hcf.setApprovalStatus(com.smartcbwtf.domain.ApprovalStatus.REJECTED);
+        hcf.setRejectionReason(reason);
+        hcf.setUpdatedAt(Instant.now());
+        hcfRepository.save(hcf);
+
+        // Terminate / Delete associated Agreement drafting
+        Agreement agreement = agreementRepository.findAllByHcfId(hcfId)
+                .stream()
+                .filter(a -> "PENDING_APPROVAL".equals(a.getStatus()))
+                .findFirst()
+                .orElse(null);
+
+        if (agreement != null) {
+            billingConfigRepository.findByAgreementIdOrderByEffectiveFromDesc(agreement.getId())
+                    .forEach(billingConfigRepository::delete);
+            agreementRepository.delete(agreement);
+        }
+
+        UUID adminUserId = com.smartcbwtf.config.TenantContext.get().userId();
+        auditLogService.log("HCF", hcfId, "HCF_REJECTED_TOP_MGMT", adminUserId, "Reason: " + reason);
+        log.info("HCF {} rejected by Top Management {}: {}", hcfId, adminUserId, reason);
+
+        if (hcf.getContactEmail() != null && !hcf.getContactEmail().isBlank()) {
+            try {
+                String html = emailService.getTemplates().hcfRejected(hcf.getName(), reason);
+                emailService.sendHtmlEmail(hcf.getContactEmail(), "Registration Request Update - SmartCBWTF", html);
+                log.info("Rejection email sent to HCF: {}", hcf.getContactEmail());
+            } catch (Exception e) {
+                log.warn("Failed to send rejection email to {}: {}", hcf.getContactEmail(), e.getMessage());
+            }
+        }
     }
 
     /**
