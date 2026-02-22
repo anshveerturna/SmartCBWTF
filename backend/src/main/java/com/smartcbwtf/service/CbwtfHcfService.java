@@ -91,37 +91,43 @@ public class CbwtfHcfService {
                     LocalDate startDate = agreement.getStartDate();
                     LocalDate endDate = agreement.getEndDate();
 
-                    boolean shouldBeActive = startDate != null && endDate != null &&
-                            !today.isBefore(startDate) && !today.isAfter(endDate);
-
-                    // Do not auto-correct agreements that are explicitly pending approval
                     boolean isPendingApproval = Agreement.Status.PENDING_APPROVAL.name().equals(agreement.getStatus());
 
-                    if (shouldBeActive && !isPendingApproval
-                            && !Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
-                        if (agreement.getStartDate().isAfter(LocalDate.now())) {
-                            agreement.setStatus(Agreement.Status.UPCOMING.name());
-                            hcf.setStatus("INACTIVE"); // Or UPCOMING if Hcf has such status, let's keep it INACTIVE
-                                                       // since it's not active yet.
+                    if (!isPendingApproval && startDate != null && endDate != null) {
+                        if (today.isBefore(startDate)) {
+                            if (!Agreement.Status.UPCOMING.name().equals(agreement.getStatus())) {
+                                agreement.setStatus(Agreement.Status.UPCOMING.name());
+                                hcf.setStatus("ACTIVE"); // Keep them active so they can log in
+                                agreement.setUpdatedAt(Instant.now());
+                                hcf.setUpdatedAt(Instant.now());
+                                agreementRepository.save(agreement);
+                                hcfRepository.save(hcf);
+                                log.info("Auto-corrected agreement {} status to UPCOMING in list",
+                                        agreement.getAgreementNumber());
+                            }
+                        } else if (today.isAfter(endDate)) {
+                            if (!Agreement.Status.EXPIRED.name().equals(agreement.getStatus())) {
+                                agreement.setStatus(Agreement.Status.EXPIRED.name());
+                                hcf.setStatus("INACTIVE");
+                                agreement.setUpdatedAt(Instant.now());
+                                hcf.setUpdatedAt(Instant.now());
+                                agreementRepository.save(agreement);
+                                hcfRepository.save(hcf);
+                                log.info("Auto-corrected agreement {} status to EXPIRED in list",
+                                        agreement.getAgreementNumber());
+                            }
                         } else {
-                            agreement.setStatus(Agreement.Status.ACTIVE.name());
-                            hcf.setStatus("ACTIVE");
+                            if (!Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
+                                agreement.setStatus(Agreement.Status.ACTIVE.name());
+                                hcf.setStatus("ACTIVE");
+                                agreement.setUpdatedAt(Instant.now());
+                                hcf.setUpdatedAt(Instant.now());
+                                agreementRepository.save(agreement);
+                                hcfRepository.save(hcf);
+                                log.info("Auto-corrected agreement {} status to ACTIVE in list",
+                                        agreement.getAgreementNumber());
+                            }
                         }
-                        agreement.setUpdatedAt(Instant.now());
-                        hcf.setUpdatedAt(Instant.now());
-                        agreementRepository.save(agreement);
-                        hcfRepository.save(hcf);
-                        log.info("Auto-corrected agreement {} status to ACTIVE in list",
-                                agreement.getAgreementNumber());
-                    } else if (!shouldBeActive && Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
-                        agreement.setStatus(Agreement.Status.EXPIRED.name());
-                        hcf.setStatus("INACTIVE");
-                        agreement.setUpdatedAt(Instant.now());
-                        hcf.setUpdatedAt(Instant.now());
-                        agreementRepository.save(agreement);
-                        hcfRepository.save(hcf);
-                        log.info("Auto-corrected agreement {} status to EXPIRED in list",
-                                agreement.getAgreementNumber());
                     }
 
                     // TODO: Get last pickup timestamp from attendance/pickup events
@@ -157,32 +163,35 @@ public class CbwtfHcfService {
         LocalDate startDate = agreement.getStartDate();
         LocalDate endDate = agreement.getEndDate();
 
-        boolean shouldBeActive = startDate != null && endDate != null &&
-                !today.isBefore(startDate) && !today.isAfter(endDate);
-
-        // Do not auto-correct agreements that are explicitly pending approval
         boolean isPendingApproval = Agreement.Status.PENDING_APPROVAL.name().equals(agreement.getStatus());
-
         boolean statusCorrected = false;
-        if (shouldBeActive && !isPendingApproval && !Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
-            if (agreement.getStartDate().isAfter(LocalDate.now())) {
-                agreement.setStatus(Agreement.Status.UPCOMING.name());
-                // Leave hcf status as is, or INACTIVE if new. Let's not touch HCF status
-                // incorrectly.
-                // Usually it starts PENDING_APPROVAL.
+
+        if (!isPendingApproval && startDate != null && endDate != null) {
+            if (today.isBefore(startDate)) {
+                if (!Agreement.Status.UPCOMING.name().equals(agreement.getStatus())) {
+                    agreement.setStatus(Agreement.Status.UPCOMING.name());
+                    hcf.setStatus("ACTIVE");
+                    statusCorrected = true;
+                    log.info("Auto-corrected agreement {} status to UPCOMING (future validity period)",
+                            agreement.getAgreementNumber());
+                }
+            } else if (today.isAfter(endDate)) {
+                if (!Agreement.Status.EXPIRED.name().equals(agreement.getStatus())) {
+                    agreement.setStatus(Agreement.Status.EXPIRED.name());
+                    hcf.setStatus("INACTIVE");
+                    statusCorrected = true;
+                    log.info("Auto-corrected agreement {} status to EXPIRED (outside validity period)",
+                            agreement.getAgreementNumber());
+                }
             } else {
-                agreement.setStatus(Agreement.Status.ACTIVE.name());
-                hcf.setStatus("ACTIVE");
+                if (!Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
+                    agreement.setStatus(Agreement.Status.ACTIVE.name());
+                    hcf.setStatus("ACTIVE");
+                    statusCorrected = true;
+                    log.info("Auto-corrected agreement {} status to ACTIVE (within validity period)",
+                            agreement.getAgreementNumber());
+                }
             }
-            statusCorrected = true;
-            log.info("Auto-corrected agreement {} status to ACTIVE (within validity period)",
-                    agreement.getAgreementNumber());
-        } else if (!shouldBeActive && Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
-            agreement.setStatus(Agreement.Status.EXPIRED.name());
-            hcf.setStatus("INACTIVE");
-            statusCorrected = true;
-            log.info("Auto-corrected agreement {} status to EXPIRED (outside validity period)",
-                    agreement.getAgreementNumber());
         }
 
         if (statusCorrected) {
@@ -832,7 +841,11 @@ public class CbwtfHcfService {
         hcf.setApprovalStatus(com.smartcbwtf.domain.ApprovalStatus.APPROVED);
         hcf.setUpdatedAt(Instant.now());
 
-        agreement.setStatus(Agreement.Status.ACTIVE.name());
+        if (agreement.getStartDate() != null && agreement.getStartDate().isAfter(LocalDate.now())) {
+            agreement.setStatus(Agreement.Status.UPCOMING.name());
+        } else {
+            agreement.setStatus(Agreement.Status.ACTIVE.name());
+        }
         agreement.setUpdatedAt(Instant.now());
 
         hcfRepository.save(hcf);

@@ -1,0 +1,14 @@
+BEGIN;
+DELETE FROM bag_event WHERE hcf_id IN (SELECT id FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science'));
+DELETE FROM hcf_audit_log WHERE hcf_id IN (SELECT id FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science'));
+DELETE FROM qr_label_order WHERE agreement_id IN (SELECT id FROM agreement WHERE hcf_id IN (SELECT id FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science')));
+DELETE FROM agreement_billing_config WHERE agreement_id IN (SELECT id FROM agreement WHERE hcf_id IN (SELECT id FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science')));
+DELETE FROM qr_authorization WHERE agreement_id IN (SELECT id FROM agreement WHERE hcf_id IN (SELECT id FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science')));
+DELETE FROM bag_label WHERE hcf_id IN (SELECT id FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science'));
+DELETE FROM invoice WHERE agreement_id IN (SELECT id FROM agreement WHERE hcf_id IN (SELECT id FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science')));
+DELETE FROM agreement_snapshot WHERE agreement_id IN (SELECT id FROM agreement WHERE hcf_id IN (SELECT id FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science')));
+DELETE FROM audit_log WHERE actor_user_id IN (SELECT id FROM app_user WHERE hcf_id IN (SELECT id FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science')));
+DELETE FROM agreement WHERE hcf_id IN (SELECT id FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science'));
+DELETE FROM app_user WHERE hcf_id IN (SELECT id FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science'));
+DELETE FROM hcf WHERE name IN ('SANJIWANI HOSPITAL', 'Neelkanth Child Care', 'Amrit Ayurveda Clinic', 'Metro Hospital', 'SBR Institute of Medical Science');
+COMMIT;
