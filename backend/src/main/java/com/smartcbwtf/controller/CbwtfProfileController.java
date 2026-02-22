@@ -2,6 +2,7 @@ package com.smartcbwtf.controller;
 
 import com.smartcbwtf.domain.AppUser;
 import com.smartcbwtf.repository.AppUserRepository;
+import com.smartcbwtf.security.FileValidator;
 import com.smartcbwtf.service.AuditLogService;
 import com.smartcbwtf.service.PasswordPolicyValidator;
 import org.slf4j.Logger;
@@ -128,20 +129,22 @@ public class CbwtfProfileController {
             return ResponseEntity.badRequest().body(Map.of("error", "No file provided"));
         }
 
-        // Validate file type
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only image files allowed"));
-        }
+        String ext;
+        try {
+            // Validate file type
+            String contentType = FileValidator.validateImage(file);
 
-        // Determine extension
-        String ext = switch (contentType) {
-            case "image/jpeg" -> "jpg";
-            case "image/png" -> "png";
-            case "image/gif" -> "gif";
-            case "image/webp" -> "webp";
-            default -> "jpg";
-        };
+            // Determine extension
+            ext = switch (contentType) {
+                case "image/jpeg" -> "jpg";
+                case "image/png" -> "png";
+                case "image/gif" -> "gif";
+                case "image/webp" -> "webp";
+                default -> "jpg";
+            };
+        } catch (Exception e) {
+             return ResponseEntity.badRequest().body(Map.of("error", "Invalid image file"));
+        }
 
         try {
             // Create upload directory if not exists
