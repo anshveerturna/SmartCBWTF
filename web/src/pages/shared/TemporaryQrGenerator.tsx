@@ -182,7 +182,9 @@ export default function TemporaryQrGenerator() {
           // Valid Until
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(200, 0, 0); // Darker red
-          const validText = `Valid Until: ${dateStr}`; // simplified
+          const validDate = new Date(form.validUntil + 'T00:00:00');
+          const validDateStr = validDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+          const validText = `Valid Until: ${validDateStr}`;
           doc.text(validText, x + labelWidth / 2, currentBottomY, { align: 'center' });
           currentBottomY -= lineSp;
 
