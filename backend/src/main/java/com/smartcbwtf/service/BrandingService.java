@@ -12,6 +12,7 @@ import com.smartcbwtf.repository.FacilitySettingsRepository;
 import com.smartcbwtf.repository.SettingsAuditLogRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.smartcbwtf.security.FileValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -94,11 +95,8 @@ public class BrandingService {
     public String uploadLogo(MultipartFile file, String ipAddress) throws IOException {
         UUID facilityId = TenantContext.getTenantId();
 
-        // Validate file
-        String contentType = file.getContentType();
-        if (contentType == null || (!contentType.equals("image/png") && !contentType.equals("image/jpeg"))) {
-            throw new IllegalArgumentException("Only PNG and JPEG images are allowed");
-        }
+        // Validate file content type using Tika (magic bytes)
+        String contentType = FileValidator.validateStrictImage(file);
 
         if (file.getSize() > 2 * 1024 * 1024) { // 2MB limit
             throw new IllegalArgumentException("Logo file must be under 2MB");
@@ -143,11 +141,8 @@ public class BrandingService {
     public String uploadPaymentQr(MultipartFile file, String ipAddress) throws IOException {
         UUID facilityId = TenantContext.getTenantId();
 
-        // Validate file
-        String contentType = file.getContentType();
-        if (contentType == null || (!contentType.equals("image/png") && !contentType.equals("image/jpeg"))) {
-            throw new IllegalArgumentException("Only PNG and JPEG images are allowed");
-        }
+        // Validate file content type using Tika (magic bytes)
+        String contentType = FileValidator.validateStrictImage(file);
 
         if (file.getSize() > 2 * 1024 * 1024) { // 2MB limit
             throw new IllegalArgumentException("Payment QR file must be under 2MB");

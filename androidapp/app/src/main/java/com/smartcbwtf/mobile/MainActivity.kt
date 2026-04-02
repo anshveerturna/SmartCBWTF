@@ -16,6 +16,7 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import com.smartcbwtf.mobile.databinding.ActivityMainBinding
 import com.smartcbwtf.mobile.repository.AuthRepository
 import com.smartcbwtf.mobile.repository.LocationRepository
+import com.smartcbwtf.mobile.security.RootDetector
 import com.smartcbwtf.mobile.service.ForegroundLocationService
 import com.smartcbwtf.mobile.storage.AppConfigStore
 import com.smartcbwtf.mobile.storage.SessionManager
@@ -60,6 +61,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Security Check: Root Detection
+        if (RootDetector.isDeviceRooted()) {
+            Toast.makeText(this, "This device appears to be rooted. App cannot run securely.", Toast.LENGTH_LONG).show()
+            finishAffinity() // Close app completely
+            return
+        }
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
