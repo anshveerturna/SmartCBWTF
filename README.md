@@ -448,7 +448,8 @@ The backend deploy scripts fail closed unless required runtime secrets are prese
 Java 21 LTS is selected, and a PostgreSQL backup is created before app startup
 and Flyway migrations.
 
-Required remote env vars:
+Required remote env vars, unless the same values already exist in
+`$APP_HOME/application-prod.yml` or `$APP_HOME/application.yml`:
 
 ```bash
 export DB_URL="jdbc:postgresql://host:5432/smart_cbwtf"

@@ -19,6 +19,72 @@ DB_URL="${DB_URL:-${DATABASE_URL:-}}"
 DB_USERNAME="${DB_USERNAME:-${DATABASE_USERNAME:-}}"
 DB_PASSWORD="${DB_PASSWORD:-${DATABASE_PASSWORD:-}}"
 
+read_external_yaml() {
+  local file="$1"
+  local path="$2"
+  [ -f "$file" ] || return 1
+  python3 - "$file" "$path" <<'PY'
+import re
+import sys
+
+file_path, wanted_path = sys.argv[1], sys.argv[2].split(".")
+stack = []
+
+try:
+    lines = open(file_path, encoding="utf-8").read().splitlines()
+except OSError:
+    sys.exit(1)
+
+for raw in lines:
+    if not raw.strip() or raw.lstrip().startswith("#"):
+        continue
+    match = re.match(r"^(\s*)([^:#]+):(?:\s*(.*))?$", raw)
+    if not match:
+        continue
+    indent = len(match.group(1))
+    key = match.group(2).strip()
+    value = (match.group(3) or "").strip()
+    while stack and stack[-1][0] >= indent:
+        stack.pop()
+    current = [item[1] for item in stack] + [key]
+    if current == wanted_path and value:
+        if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+            value = value[1:-1]
+        print(value)
+        sys.exit(0)
+    stack.append((indent, key))
+
+sys.exit(1)
+PY
+}
+
+set_default_from_external_config() {
+  local var_name="$1"
+  local yaml_path="$2"
+  local current_value="${!var_name:-}"
+  [ -z "$current_value" ] || return 0
+
+  local config_file value
+  for config_file in "$APP_HOME/application-prod.yml" "$APP_HOME/application.yml"; do
+    value="$(read_external_yaml "$config_file" "$yaml_path" 2>/dev/null || true)"
+    if [ -n "$value" ]; then
+      export "$var_name=$value"
+      return 0
+    fi
+  done
+}
+
+set_default_from_external_config DB_URL spring.datasource.url
+set_default_from_external_config DB_USERNAME spring.datasource.username
+set_default_from_external_config DB_PASSWORD spring.datasource.password
+set_default_from_external_config JWT_SECRET security.jwt.secret
+set_default_from_external_config APP_EMAIL_ENABLED app.email.enabled
+set_default_from_external_config BREVO_API_KEY app.email.brevo.api-key
+
+DB_URL="${DB_URL:-${DATABASE_URL:-}}"
+DB_USERNAME="${DB_USERNAME:-${DATABASE_USERNAME:-}}"
+DB_PASSWORD="${DB_PASSWORD:-${DATABASE_PASSWORD:-}}"
+
 : "${DB_URL:?DB_URL or DATABASE_URL is required for deployment}"
 : "${DB_USERNAME:?DB_USERNAME or DATABASE_USERNAME is required for deployment}"
 : "${DB_PASSWORD:?DB_PASSWORD or DATABASE_PASSWORD is required for deployment}"
