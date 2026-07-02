@@ -1,9 +1,11 @@
 package com.smartcbwtf.controller;
 
 import com.smartcbwtf.config.JwtService;
+import com.smartcbwtf.domain.Agreement;
 import com.smartcbwtf.domain.AppUser;
 import com.smartcbwtf.dto.AuthLoginRequest;
 import com.smartcbwtf.dto.AuthLoginResponse;
+import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.service.AuditLogService;
 import com.smartcbwtf.service.HcfAccessGuard;
@@ -24,9 +26,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -42,18 +46,20 @@ public class AuthController {
     private final AuditLogService auditLogService;
     private final SystemConfigService systemConfigService;
     private final HcfAccessGuard hcfAccessGuard;
+    private final AgreementRepository agreementRepository;
     private final com.smartcbwtf.service.EmailService emailService;
 
     public AuthController(AuthenticationManager authenticationManager, JwtService jwtService,
             AppUserRepository appUserRepository, AuditLogService auditLogService,
             SystemConfigService systemConfigService, HcfAccessGuard hcfAccessGuard,
-            com.smartcbwtf.service.EmailService emailService) {
+            AgreementRepository agreementRepository, com.smartcbwtf.service.EmailService emailService) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.appUserRepository = appUserRepository;
         this.auditLogService = auditLogService;
         this.systemConfigService = systemConfigService;
         this.hcfAccessGuard = hcfAccessGuard;
+        this.agreementRepository = agreementRepository;
         this.emailService = emailService;
     }
 
@@ -122,14 +128,17 @@ public class AuthController {
                 mustChangePassword = true;
             }
 
+            UUID tenantId = resolveTenantId(user);
+            UUID hcfId = user.getHcf() != null ? user.getHcf().getId() : null;
+
             // Build JWT claims
             Map<String, Object> claims = new HashMap<>();
             claims.put("user_id", user.getId().toString());
             claims.put("role", user.getRole());
             claims.put("full_name", user.getFullName());
             claims.put("profile_photo_url", user.getProfilePhotoUrl());
-            claims.put("tenant_id", user.getFacility() != null ? user.getFacility().getId().toString() : null);
-            claims.put("hcf_id", user.getHcf() != null ? user.getHcf().getId().toString() : null);
+            claims.put("tenant_id", tenantId != null ? tenantId.toString() : null);
+            claims.put("hcf_id", hcfId != null ? hcfId.toString() : null);
             claims.put("must_change_password", mustChangePassword);
 
             String token = jwtService.generateToken(user.getUsername(), claims);
@@ -147,8 +156,8 @@ public class AuthController {
                             user.getRole(),
                             mustChangePassword,
                             user.getFullName(),
-                            user.getFacility() != null ? user.getFacility().getId().toString() : null,
-                            user.getHcf() != null ? user.getHcf().getId().toString() : null));
+                            tenantId != null ? tenantId.toString() : null,
+                            hcfId != null ? hcfId.toString() : null));
 
         } catch (BadCredentialsException e) {
             // Failed login - increment counter and potentially lock account
@@ -202,6 +211,25 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
                 "error", "INVALID_CREDENTIALS",
                 "message", INVALID_CREDENTIALS_MESSAGE));
+    }
+
+    private UUID resolveTenantId(AppUser user) {
+        if (user.getFacility() != null) {
+            return user.getFacility().getId();
+        }
+
+        if (!"HCF_ADMIN".equals(user.getRole()) || user.getHcf() == null) {
+            return null;
+        }
+
+        return agreementRepository.findFirstByHcfIdAndStatusOrderByStartDateDesc(
+                        user.getHcf().getId(), Agreement.Status.ACTIVE.name())
+                .filter(agreement -> agreement.getEndDate() == null
+                        || !agreement.getEndDate().isBefore(LocalDate.now()))
+                .map(Agreement::getFacility)
+                .filter(facility -> facility != null)
+                .map(facility -> facility.getId())
+                .orElse(null);
     }
 
     /**

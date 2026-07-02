@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import com.smartcbwtf.config.JwtService;
+import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.service.FeatureGuardService;
 import com.smartcbwtf.service.SubscriptionService;
@@ -40,6 +41,9 @@ class InvoiceControllerDeprecationTest {
 
     @MockBean
     private AppUserRepository appUserRepository;
+
+    @MockBean
+    private AgreementRepository agreementRepository;
 
     @MockBean
     private SubscriptionService subscriptionService;

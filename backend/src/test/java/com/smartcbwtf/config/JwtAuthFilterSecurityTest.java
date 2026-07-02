@@ -1,9 +1,11 @@
 package com.smartcbwtf.config;
 
+import com.smartcbwtf.domain.Agreement;
 import com.smartcbwtf.domain.AppUser;
 import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.domain.OAuthClient;
+import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.repository.OAuthClientRepository;
 import io.jsonwebtoken.Claims;
@@ -18,6 +20,7 @@ import org.springframework.mock.env.MockEnvironment;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,6 +38,8 @@ class JwtAuthFilterSecurityTest {
     private JwtService jwtService;
     @Mock
     private AppUserRepository appUserRepository;
+    @Mock
+    private AgreementRepository agreementRepository;
     @Mock
     private OAuthClientRepository oAuthClientRepository;
     @Mock
@@ -70,8 +75,8 @@ class JwtAuthFilterSecurityTest {
         user.setHcf(hcf);
         when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        JwtAuthFilter filter = new JwtAuthFilter(jwtService, appUserRepository, oAuthClientRepositoryProvider,
-                new MockEnvironment());
+        JwtAuthFilter filter = new JwtAuthFilter(jwtService, appUserRepository, agreementRepository,
+                oAuthClientRepositoryProvider, new MockEnvironment());
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/hcf/profile/me");
         request.addHeader("Authorization", "Bearer token");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -83,6 +88,52 @@ class JwtAuthFilterSecurityTest {
         assertEquals(currentFacilityId, capturedTenant.get().tenantId());
         assertEquals(currentHcfId, capturedTenant.get().hcfId());
         verifyNoInteractions(oAuthClientRepository);
+    }
+
+    @Test
+    void hcfAdminTenantContextUsesActiveAgreementWhenNoDirectFacilityIsSet() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID facilityId = UUID.randomUUID();
+        UUID hcfId = UUID.randomUUID();
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn("hcf-admin");
+        when(claims.get("user_id", String.class)).thenReturn(userId.toString());
+        lenient().when(claims.get("tenant_id", String.class)).thenReturn(UUID.randomUUID().toString());
+        when(jwtService.parseClaims("token")).thenReturn(claims);
+
+        Facility facility = new Facility();
+        facility.setId(facilityId);
+        Hcf hcf = new Hcf();
+        hcf.setId(hcfId);
+        Agreement agreement = new Agreement();
+        agreement.setFacility(facility);
+        agreement.setHcf(hcf);
+        agreement.setStatus(Agreement.Status.ACTIVE.name());
+        agreement.setStartDate(LocalDate.now().minusDays(1));
+        agreement.setEndDate(LocalDate.now().plusDays(30));
+
+        AppUser user = new AppUser();
+        user.setId(userId);
+        user.setUsername("hcf-admin");
+        user.setRole("HCF_ADMIN");
+        user.setActive(true);
+        user.setHcf(hcf);
+        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(agreementRepository.findFirstByHcfIdAndStatusOrderByStartDateDesc(hcfId, Agreement.Status.ACTIVE.name()))
+                .thenReturn(Optional.of(agreement));
+
+        JwtAuthFilter filter = new JwtAuthFilter(jwtService, appUserRepository, agreementRepository,
+                oAuthClientRepositoryProvider, new MockEnvironment());
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/hcf/dashboard");
+        request.addHeader("Authorization", "Bearer token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicReference<TenantContext.TenantInfo> capturedTenant = new AtomicReference<>();
+        FilterChain chain = (req, res) -> capturedTenant.set(TenantContext.get());
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertEquals(facilityId, capturedTenant.get().tenantId());
+        assertEquals(hcfId, capturedTenant.get().hcfId());
     }
 
     @Test
@@ -108,8 +159,8 @@ class JwtAuthFilterSecurityTest {
         when(oAuthClientRepositoryProvider.getIfAvailable()).thenReturn(oAuthClientRepository);
         when(oAuthClientRepository.findById("client_a")).thenReturn(Optional.of(disabledClient));
 
-        JwtAuthFilter filter = new JwtAuthFilter(jwtService, appUserRepository, oAuthClientRepositoryProvider,
-                new MockEnvironment());
+        JwtAuthFilter filter = new JwtAuthFilter(jwtService, appUserRepository, agreementRepository,
+                oAuthClientRepositoryProvider, new MockEnvironment());
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/cbwtf/dashboard");
         request.addHeader("Authorization", "Bearer token");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -145,8 +196,8 @@ class JwtAuthFilterSecurityTest {
         when(oAuthClientRepositoryProvider.getIfAvailable()).thenReturn(oAuthClientRepository);
         when(oAuthClientRepository.findById("client_a")).thenReturn(Optional.of(activeClient));
 
-        JwtAuthFilter filter = new JwtAuthFilter(jwtService, appUserRepository, oAuthClientRepositoryProvider,
-                new MockEnvironment());
+        JwtAuthFilter filter = new JwtAuthFilter(jwtService, appUserRepository, agreementRepository,
+                oAuthClientRepositoryProvider, new MockEnvironment());
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/cbwtf/dashboard");
         request.addHeader("Authorization", "Bearer token");
         MockHttpServletResponse response = new MockHttpServletResponse();

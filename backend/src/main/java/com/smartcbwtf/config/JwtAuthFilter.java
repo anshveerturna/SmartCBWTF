@@ -1,5 +1,6 @@
 package com.smartcbwtf.config;
 
+import com.smartcbwtf.domain.Agreement;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,6 +20,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.Collections;
 
 @Component
@@ -32,14 +34,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final com.smartcbwtf.repository.AppUserRepository appUserRepository;
+    private final com.smartcbwtf.repository.AgreementRepository agreementRepository;
     private final ObjectProvider<com.smartcbwtf.repository.OAuthClientRepository> oAuthClientRepositoryProvider;
     private final boolean exposeApiDocs;
 
     public JwtAuthFilter(JwtService jwtService, com.smartcbwtf.repository.AppUserRepository appUserRepository,
+            com.smartcbwtf.repository.AgreementRepository agreementRepository,
             ObjectProvider<com.smartcbwtf.repository.OAuthClientRepository> oAuthClientRepositoryProvider,
             Environment environment) {
         this.jwtService = jwtService;
         this.appUserRepository = appUserRepository;
+        this.agreementRepository = agreementRepository;
         this.oAuthClientRepositoryProvider = oAuthClientRepositoryProvider;
         this.exposeApiDocs = Binder.get(environment)
                 .bind("app.security.expose-api-docs", Boolean.class)
@@ -99,7 +104,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     request.setAttribute(ATTR_CLIENT_ID, clientId);
                     request.setAttribute(ATTR_TOKEN_USE, tokenUse);
 
-                    java.util.UUID tenantId = user.getFacility() != null ? user.getFacility().getId() : null;
+                    java.util.UUID tenantId = resolveTenantId(user);
                     java.util.UUID hcfId = user.getHcf() != null ? user.getHcf().getId() : null;
 
                     TenantContext.set(new TenantContext.TenantInfo(userId, tenantId, hcfId, dbRole, username));
@@ -122,6 +127,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid " + claimName + " claim");
         }
+    }
+
+    private java.util.UUID resolveTenantId(com.smartcbwtf.domain.AppUser user) {
+        if (user.getFacility() != null) {
+            return user.getFacility().getId();
+        }
+
+        if (!"HCF_ADMIN".equals(user.getRole()) || user.getHcf() == null) {
+            return null;
+        }
+
+        return agreementRepository.findFirstByHcfIdAndStatusOrderByStartDateDesc(
+                        user.getHcf().getId(), Agreement.Status.ACTIVE.name())
+                .filter(agreement -> agreement.getEndDate() == null
+                        || !agreement.getEndDate().isBefore(LocalDate.now()))
+                .map(Agreement::getFacility)
+                .filter(facility -> facility != null)
+                .map(facility -> facility.getId())
+                .orElse(null);
     }
 
     private boolean isActiveOAuthClient(String clientId) {
