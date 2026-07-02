@@ -32,7 +32,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -102,10 +104,56 @@ class BagEventServiceUnitTest {
         agreement.setStartDate(LocalDate.now().minusDays(1));
         agreement.setPerBedPerDayRate(BigDecimal.ONE);
 
-        when(agreementRepository.findActiveByHcfAndFacility(hcf.getId(), facility.getId()))
+        lenient().when(agreementRepository.findActiveByHcfAndFacility(hcf.getId(), facility.getId()))
                 .thenReturn(Optional.of(agreement));
         lenient().when(qrAuthorizationRepository.findFirstByQrPayloadAndFacilityId(anyString(), any()))
                 .thenReturn(Optional.empty());
+    }
+
+    @Test
+    void syncMasksCrossTenantLabelBeforeAgreementLookup() {
+        label.setFacility(otherFacility());
+
+        BagEventSyncItem item = new BagEventSyncItem();
+        item.setQrCode(label.getQrCode());
+        item.setEventType("HCF_COLLECTION");
+        item.setEventTs(Instant.now());
+        item.setGpsLat(28.6140);
+        item.setGpsLon(77.2091);
+        item.setWeightKg(BigDecimal.valueOf(2.0));
+
+        BagEventSyncRequest request = new BagEventSyncRequest();
+        request.setEvents(List.of(item));
+
+        when(bagLabelRepository.findByQrCode(label.getQrCode())).thenReturn(Optional.of(label));
+
+        var response = bagEventService.sync(request);
+
+        assertEquals("FAILED", response.getAcks().get(0).getStatus());
+        assertEquals("Label not found", response.getAcks().get(0).getMessage());
+        verify(agreementRepository, never()).findActiveByHcfAndFacility(any(), any());
+        verify(bagEventRepository, never()).save(any(BagEvent.class));
+    }
+
+    @Test
+    void verifyBagMasksCrossTenantLabelBeforeAgreementLookup() {
+        label.setFacility(otherFacility());
+
+        BagVerifyRequest request = new BagVerifyRequest();
+        request.setQrCode(label.getQrCode());
+        request.setVerifiedByUserId(userId);
+        request.setGpsLat(28.6140);
+        request.setGpsLon(77.2091);
+        request.setWeightKg(BigDecimal.valueOf(1.25));
+
+        when(bagLabelRepository.findByQrCode(label.getQrCode())).thenReturn(Optional.of(label));
+
+        BagEventService.VerifyResult result = bagEventService.verifyBag(request);
+
+        assertEquals(404, result.getHttpStatus());
+        assertEquals("NOT_FOUND", result.getResponse().getStatus());
+        verify(agreementRepository, never()).findActiveByHcfAndFacility(any(), any());
+        verify(bagEventRepository, never()).save(any(BagEvent.class));
     }
 
     @AfterEach
@@ -166,6 +214,7 @@ class BagEventServiceUnitTest {
         item.setEventTs(Instant.now());
         item.setGpsLat(28.6140);
         item.setGpsLon(77.2091);
+        item.setGpsAccuracyM(8.25);
         item.setWeightKg(BigDecimal.valueOf(2.0));
 
         BagEventSyncRequest request = new BagEventSyncRequest();
@@ -190,6 +239,9 @@ class BagEventServiceUnitTest {
         assertEquals("SUCCESS", response.getAcks().get(0).getStatus());
         assertEquals(QrAuthorization.Status.USED.name(), qr.getStatus());
         assertTrue(qr.getPickupEventId() != null);
+        var eventCaptor = forClass(BagEvent.class);
+        verify(bagEventRepository).save(eventCaptor.capture());
+        assertEquals(8.25, eventCaptor.getValue().getGpsAccuracyM());
         verify(qrAuthorizationRepository).save(qr);
     }
 
@@ -217,5 +269,14 @@ class BagEventServiceUnitTest {
 
         assertEquals(409, result.getHttpStatus());
         assertEquals("ALREADY_VERIFIED", result.getResponse().getStatus());
+    }
+
+    private Facility otherFacility() {
+        Facility facility = new Facility();
+        facility.setId(UUID.randomUUID());
+        facility.setGpsLat(28.6139);
+        facility.setGpsLon(77.2090);
+        facility.setGeofenceRadiusM(500);
+        return facility;
     }
 }

@@ -3,17 +3,23 @@ package com.smartcbwtf.controller;
 import com.smartcbwtf.domain.*;
 import com.smartcbwtf.repository.*;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.*;
+
+import static com.smartcbwtf.util.PaginationUtils.pageRequest;
 
 /**
  * Read-only Master Data API for SuperAdmin.
@@ -24,6 +30,8 @@ import java.util.*;
 @RequestMapping("/api/admin/master-data")
 @PreAuthorize("hasRole('SUPER_ADMIN')")
 public class AdminMasterDataController {
+    private static final int MAX_FILTER_LENGTH = 80;
+    private static final int MAX_SEARCH_LENGTH = 120;
 
     private final HcfRepository hcfRepository;
     private final AttendanceRepository attendanceRepository;
@@ -34,6 +42,8 @@ public class AdminMasterDataController {
     private final SubscriptionAuditRepository subscriptionAuditRepository;
     private final AppUserRepository userRepository;
     private final FacilityRepository facilityRepository;
+    private final VehicleRepository vehicleRepository;
+    private final PaymentRepository paymentRepository;
 
     public AdminMasterDataController(
             HcfRepository hcfRepository,
@@ -44,7 +54,9 @@ public class AdminMasterDataController {
             AuditLogRepository auditLogRepository,
             SubscriptionAuditRepository subscriptionAuditRepository,
             AppUserRepository userRepository,
-            FacilityRepository facilityRepository) {
+            FacilityRepository facilityRepository,
+            VehicleRepository vehicleRepository,
+            PaymentRepository paymentRepository) {
         this.hcfRepository = hcfRepository;
         this.attendanceRepository = attendanceRepository;
         this.bagLabelRepository = bagLabelRepository;
@@ -54,6 +66,8 @@ public class AdminMasterDataController {
         this.subscriptionAuditRepository = subscriptionAuditRepository;
         this.userRepository = userRepository;
         this.facilityRepository = facilityRepository;
+        this.vehicleRepository = vehicleRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     // ========== HCFs ==========
@@ -66,13 +80,17 @@ public class AdminMasterDataController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = pageRequest(page, size, 20, Sort.by("createdAt").descending());
         Page<Hcf> hcfs;
+        String normalizedStatus = normalizeFilter(status, "status");
+        String normalizedSearch = normalizeSearch(search);
 
-        if (search != null && !search.isBlank()) {
-            hcfs = hcfRepository.searchByNameOrCode(search, pageable);
-        } else if (status != null && !status.isBlank()) {
-            hcfs = hcfRepository.findByStatus(status, pageable);
+        if (cbwtfId != null) {
+            hcfs = hcfRepository.findByFacilityIdWithFilters(cbwtfId, normalizedStatus, normalizedSearch, pageable);
+        } else if (normalizedSearch != null) {
+            hcfs = hcfRepository.searchByNameOrCode(normalizedSearch, pageable);
+        } else if (normalizedStatus != null) {
+            hcfs = hcfRepository.findByStatus(normalizedStatus, pageable);
         } else {
             hcfs = hcfRepository.findAll(pageable);
         }
@@ -106,13 +124,18 @@ public class AdminMasterDataController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("eventTs").descending());
+        Pageable pageable = pageRequest(page, size, 20, Sort.by("eventTs").descending());
         Page<BagEvent> events;
+        String normalizedEventType = normalizeFilter(eventType, "eventType");
+        DateRange dateRange = parseOptionalDateRange(from, to);
 
         if (cbwtfId != null) {
             events = bagEventRepository.findByFacilityId(cbwtfId, pageable);
-        } else if (eventType != null && !eventType.isBlank()) {
-            events = bagEventRepository.findByEventType(eventType, pageable);
+        } else if (normalizedEventType != null) {
+            events = bagEventRepository.findByEventType(normalizedEventType, pageable);
+        } else if (dateRange != null) {
+            events = bagEventRepository.findByEventTsBetween(dateRange.fromInclusive(), dateRange.toExclusive(),
+                    pageable);
         } else {
             events = bagEventRepository.findAll(pageable);
         }
@@ -123,13 +146,16 @@ public class AdminMasterDataController {
 
     private Map<String, Object> mapBagEvent(BagEvent event) {
         Map<String, Object> map = new LinkedHashMap<>();
+        BagLabel label = event.getBagLabel();
+        Hcf hcf = event.getHcf();
+        Facility facility = event.getFacility();
         map.put("id", event.getId());
-        map.put("bagLabelId", event.getBagLabel().getId());
-        map.put("qrCode", event.getBagLabel().getQrCode());
-        map.put("hcfId", event.getHcf().getId());
-        map.put("hcfName", event.getHcf().getName());
-        map.put("cbwtfId", event.getFacility().getId());
-        map.put("cbwtfName", event.getFacility().getName());
+        map.put("bagLabelId", label != null ? label.getId() : null);
+        map.put("qrCode", label != null ? label.getQrCode() : null);
+        map.put("hcfId", hcf != null ? hcf.getId() : null);
+        map.put("hcfName", hcf != null ? hcf.getName() : null);
+        map.put("cbwtfId", facility != null ? facility.getId() : null);
+        map.put("cbwtfName", facility != null ? facility.getName() : null);
         map.put("eventType", event.getEventType());
         map.put("eventTs", event.getEventTs());
         map.put("weightKg", event.getWeightKg());
@@ -149,13 +175,17 @@ public class AdminMasterDataController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("issuedAt").descending());
+        Pageable pageable = pageRequest(page, size, 20, Sort.by("issuedAt").descending());
         Page<BagLabel> bags;
+        String normalizedStatus = normalizeFilter(status, "status");
+        String normalizedCategory = normalizeFilter(category, "category");
 
         if (cbwtfId != null) {
             bags = bagLabelRepository.findByFacilityId(cbwtfId, pageable);
-        } else if (status != null && !status.isBlank()) {
-            bags = bagLabelRepository.findByStatus(status, pageable);
+        } else if (normalizedStatus != null) {
+            bags = bagLabelRepository.findByStatus(normalizedStatus, pageable);
+        } else if (normalizedCategory != null) {
+            bags = bagLabelRepository.findByCategory(normalizedCategory, pageable);
         } else {
             bags = bagLabelRepository.findAll(pageable);
         }
@@ -190,13 +220,17 @@ public class AdminMasterDataController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("issuedAt").descending());
+        Pageable pageable = pageRequest(page, size, 20, Sort.by("issuedAt").descending());
         Page<BagLabel> labels;
+        String normalizedStatus = normalizeFilter(status, "status");
+        String normalizedSearch = normalizeSearch(search);
 
-        if (search != null && !search.isBlank()) {
-            labels = bagLabelRepository.searchByQrCodeOrSerial(search, pageable);
+        if (normalizedSearch != null) {
+            labels = bagLabelRepository.searchByQrCodeOrSerial(normalizedSearch, pageable);
         } else if (cbwtfId != null) {
             labels = bagLabelRepository.findByFacilityId(cbwtfId, pageable);
+        } else if (normalizedStatus != null) {
+            labels = bagLabelRepository.findByStatus(normalizedStatus, pageable);
         } else {
             labels = bagLabelRepository.findAll(pageable);
         }
@@ -228,13 +262,15 @@ public class AdminMasterDataController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("eventTs").descending());
+        Pageable pageable = pageRequest(page, size, 20, Sort.by("eventTs").descending());
         Page<Attendance> records;
+        DateRange dateRange = parseOptionalDateRange(from, to);
 
-        if (from != null && to != null) {
-            Instant fromTs = LocalDate.parse(from).atStartOfDay(ZoneId.systemDefault()).toInstant();
-            Instant toTs = LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
-            records = attendanceRepository.findByEventTsBetween(fromTs, toTs, pageable);
+        if (cbwtfId != null) {
+            records = attendanceRepository.findByFacilityId(cbwtfId, pageable);
+        } else if (dateRange != null) {
+            records = attendanceRepository.findByEventTsBetween(dateRange.fromInclusive(), dateRange.toExclusive(),
+                    pageable);
         } else {
             records = attendanceRepository.findAll(pageable);
         }
@@ -259,8 +295,6 @@ public class AdminMasterDataController {
     }
 
     // ========== VEHICLES ==========
-    // Note: No Vehicle entity exists yet, return empty for now
-    // This will be implemented when Vehicle entity is added
 
     @GetMapping("/vehicles")
     public ResponseEntity<Page<Map<String, Object>>> listVehicles(
@@ -268,9 +302,29 @@ public class AdminMasterDataController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        // Vehicles not yet implemented in domain model
-        // Return empty page with proper structure
-        return ResponseEntity.ok(Page.empty());
+        Pageable pageable = pageRequest(page, size, 20, Sort.by("createdAt").descending());
+        Page<Vehicle> vehicles = cbwtfId != null
+                ? vehicleRepository.findByFacilityId(cbwtfId, pageable)
+                : vehicleRepository.findAll(pageable);
+
+        return ResponseEntity.ok(vehicles.map(this::mapVehicle));
+    }
+
+    private Map<String, Object> mapVehicle(Vehicle vehicle) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", vehicle.getId());
+        map.put("registrationNo", vehicle.getRegistrationNumber());
+        map.put("vehicleType", vehicle.getVehicleType());
+        map.put("cbwtfId", vehicle.getFacility().getId());
+        map.put("cbwtfName", vehicle.getFacility().getName());
+        map.put("driverId", vehicle.getAssignedDriver() != null ? vehicle.getAssignedDriver().getId() : null);
+        map.put("driverName", vehicle.getAssignedDriver() != null ? vehicle.getAssignedDriver().getFullName() : null);
+        map.put("status", vehicle.getStatus());
+        map.put("gpsStatus", vehicle.getGpsStatus());
+        map.put("gpsVendor", vehicle.getGpsVendor());
+        map.put("lastGpsAt", vehicle.getLastGpsAt());
+        map.put("createdAt", vehicle.getCreatedAt());
+        return map;
     }
 
     // ========== INVOICES ==========
@@ -282,13 +336,14 @@ public class AdminMasterDataController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = pageRequest(page, size, 20, Sort.by("createdAt").descending());
         Page<Invoice> invoices;
+        String normalizedStatus = normalizeFilter(status, "status");
 
         if (cbwtfId != null) {
             invoices = invoiceRepository.findByFacilityId(cbwtfId, pageable);
-        } else if (status != null && !status.isBlank()) {
-            invoices = invoiceRepository.findByStatus(status, pageable);
+        } else if (normalizedStatus != null) {
+            invoices = invoiceRepository.findByStatus(normalizedStatus, pageable);
         } else {
             invoices = invoiceRepository.findAll(pageable);
         }
@@ -314,7 +369,6 @@ public class AdminMasterDataController {
     }
 
     // ========== PAYMENTS ==========
-    // Note: No Payment entity exists yet, return empty for now
 
     @GetMapping("/payments")
     public ResponseEntity<Page<Map<String, Object>>> listPayments(
@@ -322,8 +376,30 @@ public class AdminMasterDataController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        // Payments not yet implemented in domain model
-        return ResponseEntity.ok(Page.empty());
+        Pageable pageable = pageRequest(page, size, 20,
+                Sort.by(Sort.Order.desc("paymentDate"), Sort.Order.desc("createdAt")));
+        Page<Payment> payments = cbwtfId != null
+                ? paymentRepository.findByFacilityId(cbwtfId, pageable)
+                : paymentRepository.findAll(pageable);
+
+        return ResponseEntity.ok(payments.map(this::mapPayment));
+    }
+
+    private Map<String, Object> mapPayment(Payment payment) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", payment.getId());
+        map.put("paymentId", payment.getId());
+        map.put("referenceNumber", payment.getReferenceNumber());
+        map.put("hcfId", payment.getHcf().getId());
+        map.put("hcfName", payment.getHcf().getName());
+        map.put("cbwtfId", payment.getFacility().getId());
+        map.put("cbwtfName", payment.getFacility().getName());
+        map.put("amount", payment.getAmount());
+        map.put("paymentMethod", payment.getMode() != null ? payment.getMode().name() : null);
+        map.put("status", "RECORDED");
+        map.put("paidAt", payment.getPaymentDate());
+        map.put("createdAt", payment.getCreatedAt());
+        return map;
     }
 
     // ========== AUDIT LOGS ==========
@@ -335,19 +411,27 @@ public class AdminMasterDataController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = pageRequest(page, size, 20, Sort.by("createdAt").descending());
         Page<SubscriptionAudit> audits;
+        String normalizedAction = normalizeFilter(action, "action");
 
         if (cbwtfId != null) {
             audits = subscriptionAuditRepository.findByFacilityId(cbwtfId, pageable);
-        } else if (action != null && !action.isBlank()) {
-            audits = subscriptionAuditRepository.findByAction(action, pageable);
+        } else if (normalizedAction != null) {
+            audits = subscriptionAuditRepository.findByAction(normalizedAction, pageable);
         } else {
             audits = subscriptionAuditRepository.findAll(pageable);
         }
 
         Page<Map<String, Object>> result = audits.map(this::mapAudit);
-        return ResponseEntity.ok(result);
+        return privateResponse(result);
+    }
+
+    private static <T> ResponseEntity<T> privateResponse(T body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
     }
 
     private Map<String, Object> mapAudit(SubscriptionAudit audit) {
@@ -363,5 +447,66 @@ public class AdminMasterDataController {
         map.put("notes", audit.getNotes());
         map.put("createdAt", audit.getCreatedAt());
         return map;
+    }
+
+    private static String normalizeSearch(String search) {
+        return normalizeText(search, MAX_SEARCH_LENGTH, "search");
+    }
+
+    private static String normalizeFilter(String value, String label) {
+        return normalizeText(value, MAX_FILTER_LENGTH, label);
+    }
+
+    private static String normalizeText(String value, int maxLength, String label) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.strip();
+        if (normalized.isBlank()) {
+            return null;
+        }
+        if (normalized.length() > maxLength) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    label + " must be " + maxLength + " characters or fewer");
+        }
+        for (int i = 0; i < normalized.length(); i++) {
+            if (Character.isISOControl(normalized.charAt(i))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        label + " contains unsupported control characters");
+            }
+        }
+        return normalized;
+    }
+
+    private static DateRange parseOptionalDateRange(String from, String to) {
+        String normalizedFrom = normalizeFilter(from, "from");
+        String normalizedTo = normalizeFilter(to, "to");
+        if (normalizedFrom == null && normalizedTo == null) {
+            return null;
+        }
+        if (normalizedFrom == null || normalizedTo == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Both from and to dates are required");
+        }
+        LocalDate fromDate = parseIsoDate(normalizedFrom, "from");
+        LocalDate toDate = parseIsoDate(normalizedTo, "to");
+        if (toDate.isBefore(fromDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "to date must be on or after from date");
+        }
+        ZoneId zone = ZoneId.systemDefault();
+        return new DateRange(
+                fromDate.atStartOfDay(zone).toInstant(),
+                toDate.plusDays(1).atStartOfDay(zone).toInstant());
+    }
+
+    private static LocalDate parseIsoDate(String value, String label) {
+        try {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    label + " date must use ISO format YYYY-MM-DD");
+        }
+    }
+
+    private record DateRange(Instant fromInclusive, Instant toExclusive) {
     }
 }

@@ -11,6 +11,7 @@ import jakarta.persistence.*;
 public class AgreementCodeSequence {
 
     @Id
+    @Column(name = "sequence_year")
     private Integer year;
 
     @Column(name = "last_value", nullable = false)

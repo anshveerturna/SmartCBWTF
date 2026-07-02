@@ -1,36 +1,41 @@
 package com.smartcbwtf.controller;
 
 import com.smartcbwtf.dto.*;
+import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.Hcf;
-import com.smartcbwtf.service.AgreementService;
-import com.smartcbwtf.service.HcfApprovalService;
+import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.service.HcfService;
+import com.smartcbwtf.service.UploadFileValidator;
+import com.smartcbwtf.util.PaginationUtils;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/hcfs")
 public class HcfController {
+    private static final int DEFAULT_PENDING_LIMIT = 100;
+    private static final int MAX_PENDING_LIMIT = 250;
 
     private final HcfService hcfService;
-    private final AgreementService agreementService;
-    private final HcfApprovalService approvalService;
+    private final AgreementRepository agreementRepository;
 
-    public HcfController(HcfService hcfService, AgreementService agreementService, HcfApprovalService approvalService) {
+    public HcfController(HcfService hcfService, AgreementRepository agreementRepository) {
         this.hcfService = hcfService;
-        this.agreementService = agreementService;
-        this.approvalService = approvalService;
+        this.agreementRepository = agreementRepository;
     }
 
     @PostMapping("/register")
+    @PreAuthorize("hasAnyRole('DRIVER', 'CBWTF_ADMIN')")
     public ResponseEntity<HcfRegistrationResponse> register(@Valid @RequestBody HcfRegistrationRequest request) {
+        bindRegistrationToAuthenticatedTenant(request);
         HcfRegistrationResponse response = hcfService.register(request);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
@@ -43,10 +48,7 @@ public class HcfController {
     @GetMapping
     @PreAuthorize("hasAnyRole('DRIVER', 'PLANT_OPERATOR', 'CBWTF_ADMIN')")
     public ResponseEntity<List<MobileHcfDto>> listForAttendance() {
-        UUID facilityId = com.smartcbwtf.config.TenantContext.getTenantId();
-        if (facilityId == null) {
-            throw new IllegalStateException("Tenant ID not found in context");
-        }
+        UUID facilityId = requireTenantId();
         List<MobileHcfDto> hcfs = hcfService.listActiveHcfsForMobile(facilityId);
         return ResponseEntity.ok(hcfs);
     }
@@ -66,10 +68,17 @@ public class HcfController {
 
     @GetMapping("/pending")
     @PreAuthorize("hasRole('CBWTF_ADMIN')")
-    public List<HcfDetailResponse> pending() {
-        return hcfService.listPending().stream()
+    public List<HcfDetailResponse> pending(@RequestParam(name = "limit", defaultValue = "100") int limit) {
+        UUID facilityId = requireTenantId();
+        return agreementRepository.findLatestPendingHcfAgreementsByFacilityId(facilityId, firstPage(limit)).stream()
+                .map(agreement -> agreement.getHcf())
                 .map(HcfDetailResponse::from)
-                .collect(Collectors.toList());
+                .toList();
+    }
+
+    private static PageRequest firstPage(int requestedLimit) {
+        int limit = PaginationUtils.normalizeSize(requestedLimit, DEFAULT_PENDING_LIMIT, MAX_PENDING_LIMIT);
+        return PageRequest.of(0, limit);
     }
 
     /**
@@ -78,6 +87,7 @@ public class HcfController {
     @GetMapping("/{hcfId}")
     @PreAuthorize("hasRole('CBWTF_ADMIN')")
     public HcfDetailResponse getById(@PathVariable UUID hcfId) {
+        requireHcfInTenant(hcfId);
         Hcf hcf = hcfService.findById(hcfId);
         return HcfDetailResponse.from(hcf);
     }
@@ -91,13 +101,7 @@ public class HcfController {
     public HcfDetailResponse updateHcf(
             @PathVariable UUID hcfId,
             @Valid @RequestBody HcfUpdateRequest request) {
-        request.validate();
-        Hcf hcf = approvalService.updatePendingHcf(
-                hcfId,
-                request.billingModel(),
-                request.numberOfBeds(),
-                request.monthlyCharges());
-        return HcfDetailResponse.from(hcf);
+        throw legacyWorkflowGone("/api/cbwtf/hcfs/" + hcfId + "/billing-model");
     }
 
     /**
@@ -108,7 +112,7 @@ public class HcfController {
     @PreAuthorize("hasRole('CBWTF_ADMIN')")
     public HcfApprovalResponse approveWithAgreement(@PathVariable UUID hcfId,
             @Valid @RequestBody HcfApprovalRequest request) {
-        return agreementService.approveHcf(hcfId, request);
+        throw legacyWorkflowGone("/api/cbwtf/hcfs/" + hcfId + "/approve");
     }
 
     /**
@@ -117,8 +121,7 @@ public class HcfController {
     @PostMapping("/{hcfId}/simple-approve")
     @PreAuthorize("hasRole('CBWTF_ADMIN')")
     public HcfDetailResponse simpleApprove(@PathVariable UUID hcfId) {
-        Hcf hcf = approvalService.approve(hcfId);
-        return HcfDetailResponse.from(hcf);
+        throw legacyWorkflowGone("/api/cbwtf/hcfs/" + hcfId + "/approve");
     }
 
     /**
@@ -129,8 +132,7 @@ public class HcfController {
     public HcfDetailResponse reject(
             @PathVariable UUID hcfId,
             @Valid @RequestBody HcfRejectRequest request) {
-        Hcf hcf = approvalService.reject(hcfId, request.reason());
-        return HcfDetailResponse.from(hcf);
+        throw legacyWorkflowGone("/api/cbwtf/hcfs/" + hcfId + "/reject");
     }
 
     /**
@@ -139,8 +141,7 @@ public class HcfController {
     @PostMapping("/{hcfId}/resubmit")
     @PreAuthorize("hasRole('CBWTF_ADMIN')")
     public HcfDetailResponse resubmit(@PathVariable UUID hcfId) {
-        Hcf hcf = approvalService.resubmit(hcfId);
-        return HcfDetailResponse.from(hcf);
+        throw legacyWorkflowGone("/api/cbwtf/hcfs/" + hcfId + "/resubmit");
     }
 
     /**
@@ -151,29 +152,9 @@ public class HcfController {
     @PreAuthorize("hasAnyRole('DRIVER', 'CBWTF_ADMIN')")
     public ResponseEntity<java.util.Map<String, String>> uploadRentAgreement(
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        UUID facilityId = requireTenantId();
 
-        if (file.isEmpty()) {
-            throw new IllegalArgumentException("No file provided");
-        }
-
-        // Validate file type (PDF or image)
-        String contentType = file.getContentType();
-        if (contentType == null ||
-                (!contentType.equals("application/pdf") && !contentType.startsWith("image/"))) {
-            throw new IllegalArgumentException("Only PDF or image files are allowed");
-        }
-
-        // Validate file size (max 10MB)
-        if (file.getSize() > 10 * 1024 * 1024) {
-            throw new IllegalArgumentException("File size exceeds maximum limit of 10MB");
-        }
-
-        String ext = switch (contentType) {
-            case "application/pdf" -> "pdf";
-            case "image/jpeg" -> "jpg";
-            case "image/png" -> "png";
-            default -> "pdf";
-        };
+        String ext = UploadFileValidator.rentAgreementExtension(file, 10L * 1024L * 1024L);
 
         try {
             String uploadDir = "uploads/rent-agreements";
@@ -182,7 +163,7 @@ public class HcfController {
                 java.nio.file.Files.createDirectories(uploadPath);
             }
 
-            String filename = UUID.randomUUID().toString() + "." + ext;
+            String filename = facilityId + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
             java.nio.file.Path filePath = uploadPath.resolve(filename);
             java.nio.file.Files.copy(file.getInputStream(), filePath,
                     java.nio.file.StandardCopyOption.REPLACE_EXISTING);
@@ -193,5 +174,41 @@ public class HcfController {
         } catch (java.io.IOException e) {
             throw new RuntimeException("Failed to save file", e);
         }
+    }
+
+    private void bindRegistrationToAuthenticatedTenant(HcfRegistrationRequest request) {
+        UUID facilityId = requireTenantId();
+        UUID userId = TenantContext.getUserId();
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Authenticated user context is required");
+        }
+        if (request.getFacilityId() != null && !facilityId.equals(request.getFacilityId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Registration facility does not match tenant");
+        }
+        if (request.getRegisteredByUserId() != null && !userId.equals(request.getRegisteredByUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Registration user does not match token");
+        }
+        request.setFacilityId(facilityId);
+        request.setRegisteredByUserId(userId);
+    }
+
+    private UUID requireTenantId() {
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tenant context is required");
+        }
+        return facilityId;
+    }
+
+    private void requireHcfInTenant(UUID hcfId) {
+        UUID facilityId = requireTenantId();
+        if (agreementRepository.findAllByHcfIdAndFacilityId(hcfId, facilityId).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "HCF not found");
+        }
+    }
+
+    private ResponseStatusException legacyWorkflowGone(String replacementEndpoint) {
+        return new ResponseStatusException(HttpStatus.GONE,
+                "This legacy workflow endpoint has been retired. Use " + replacementEndpoint);
     }
 }

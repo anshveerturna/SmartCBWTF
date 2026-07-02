@@ -25,11 +25,13 @@ public class ComplianceReportScheduler {
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
     private final DailyReportGenerationService dailyReportService;
-    // private final MonthlyReportGenerationService monthlyReportService;
-    // private final AnnualReportGenerationService annualReportService;
+    private final ComplianceReportGenerationService complianceReportGenerationService;
 
-    public ComplianceReportScheduler(DailyReportGenerationService dailyReportService) {
+    public ComplianceReportScheduler(
+            DailyReportGenerationService dailyReportService,
+            ComplianceReportGenerationService complianceReportGenerationService) {
         this.dailyReportService = dailyReportService;
+        this.complianceReportGenerationService = complianceReportGenerationService;
     }
 
     /**
@@ -60,8 +62,12 @@ public class ComplianceReportScheduler {
 
         LocalDate previousMonth = LocalDate.now(IST).minusMonths(1).withDayOfMonth(1);
 
-        // TODO: Implement monthly report generation
-        log.info("=== MONTHLY REPORTS for {} - TODO ===", previousMonth);
+        try {
+            int count = complianceReportGenerationService.generateMonthlyReportsForAllFacilities(previousMonth);
+            log.info("=== MONTHLY REPORTS COMPLETE: {} reports generated for {} ===", count, previousMonth);
+        } catch (Exception e) {
+            log.error("=== MONTHLY REPORT GENERATION FAILED: {} ===", e.getMessage(), e);
+        }
     }
 
     /**
@@ -77,8 +83,12 @@ public class ComplianceReportScheduler {
         int fyStartYear = now.getMonthValue() >= 4 ? now.getYear() - 1 : now.getYear() - 2;
         String financialYear = fyStartYear + "-" + String.format("%02d", (fyStartYear + 1) % 100);
 
-        // TODO: Implement annual report generation
-        log.info("=== ANNUAL REPORTS for FY {} - TODO ===", financialYear);
+        try {
+            int count = complianceReportGenerationService.generateAnnualReportsForAllFacilities(fyStartYear);
+            log.info("=== ANNUAL REPORTS COMPLETE: {} reports generated for FY {} ===", count, financialYear);
+        } catch (Exception e) {
+            log.error("=== ANNUAL REPORT GENERATION FAILED: {} ===", e.getMessage(), e);
+        }
     }
 
     /**
@@ -90,8 +100,12 @@ public class ComplianceReportScheduler {
 
         LocalDate yesterday = LocalDate.now(IST).minusDays(1);
 
-        // TODO: Implement barcode report generation
-        log.info("=== BARCODE REPORTS for {} - TODO ===", yesterday);
+        try {
+            int count = complianceReportGenerationService.generateBarcodeReportsForAllFacilities(yesterday);
+            log.info("=== BARCODE REPORTS COMPLETE: {} reports generated for {} ===", count, yesterday);
+        } catch (Exception e) {
+            log.error("=== BARCODE REPORT GENERATION FAILED: {} ===", e.getMessage(), e);
+        }
     }
 
     /**
@@ -103,7 +117,11 @@ public class ComplianceReportScheduler {
 
         LocalDate yesterday = LocalDate.now(IST).minusDays(1);
 
-        // TODO: Implement violation report generation
-        log.info("=== VIOLATION REPORTS for {} - TODO ===", yesterday);
+        try {
+            int count = complianceReportGenerationService.generateViolationReportsForAllFacilities(yesterday);
+            log.info("=== VIOLATION REPORTS COMPLETE: {} reports generated for {} ===", count, yesterday);
+        } catch (Exception e) {
+            log.error("=== VIOLATION REPORT GENERATION FAILED: {} ===", e.getMessage(), e);
+        }
     }
 }

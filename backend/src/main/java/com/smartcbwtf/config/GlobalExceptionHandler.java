@@ -1,14 +1,19 @@
 package com.smartcbwtf.config;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -23,23 +28,68 @@ public class GlobalExceptionHandler {
         List<String> errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(this::formatFieldError)
                 .toList();
-        log.error("Validation failed for {}: {}", request.getRequestURI(), errors);
+        log.warn("Validation failed for {}: {}", request.getRequestURI(), errors);
         return build(HttpStatus.BAD_REQUEST, "Validation failed", request, Map.of("errors", errors));
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiError> handleHandlerMethodValidation(
+            HandlerMethodValidationException ex,
+            HttpServletRequest request) {
+        List<String> errors = ex.getAllErrors().stream()
+                .map(this::formatResolvableError)
+                .toList();
+        log.warn("Method validation failed for {}: {}", request.getRequestURI(), errors);
+        return build(HttpStatus.BAD_REQUEST, "Validation failed", request, Map.of("errors", errors));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiError> handleConstraintViolation(
+            ConstraintViolationException ex,
+            HttpServletRequest request) {
+        List<String> errors = ex.getConstraintViolations().stream()
+                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+                .toList();
+        log.warn("Constraint validation failed for {}: {}", request.getRequestURI(), errors);
+        return build(HttpStatus.BAD_REQUEST, "Validation failed", request, Map.of("errors", errors));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleUnreadableMessage(
+            HttpMessageNotReadableException ex,
+            HttpServletRequest request) {
+        log.warn("Malformed request body at {}: {}", request.getRequestURI(), ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, "Malformed request body", request, null);
     }
 
     @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiError> handleTypeMismatch(
             org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex,
             HttpServletRequest request) {
-        String error = String.format("Parameter '%s' should be of type '%s'", ex.getName(),
-                ex.getRequiredType().getSimpleName());
-        log.error("Type mismatch for {}: {} (Value: '{}')", request.getRequestURI(), error, ex.getValue());
+        String expectedType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "expected type";
+        String error = String.format("Parameter '%s' should be of type '%s'", ex.getName(), expectedType);
+        log.warn("Type mismatch for {}: {} (Value: '{}')", request.getRequestURI(), error, ex.getValue());
         return build(HttpStatus.BAD_REQUEST, "Type mismatch", request, Map.of("error", error));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         return build(HttpStatus.FORBIDDEN, "Access denied", request, null);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException ex, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        HttpStatus resolvedStatus = status != null ? status : HttpStatus.INTERNAL_SERVER_ERROR;
+        String message = ex.getReason() != null && !ex.getReason().isBlank()
+                ? ex.getReason()
+                : resolvedStatus.getReasonPhrase();
+        if (resolvedStatus.is5xxServerError()) {
+            log.error("Response status exception at {}: {}", request.getRequestURI(), message, ex);
+        } else {
+            log.warn("Response status exception at {}: {}", request.getRequestURI(), message);
+        }
+        return build(resolvedStatus, message, request, null);
     }
 
     @ExceptionHandler({ NoSuchElementException.class, UsernameNotFoundException.class })
@@ -55,7 +105,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleBadData(IllegalArgumentException ex, HttpServletRequest request) {
-        log.error("Bad Request (IllegalArgumentException) at {}: {}", request.getRequestURI(), ex.getMessage(), ex);
+        log.warn("Bad request at {}: {}", request.getRequestURI(), ex.getMessage());
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
     }
 
@@ -171,6 +221,11 @@ public class GlobalExceptionHandler {
 
     private String formatFieldError(FieldError error) {
         return error.getField() + ": " + error.getDefaultMessage();
+    }
+
+    private String formatResolvableError(MessageSourceResolvable error) {
+        String message = error.getDefaultMessage();
+        return message != null ? message : error.toString();
     }
 
     public static class ApiError {

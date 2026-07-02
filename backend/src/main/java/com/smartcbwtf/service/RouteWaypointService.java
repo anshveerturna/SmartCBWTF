@@ -5,7 +5,6 @@ import com.smartcbwtf.domain.Route;
 import com.smartcbwtf.domain.RouteWaypoint;
 import com.smartcbwtf.dto.route.RouteWaypointDTO;
 import com.smartcbwtf.dto.route.SetWaypointsRequest;
-import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.repository.HcfRepository;
 import com.smartcbwtf.repository.RouteRepository;
 import com.smartcbwtf.repository.RouteWaypointRepository;
@@ -29,17 +28,14 @@ public class RouteWaypointService {
     private final RouteRepository routeRepository;
     private final RouteWaypointRepository waypointRepository;
     private final HcfRepository hcfRepository;
-    private final AgreementRepository agreementRepository;
 
     public RouteWaypointService(
             RouteRepository routeRepository,
             RouteWaypointRepository waypointRepository,
-            HcfRepository hcfRepository,
-            AgreementRepository agreementRepository) {
+            HcfRepository hcfRepository) {
         this.routeRepository = routeRepository;
         this.waypointRepository = waypointRepository;
         this.hcfRepository = hcfRepository;
-        this.agreementRepository = agreementRepository;
     }
 
     /**
@@ -59,23 +55,14 @@ public class RouteWaypointService {
             throw new IllegalArgumentException("Duplicate HCF IDs are not allowed in a route");
         }
 
-        // Validate all HCFs exist
-        List<Hcf> hcfs = hcfRepository.findAllById(hcfIds);
+        // Validate all HCFs are actively linked to this facility before changing the route.
+        List<Hcf> hcfs = hcfRepository.findActiveByFacilityIdAndIdIn(facilityId, hcfIds);
         if (hcfs.size() != hcfIds.size()) {
-            throw new EntityNotFoundException("One or more HCFs not found");
+            throw new EntityNotFoundException("One or more HCFs are not active for this facility");
         }
-
-        // Get HCFs with active agreements for this facility for validation
-        Set<UUID> facilityHcfIds = new HashSet<>();
-        agreementRepository.findHcfsByFacilityId(facilityId)
-                .forEach(hcf -> facilityHcfIds.add(hcf.getId()));
 
         Map<UUID, Hcf> hcfMap = new HashMap<>();
         for (Hcf hcf : hcfs) {
-            if (!facilityHcfIds.contains(hcf.getId())) {
-                throw new IllegalArgumentException(
-                        "HCF " + hcf.getCode() + " does not have an active agreement with this facility");
-            }
             hcfMap.put(hcf.getId(), hcf);
         }
 

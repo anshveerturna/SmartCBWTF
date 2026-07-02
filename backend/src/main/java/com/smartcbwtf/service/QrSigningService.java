@@ -1,6 +1,7 @@
 package com.smartcbwtf.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smartcbwtf.config.JwtService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,8 +10,10 @@ import org.springframework.stereotype.Service;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -33,6 +36,7 @@ public class QrSigningService {
             ObjectMapper objectMapper,
             @Value("${security.jwt.secret}") String jwtSecret) {
         this.objectMapper = objectMapper;
+        JwtService.assertStrongSigningSecret("security.jwt.secret", jwtSecret);
         // Derive QR signing key from JWT secret with a prefix for isolation
         this.signingKey = ("QR_SIGN:" + jwtSecret).getBytes(StandardCharsets.UTF_8);
     }
@@ -59,28 +63,20 @@ public class QrSigningService {
             Instant validTo) {
 
         try {
-            // Build payload without checksum first
-            Map<String, Object> payload = Map.of(
-                    "qrId", qrId.toString(),
-                    "agreementId", agreementId.toString(),
-                    "hcfId", hcfId.toString(),
-                    "facilityId", facilityId.toString(),
-                    "wasteCategory", wasteCategory,
-                    "validFrom", validFrom.toString(),
-                    "validTo", validTo.toString());
+            Map<String, Object> payload = canonicalPayload(
+                    qrId.toString(),
+                    agreementId.toString(),
+                    hcfId.toString(),
+                    facilityId.toString(),
+                    wasteCategory,
+                    validFrom.toString(),
+                    validTo.toString());
 
             String payloadJson = objectMapper.writeValueAsString(payload);
             String checksum = computeHmac(payloadJson);
 
             // Build final payload with checksum
-            Map<String, Object> signedPayload = new java.util.LinkedHashMap<>();
-            signedPayload.put("qrId", qrId.toString());
-            signedPayload.put("agreementId", agreementId.toString());
-            signedPayload.put("hcfId", hcfId.toString());
-            signedPayload.put("facilityId", facilityId.toString());
-            signedPayload.put("wasteCategory", wasteCategory);
-            signedPayload.put("validFrom", validFrom.toString());
-            signedPayload.put("validTo", validTo.toString());
+            Map<String, Object> signedPayload = new LinkedHashMap<>(payload);
             signedPayload.put("checksum", checksum);
 
             String finalJson = objectMapper.writeValueAsString(signedPayload);
@@ -112,19 +108,19 @@ public class QrSigningService {
             }
 
             // Rebuild payload without checksum to recompute
-            Map<String, Object> payloadWithoutChecksum = new java.util.LinkedHashMap<>();
-            payloadWithoutChecksum.put("qrId", payload.get("qrId"));
-            payloadWithoutChecksum.put("agreementId", payload.get("agreementId"));
-            payloadWithoutChecksum.put("hcfId", payload.get("hcfId"));
-            payloadWithoutChecksum.put("facilityId", payload.get("facilityId"));
-            payloadWithoutChecksum.put("wasteCategory", payload.get("wasteCategory"));
-            payloadWithoutChecksum.put("validFrom", payload.get("validFrom"));
-            payloadWithoutChecksum.put("validTo", payload.get("validTo"));
+            Map<String, Object> payloadWithoutChecksum = canonicalPayload(
+                    payload.get("qrId"),
+                    payload.get("agreementId"),
+                    payload.get("hcfId"),
+                    payload.get("facilityId"),
+                    payload.get("wasteCategory"),
+                    payload.get("validFrom"),
+                    payload.get("validTo"));
 
             String recomputedJson = objectMapper.writeValueAsString(payloadWithoutChecksum);
             String expectedChecksum = computeHmac(recomputedJson);
 
-            boolean valid = expectedChecksum.equals(providedChecksum);
+            boolean valid = constantTimeEquals(expectedChecksum, providedChecksum);
             if (!valid) {
                 log.warn("QR checksum mismatch - possible tampering");
             }
@@ -164,6 +160,31 @@ public class QrSigningService {
         } catch (Exception e) {
             throw new RuntimeException("HMAC computation failed", e);
         }
+    }
+
+    private Map<String, Object> canonicalPayload(
+            Object qrId,
+            Object agreementId,
+            Object hcfId,
+            Object facilityId,
+            Object wasteCategory,
+            Object validFrom,
+            Object validTo) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("qrId", qrId);
+        payload.put("agreementId", agreementId);
+        payload.put("hcfId", hcfId);
+        payload.put("facilityId", facilityId);
+        payload.put("wasteCategory", wasteCategory);
+        payload.put("validFrom", validFrom);
+        payload.put("validTo", validTo);
+        return payload;
+    }
+
+    private boolean constantTimeEquals(String expectedChecksum, String providedChecksum) {
+        return MessageDigest.isEqual(
+                expectedChecksum.getBytes(StandardCharsets.US_ASCII),
+                providedChecksum.getBytes(StandardCharsets.US_ASCII));
     }
 
     // Result record for signed payload

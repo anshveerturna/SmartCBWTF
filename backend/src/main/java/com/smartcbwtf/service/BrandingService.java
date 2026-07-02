@@ -93,16 +93,7 @@ public class BrandingService {
      */
     public String uploadLogo(MultipartFile file, String ipAddress) throws IOException {
         UUID facilityId = TenantContext.getTenantId();
-
-        // Validate file
-        String contentType = file.getContentType();
-        if (contentType == null || (!contentType.equals("image/png") && !contentType.equals("image/jpeg"))) {
-            throw new IllegalArgumentException("Only PNG and JPEG images are allowed");
-        }
-
-        if (file.getSize() > 2 * 1024 * 1024) { // 2MB limit
-            throw new IllegalArgumentException("Logo file must be under 2MB");
-        }
+        String extension = UploadFileValidator.publicPngOrJpegExtension(file);
 
         // Compute checksum
         String checksum = computeChecksum(file.getBytes());
@@ -112,8 +103,7 @@ public class BrandingService {
         Files.createDirectories(uploadDir);
 
         // Save file
-        String extension = contentType.equals("image/png") ? ".png" : ".jpg";
-        String filename = "logo_" + System.currentTimeMillis() + extension;
+        String filename = "logo_" + UUID.randomUUID() + "." + extension;
         Path filePath = uploadDir.resolve(filename);
         Files.write(filePath, file.getBytes());
 
@@ -128,6 +118,7 @@ public class BrandingService {
         branding.setLogoChecksum(checksum);
         branding.setUpdatedAt(Instant.now());
         brandingRepository.save(branding);
+        deleteUploadedAsset(oldLogo, "/uploads/branding/", logoUrl);
 
         auditLog(facilityId, "branding", "logo", oldLogo, logoUrl, ipAddress);
 
@@ -142,24 +133,14 @@ public class BrandingService {
      */
     public String uploadPaymentQr(MultipartFile file, String ipAddress) throws IOException {
         UUID facilityId = TenantContext.getTenantId();
-
-        // Validate file
-        String contentType = file.getContentType();
-        if (contentType == null || (!contentType.equals("image/png") && !contentType.equals("image/jpeg"))) {
-            throw new IllegalArgumentException("Only PNG and JPEG images are allowed");
-        }
-
-        if (file.getSize() > 2 * 1024 * 1024) { // 2MB limit
-            throw new IllegalArgumentException("Payment QR file must be under 2MB");
-        }
+        String extension = UploadFileValidator.publicPngOrJpegExtension(file);
 
         // Create directory if not exists
         Path uploadDir = Paths.get(PAYMENT_QR_UPLOAD_DIR, facilityId.toString());
         Files.createDirectories(uploadDir);
 
         // Save file
-        String extension = contentType.equals("image/png") ? ".png" : ".jpg";
-        String filename = "payment_qr_" + System.currentTimeMillis() + extension;
+        String filename = "payment_qr_" + UUID.randomUUID() + "." + extension;
         Path filePath = uploadDir.resolve(filename);
         Files.write(filePath, file.getBytes());
 
@@ -171,6 +152,7 @@ public class BrandingService {
         String qrUrl = "/" + PAYMENT_QR_UPLOAD_DIR + "/" + facilityId.toString() + "/" + filename;
         settings.setPaymentQrUrl(qrUrl);
         settingsRepository.save(settings);
+        deleteUploadedAsset(oldUrl, "/uploads/payment-qr/", qrUrl);
 
         auditLog(facilityId, "financial", "paymentQrUrl", oldUrl, qrUrl, ipAddress);
 
@@ -191,6 +173,7 @@ public class BrandingService {
             String oldUrl = settings.getPaymentQrUrl();
             settings.setPaymentQrUrl(null);
             settingsRepository.save(settings);
+            deleteUploadedAsset(oldUrl, "/uploads/payment-qr/", null);
 
             auditLog(facilityId, "financial", "paymentQrUrl", oldUrl, null, ipAddress);
 
@@ -211,6 +194,7 @@ public class BrandingService {
             branding.setLogoChecksum(null);
             branding.setUpdatedAt(Instant.now());
             brandingRepository.save(branding);
+            deleteUploadedAsset(oldLogo, "/uploads/branding/", null);
 
             auditLog(facilityId, "branding", "logo", oldLogo, null, ipAddress);
 
@@ -272,6 +256,17 @@ public class BrandingService {
             return HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 not available", e);
+        }
+    }
+
+    private void deleteUploadedAsset(String oldUrl, String prefix, String newUrl) {
+        if (oldUrl == null || oldUrl.equals(newUrl)) {
+            return;
+        }
+        try {
+            UploadFileValidator.deleteUploadedAssetIfPresent(oldUrl, prefix);
+        } catch (IOException | IllegalArgumentException e) {
+            log.warn("Failed to delete old uploaded asset {}: {}", oldUrl, e.getMessage());
         }
     }
 

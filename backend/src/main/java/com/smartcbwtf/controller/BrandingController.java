@@ -2,6 +2,7 @@ package com.smartcbwtf.controller;
 
 import com.smartcbwtf.dto.settings.BrandingDTO;
 import com.smartcbwtf.service.BrandingService;
+import com.smartcbwtf.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -86,10 +87,6 @@ public class BrandingController {
     }
 
     private String extractIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+        return ClientIpResolver.resolve(request);
     }
 }

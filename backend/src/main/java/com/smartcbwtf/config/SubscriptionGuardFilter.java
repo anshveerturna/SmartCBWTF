@@ -7,7 +7,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -26,21 +29,25 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(SubscriptionGuardFilter.class);
 
-    // Paths exempt from subscription check
-    private static final Set<String> EXEMPT_PATH_PREFIXES = Set.of(
+    private static final Set<String> SUBSCRIPTION_EXEMPT_PATH_PREFIXES = Set.of(
             "/api/auth/", // Login/logout always allowed
             "/api/admin/", // SuperAdmin can always access
-            "/api/payment/", // Payment endpoints for reactivation
-            "/api/config/mobile", // Mobile app config check
-            "/actuator/", // Health checks
-            "/swagger", // API docs
-            "/v3/api-docs" // OpenAPI
+            "/api/config/mobile" // Mobile app config check
     );
 
     private final SubscriptionService subscriptionService;
+    private final boolean exposeApiDocs;
 
-    public SubscriptionGuardFilter(SubscriptionService subscriptionService) {
+    @Autowired
+    public SubscriptionGuardFilter(SubscriptionService subscriptionService, Environment environment) {
+        this(subscriptionService, Binder.get(environment)
+                .bind("app.security.expose-api-docs", Boolean.class)
+                .orElse(false));
+    }
+
+    SubscriptionGuardFilter(SubscriptionService subscriptionService, boolean exposeApiDocs) {
         this.subscriptionService = subscriptionService;
+        this.exposeApiDocs = exposeApiDocs;
     }
 
     @Override
@@ -51,7 +58,7 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Skip exempt paths
+        // Skip public and subscription-management paths
         if (isExemptPath(path)) {
             filterChain.doFilter(request, response);
             return;
@@ -82,7 +89,10 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
     }
 
     private boolean isExemptPath(String path) {
-        for (String prefix : EXEMPT_PATH_PREFIXES) {
+        if (PublicEndpoints.isPublicPath(path, exposeApiDocs)) {
+            return true;
+        }
+        for (String prefix : SUBSCRIPTION_EXEMPT_PATH_PREFIXES) {
             if (path.startsWith(prefix)) {
                 return true;
             }

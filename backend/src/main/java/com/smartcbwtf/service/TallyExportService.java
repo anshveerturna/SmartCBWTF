@@ -117,19 +117,19 @@ public class TallyExportService {
                 LocalDate periodEnd = periodStart.withDayOfMonth(periodStart.lengthOfMonth());
 
                 // HCF Code
-                row.createCell(colNum++).setCellValue(hcf != null ? hcf.getCode() : "");
+                setTextValue(row.createCell(colNum++), hcf != null ? hcf.getCode() : "");
 
                 // HCF Name
-                row.createCell(colNum++).setCellValue(hcf != null ? hcf.getName() : "");
+                setTextValue(row.createCell(colNum++), hcf != null ? hcf.getName() : "");
 
                 // Billing Period Start
-                row.createCell(colNum++).setCellValue(periodStart.format(DATE_FMT));
+                setTextValue(row.createCell(colNum++), periodStart.format(DATE_FMT));
 
                 // Billing Period End
-                row.createCell(colNum++).setCellValue(periodEnd.format(DATE_FMT));
+                setTextValue(row.createCell(colNum++), periodEnd.format(DATE_FMT));
 
                 // Billing Model
-                row.createCell(colNum++).setCellValue(bill.getBillingModel() != null ? bill.getBillingModel() : "");
+                setTextValue(row.createCell(colNum++), bill.getBillingModel() != null ? bill.getBillingModel() : "");
 
                 // Beds
                 Cell bedsCell = row.createCell(colNum++);
@@ -199,11 +199,11 @@ public class TallyExportService {
                 setDecimalValue(totalPayableCell, totalPayable, currencyStyle);
 
                 // Bill Status
-                row.createCell(colNum++).setCellValue(bill.getStatus());
+                setTextValue(row.createCell(colNum++), bill.getStatus());
 
                 // Narration
                 String narration = buildNarration(bill, hcf, yearMonth);
-                row.createCell(colNum++).setCellValue(narration);
+                setTextValue(row.createCell(colNum++), narration);
             }
 
             // Auto-size columns
@@ -214,17 +214,17 @@ public class TallyExportService {
             // Add summary row
             rowNum += 2;
             Row summaryLabelRow = sheet.createRow(rowNum++);
-            summaryLabelRow.createCell(0).setCellValue("SUMMARY");
+            setTextValue(summaryLabelRow.createCell(0), "SUMMARY");
 
             Row summaryRow = sheet.createRow(rowNum);
-            summaryRow.createCell(0).setCellValue("Total Bills: " + bills.size());
+            setTextValue(summaryRow.createCell(0), "Total Bills: " + bills.size());
 
             BigDecimal totalAmount = bills.stream()
                     .map(b -> b.getFinalPayableAmount() != null ? b.getFinalPayableAmount() : b.getTotalAmount())
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             Cell totalCell = summaryRow.createCell(1);
-            totalCell.setCellValue("Total Amount: " + totalAmount.toPlainString());
+            setTextValue(totalCell, "Total Amount: " + totalAmount.toPlainString());
 
             // Write to bytes
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -243,6 +243,26 @@ public class TallyExportService {
             cell.setCellValue(0.0);
             cell.setCellStyle(style);
         }
+    }
+
+    private void setTextValue(Cell cell, String value) {
+        cell.setCellValue(safeSpreadsheetText(value));
+    }
+
+    private String safeSpreadsheetText(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value.replace('\r', ' ').replace('\n', ' ');
+        String trimmedLeading = normalized.stripLeading();
+        if (!trimmedLeading.isEmpty() && isSpreadsheetFormulaPrefix(trimmedLeading.charAt(0))) {
+            return "'" + normalized;
+        }
+        return normalized;
+    }
+
+    private boolean isSpreadsheetFormulaPrefix(char value) {
+        return value == '=' || value == '+' || value == '-' || value == '@' || value == '\t';
     }
 
     private String buildNarration(Bill bill, Hcf hcf, YearMonth yearMonth) {

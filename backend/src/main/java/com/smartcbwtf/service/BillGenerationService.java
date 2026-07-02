@@ -34,6 +34,15 @@ import java.util.*;
 public class BillGenerationService {
 
     private static final Logger log = LoggerFactory.getLogger(BillGenerationService.class);
+    private static final String PICKUP_EVENT_SOURCE_SQL = """
+            FROM bag_event e
+            JOIN agreement a ON a.hcf_id = e.hcf_id
+                AND a.facility_id = e.facility_id
+            WHERE a.id = ?
+                AND e.event_type = 'HCF_COLLECTION'
+                AND e.event_ts >= ?
+                AND e.event_ts < ?
+            """;
 
     private final JdbcTemplate jdbcTemplate;
     private final AgreementRepository agreementRepository;
@@ -176,7 +185,7 @@ public class BillGenerationService {
         snapshot.setBedCount(bedCount);
         snapshot.setBaseGramsPerBedPerDay(baseGrams);
         snapshot.setBaseRatePerBedPerDay(baseRate);
-        snapshot.setAgreementVersion(1); // TODO: get from agreement
+        snapshot.setAgreementVersion(agreement.getVersion() != null ? agreement.getVersion() : 1);
         snapshot.setExcessRatePerKg(excessRate);
         snapshot.setExcessRateEffectiveFrom(excessRateEffectiveFrom);
         snapshot.setSnapshotHash(computeSnapshotHash(snapshot));
@@ -283,38 +292,24 @@ public class BillGenerationService {
     }
 
     private BigDecimal aggregatePickupWeight(UUID agreementId, LocalDate start, LocalDate end) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    "SELECT COALESCE(SUM(weight_kg), 0) FROM pickup_event " +
-                            "WHERE agreement_id = ? AND pickup_time >= ? AND pickup_time < ?",
-                    BigDecimal.class, agreementId, start.atStartOfDay(), end.plusDays(1).atStartOfDay());
-        } catch (Exception e) {
-            return BigDecimal.ZERO;
-        }
+        BigDecimal total = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(e.weight_kg), 0) " + PICKUP_EVENT_SOURCE_SQL,
+                BigDecimal.class, agreementId, start.atStartOfDay(), end.plusDays(1).atStartOfDay());
+        return total != null ? total : BigDecimal.ZERO;
     }
 
     private int countPickupEvents(UUID agreementId, LocalDate start, LocalDate end) {
-        try {
-            Integer count = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM pickup_event " +
-                            "WHERE agreement_id = ? AND pickup_time >= ? AND pickup_time < ?",
-                    Integer.class, agreementId, start.atStartOfDay(), end.plusDays(1).atStartOfDay());
-            return count != null ? count : 0;
-        } catch (Exception e) {
-            return 0;
-        }
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(e.id) " + PICKUP_EVENT_SOURCE_SQL,
+                Integer.class, agreementId, start.atStartOfDay(), end.plusDays(1).atStartOfDay());
+        return count != null ? count : 0;
     }
 
     private String computePickupEventHash(UUID agreementId, LocalDate start, LocalDate end) {
-        try {
-            List<UUID> eventIds = jdbcTemplate.queryForList(
-                    "SELECT id FROM pickup_event " +
-                            "WHERE agreement_id = ? AND pickup_time >= ? AND pickup_time < ? ORDER BY id",
-                    UUID.class, agreementId, start.atStartOfDay(), end.plusDays(1).atStartOfDay());
-            return sha256(eventIds.toString());
-        } catch (Exception e) {
-            return sha256("empty");
-        }
+        List<UUID> eventIds = jdbcTemplate.queryForList(
+                "SELECT e.id " + PICKUP_EVENT_SOURCE_SQL + " ORDER BY e.id",
+                UUID.class, agreementId, start.atStartOfDay(), end.plusDays(1).atStartOfDay());
+        return sha256(eventIds.toString());
     }
 
     private String computeSnapshotHash(BillingSnapshot s) {

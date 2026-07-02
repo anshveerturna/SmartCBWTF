@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+import static com.smartcbwtf.util.PaginationUtils.pageRequest;
+
 /**
  * Service for managing collection routes.
  * Routes are first-class entities, independent of staff lifecycle.
@@ -244,7 +246,7 @@ public class RouteService {
         routeRepository.findByIdAndFacilityId(routeId, facilityId)
                 .orElseThrow(() -> new EntityNotFoundException("Route not found: " + routeId));
 
-        var pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        var pageable = pageRequest(page, size, 10);
         var cycles = routeExecutionService.getCycleHistory(routeId, pageable);
 
         return cycles.stream().map(cycle -> {
@@ -272,8 +274,8 @@ public class RouteService {
      * Get unresolved alerts for a facility.
      */
     @Transactional(readOnly = true)
-    public List<RouteAlertDTO> getUnresolvedAlerts(UUID facilityId) {
-        var alerts = routeExecutionService.getUnresolvedAlerts(facilityId);
+    public List<RouteAlertDTO> getUnresolvedAlerts(UUID facilityId, int limit) {
+        var alerts = routeExecutionService.getUnresolvedAlerts(facilityId, pageRequest(0, limit, 100));
         return alerts.stream().map(this::toAlertDTO).toList();
     }
 
@@ -290,13 +292,8 @@ public class RouteService {
      */
     @Transactional
     public RouteAlertDTO resolveAlert(UUID alertId, UUID facilityId, String notes) {
-        var alert = routeAlertRepository.findById(alertId)
+        var alert = routeAlertRepository.findByIdAndFacilityId(alertId, facilityId)
                 .orElseThrow(() -> new EntityNotFoundException("Alert not found: " + alertId));
-
-        // Verify alert belongs to facility
-        if (!alert.getFacility().getId().equals(facilityId)) {
-            throw new EntityNotFoundException("Alert not found: " + alertId);
-        }
 
         // Get current user - for now just mark as resolved without specific user
         alert.setIsResolved(true);

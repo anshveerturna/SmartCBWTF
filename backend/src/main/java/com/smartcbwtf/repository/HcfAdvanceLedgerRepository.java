@@ -18,6 +18,12 @@ public interface HcfAdvanceLedgerRepository extends JpaRepository<HcfAdvanceLedg
     @Query("SELECT COALESCE(SUM(l.amount), 0) FROM HcfAdvanceLedger l WHERE l.hcf.id = :hcfId")
     BigDecimal getAdvanceBalance(@Param("hcfId") UUID hcfId);
 
+    @Query("SELECT COALESCE(SUM(l.amount), 0) FROM HcfAdvanceLedger l WHERE l.hcf.id = :hcfId AND l.sourcePayment.facility.id = :facilityId")
+    BigDecimal getAdvanceBalanceForFacility(@Param("facilityId") UUID facilityId, @Param("hcfId") UUID hcfId);
+
+    @Query("SELECT COALESCE(SUM(l.amount), 0) FROM HcfAdvanceLedger l WHERE l.sourcePayment.facility.id = :facilityId")
+    BigDecimal getTotalAdvanceBalanceForFacility(@Param("facilityId") UUID facilityId);
+
     @Query("SELECT COALESCE(SUM(l.amount), 0) FROM HcfAdvanceLedger l WHERE l.sourcePayment.id = :paymentId")
     BigDecimal sumByPaymentId(@Param("paymentId") UUID paymentId);
 }

@@ -13,11 +13,12 @@ import com.smartcbwtf.domain.Facility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+
+import static com.smartcbwtf.util.PaginationUtils.pageRequest;
 
 /**
  * Service for managing CBWTF facility settings.
@@ -29,6 +30,7 @@ public class FacilitySettingsService {
 
         private static final Logger log = LoggerFactory.getLogger(FacilitySettingsService.class);
         private static final int CURRENT_SCHEMA_VERSION = 1;
+        private static final int MAX_AGREEMENT_TERMS_TEMPLATE_LENGTH = 20_000;
 
         private final FacilitySettingsRepository settingsRepository;
         private final SettingsAuditLogRepository auditLogRepository;
@@ -280,6 +282,18 @@ public class FacilitySettingsService {
                                         str(dto.agreementNumberIncludeYear()), facilityId, ipAddress);
                         settings.setAgreementNumberIncludeYear(dto.agreementNumberIncludeYear());
                 }
+                if (dto.agreementNumberTemplate() != null) {
+                        auditIfChanged("agreement", "agreementNumberTemplate",
+                                        str(settings.getAgreementNumberTemplate()),
+                                        str(dto.agreementNumberTemplate()), facilityId, ipAddress);
+                        settings.setAgreementNumberTemplate(blankToNull(dto.agreementNumberTemplate()));
+                }
+                if (dto.agreementNumberResetFrequency() != null) {
+                        auditIfChanged("agreement", "agreementNumberResetFrequency",
+                                        str(settings.getAgreementNumberResetFrequency()),
+                                        str(dto.agreementNumberResetFrequency()), facilityId, ipAddress);
+                        settings.setAgreementNumberResetFrequency(dto.agreementNumberResetFrequency());
+                }
 
                 settingsRepository.save(settings);
                 log.info("Updated agreement rules for facility {}", facilityId);
@@ -391,7 +405,7 @@ public class FacilitySettingsService {
          */
         public Page<SettingsAuditDTO> getAuditHistory(String section, int page, int size) {
                 UUID facilityId = TenantContext.getTenantId();
-                PageRequest pageable = PageRequest.of(page, Math.min(size, 100));
+                var pageable = pageRequest(page, size, 20);
 
                 Page<SettingsAuditLog> logs;
                 if (section != null && !section.isBlank()) {
@@ -512,6 +526,8 @@ public class FacilitySettingsService {
                                                 s.getAgreementNumberSequenceDigits(),
                                                 s.getAgreementNumberIncludeFacilityCode(),
                                                 s.getAgreementNumberIncludeYear(),
+                                                s.getAgreementNumberTemplate(),
+                                                s.getAgreementNumberResetFrequency(),
                                                 s.getAgreementTermsTemplate()),
                                 new OperationalRulesDTO(
                                                 s.getQrValidityDays(), s.getAllowMultipleActiveQrs(),
@@ -558,6 +574,14 @@ public class FacilitySettingsService {
                 return o == null ? null : o.toString();
         }
 
+        private String blankToNull(String value) {
+                if (value == null) {
+                        return null;
+                }
+                String trimmed = value.trim();
+                return trimmed.isEmpty() ? null : trimmed;
+        }
+
         /**
          * Update agreement terms template text.
          * This is the default T&C that gets embedded into new agreement PDFs.
@@ -565,16 +589,44 @@ public class FacilitySettingsService {
         public void updateAgreementTermsTemplate(String termsTemplate, String ipAddress) {
                 UUID facilityId = TenantContext.getTenantId();
                 FacilitySettings settings = getOrCreateSettings(facilityId);
+                String normalizedTermsTemplate = normalizeAgreementTermsTemplate(termsTemplate);
 
                 String oldValue = settings.getAgreementTermsTemplate();
-                settings.setAgreementTermsTemplate(termsTemplate);
+                settings.setAgreementTermsTemplate(normalizedTermsTemplate);
                 settingsRepository.save(settings);
 
                 // Audit log
                 auditIfChanged("AGREEMENT_RULES", "agreementTermsTemplate",
                                 oldValue != null ? truncateForAudit(oldValue) : null,
-                                termsTemplate != null ? truncateForAudit(termsTemplate) : null,
+                                normalizedTermsTemplate != null ? truncateForAudit(normalizedTermsTemplate) : null,
                                 facilityId, ipAddress);
+        }
+
+        private String normalizeAgreementTermsTemplate(String termsTemplate) {
+                if (termsTemplate == null) {
+                        return null;
+                }
+                String normalized = termsTemplate
+                                .replace("\r\n", "\n")
+                                .replace('\r', '\n')
+                                .replace('\t', ' ')
+                                .trim();
+                if (normalized.isBlank()) {
+                        return null;
+                }
+                if (normalized.length() > MAX_AGREEMENT_TERMS_TEMPLATE_LENGTH) {
+                        throw new IllegalArgumentException(
+                                        "Agreement terms template must be "
+                                                        + MAX_AGREEMENT_TERMS_TEMPLATE_LENGTH
+                                                        + " characters or less");
+                }
+                for (int i = 0; i < normalized.length(); i++) {
+                        char c = normalized.charAt(i);
+                        if (c < 0x20 && c != '\n') {
+                                throw new IllegalArgumentException("Agreement terms template contains invalid characters");
+                        }
+                }
+                return normalized;
         }
 
         private String truncateForAudit(String val) {

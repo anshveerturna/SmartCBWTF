@@ -4,7 +4,7 @@ import java.util.UUID;
 
 /**
  * Thread-local context for multi-tenant query scoping.
- * Populated by JwtAuthFilter from JWT claims.
+ * Populated by JwtAuthFilter from the authenticated user's current database bindings.
  * All repository queries should be scoped by this context.
  */
 public class TenantContext {

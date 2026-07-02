@@ -1,7 +1,9 @@
 package com.smartcbwtf.dto;
 
+import com.smartcbwtf.domain.QrAuthorization;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -14,6 +16,7 @@ public class QrGenerateRequest {
     private UUID hcfId;
 
     @NotBlank(message = "Waste category is required")
+    @Pattern(regexp = QrAuthorization.WASTE_CATEGORY_PATTERN, message = "Waste category must be one of YELLOW, RED, BLUE, WHITE")
     private String wasteCategory; // YELLOW, RED, BLUE, WHITE
 
     @NotNull(message = "Valid from date is required")

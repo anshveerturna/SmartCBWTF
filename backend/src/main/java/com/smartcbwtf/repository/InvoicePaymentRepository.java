@@ -20,5 +20,8 @@ public interface InvoicePaymentRepository extends JpaRepository<InvoicePayment, 
     @Query("SELECT COALESCE(SUM(ip.allocatedAmount), 0) FROM InvoicePayment ip WHERE ip.invoice.id = :invoiceId")
     BigDecimal getTotalPaidForInvoice(@Param("invoiceId") UUID invoiceId);
 
+    @Query("SELECT COALESCE(SUM(ip.allocatedAmount), 0) FROM InvoicePayment ip WHERE ip.invoice.facility.id = :facilityId")
+    BigDecimal getTotalAllocatedForFacility(@Param("facilityId") UUID facilityId);
+
     boolean existsByInvoiceIdAndPaymentId(UUID invoiceId, UUID paymentId);
 }

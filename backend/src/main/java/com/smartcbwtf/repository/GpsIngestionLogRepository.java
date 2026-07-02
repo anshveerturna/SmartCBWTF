@@ -1,6 +1,8 @@
 package com.smartcbwtf.repository;
 
 import com.smartcbwtf.domain.GpsIngestionLog;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -13,5 +15,13 @@ public interface GpsIngestionLogRepository extends JpaRepository<GpsIngestionLog
 
     Optional<GpsIngestionLog> findByFacilityIdAndVendor(UUID facilityId, String vendor);
 
-    List<GpsIngestionLog> findByFacilityId(UUID facilityId);
+    @EntityGraph(attributePaths = "facility")
+    List<GpsIngestionLog> findAllByOrderByUpdatedAtDesc(Pageable pageable);
+
+    @EntityGraph(attributePaths = "facility")
+    List<GpsIngestionLog> findByFacilityIdOrderByVendorAsc(UUID facilityId);
+
+    default List<GpsIngestionLog> findByFacilityId(UUID facilityId) {
+        return findByFacilityIdOrderByVendorAsc(facilityId);
+    }
 }

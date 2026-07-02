@@ -3,15 +3,14 @@ package com.smartcbwtf.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.smartcbwtf.domain.BagEvent;
 import com.smartcbwtf.repository.BagEventRepository;
-import com.smartcbwtf.repository.HcfRepository;
-import com.smartcbwtf.repository.VehicleRepository;
+import com.smartcbwtf.repository.RouteCycleHistoryRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.*;
 
 /**
@@ -25,21 +24,19 @@ import java.util.*;
 @Service
 public class ComplianceDataAggregator {
 
-    private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
+    private static final String UNKNOWN_CATEGORY = "UNKNOWN";
+    private static final String UNKNOWN_QR = "UNKNOWN_QR";
 
     private final BagEventRepository bagEventRepository;
-    private final HcfRepository hcfRepository;
-    private final VehicleRepository vehicleRepository;
+    private final RouteCycleHistoryRepository routeCycleHistoryRepository;
     private final ObjectMapper objectMapper;
 
     public ComplianceDataAggregator(
             BagEventRepository bagEventRepository,
-            HcfRepository hcfRepository,
-            VehicleRepository vehicleRepository,
+            RouteCycleHistoryRepository routeCycleHistoryRepository,
             ObjectMapper objectMapper) {
         this.bagEventRepository = bagEventRepository;
-        this.hcfRepository = hcfRepository;
-        this.vehicleRepository = vehicleRepository;
+        this.routeCycleHistoryRepository = routeCycleHistoryRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -69,22 +66,31 @@ public class ComplianceDataAggregator {
         List<String> violations = new ArrayList<>();
 
         for (var event : collectionEvents) {
-            String category = event.getBagLabel().getCategory();
-            BigDecimal weight = event.getWeightKg();
+            String category = categoryOf(event);
+            BigDecimal weight = weightOf(event);
 
             totalWaste = totalWaste.add(weight);
             categoryWise.merge(category, weight, BigDecimal::add);
-            hcfIds.add(event.getHcf().getId());
-            collectedBagIds.add(event.getBagLabel().getId());
+            UUID hcfId = hcfIdOf(event);
+            if (hcfId != null) {
+                hcfIds.add(hcfId);
+            }
+            UUID labelId = labelIdOf(event);
+            if (labelId != null) {
+                collectedBagIds.add(labelId);
+            }
 
             // Check for GPS anomalies
             if ("OUT_OF_GEOFENCE".equals(event.getAnomalyState())) {
-                violations.add("GPS_ANOMALY:" + event.getBagLabel().getQrCode());
+                violations.add("GPS_ANOMALY:" + qrCodeOf(event));
             }
         }
 
         for (var event : verificationEvents) {
-            verifiedBagIds.add(event.getBagLabel().getId());
+            UUID labelId = labelIdOf(event);
+            if (labelId != null) {
+                verifiedBagIds.add(labelId);
+            }
         }
 
         // Find unverified bags (collected but not verified)
@@ -98,11 +104,15 @@ public class ComplianceDataAggregator {
         // Count vehicles deployed (distinct collectors)
         Set<UUID> collectors = new HashSet<>();
         for (var event : collectionEvents) {
-            collectors.add(event.getCollectedByUserId());
+            if (event.getCollectedByUserId() != null) {
+                collectors.add(event.getCollectedByUserId());
+            }
         }
 
         // Determine status
         boolean hasViolations = !violations.isEmpty();
+        int missedPickups = Math.toIntExact(
+                routeCycleHistoryRepository.sumMissedWaypointsByFacilityAndDate(facilityId, date));
 
         return new DailyAggregation(
                 date,
@@ -112,7 +122,7 @@ public class ComplianceDataAggregator {
                 categoryWise,
                 hcfIds.size(),
                 collectors.size(),
-                0, // missedPickups - needs separate logic
+                missedPickups,
                 unverifiedBagIds.size(),
                 violations,
                 hasViolations);
@@ -185,12 +195,15 @@ public class ComplianceDataAggregator {
         Map<UUID, BigDecimal> hcfWaste = new HashMap<>();
 
         for (var event : collectionEvents) {
-            String category = event.getBagLabel().getCategory();
-            BigDecimal weight = event.getWeightKg();
+            String category = categoryOf(event);
+            BigDecimal weight = weightOf(event);
 
             totalWaste = totalWaste.add(weight);
             categoryWise.merge(category, weight, BigDecimal::add);
-            hcfWaste.merge(event.getHcf().getId(), weight, BigDecimal::add);
+            UUID hcfId = hcfIdOf(event);
+            if (hcfId != null) {
+                hcfWaste.merge(hcfId, weight, BigDecimal::add);
+            }
         }
 
         return new MonthlyAggregation(
@@ -236,5 +249,34 @@ public class ComplianceDataAggregator {
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize monthly aggregation", e);
         }
+    }
+
+    private static BigDecimal weightOf(BagEvent event) {
+        return event.getWeightKg() != null ? event.getWeightKg() : BigDecimal.ZERO;
+    }
+
+    private static String categoryOf(BagEvent event) {
+        if (event.getBagLabel() == null || event.getBagLabel().getCategory() == null
+                || event.getBagLabel().getCategory().isBlank()) {
+            return UNKNOWN_CATEGORY;
+        }
+        return event.getBagLabel().getCategory();
+    }
+
+    private static UUID labelIdOf(BagEvent event) {
+        return event.getBagLabel() != null ? event.getBagLabel().getId() : null;
+    }
+
+    private static UUID hcfIdOf(BagEvent event) {
+        return event.getHcf() != null ? event.getHcf().getId() : null;
+    }
+
+    private static String qrCodeOf(BagEvent event) {
+        UUID labelId = labelIdOf(event);
+        if (event.getBagLabel() == null || event.getBagLabel().getQrCode() == null
+                || event.getBagLabel().getQrCode().isBlank()) {
+            return labelId != null ? labelId.toString() : UNKNOWN_QR;
+        }
+        return event.getBagLabel().getQrCode();
     }
 }

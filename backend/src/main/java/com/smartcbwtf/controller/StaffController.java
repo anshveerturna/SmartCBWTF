@@ -2,11 +2,14 @@ package com.smartcbwtf.controller;
 
 import com.smartcbwtf.service.StaffService;
 import com.smartcbwtf.service.StaffService.*;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -61,10 +64,10 @@ public class StaffController {
      * Username is auto-generated in format: <CBWTF_CODE>-<ROLE>-<SEQUENCE>
      */
     @PostMapping
-    public ResponseEntity<StaffDTO> createStaff(@RequestBody CreateStaffRequest request) {
+    public ResponseEntity<StaffDTO> createStaff(@Valid @RequestBody CreateStaffRequest request) {
         StaffDTO created = staffService.createStaff(request);
         log.info("Staff created: {}", created.username());
-        return ResponseEntity.ok(created);
+        return privateCredentialResponse(created);
     }
 
     /**
@@ -73,7 +76,7 @@ public class StaffController {
     @PutMapping("/{id}")
     public ResponseEntity<StaffDTO> updateStaff(
             @PathVariable("id") UUID id,
-            @RequestBody UpdateStaffRequest request) {
+            @Valid @RequestBody UpdateStaffRequest request) {
         return ResponseEntity.ok(staffService.updateStaff(id, request));
     }
 
@@ -109,7 +112,7 @@ public class StaffController {
     @PutMapping("/{id}/credentials")
     public ResponseEntity<StaffDTO> updateCredentials(
             @PathVariable("id") UUID id,
-            @RequestBody UpdateCredentialsRequest request) {
+            @Valid @RequestBody UpdateCredentialsRequest request) {
         return ResponseEntity.ok(staffService.updateCredentials(id, request));
     }
 
@@ -141,5 +144,12 @@ public class StaffController {
     @DeleteMapping("/{id}/photo")
     public ResponseEntity<?> removePhoto(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(staffService.removePhoto(id));
+    }
+
+    private ResponseEntity<StaffDTO> privateCredentialResponse(StaffDTO body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
     }
 }

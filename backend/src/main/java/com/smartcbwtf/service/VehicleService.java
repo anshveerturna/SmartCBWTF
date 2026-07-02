@@ -2,6 +2,7 @@ package com.smartcbwtf.service;
 
 import com.smartcbwtf.domain.*;
 import com.smartcbwtf.repository.*;
+import com.smartcbwtf.util.PaginationUtils;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,8 @@ import java.util.stream.Collectors;
 public class VehicleService {
 
     public static final int ONLINE_THRESHOLD_MINUTES = 15;
+    private static final int DEFAULT_GPS_TRAIL_LIMIT = 50;
+    private static final int MAX_GPS_TRAIL_LIMIT = 100;
 
     private final VehicleRepository vehicleRepository;
     private final GpsEventRepository gpsEventRepository;
@@ -54,8 +57,7 @@ public class VehicleService {
      * Get vehicle by ID (with tenant check).
      */
     public Optional<Vehicle> getVehicle(UUID facilityId, UUID vehicleId) {
-        return vehicleRepository.findById(vehicleId)
-                .filter(v -> v.getFacility().getId().equals(facilityId));
+        return vehicleRepository.findByIdAndFacilityId(vehicleId, facilityId);
     }
 
     /**
@@ -89,8 +91,8 @@ public class VehicleService {
     /**
      * Get last known location for a vehicle.
      */
-    public Optional<GpsEvent> getLastLocation(UUID vehicleId) {
-        return gpsEventRepository.findLatestByVehicleId(vehicleId);
+    public Optional<GpsEvent> getLastLocation(UUID facilityId, UUID vehicleId) {
+        return gpsEventRepository.findLatestByFacilityIdAndVehicleId(facilityId, vehicleId);
     }
 
     /**
@@ -122,8 +124,9 @@ public class VehicleService {
     /**
      * Get recent GPS trail for a vehicle.
      */
-    public List<GpsEvent> getGpsTrail(UUID vehicleId, int limit) {
-        return gpsEventRepository.findRecentByVehicleId(vehicleId, PageRequest.of(0, limit));
+    public List<GpsEvent> getGpsTrail(UUID facilityId, UUID vehicleId, int limit) {
+        int safeLimit = PaginationUtils.normalizeSize(limit, DEFAULT_GPS_TRAIL_LIMIT, MAX_GPS_TRAIL_LIMIT);
+        return gpsEventRepository.findRecentByFacilityIdAndVehicleId(facilityId, vehicleId, PageRequest.of(0, safeLimit));
     }
 
     /**

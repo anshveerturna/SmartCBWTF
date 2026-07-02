@@ -10,14 +10,20 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
+    @Query("SELECT p FROM Payment p WHERE p.id = :id AND p.facility.id = :facilityId")
+    Optional<Payment> findByIdAndFacilityId(@Param("id") UUID id, @Param("facilityId") UUID facilityId);
+
     Page<Payment> findByFacilityId(UUID facilityId, Pageable pageable);
 
     Page<Payment> findByHcfId(UUID hcfId, Pageable pageable);
+
+    Page<Payment> findByFacilityIdAndHcfId(UUID facilityId, UUID hcfId, Pageable pageable);
 
     @Query("SELECT SUM(p.amount) FROM Payment p WHERE p.facility.id = :facilityId AND p.paymentDate BETWEEN :startDate AND :endDate")
     BigDecimal getTotalCollected(@Param("facilityId") UUID facilityId,

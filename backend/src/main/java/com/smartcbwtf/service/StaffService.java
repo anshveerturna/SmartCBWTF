@@ -7,6 +7,11 @@ import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.repository.AttendanceRepository;
 import com.smartcbwtf.repository.FacilityRepository;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -15,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -43,6 +49,10 @@ public class StaffService {
     public static final String ROLE_DRIVER = "DRIVER";
     public static final String ROLE_PLANT_OPERATOR = "PLANT_OPERATOR";
     private static final List<String> STAFF_ROLES = List.of(ROLE_DRIVER, ROLE_PLANT_OPERATOR);
+    private static final String OPTIONAL_PHONE_PATTERN = "^$|^(?=(?:\\D*\\d){10,15}\\D*$)[+()\\-\\s0-9]+$";
+    private static final String OPTIONAL_USERNAME_PATTERN = "^$|^[A-Za-z0-9._@-]+$";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String PASSWORD_RANDOM_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
     private final AppUserRepository appUserRepository;
     private final FacilityRepository facilityRepository;
@@ -50,6 +60,7 @@ public class StaffService {
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
     private final EmailService emailService;
+    private final PasswordPolicyValidator passwordPolicyValidator;
 
     public StaffService(
             AppUserRepository appUserRepository,
@@ -57,13 +68,15 @@ public class StaffService {
             AttendanceRepository attendanceRepository,
             PasswordEncoder passwordEncoder,
             AuditLogService auditLogService,
-            EmailService emailService) {
+            EmailService emailService,
+            PasswordPolicyValidator passwordPolicyValidator) {
         this.appUserRepository = appUserRepository;
         this.facilityRepository = facilityRepository;
         this.attendanceRepository = attendanceRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
         this.emailService = emailService;
+        this.passwordPolicyValidator = passwordPolicyValidator;
     }
 
     /**
@@ -71,14 +84,8 @@ public class StaffService {
      */
     @Transactional(readOnly = true)
     public Page<StaffDTO> listStaff(Pageable pageable) {
-        UUID facilityId = TenantContext.getTenantId();
+        UUID facilityId = currentFacilityId();
         log.info("Listing staff for facility: {} (role: {})", facilityId, TenantContext.getRole());
-
-        if (facilityId == null) {
-            log.error("No facility ID in context. User: {}, Role: {}",
-                    TenantContext.getUsername(), TenantContext.getRole());
-            throw new IllegalStateException("Facility context not available. Please re-login.");
-        }
 
         return appUserRepository.findByFacilityIdAndRoleIn(facilityId, STAFF_ROLES, pageable)
                 .map(this::toStaffDTO);
@@ -89,7 +96,7 @@ public class StaffService {
      */
     @Transactional(readOnly = true)
     public Page<StaffDTO> listStaffByRole(String role, Pageable pageable) {
-        UUID facilityId = TenantContext.getTenantId();
+        UUID facilityId = currentFacilityId();
         validateStaffRole(role);
         return appUserRepository.findByFacilityIdAndRole(facilityId, role, pageable)
                 .map(this::toStaffDTO);
@@ -100,11 +107,7 @@ public class StaffService {
      */
     @Transactional(readOnly = true)
     public Optional<StaffDetailDTO> getStaffDetail(UUID staffId) {
-        UUID facilityId = TenantContext.getTenantId();
-        return appUserRepository.findById(staffId)
-                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
-                .filter(u -> STAFF_ROLES.contains(u.getRole()))
-                .map(this::toStaffDetailDTO);
+        return findStaffForCurrentFacility(staffId).map(this::toStaffDetailDTO);
     }
 
     /**
@@ -113,13 +116,17 @@ public class StaffService {
      */
     public StaffDTO createStaff(CreateStaffRequest request) {
         UUID facilityId = TenantContext.getTenantId();
-        validateStaffRole(request.role());
+        String role = normalizeRole(request.role());
+        validateStaffRole(role);
+        String fullName = cleanLineRequired(request.fullName(), "Full name");
+        String email = optionalCleanLine(request.email());
+        String phone = optionalCleanLine(request.phone());
 
         Facility facility = facilityRepository.findById(facilityId)
                 .orElseThrow(() -> new IllegalStateException("Facility not found: " + facilityId));
 
         // Generate unique username
-        String username = generateUsername(facility.getCode(), request.role());
+        String username = generateUsername(facility.getCode(), role);
 
         // Check username uniqueness (should never fail due to sequence logic, but
         // safety first)
@@ -129,16 +136,19 @@ public class StaffService {
 
         AppUser user = new AppUser();
         user.setUsername(username);
-        user.setFullName(request.fullName());
-        user.setEmail(request.email());
-        user.setPhone(request.phone());
-        user.setRole(request.role());
+        user.setFullName(fullName);
+        user.setEmail(email);
+        user.setPhone(phone);
+        user.setRole(role);
         user.setFacility(facility);
         user.setActive(true);
         user.setForcePasswordChange(true); // Force password change on first login
 
         // Generate temporary password or use provided
-        String tempPassword = request.password() != null ? request.password() : generateTempPassword();
+        String tempPassword = request.password() != null && !request.password().isBlank()
+                ? request.password()
+                : generateTempPassword();
+        passwordPolicyValidator.validateOrThrow(tempPassword);
         user.setPasswordHash(passwordEncoder.encode(tempPassword));
         user.setMustChangePassword(true);
 
@@ -151,19 +161,19 @@ public class StaffService {
                 "STAFF_CREATED",
                 TenantContext.getUserId(),
                 String.format("{\"username\":\"%s\",\"role\":\"%s\",\"fullName\":\"%s\"}",
-                        username, request.role(), request.fullName()));
+                        username, role, fullName));
 
-        log.info("Created staff user: {} ({}) for facility: {}", username, request.role(), facility.getCode());
+        log.info("Created staff user: {} ({}) for facility: {}", username, role, facility.getCode());
 
         // Send staff credentials email
-        if (request.email() != null && !request.email().isBlank()) {
+        if (email != null) {
             try {
                 String html = emailService.getTemplates().staffCredentials(
-                        request.fullName(), request.role(), username, tempPassword, facility.getName());
-                emailService.sendHtmlEmail(request.email(), "Your SmartCBWTF Staff Account", html);
-                log.info("Staff credentials email sent to: {}", request.email());
+                        fullName, role, username, tempPassword, facility.getName());
+                emailService.sendHtmlEmail(email, "Your SmartCBWTF Staff Account", html);
+                log.info("Staff credentials email sent to: {}", email);
             } catch (Exception e) {
-                log.warn("Failed to send staff credentials email to {}: {}", request.email(), e.getMessage());
+                log.warn("Failed to send staff credentials email to {}: {}", email, e.getMessage());
             }
         }
 
@@ -187,23 +197,21 @@ public class StaffService {
      * Role changes require separate explicit action.
      */
     public StaffDTO updateStaff(UUID staffId, UpdateStaffRequest request) {
-        UUID facilityId = TenantContext.getTenantId();
-
-        AppUser user = appUserRepository.findById(staffId)
-                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
-                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+        AppUser user = findStaffForCurrentFacility(staffId)
                 .orElseThrow(() -> new IllegalArgumentException("Staff not found or access denied"));
 
-        user.setFullName(request.fullName());
-        user.setEmail(request.email());
-        user.setPhone(request.phone());
-        user.setGender(request.gender());
+        String profilePhotoUrl = UploadFileValidator.optionalProfilePhotoUrl(request.profilePhotoUrl());
+        String fullName = cleanLineRequired(request.fullName(), "Full name");
+        user.setFullName(fullName);
+        user.setEmail(optionalCleanLine(request.email()));
+        user.setPhone(optionalCleanLine(request.phone()));
+        user.setGender(optionalCleanLine(request.gender()));
         user.setDob(request.dob());
-        user.setProfilePhotoUrl(request.profilePhotoUrl());
+        user.setProfilePhotoUrl(profilePhotoUrl);
         user = appUserRepository.save(user);
 
         auditLogService.log("STAFF", user.getId(), "STAFF_UPDATED", TenantContext.getUserId(),
-                String.format("{\"fullName\":\"%s\"}", request.fullName()));
+                String.format("{\"fullName\":\"%s\"}", fullName));
 
         return toStaffDTO(user);
     }
@@ -212,11 +220,7 @@ public class StaffService {
      * Disable staff account (soft delete). Prevents login but preserves history.
      */
     public StaffDTO disableStaff(UUID staffId) {
-        UUID facilityId = TenantContext.getTenantId();
-
-        AppUser user = appUserRepository.findById(staffId)
-                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
-                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+        AppUser user = findStaffForCurrentFacility(staffId)
                 .orElseThrow(() -> new IllegalArgumentException("Staff not found or access denied"));
 
         user.setActive(false);
@@ -233,11 +237,7 @@ public class StaffService {
      * Re-enable staff account.
      */
     public StaffDTO enableStaff(UUID staffId) {
-        UUID facilityId = TenantContext.getTenantId();
-
-        AppUser user = appUserRepository.findById(staffId)
-                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
-                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+        AppUser user = findStaffForCurrentFacility(staffId)
                 .orElseThrow(() -> new IllegalArgumentException("Staff not found or access denied"));
 
         user.setActive(true);
@@ -255,11 +255,7 @@ public class StaffService {
      * Called when staff has been locked due to failed login attempts.
      */
     public StaffDTO unlockStaff(UUID staffId) {
-        UUID facilityId = TenantContext.getTenantId();
-
-        AppUser user = appUserRepository.findById(staffId)
-                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
-                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+        AppUser user = findStaffForCurrentFacility(staffId)
                 .orElseThrow(() -> new IllegalArgumentException("Staff not found or access denied"));
 
         user.unlockAccount();
@@ -276,11 +272,7 @@ public class StaffService {
      * Reset staff password (admin action).
      */
     public String resetPassword(UUID staffId) {
-        UUID facilityId = TenantContext.getTenantId();
-
-        AppUser user = appUserRepository.findById(staffId)
-                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
-                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+        AppUser user = findStaffForCurrentFacility(staffId)
                 .orElseThrow(() -> new IllegalArgumentException("Staff not found or access denied"));
 
         String newPassword = generateTempPassword();
@@ -313,26 +305,27 @@ public class StaffService {
      * Username must be unique across the entire system.
      */
     public StaffDTO updateCredentials(UUID staffId, UpdateCredentialsRequest request) {
-        UUID facilityId = TenantContext.getTenantId();
-
-        AppUser user = appUserRepository.findById(staffId)
-                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
-                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+        AppUser user = findStaffForCurrentFacility(staffId)
                 .orElseThrow(() -> new IllegalArgumentException("Staff not found or access denied"));
 
         String oldUsername = user.getUsername();
+        String requestedUsername = optionalCleanLine(request.username());
+        boolean passwordProvided = request.password() != null && !request.password().isBlank();
 
         // Check if username is changing and validate uniqueness
-        if (request.username() != null && !request.username().isBlank()
-                && !request.username().equals(user.getUsername())) {
-            if (appUserRepository.existsByUsername(request.username())) {
-                throw new IllegalArgumentException("Username already exists: " + request.username());
+        if (requestedUsername != null && !requestedUsername.equals(user.getUsername())) {
+            if (!requestedUsername.matches("[A-Za-z0-9._@-]+")) {
+                throw new IllegalArgumentException("Username contains invalid characters");
             }
-            user.setUsername(request.username());
+            if (appUserRepository.existsByUsername(requestedUsername)) {
+                throw new IllegalArgumentException("Username already exists: " + requestedUsername);
+            }
+            user.setUsername(requestedUsername);
         }
 
         // Update password if provided
-        if (request.password() != null && !request.password().isBlank()) {
+        if (passwordProvided) {
+            passwordPolicyValidator.validateOrThrow(request.password());
             user.setPasswordHash(passwordEncoder.encode(request.password()));
             user.setMustChangePassword(request.forcePasswordChange() != null ? request.forcePasswordChange() : false);
             user.setForcePasswordChange(request.forcePasswordChange() != null ? request.forcePasswordChange() : false);
@@ -342,7 +335,7 @@ public class StaffService {
 
         auditLogService.log("STAFF", user.getId(), "STAFF_CREDENTIALS_UPDATED", TenantContext.getUserId(),
                 String.format("{\"oldUsername\":\"%s\",\"newUsername\":\"%s\",\"passwordChanged\":%b}",
-                        oldUsername, user.getUsername(), request.password() != null));
+                        oldUsername, user.getUsername(), passwordProvided));
 
         log.info("Updated credentials for staff: {} -> {}", oldUsername, user.getUsername());
         return toStaffDTO(user);
@@ -354,11 +347,7 @@ public class StaffService {
      * immediate location update.
      */
     public void requestGpsRefresh(UUID staffId) {
-        UUID facilityId = TenantContext.getTenantId();
-
-        AppUser user = appUserRepository.findById(staffId)
-                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
-                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+        AppUser user = findStaffForCurrentFacility(staffId)
                 .orElseThrow(() -> new IllegalArgumentException("Staff not found or access denied"));
 
         user.requestGpsRefresh();
@@ -375,28 +364,10 @@ public class StaffService {
      */
     public java.util.Map<String, String> uploadPhoto(UUID staffId,
             org.springframework.web.multipart.MultipartFile file) {
-        UUID facilityId = TenantContext.getTenantId();
-        AppUser user = appUserRepository.findById(staffId)
-                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
-                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+        AppUser user = findStaffForCurrentFacility(staffId)
                 .orElseThrow(() -> new IllegalArgumentException("Staff not found: " + staffId));
 
-        if (file.isEmpty()) {
-            throw new IllegalArgumentException("No file provided");
-        }
-
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new IllegalArgumentException("Only image files allowed");
-        }
-
-        String ext = switch (contentType) {
-            case "image/jpeg" -> "jpg";
-            case "image/png" -> "png";
-            case "image/gif" -> "gif";
-            case "image/webp" -> "webp";
-            default -> "jpg";
-        };
+        String ext = UploadFileValidator.publicImageExtension(file);
 
         try {
             String uploadDir = "uploads/profiles";
@@ -412,6 +383,7 @@ public class StaffService {
 
             String oldPhoto = user.getProfilePhotoUrl();
             String newPhoto = "/uploads/profiles/" + filename;
+            deleteOldProfilePhoto(oldPhoto, newPhoto);
             user.setProfilePhotoUrl(newPhoto);
             user.setUpdatedAt(Instant.now());
             appUserRepository.save(user);
@@ -432,10 +404,7 @@ public class StaffService {
      * Remove staff profile photo.
      */
     public java.util.Map<String, String> removePhoto(UUID staffId) {
-        UUID facilityId = TenantContext.getTenantId();
-        AppUser user = appUserRepository.findById(staffId)
-                .filter(u -> u.getFacility() != null && u.getFacility().getId().equals(facilityId))
-                .filter(u -> STAFF_ROLES.contains(u.getRole()))
+        AppUser user = findStaffForCurrentFacility(staffId)
                 .orElseThrow(() -> new IllegalArgumentException("Staff not found: " + staffId));
 
         String oldPhoto = user.getProfilePhotoUrl();
@@ -444,10 +413,8 @@ public class StaffService {
         }
 
         try {
-            java.nio.file.Path filePath = java.nio.file.Paths.get("uploads/profiles",
-                    oldPhoto.replace("/uploads/profiles/", ""));
-            java.nio.file.Files.deleteIfExists(filePath);
-        } catch (java.io.IOException e) {
+            UploadFileValidator.deleteProfilePhotoIfPresent("uploads/profiles", oldPhoto);
+        } catch (java.io.IOException | IllegalArgumentException e) {
             log.warn("Failed to delete photo file: {}", e.getMessage());
         }
 
@@ -463,6 +430,31 @@ public class StaffService {
     }
 
     // ============ Helper Methods ============
+
+    private UUID currentFacilityId() {
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            log.error("No facility ID in context. User: {}, Role: {}",
+                    TenantContext.getUsername(), TenantContext.getRole());
+            throw new IllegalStateException("Facility context not available. Please re-login.");
+        }
+        return facilityId;
+    }
+
+    private Optional<AppUser> findStaffForCurrentFacility(UUID staffId) {
+        return appUserRepository.findByIdAndFacilityIdAndRoleIn(staffId, currentFacilityId(), STAFF_ROLES);
+    }
+
+    private void deleteOldProfilePhoto(String oldPhoto, String newPhoto) {
+        if (oldPhoto == null || oldPhoto.equals(newPhoto)) {
+            return;
+        }
+        try {
+            UploadFileValidator.deleteProfilePhotoIfPresent("uploads/profiles", oldPhoto);
+        } catch (java.io.IOException | IllegalArgumentException e) {
+            log.warn("Failed to delete old photo file: {}", e.getMessage());
+        }
+    }
 
     private String generateUsername(String cbwtfCode, String role) {
         String prefix = switch (role) {
@@ -495,14 +487,41 @@ public class StaffService {
     }
 
     private String generateTempPassword() {
-        // Generate a secure random password
-        return "Temp@" + UUID.randomUUID().toString().substring(0, 8);
+        StringBuilder suffix = new StringBuilder();
+        for (int i = 0; i < 7; i++) {
+            suffix.append(PASSWORD_RANDOM_CHARS.charAt(SECURE_RANDOM.nextInt(PASSWORD_RANDOM_CHARS.length())));
+        }
+        return "Tmp@" + SECURE_RANDOM.nextInt(10) + suffix;
     }
 
     private void validateStaffRole(String role) {
         if (!STAFF_ROLES.contains(role)) {
             throw new IllegalArgumentException("Invalid staff role: " + role + ". Must be DRIVER or PLANT_OPERATOR");
         }
+    }
+
+    private String normalizeRole(String role) {
+        return cleanLineRequired(role, "Role").toUpperCase(java.util.Locale.ROOT);
+    }
+
+    private String cleanLineRequired(String value, String fieldName) {
+        String cleaned = cleanLine(value);
+        if (cleaned.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return cleaned;
+    }
+
+    private String optionalCleanLine(String value) {
+        String cleaned = cleanLine(value);
+        return cleaned.isBlank() ? null : cleaned;
+    }
+
+    private String cleanLine(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().replaceAll("[\\r\\n\\t]+", " ");
     }
 
     private String getGpsStatus(AppUser user) {
@@ -593,24 +612,45 @@ public class StaffService {
     }
 
     public record CreateStaffRequest(
+            @NotBlank(message = "Full name is required")
+            @Size(max = 120, message = "Full name must be 120 characters or less")
             String fullName,
+            @Email(message = "Invalid email format")
+            @Size(max = 180, message = "Email must be 180 characters or less")
             String email,
+            @Size(max = 20, message = "Phone must be 20 characters or less")
+            @Pattern(regexp = OPTIONAL_PHONE_PATTERN, message = "Invalid phone number")
             String phone,
+            @NotBlank(message = "Role is required")
+            @Pattern(regexp = ROLE_DRIVER + "|" + ROLE_PLANT_OPERATOR, message = "Role must be DRIVER or PLANT_OPERATOR")
             String role,
+            @Size(max = 256, message = "Password must be 256 characters or less")
             String password) {
     }
 
     public record UpdateStaffRequest(
+            @NotBlank(message = "Full name is required")
+            @Size(max = 120, message = "Full name must be 120 characters or less")
             String fullName,
+            @Email(message = "Invalid email format")
+            @Size(max = 180, message = "Email must be 180 characters or less")
             String email,
+            @Size(max = 20, message = "Phone must be 20 characters or less")
+            @Pattern(regexp = OPTIONAL_PHONE_PATTERN, message = "Invalid phone number")
             String phone,
+            @Pattern(regexp = "^$|MALE|FEMALE|OTHER", message = "Gender must be MALE, FEMALE, or OTHER")
             String gender,
+            @PastOrPresent(message = "Date of birth cannot be in the future")
             LocalDate dob,
+            @Size(max = 512, message = "Profile photo URL must be 512 characters or less")
             String profilePhotoUrl) {
     }
 
     public record UpdateCredentialsRequest(
+            @Size(max = 100, message = "Username must be 100 characters or less")
+            @Pattern(regexp = OPTIONAL_USERNAME_PATTERN, message = "Username contains invalid characters")
             String username,
+            @Size(max = 256, message = "Password must be 256 characters or less")
             String password,
             Boolean forcePasswordChange) {
     }

@@ -9,33 +9,41 @@ import com.smartcbwtf.dto.TrendDataPointDTO;
 import com.smartcbwtf.repository.DailyWasteSnapshotRepository;
 import com.smartcbwtf.repository.MonthlyWasteSnapshotRepository;
 import com.smartcbwtf.service.AnalyticsService;
+import com.smartcbwtf.service.HcfAccessGuard;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/analytics")
 public class AnalyticsController {
+    private static final int MAX_ANALYTICS_RANGE_DAYS = 366;
 
     private final AnalyticsService analyticsService;
     private final DailyWasteSnapshotRepository dailySnapshotRepository;
     private final MonthlyWasteSnapshotRepository monthlySnapshotRepository;
     private final com.smartcbwtf.service.AnalyticsPageService analyticsPageService;
+    private final HcfAccessGuard hcfAccessGuard;
 
     public AnalyticsController(
             AnalyticsService analyticsService,
             DailyWasteSnapshotRepository dailySnapshotRepository,
             MonthlyWasteSnapshotRepository monthlySnapshotRepository,
-            com.smartcbwtf.service.AnalyticsPageService analyticsPageService) {
+            com.smartcbwtf.service.AnalyticsPageService analyticsPageService,
+            HcfAccessGuard hcfAccessGuard) {
         this.analyticsService = analyticsService;
         this.dailySnapshotRepository = dailySnapshotRepository;
         this.monthlySnapshotRepository = monthlySnapshotRepository;
         this.analyticsPageService = analyticsPageService;
+        this.hcfAccessGuard = hcfAccessGuard;
     }
 
     // Existing endpoints
@@ -44,7 +52,8 @@ public class AnalyticsController {
     public AnalyticsResponse hcf(@PathVariable UUID hcfId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
-        UUID facilityId = TenantContext.getTenantId();
+        UUID facilityId = requireTenantId();
+        validateDateRange(start, end);
         return analyticsService.hcfAnalytics(hcfId, facilityId, start, end);
     }
 
@@ -53,7 +62,12 @@ public class AnalyticsController {
     public AnalyticsResponse facility(@PathVariable UUID facilityId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
-        return analyticsService.facilityAnalytics(facilityId, start, end);
+        UUID tenantFacilityId = requireTenantId();
+        if (!tenantFacilityId.equals(facilityId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Analytics not found");
+        }
+        validateDateRange(start, end);
+        return analyticsService.facilityAnalytics(tenantFacilityId, start, end);
     }
 
     // New snapshot-based endpoints
@@ -68,7 +82,7 @@ public class AnalyticsController {
         }
 
         LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(days);
+        LocalDate startDate = endDate.minusDays(validateDaysWindow(days));
 
         if (TenantContext.isSuperAdmin()) {
             return ResponseEntity.ok(createEmptyMetrics());
@@ -90,13 +104,18 @@ public class AnalyticsController {
         if (hcfId == null) {
             return ResponseEntity.badRequest().build();
         }
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        hcfAccessGuard.assertPortalAccess(hcfId, facilityId);
 
         LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(days);
+        LocalDate startDate = endDate.minusDays(validateDaysWindow(days));
 
         List<DailyWasteSnapshot> snapshots = dailySnapshotRepository
-                .findByHcfIdAndSnapshotDateBetweenOrderBySnapshotDateDesc(
-                        hcfId, startDate, endDate);
+                .findByFacilityIdAndHcfIdAndSnapshotDateBetweenOrderBySnapshotDateDesc(
+                        facilityId, hcfId, startDate, endDate);
 
         return ResponseEntity.ok(aggregateMetrics(snapshots));
     }
@@ -111,13 +130,17 @@ public class AnalyticsController {
         UUID hcfId = TenantContext.getHcfId();
 
         LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(days);
+        LocalDate startDate = endDate.minusDays(validateDaysWindow(days));
 
         List<DailyWasteSnapshot> snapshots;
         if (hcfId != null) {
+            if (tenantId == null) {
+                return ResponseEntity.badRequest().build();
+            }
+            hcfAccessGuard.assertPortalAccess(hcfId, tenantId);
             snapshots = dailySnapshotRepository
-                    .findByHcfIdAndSnapshotDateBetweenOrderBySnapshotDateDesc(
-                            hcfId, startDate, endDate);
+                    .findByFacilityIdAndHcfIdAndSnapshotDateBetweenOrderBySnapshotDateDesc(
+                            tenantId, hcfId, startDate, endDate);
         } else if (tenantId != null) {
             snapshots = dailySnapshotRepository
                     .findByFacilityIdAndSnapshotDateBetweenOrderBySnapshotDateDesc(
@@ -166,6 +189,7 @@ public class AnalyticsController {
             return ResponseEntity.status(403).build();
         }
 
+        validateDateRange(from, to);
         var response = analyticsPageService.getTotalWaste(facilityId, from, to, hcfId);
         return ResponseEntity.ok(response);
     }
@@ -186,6 +210,7 @@ public class AnalyticsController {
             return ResponseEntity.status(403).build();
         }
 
+        validateDateRange(from, to);
         var response = analyticsPageService.getWasteByCategory(facilityId, from, to, hcfId);
         return ResponseEntity.ok(response);
     }
@@ -224,13 +249,43 @@ public class AnalyticsController {
             return ResponseEntity.status(403).build();
         }
 
+        validateDateRange(from, to);
         // Limit page size to prevent abuse
-        if (pageSize > 100) {
-            pageSize = 100;
-        }
+        page = Math.max(0, page);
+        pageSize = pageSize < 1 ? 20 : Math.min(pageSize, 100);
 
         var response = analyticsPageService.getProcessedBags(facilityId, from, to, hcfId, page, pageSize);
         return ResponseEntity.ok(response);
+    }
+
+    private int validateDaysWindow(int days) {
+        if (days < 0 || days > MAX_ANALYTICS_RANGE_DAYS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Analytics range must be between 0 and " + MAX_ANALYTICS_RANGE_DAYS + " days");
+        }
+        return days;
+    }
+
+    private void validateDateRange(LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date range is required");
+        }
+        long days = ChronoUnit.DAYS.between(from, to);
+        if (days < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date must be on or before end date");
+        }
+        if (days > MAX_ANALYTICS_RANGE_DAYS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Analytics date range must be " + MAX_ANALYTICS_RANGE_DAYS + " days or less");
+        }
+    }
+
+    private UUID requireTenantId() {
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tenant context is required");
+        }
+        return facilityId;
     }
 
     // Helper methods

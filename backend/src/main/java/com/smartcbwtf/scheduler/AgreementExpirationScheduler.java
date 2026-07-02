@@ -1,10 +1,8 @@
 package com.smartcbwtf.scheduler;
 
 import com.smartcbwtf.domain.Agreement;
-import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.service.AuditLogService;
-import com.smartcbwtf.service.HcfService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -25,13 +23,10 @@ public class AgreementExpirationScheduler {
 
     private final AgreementRepository agreementRepository;
     private final AuditLogService auditLogService;
-    private final HcfService hcfService;
 
-    public AgreementExpirationScheduler(AgreementRepository agreementRepository, AuditLogService auditLogService,
-            HcfService hcfService) {
+    public AgreementExpirationScheduler(AgreementRepository agreementRepository, AuditLogService auditLogService) {
         this.agreementRepository = agreementRepository;
         this.auditLogService = auditLogService;
-        this.hcfService = hcfService;
     }
 
     /**
@@ -97,10 +92,6 @@ public class AgreementExpirationScheduler {
                         "AGREEMENT_ACTIVATED",
                         null,
                         "Auto-activated UPCOMING agreement. Start date: " + agreement.getStartDate());
-
-                // Dispatch deferred registration email
-                Facility facility = agreement.getFacility();
-                hcfService.sendRegistrationEmail(agreement.getHcf(), agreement, facility);
 
             } catch (Exception e) {
                 log.error("Failed to activate UPCOMING agreement {}", agreement.getId(), e);

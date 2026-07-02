@@ -34,6 +34,7 @@ public class HcfService {
     private final AppUserRepository userRepository;
     private final AuditLogService auditLogService;
     private final AgreementNumberGeneratorService agreementNumberGenerator;
+    private final FacilitySettingsRepository facilitySettingsRepository;
     private final FacilityTermsService facilityTermsService;
     private final FacilityTemplateService facilityTemplateService;
     private final PdfService pdfService;
@@ -48,6 +49,7 @@ public class HcfService {
             AppUserRepository userRepository,
             AuditLogService auditLogService,
             AgreementNumberGeneratorService agreementNumberGenerator,
+            FacilitySettingsRepository facilitySettingsRepository,
             FacilityTermsService facilityTermsService,
             FacilityTemplateService facilityTemplateService,
             PdfService pdfService,
@@ -60,6 +62,7 @@ public class HcfService {
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
         this.agreementNumberGenerator = agreementNumberGenerator;
+        this.facilitySettingsRepository = facilitySettingsRepository;
         this.facilityTermsService = facilityTermsService;
         this.facilityTemplateService = facilityTemplateService;
         this.pdfService = pdfService;
@@ -95,7 +98,7 @@ public class HcfService {
         String termsVersion = terms != null ? terms.getVersion() : "default";
 
         // Generate agreement number
-        String agreementNumber = agreementNumberGenerator.generateNextAgreementNumber(facility);
+        String agreementNumber = generateAgreementNumber(facility);
 
         // Create Agreement
         Agreement agreement = createAgreement(request, hcf, facility, agreementNumber, termsVersion, registeredBy);
@@ -128,10 +131,8 @@ public class HcfService {
         // Create audit log
         createAuditLog(request, hcf, agreement, termsVersion);
 
-        // Send email (non-blocking) only if ACTIVE
-        if (Agreement.Status.ACTIVE.name().equals(agreement.getStatus())) {
-            sendRegistrationEmail(hcf, agreement, facility);
-        }
+        // Send email (non-blocking) at registration time regardless of agreement status
+        sendRegistrationEmail(hcf, agreement, facility);
 
         // Build response
         HcfRegistrationResponse response = new HcfRegistrationResponse("PENDING_APPROVAL", hcf.getId(), hcf.getCode())
@@ -149,19 +150,34 @@ public class HcfService {
         return response;
     }
 
+    private String generateAgreementNumber(Facility facility) {
+        FacilitySettings settings = facilitySettingsRepository.findById(facility.getId()).orElse(null);
+        if (settings == null) {
+            return agreementNumberGenerator.generateNextAgreementNumber(facility);
+        }
+        return agreementNumberGenerator.generateNextAgreementNumberWithSettings(
+                facility,
+                settings.getAgreementNumberPrefix(),
+                settings.getAgreementNumberSeparator(),
+                settings.getAgreementNumberSequenceDigits(),
+                settings.getAgreementNumberIncludeFacilityCode(),
+                settings.getAgreementNumberIncludeYear(),
+                settings.getAgreementNumberTemplate(),
+                settings.getAgreementNumberResetFrequency());
+    }
+
     /**
      * List HCFs with active agreements for mobile app attendance marking.
      * Returns HCFs with GPS coordinates for geofence validation.
      */
     public List<com.smartcbwtf.controller.HcfController.MobileHcfDto> listActiveHcfsForMobile(UUID facilityId) {
-        List<Hcf> hcfs = agreementRepository.findHcfsByFacilityId(facilityId);
+        List<Hcf> hcfs = agreementRepository.findMobileActiveHcfsByFacilityId(facilityId);
         return hcfs.stream()
-                .filter(hcf -> hcf.getGpsLat() != null && hcf.getGpsLon() != null) // Only include HCFs with GPS
                 .map(hcf -> new com.smartcbwtf.controller.HcfController.MobileHcfDto(
                         hcf.getId().toString(),
                         hcf.getName(),
                         hcf.getAddress(),
-                        null, // city not in Hcf entity
+                        hcf.getCity(),
                         hcf.getState(),
                         hcf.getPincode(),
                         hcf.getContactPhone(),
@@ -172,6 +188,10 @@ public class HcfService {
     }
 
     private void validateRegistrationRequest(HcfRegistrationRequest request) {
+        if (request.getFacilityId() == null) {
+            throw new IllegalArgumentException("Facility context is required for HCF registration");
+        }
+
         // GPS validation
         if (request.getRegistrationGpsLat() == null || request.getRegistrationGpsLon() == null) {
             throw new IllegalArgumentException("GPS coordinates are required");
@@ -192,8 +212,12 @@ public class HcfService {
         }
 
         // Ownership validation: rent agreement required if RENTED
-        if ("RENTED".equalsIgnoreCase(request.getOwnershipType()) &&
-                (request.getRentAgreementUrl() == null || request.getRentAgreementUrl().isBlank())) {
+        if (request.getRentAgreementUrl() != null && !request.getRentAgreementUrl().isBlank()) {
+            request.setRentAgreementUrl(
+                    UploadFileValidator.rentAgreementUrlForFacility(
+                            request.getRentAgreementUrl(),
+                            request.getFacilityId()));
+        } else if ("RENTED".equalsIgnoreCase(request.getOwnershipType())) {
             throw new IllegalArgumentException("Rent agreement document is required for rented premises");
         }
 
@@ -373,13 +397,8 @@ public class HcfService {
     }
 
     private Facility getFacility(UUID facilityId) {
-        if (facilityId != null) {
-            return facilityRepository.findById(facilityId)
-                    .orElseThrow(() -> new IllegalArgumentException("Facility not found: " + facilityId));
-        }
-        // Get default facility if none specified
-        return facilityRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("No facility configured in the system"));
+        return facilityRepository.findById(facilityId)
+                .orElseThrow(() -> new IllegalArgumentException("Facility not found: " + facilityId));
     }
 
     private Hcf createHcf(HcfRegistrationRequest request, AppUser registeredBy) {
@@ -460,11 +479,7 @@ public class HcfService {
         agreement.setTermsAcceptedAt(Instant.now());
         agreement.setTermsAcceptedBy(acceptedBy);
 
-        if (startDate.isAfter(LocalDate.now())) {
-            agreement.setStatus(Agreement.Status.UPCOMING.name());
-        } else {
-            agreement.setStatus(Agreement.Status.ACTIVE.name());
-        }
+        agreement.setStatus(Agreement.Status.PENDING_APPROVAL.name());
         agreement.setCreatedAt(Instant.now());
         agreement.setUpdatedAt(Instant.now());
 
@@ -548,16 +563,6 @@ public class HcfService {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public List<Hcf> listPending() {
-        return hcfRepository.findAll().stream()
-                .filter(h -> "PENDING_APPROVAL".equalsIgnoreCase(h.getStatus()))
-                .toList();
-    }
-
-    public List<Hcf> listAll() {
-        return hcfRepository.findAll();
     }
 
     /**

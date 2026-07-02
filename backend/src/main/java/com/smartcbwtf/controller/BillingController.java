@@ -17,11 +17,15 @@ import com.smartcbwtf.service.BillPdfService;
 import com.smartcbwtf.service.InvoicePdfService;
 import com.smartcbwtf.service.TallyExportService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +38,11 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static com.smartcbwtf.util.PaginationUtils.pageRequest;
 
 /**
  * Billing Controller for CBWTF Admin Portal.
@@ -89,15 +97,16 @@ public class BillingController {
         UUID facilityId = TenantContext.getTenantId();
         Page<Bill> bills = billRepository.findByFacilityId(
                 facilityId,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "billingMonth")));
-        return ResponseEntity.ok(bills.map(BillSummaryDTO::from));
+                pageRequest(page, size, 20, Sort.by(Sort.Direction.DESC, "billingMonth")));
+        Map<UUID, String> invoiceNumbersByBillId = invoiceNumbersByBillId(bills.getContent());
+        return ResponseEntity.ok(bills.map(
+                bill -> BillSummaryDTO.from(bill, invoiceNumbersByBillId.get(bill.getId()))));
     }
 
     @GetMapping("/bills/{id}")
     public ResponseEntity<BillDetailDTO> getBill(@PathVariable UUID id) {
-        return billRepository.findById(id)
-                .filter(b -> b.getFacility().getId().equals(TenantContext.getTenantId()))
-                .map(BillDetailDTO::from)
+        return findTenantBill(id)
+                .map(bill -> BillDetailDTO.from(bill, invoiceNumberForBill(bill)))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -115,9 +124,7 @@ public class BillingController {
         UUID userId = TenantContext.getUserId();
 
         // Verify bill belongs to this facility
-        Bill bill = billRepository.findById(id)
-                .filter(b -> b.getFacility().getId().equals(TenantContext.getTenantId()))
-                .orElse(null);
+        Bill bill = findTenantBill(id).orElse(null);
         if (bill == null) {
             return ResponseEntity.notFound().build();
         }
@@ -127,7 +134,7 @@ public class BillingController {
                     id, request.adjustmentAmount(), request.reason(), userId);
 
             log.info("Bill {} adjusted by user {}: amount={}", id, userId, request.adjustmentAmount());
-            return ResponseEntity.ok(BillDetailDTO.from(adjustedBill));
+            return ResponseEntity.ok(BillDetailDTO.from(adjustedBill, invoiceNumberForBill(adjustedBill)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {
@@ -141,15 +148,13 @@ public class BillingController {
     @GetMapping("/bills/{id}/versions")
     public ResponseEntity<List<BillVersionDTO>> getBillVersions(@PathVariable UUID id) {
         // Verify bill belongs to this facility
-        Bill bill = billRepository.findById(id)
-                .filter(b -> b.getFacility().getId().equals(TenantContext.getTenantId()))
-                .orElse(null);
+        Bill bill = findTenantBill(id).orElse(null);
         if (bill == null) {
             return ResponseEntity.notFound().build();
         }
 
         List<BillVersion> versions = billVersionRepository.findByBillIdOrderByVersionDesc(id);
-        return ResponseEntity.ok(versions.stream().map(BillVersionDTO::from).toList());
+        return privateResponse(versions.stream().map(BillVersionDTO::from).toList());
     }
 
     /**
@@ -157,9 +162,7 @@ public class BillingController {
      */
     @GetMapping("/bills/{id}/pdf")
     public ResponseEntity<byte[]> downloadBillPdf(@PathVariable UUID id) {
-        Bill bill = billRepository.findById(id)
-                .filter(b -> b.getFacility().getId().equals(TenantContext.getTenantId()))
-                .orElse(null);
+        Bill bill = findTenantBill(id).orElse(null);
         if (bill == null) {
             return ResponseEntity.notFound().build();
         }
@@ -170,10 +173,7 @@ public class BillingController {
                     : "HCF";
             String filename = String.format("bill_%s_%s.pdf", hcfName, bill.getBillingMonth());
 
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(pdf);
+            return fileResponse(pdf, filename, MediaType.APPLICATION_PDF);
         } catch (Exception e) {
             log.error("Failed to generate bill PDF for bill {}: {}", id, e.getMessage());
             return ResponseEntity.internalServerError().build();
@@ -188,17 +188,17 @@ public class BillingController {
             @RequestParam int year,
             @RequestParam int month) {
         UUID facilityId = TenantContext.getTenantId();
+        if (year < 2000 || year > 2100 || month < 1 || month > 12) {
+            return ResponseEntity.badRequest().build();
+        }
         YearMonth yearMonth = YearMonth.of(year, month);
 
         try {
             byte[] excelBytes = tallyExportService.exportBillsForMonth(facilityId, yearMonth);
             String filename = String.format("tally_export_%s_%02d.xlsx", year, month);
 
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .contentType(MediaType
-                            .parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                    .body(excelBytes);
+            return fileResponse(excelBytes, filename, MediaType
+                    .parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
         } catch (Exception e) {
             log.error("Failed to generate Tally export for {}/{}: {}", year, month, e.getMessage());
             return ResponseEntity.internalServerError().build();
@@ -211,13 +211,15 @@ public class BillingController {
         UUID facilityId = TenantContext.getTenantId();
         LocalDate monthStart = LocalDate.of(year, month, 1);
         List<Bill> bills = billRepository.findByFacilityAndMonth(facilityId, monthStart);
-        return ResponseEntity.ok(bills.stream().map(BillSummaryDTO::from).toList());
+        Map<UUID, String> invoiceNumbersByBillId = invoiceNumbersByBillId(bills);
+        return ResponseEntity.ok(bills.stream()
+                .map(bill -> BillSummaryDTO.from(bill, invoiceNumbersByBillId.get(bill.getId())))
+                .toList());
     }
 
     @GetMapping("/bills/{billId}/invoice")
     public ResponseEntity<InvoiceDTO> getInvoice(@PathVariable UUID billId) {
-        return invoiceRepository.findByBillId(billId)
-                .filter(i -> i.getFacility().getId().equals(TenantContext.getTenantId()))
+        return findTenantInvoiceByBillId(billId)
                 .map(InvoiceDTO::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -226,22 +228,17 @@ public class BillingController {
     @GetMapping("/bills/{billId}/invoice/pdf")
     public ResponseEntity<byte[]> downloadInvoicePdf(@PathVariable UUID billId) {
         // Verify access
-        Bill bill = billRepository.findById(billId)
-                .filter(b -> b.getFacility().getId().equals(TenantContext.getTenantId()))
-                .orElse(null);
+        Bill bill = findTenantBill(billId).orElse(null);
         if (bill == null) {
             return ResponseEntity.notFound().build();
         }
         try {
             byte[] pdf = invoicePdfService.generatePdf(billId);
-            Invoice invoice = invoiceRepository.findByBillId(billId).orElse(null);
+            Invoice invoice = findTenantInvoiceByBillId(billId).orElse(null);
             String filename = "invoice_" + (invoice != null ? invoice.getInvoiceNumber().replace("/", "_") : billId)
                     + ".pdf";
 
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(pdf);
+            return fileResponse(pdf, filename, MediaType.APPLICATION_PDF);
         } catch (Exception e) {
             log.error("Failed to generate PDF for bill {}: {}", billId, e.getMessage());
             return ResponseEntity.internalServerError().build();
@@ -257,14 +254,13 @@ public class BillingController {
         UUID facilityId = TenantContext.getTenantId();
         Page<Invoice> invoices = invoiceRepository.findByFacilityId(
                 facilityId,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "invoiceDate")));
+                pageRequest(page, size, 20, Sort.by(Sort.Direction.DESC, "invoiceDate")));
         return ResponseEntity.ok(invoices.map(InvoiceSummaryDTO::from));
     }
 
     @GetMapping("/invoices/{invoiceId}")
     public ResponseEntity<InvoiceDetailDTO> getInvoiceDetail(@PathVariable UUID invoiceId) {
-        return invoiceRepository.findById(invoiceId)
-                .filter(i -> i.getFacility().getId().equals(TenantContext.getTenantId()))
+        return findTenantInvoice(invoiceId)
                 .map(i -> {
                     Bill bill = i.getBill();
                     String hcfName = bill != null && bill.getAgreement() != null && bill.getAgreement().getHcf() != null
@@ -282,19 +278,14 @@ public class BillingController {
 
     @GetMapping("/invoices/{invoiceId}/pdf")
     public ResponseEntity<byte[]> downloadInvoiceById(@PathVariable UUID invoiceId) {
-        Invoice invoice = invoiceRepository.findById(invoiceId)
-                .filter(i -> i.getFacility().getId().equals(TenantContext.getTenantId()))
-                .orElse(null);
+        Invoice invoice = findTenantInvoice(invoiceId).orElse(null);
         if (invoice == null || invoice.getBill() == null) {
             return ResponseEntity.notFound().build();
         }
         try {
             byte[] pdf = invoicePdfService.generatePdf(invoice.getBill().getId());
             String filename = "invoice_" + invoice.getInvoiceNumber().replace("/", "_") + ".pdf";
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(pdf);
+            return fileResponse(pdf, filename, MediaType.APPLICATION_PDF);
         } catch (Exception e) {
             log.error("Failed to generate PDF for invoice {}: {}", invoiceId, e.getMessage());
             return ResponseEntity.internalServerError().build();
@@ -302,9 +293,12 @@ public class BillingController {
     }
 
     @PostMapping("/generate")
-    public ResponseEntity<?> triggerBillGeneration(@RequestBody GenerateBillsRequest request) {
+    public ResponseEntity<?> triggerBillGeneration(@Valid @RequestBody GenerateBillsRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         UUID userId = TenantContext.getUserId();
+        if (request == null || request.billingMonth() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Billing month is required"));
+        }
         try {
             int count = billGenerationService.generateBillsForMonth(facilityId, request.billingMonth(), userId);
             log.info("Manual bill generation: {} bills for facility {}", count, facilityId);
@@ -324,14 +318,20 @@ public class BillingController {
     }
 
     @PostMapping("/config/excess-rate")
-    public ResponseEntity<?> updateExcessRate(@RequestBody UpdateExcessRateRequest request) {
+    public ResponseEntity<?> updateExcessRate(@Valid @RequestBody UpdateExcessRateRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         UUID userId = TenantContext.getUserId();
 
+        if (request == null || request.ratePerKg() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Rate must be positive"));
+        }
+        if (request.effectiveFrom() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Effective date is required"));
+        }
         if (request.effectiveFrom().isBefore(LocalDate.now())) {
             return ResponseEntity.badRequest().body(Map.of("error", "Effective date cannot be in the past"));
         }
-        if (request.ratePerKg() == null || request.ratePerKg().compareTo(BigDecimal.ZERO) <= 0) {
+        if (request.ratePerKg().compareTo(BigDecimal.ZERO) <= 0) {
             return ResponseEntity.badRequest().body(Map.of("error", "Rate must be positive"));
         }
 
@@ -357,19 +357,66 @@ public class BillingController {
 
     @GetMapping("/config/excess-rate/history")
     public ResponseEntity<List<ExcessRateHistoryDTO>> getExcessRateHistory() {
-        return ResponseEntity.ok(List.of());
+        return privateResponse(List.of());
+    }
+
+    private static <T> ResponseEntity<T> privateResponse(T body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
     }
 
     // DTOs
     public record BillSummaryDTO(UUID id, String hcfName, LocalDate billingMonth,
             BigDecimal totalAmount, String status, String invoiceNumber) {
         public static BillSummaryDTO from(Bill b) {
+            return from(b, null);
+        }
+
+        public static BillSummaryDTO from(Bill b, String invoiceNumber) {
             String hcfName = b.getAgreement() != null && b.getAgreement().getHcf() != null
                     ? b.getAgreement().getHcf().getName()
                     : "Unknown";
             return new BillSummaryDTO(b.getId(), hcfName, b.getBillingMonth(),
-                    b.getTotalAmount(), b.getStatus(), null);
+                    b.getTotalAmount(), b.getStatus(), invoiceNumber);
         }
+    }
+
+    private Map<UUID, String> invoiceNumbersByBillId(List<Bill> bills) {
+        List<UUID> billIds = bills.stream().map(Bill::getId).toList();
+        if (billIds.isEmpty()) {
+            return Map.of();
+        }
+        return invoiceRepository.findByBillIdIn(billIds).stream()
+                .filter(invoice -> invoice.getBill() != null)
+                .collect(Collectors.toMap(invoice -> invoice.getBill().getId(), Invoice::getInvoiceNumber));
+    }
+
+    private ResponseEntity<byte[]> fileResponse(byte[] body, String filename, MediaType contentType) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(contentType)
+                .body(body);
+    }
+
+    private Optional<Bill> findTenantBill(UUID billId) {
+        return billRepository.findByIdAndFacilityId(billId, TenantContext.getTenantId());
+    }
+
+    private Optional<Invoice> findTenantInvoice(UUID invoiceId) {
+        return invoiceRepository.findByIdAndFacilityId(invoiceId, TenantContext.getTenantId());
+    }
+
+    private Optional<Invoice> findTenantInvoiceByBillId(UUID billId) {
+        return invoiceRepository.findByBillIdAndFacilityId(billId, TenantContext.getTenantId());
+    }
+
+    private String invoiceNumberForBill(Bill bill) {
+        return invoiceRepository.findByBillIdAndFacilityId(bill.getId(), bill.getFacility().getId())
+                .map(Invoice::getInvoiceNumber)
+                .orElse(null);
     }
 
     public record BillDetailDTO(
@@ -408,6 +455,10 @@ public class BillingController {
             // Invoice reference (if exists)
             String invoiceNumber) {
         public static BillDetailDTO from(Bill b) {
+            return from(b, null);
+        }
+
+        public static BillDetailDTO from(Bill b, String invoiceNumber) {
             String hcfName = b.getAgreement() != null && b.getAgreement().getHcf() != null
                     ? b.getAgreement().getHcf().getName()
                     : "Unknown";
@@ -446,7 +497,7 @@ public class BillingController {
                     b.getCgst(),
                     b.getSgst(),
                     b.getTotalAmount(),
-                    null // TODO: Fetch invoice number if exists
+                    invoiceNumber
             );
         }
     }
@@ -492,13 +543,23 @@ public class BillingController {
             UUID billId) {
     }
 
-    public record GenerateBillsRequest(LocalDate billingMonth) {
+    public record GenerateBillsRequest(
+            @NotNull(message = "Billing month is required")
+            LocalDate billingMonth) {
     }
 
     public record BillingConfigDTO(BigDecimal excessRatePerKg, LocalDate excessRateEffectiveFrom) {
     }
 
-    public record UpdateExcessRateRequest(BigDecimal ratePerKg, LocalDate effectiveFrom) {
+    public record UpdateExcessRateRequest(
+            @NotNull(message = "Rate is required")
+            @DecimalMin(value = "0.01", message = "Rate must be positive")
+            @Digits(integer = 10, fraction = 2, message = "Rate must have at most 2 decimal places")
+            BigDecimal ratePerKg,
+
+            @NotNull(message = "Effective date is required")
+            @FutureOrPresent(message = "Effective date cannot be in the past")
+            LocalDate effectiveFrom) {
     }
 
     public record ExcessRateHistoryDTO(BigDecimal ratePerKg, LocalDate effectiveFrom, String changedAt,

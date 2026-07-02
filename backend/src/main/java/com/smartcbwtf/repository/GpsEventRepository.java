@@ -21,15 +21,22 @@ import java.util.UUID;
 @Repository
 public interface GpsEventRepository extends JpaRepository<GpsEvent, UUID> {
 
-    // Get last GPS event for a vehicle
-    @Query("SELECT g FROM GpsEvent g WHERE g.vehicle.id = :vehicleId " +
+    // Get last GPS event for a tenant-scoped vehicle
+    @Query("SELECT g FROM GpsEvent g WHERE g.vehicle.facility.id = :facilityId " +
+            "AND g.vehicle.id = :vehicleId " +
             "ORDER BY g.recordedAt DESC LIMIT 1")
-    Optional<GpsEvent> findLatestByVehicleId(@Param("vehicleId") UUID vehicleId);
+    Optional<GpsEvent> findLatestByFacilityIdAndVehicleId(
+            @Param("facilityId") UUID facilityId,
+            @Param("vehicleId") UUID vehicleId);
 
-    // Get recent events for a vehicle (for trail/history)
-    @Query("SELECT g FROM GpsEvent g WHERE g.vehicle.id = :vehicleId " +
+    // Get recent events for a tenant-scoped vehicle (for trail/history)
+    @Query("SELECT g FROM GpsEvent g WHERE g.vehicle.facility.id = :facilityId " +
+            "AND g.vehicle.id = :vehicleId " +
             "ORDER BY g.recordedAt DESC")
-    List<GpsEvent> findRecentByVehicleId(@Param("vehicleId") UUID vehicleId, Pageable pageable);
+    List<GpsEvent> findRecentByFacilityIdAndVehicleId(
+            @Param("facilityId") UUID facilityId,
+            @Param("vehicleId") UUID vehicleId,
+            Pageable pageable);
 
     // Get events in a time range
     @Query("SELECT g FROM GpsEvent g WHERE g.vehicle.id = :vehicleId " +

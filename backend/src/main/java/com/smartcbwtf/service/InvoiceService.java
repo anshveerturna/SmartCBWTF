@@ -17,7 +17,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -120,10 +119,6 @@ public class InvoiceService {
         }
 
         return invoice;
-    }
-
-    public List<Invoice> listAll() {
-        return invoiceRepository.findAll();
     }
 
     public Invoice get(UUID id) {

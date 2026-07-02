@@ -11,6 +11,8 @@ import com.smartcbwtf.service.SystemConfigService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +34,7 @@ public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private static final int LOCKOUT_DURATION_MINUTES = 30;
+    private static final String INVALID_CREDENTIALS_MESSAGE = "Invalid username or password.";
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
@@ -136,13 +139,16 @@ public class AuthController {
 
             log.info("Successful login: {} (role: {})", user.getUsername(), user.getRole());
 
-            return ResponseEntity.ok(new AuthLoginResponse(
-                    token,
-                    user.getRole(),
-                    mustChangePassword,
-                    user.getFullName(),
-                    user.getFacility() != null ? user.getFacility().getId().toString() : null,
-                    user.getHcf() != null ? user.getHcf().getId().toString() : null));
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.noStore())
+                    .header(HttpHeaders.PRAGMA, "no-cache")
+                    .body(new AuthLoginResponse(
+                            token,
+                            user.getRole(),
+                            mustChangePassword,
+                            user.getFullName(),
+                            user.getFacility() != null ? user.getFacility().getId().toString() : null,
+                            user.getHcf() != null ? user.getHcf().getId().toString() : null));
 
         } catch (BadCredentialsException e) {
             // Failed login - increment counter and potentially lock account
@@ -184,17 +190,18 @@ public class AuthController {
 
                 log.warn("Failed login for user {} ({} attempts remaining)", user.getUsername(), attemptsRemaining);
 
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                        "error", "INVALID_CREDENTIALS",
-                        "message",
-                        "Invalid username or password. " + attemptsRemaining + " attempts remaining before lockout."));
+                return invalidCredentialsResponse();
             }
 
             // User doesn't exist - return generic error
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                    "error", "INVALID_CREDENTIALS",
-                    "message", "Invalid username or password."));
+            return invalidCredentialsResponse();
         }
+    }
+
+    private ResponseEntity<Map<String, String>> invalidCredentialsResponse() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                "error", "INVALID_CREDENTIALS",
+                "message", INVALID_CREDENTIALS_MESSAGE));
     }
 
     /**

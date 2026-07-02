@@ -32,6 +32,9 @@ public class BagEvent {
     @Column(nullable = false)
     private Double gpsLon;
 
+    @Column(name = "gps_accuracy_m")
+    private Double gpsAccuracyM;
+
     @Column(nullable = false, precision = 12, scale = 3)
     private BigDecimal weightKg;
 
@@ -60,6 +63,8 @@ public class BagEvent {
     public void setGpsLat(Double gpsLat) { this.gpsLat = gpsLat; }
     public Double getGpsLon() { return gpsLon; }
     public void setGpsLon(Double gpsLon) { this.gpsLon = gpsLon; }
+    public Double getGpsAccuracyM() { return gpsAccuracyM; }
+    public void setGpsAccuracyM(Double gpsAccuracyM) { this.gpsAccuracyM = gpsAccuracyM; }
     public BigDecimal getWeightKg() { return weightKg; }
     public void setWeightKg(BigDecimal weightKg) { this.weightKg = weightKg; }
     public UUID getCollectedByUserId() { return collectedByUserId; }

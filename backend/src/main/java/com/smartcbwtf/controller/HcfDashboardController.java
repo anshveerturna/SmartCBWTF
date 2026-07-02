@@ -1,25 +1,12 @@
 package com.smartcbwtf.controller;
 
 import com.smartcbwtf.config.TenantContext;
-import com.smartcbwtf.domain.Agreement;
-import com.smartcbwtf.domain.BagEvent;
-import com.smartcbwtf.domain.BagLabel;
-import com.smartcbwtf.domain.Facility;
-import com.smartcbwtf.domain.Hcf;
-import com.smartcbwtf.domain.Invoice;
-import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.repository.BagEventRepository;
-import com.smartcbwtf.repository.BagLabelRepository;
-import com.smartcbwtf.repository.HcfRepository;
 import com.smartcbwtf.repository.InvoiceRepository;
 import com.smartcbwtf.service.HcfAccessGuard;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,100 +15,76 @@ import java.time.format.TextStyle;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/hcf/dashboard")
 @PreAuthorize("hasRole('HCF_ADMIN')")
 public class HcfDashboardController {
+        private static final ZoneId REPORT_ZONE = ZoneId.of("Asia/Kolkata");
+        private static final String UNKNOWN_CATEGORY = "UNKNOWN";
 
-        private static final Logger log = LoggerFactory.getLogger(HcfDashboardController.class);
         private final BagEventRepository bagEventRepository;
         private final InvoiceRepository invoiceRepository;
-        private final BagLabelRepository bagLabelRepository;
-        private final HcfRepository hcfRepository;
-        private final AgreementRepository agreementRepository;
         private final HcfAccessGuard accessGuard;
 
         public HcfDashboardController(
                         BagEventRepository bagEventRepository,
                         InvoiceRepository invoiceRepository,
-                        BagLabelRepository bagLabelRepository,
-                        HcfRepository hcfRepository,
-                        AgreementRepository agreementRepository,
                         HcfAccessGuard accessGuard) {
                 this.bagEventRepository = bagEventRepository;
                 this.invoiceRepository = invoiceRepository;
-                this.bagLabelRepository = bagLabelRepository;
-                this.hcfRepository = hcfRepository;
-                this.agreementRepository = agreementRepository;
                 this.accessGuard = accessGuard;
         }
 
         @GetMapping
         public ResponseEntity<DashboardStats> getStats() {
                 UUID hcfId = TenantContext.getHcfId();
-                accessGuard.assertPortalAccess(hcfId);
+                UUID facilityId = TenantContext.getTenantId();
+                accessGuard.assertPortalAccess(hcfId, facilityId);
 
                 Instant now = Instant.now();
-                ZoneId zone = ZoneId.systemDefault();
-                Instant todayStart = LocalDate.now().atStartOfDay(zone).toInstant();
-                Instant todayEnd = LocalDate.now().plusDays(1).atStartOfDay(zone).toInstant();
-                Instant monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay(zone).toInstant();
+                ZoneId zone = REPORT_ZONE;
+                LocalDate today = LocalDate.now(zone);
+                Instant todayStart = today.atStartOfDay(zone).toInstant();
+                Instant todayEnd = today.plusDays(1).atStartOfDay(zone).toInstant();
+                Instant monthStart = today.withDayOfMonth(1).atStartOfDay(zone).toInstant();
 
                 // 1. Today's Waste (Total Kg)
-                BigDecimal todayWeight = bagEventRepository.sumWeightByHcfIdAndEventTsBetween(hcfId, todayStart,
-                                todayEnd);
+                BigDecimal todayWeight = bagEventRepository.sumWeightByFacilityIdAndHcfIdAndEventTsBetween(
+                                facilityId, hcfId, todayStart, todayEnd);
 
                 // 2. Month Pickups (Total Bags)
-                long monthBags = bagEventRepository.countByHcfIdAndEventTsBetween(hcfId, monthStart, now);
+                long monthBags = bagEventRepository.countByFacilityIdAndHcfIdAndEventTsBetween(
+                                facilityId, hcfId, monthStart, now);
 
                 // 3. Dues Status
-                List<Invoice> unpaid = invoiceRepository.findUnpaidByHcfIdOrderByDateAsc(hcfId);
-                String duesStatus = unpaid.isEmpty() ? "Dues Clear" : "Dues Pending";
-                String duesMessage = unpaid.isEmpty() ? "No pending invoices" : unpaid.size() + " invoice(s) pending";
+                long unpaidCount = invoiceRepository.countUnpaidByFacilityIdAndHcfId(facilityId, hcfId);
+                String duesStatus = unpaidCount == 0 ? "Dues Clear" : "Dues Pending";
+                String duesMessage = unpaidCount == 0 ? "No pending invoices" : unpaidCount + " invoice(s) pending";
 
-                // Fetch events for charts (Last 30 days)
-                Instant thirtyDaysAgo = LocalDate.now().minusDays(30).atStartOfDay(zone).toInstant();
-                List<BagEvent> recentEvents = bagEventRepository.findByHcfIdAndEventTsAfter(hcfId, thirtyDaysAgo);
+                // Fetch dashboard aggregates (Last 30 days)
+                Instant thirtyDaysAgo = today.minusDays(30).atStartOfDay(zone).toInstant();
+                long recentEventCount = bagEventRepository.countByFacilityIdAndHcfIdAndEventTsBetween(
+                                facilityId, hcfId, thirtyDaysAgo, now);
+                long okEventCount = bagEventRepository.countOkByFacilityIdAndHcfIdAndEventTsBetween(
+                                facilityId, hcfId, thirtyDaysAgo, now);
 
                 // 4. Compliance Score (Overall)
-                double complianceScore = 100.0;
-                if (!recentEvents.isEmpty()) {
-                        long okCount = recentEvents.stream()
-                                        .filter(e -> e.getAnomalyState() == null || "OK".equals(e.getAnomalyState()))
-                                        .count();
-                        complianceScore = (double) okCount / recentEvents.size() * 100.0;
-                }
+                double complianceScore = percentage(okEventCount, recentEventCount);
 
                 // 5. Recent Pickups
-                Map<LocalDate, List<BagEvent>> groupedByDate = recentEvents.stream()
-                                .collect(Collectors.groupingBy(e -> e.getEventTs().atZone(zone).toLocalDate()));
-
-                List<RecentPickup> recentPickups = groupedByDate.entrySet().stream()
-                                .sorted(Map.Entry.<LocalDate, List<BagEvent>>comparingByKey().reversed())
+                List<RecentPickup> recentPickups = bagEventRepository
+                                .summarizePickupsByDayForFacilityAndHcf(facilityId, hcfId, thirtyDaysAgo, now)
+                                .stream()
                                 .limit(5)
-                                .map(entry -> {
-                                        List<BagEvent> bags = entry.getValue();
-                                        double totalWeight = bags.stream()
-                                                        .mapToDouble(b -> b.getWeightKg().doubleValue()).sum();
-                                        boolean allOk = bags.stream().allMatch(b -> b.getAnomalyState() == null
-                                                        || "OK".equals(b.getAnomalyState()));
-                                        return new RecentPickup(
-                                                        entry.getKey().toString(),
-                                                        bags.size(),
-                                                        String.format("%.1f kg", totalWeight),
-                                                        allOk ? "Verified" : "Flagged");
-                                })
-                                .collect(Collectors.toList());
+                                .map(HcfDashboardController::recentPickup)
+                                .toList();
 
                 // 6. Category Split (Donut Chart) - Last 30 days
-                Map<String, Double> categorySplit = recentEvents.stream()
-                                .collect(Collectors.groupingBy(
-                                                e -> e.getBagLabel().getCategory(),
-                                                Collectors.summingDouble(e -> e.getWeightKg().doubleValue())));
+                Map<String, Double> categorySplit = categorySplit(
+                                bagEventRepository.sumWeightGroupedByCategoryForFacilityAndHcfBetween(
+                                                facilityId, hcfId, thirtyDaysAgo, now));
 
                 // Ensure all categories present for consistent colors
                 String[] allCategories = { "YELLOW", "RED", "WHITE", "BLUE" };
@@ -131,7 +94,11 @@ public class HcfDashboardController {
 
                 // 7. Weekly Trend (Stacked Area) - Last 7 days
                 List<Map<String, Object>> dailyTrend = new ArrayList<>();
-                LocalDate weekStart = LocalDate.now().minusDays(6); // 7 days including today
+                LocalDate weekStart = today.minusDays(6); // 7 days including today
+                Instant weekStartInstant = weekStart.atStartOfDay(zone).toInstant();
+                Map<LocalDate, Map<String, Double>> dailyWeights = dailyCategoryWeights(
+                                bagEventRepository.sumWeightGroupedByDayAndCategoryForFacilityAndHcf(
+                                                facilityId, hcfId, weekStartInstant, todayEnd));
 
                 for (int i = 0; i < 7; i++) {
                         LocalDate date = weekStart.plusDays(i);
@@ -139,34 +106,23 @@ public class HcfDashboardController {
                         dayData.put("day", date.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.ENGLISH));
                         dayData.put("fullDate", date.toString()); // useful for tooltip
 
-                        // Filter events for this day
-                        List<BagEvent> dayEvents = groupedByDate.getOrDefault(date, Collections.emptyList());
+                        Map<String, Double> dayWeights = dailyWeights.getOrDefault(date, Collections.emptyMap());
 
                         for (String cat : allCategories) {
-                                double weight = dayEvents.stream()
-                                                .filter(e -> cat.equals(e.getBagLabel().getCategory()))
-                                                .mapToDouble(e -> e.getWeightKg().doubleValue())
-                                                .sum();
-                                dayData.put(cat, weight);
+                                dayData.put(cat, dayWeights.getOrDefault(cat, 0.0));
                         }
                         dailyTrend.add(dayData);
                 }
 
                 // 8. Blue Compliance
-                double blueCompliance = 100.0;
-                List<BagEvent> blueEvents = recentEvents.stream()
-                                .filter(e -> "BLUE".equals(e.getBagLabel().getCategory()))
-                                .toList();
-
-                if (!blueEvents.isEmpty()) {
-                        long okBlue = blueEvents.stream()
-                                        .filter(e -> e.getAnomalyState() == null || "OK".equals(e.getAnomalyState()))
-                                        .count();
-                        blueCompliance = (double) okBlue / blueEvents.size() * 100.0;
-                }
+                long blueEventCount = bagEventRepository.countByFacilityIdAndHcfIdAndCategoryAndEventTsBetween(
+                                facilityId, hcfId, "BLUE", thirtyDaysAgo, now);
+                long okBlueEventCount = bagEventRepository.countOkByFacilityIdAndHcfIdAndCategoryAndEventTsBetween(
+                                facilityId, hcfId, "BLUE", thirtyDaysAgo, now);
+                double blueCompliance = percentage(okBlueEventCount, blueEventCount);
 
                 return ResponseEntity.ok(new DashboardStats(
-                                todayWeight.doubleValue(),
+                                weightKg(todayWeight),
                                 monthBags,
                                 duesStatus,
                                 duesMessage,
@@ -175,84 +131,6 @@ public class HcfDashboardController {
                                 categorySplit,
                                 dailyTrend,
                                 (int) blueCompliance));
-        }
-
-        @PostMapping("/seed")
-        public ResponseEntity<String> seedData() {
-                try {
-                        UUID hcfId = TenantContext.getHcfId();
-                        Hcf hcf = hcfRepository.findById(hcfId)
-                                        .orElseThrow(() -> new RuntimeException("HCF not found"));
-
-                        Agreement agreement = agreementRepository.findActiveByHcfId(hcfId)
-                                        .orElseThrow(() -> new RuntimeException(
-                                                        "No active agreement found for seeding"));
-                        Facility facility = agreement.getFacility();
-
-                        String[] categories = { "YELLOW", "RED", "WHITE", "BLUE" };
-                        Random rand = new Random();
-                        UUID userId = TenantContext.getUserId();
-
-                        List<BagLabel> labels = new ArrayList<>();
-                        // Create 40 labels for better distribution
-                        for (int i = 0; i < 40; i++) {
-                                BagLabel label = new BagLabel();
-                                label.setHcf(hcf);
-                                label.setFacility(facility);
-                                label.setCategory(categories[rand.nextInt(4)]);
-                                label.setQrCode(UUID.randomUUID().toString());
-                                label.setSerialNo("TEST-" + UUID.randomUUID().toString().substring(0, 8));
-                                label.setStatus("USED");
-                                label.setIssuedAt(Instant.now().minus(30, ChronoUnit.DAYS));
-                                labels.add(bagLabelRepository.save(label));
-                        }
-
-                        for (BagLabel label : labels) {
-                                BagEvent event = new BagEvent();
-                                event.setBagLabel(label);
-                                event.setFacility(facility);
-                                event.setHcf(hcf);
-                                event.setEventType("HCF_COLLECTION");
-
-                                long offset = rand.nextInt(30 * 24 * 3600); // 30 days
-                                // Force bias towards last 7 days for trend chart
-                                if (rand.nextDouble() > 0.3) {
-                                        offset = rand.nextInt(7 * 24 * 3600);
-                                }
-
-                                event.setEventTs(Instant.now().minus(offset, ChronoUnit.SECONDS));
-                                event.setWeightKg(BigDecimal.valueOf(1.0 + rand.nextDouble() * 10.0));
-                                event.setGpsLat(12.9716);
-                                event.setGpsLon(77.5946);
-                                event.setCollectedByUserId(userId);
-                                event.setAnomalyState(rand.nextDouble() > 0.9 ? "MISMATCH" : "OK");
-                                bagEventRepository.save(event);
-                        }
-
-                        Invoice inv = new Invoice();
-                        inv.setHcf(hcf);
-                        inv.setFacility(facility);
-                        inv.setAgreement(agreement);
-                        inv.setInvoiceNumber("INV-TEST-" + System.currentTimeMillis());
-                        inv.setTotalAmount(BigDecimal.valueOf(12345.00));
-                        inv.setStatus("PENDING");
-                        inv.setInvoiceDate(LocalDate.now());
-                        inv.setPeriodStart(LocalDate.now().withDayOfMonth(1));
-                        inv.setPeriodEnd(LocalDate.now());
-                        inv.setTotalAmount(BigDecimal.valueOf(45000));
-                        inv.setBaseAmount(BigDecimal.valueOf(45000));
-                        inv.setTaxAmount(BigDecimal.ZERO);
-                        inv.setPerBedPerDayRate(BigDecimal.valueOf(10.0));
-                        inv.setBeds(150);
-                        inv.setFinancialYear("2025-2026");
-                        invoiceRepository.save(inv);
-
-                        return ResponseEntity.ok("Seeded");
-                } catch (Exception e) {
-                        log.error("Failed to seed dashboard data", e);
-                        return ResponseEntity.internalServerError()
-                                        .body("Error: " + e.getMessage() + " | Trace: " + e.toString());
-                }
         }
 
         public record DashboardStats(
@@ -273,5 +151,85 @@ public class HcfDashboardController {
                         Integer bags,
                         String weight,
                         String status) {
+        }
+
+        private static Map<String, Double> categorySplit(List<Object[]> rows) {
+                Map<String, Double> result = new LinkedHashMap<>();
+                for (Object[] row : rows) {
+                        result.merge(categoryOf(row[0]), weightKg(row[1]), Double::sum);
+                }
+                return result;
+        }
+
+        private static Map<LocalDate, Map<String, Double>> dailyCategoryWeights(List<Object[]> rows) {
+                Map<LocalDate, Map<String, Double>> result = new HashMap<>();
+                for (Object[] row : rows) {
+                        LocalDate date = localDateOf(row[0]);
+                        String category = categoryOf(row[1]);
+                        double weight = weightKg(row[2]);
+                        result.computeIfAbsent(date, ignored -> new HashMap<>())
+                                        .merge(category, weight, Double::sum);
+                }
+                return result;
+        }
+
+        private static RecentPickup recentPickup(Object[] row) {
+                long anomalies = longValue(row[3]);
+                return new RecentPickup(
+                                localDateOf(row[0]).toString(),
+                                Math.toIntExact(longValue(row[1])),
+                                String.format("%.1f kg", weightKg(row[2])),
+                                anomalies == 0 ? "Verified" : "Flagged");
+        }
+
+        private static String categoryOf(Object category) {
+                if (category == null || category.toString().isBlank()) {
+                        return UNKNOWN_CATEGORY;
+                }
+                return category.toString();
+        }
+
+        private static LocalDate localDateOf(Object value) {
+                if (value instanceof LocalDate localDate) {
+                        return localDate;
+                }
+                if (value instanceof java.sql.Date sqlDate) {
+                        return sqlDate.toLocalDate();
+                }
+                if (value instanceof java.util.Date date) {
+                        return date.toInstant().atZone(REPORT_ZONE).toLocalDate();
+                }
+                return LocalDate.parse(value.toString().substring(0, 10));
+        }
+
+        private static double weightKg(BigDecimal weight) {
+                return weight != null ? weight.doubleValue() : 0.0;
+        }
+
+        private static double weightKg(Object value) {
+                if (value == null) {
+                        return 0.0;
+                }
+                if (value instanceof BigDecimal decimal) {
+                        return weightKg(decimal);
+                }
+                if (value instanceof Number number) {
+                        return number.doubleValue();
+                }
+                return Double.parseDouble(value.toString());
+        }
+
+        private static long longValue(Object value) {
+                if (value == null) {
+                        return 0;
+                }
+                if (value instanceof Number number) {
+                        return number.longValue();
+                }
+                return Long.parseLong(value.toString());
+        }
+
+        private static double percentage(long okCount, long totalCount) {
+                return totalCount == 0 ? 100.0 : (double) okCount / totalCount * 100.0;
         }
 }

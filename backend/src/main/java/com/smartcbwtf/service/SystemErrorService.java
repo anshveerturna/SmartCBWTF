@@ -4,6 +4,7 @@ import com.smartcbwtf.domain.*;
 import com.smartcbwtf.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -21,6 +23,8 @@ import java.util.UUID;
 public class SystemErrorService {
 
     private static final Logger log = LoggerFactory.getLogger(SystemErrorService.class);
+    private static final String INACTIVE_HCFS_TITLE = "HCFs with no recent activity";
+    private static final int HCF_INACTIVITY_DAYS = 7;
 
     private final SystemErrorRepository errorRepository;
     private final FacilityRepository facilityRepository;
@@ -47,7 +51,7 @@ public class SystemErrorService {
         error.setTitle(title);
         error.setDescription(description);
         error.setComponent(component != null ? component : "USER_FEEDBACK");
-        error.setSeverity(severity != null ? severity : "WARNING");
+        error.setSeverityEnum(normalizeSeverity(severity));
         error.setSourceEnum(SystemError.Source.USER_REPORTED);
         error.setStatusEnum(SystemError.Status.OPEN);
 
@@ -57,13 +61,22 @@ public class SystemErrorService {
         if (facilityId != null) {
             facilityRepository.findById(facilityId).ifPresent(error::setFacility);
         }
-        if (hcfId != null) {
-            hcfRepository.findById(hcfId).ifPresent(error::setHcf);
-        }
+        attachScopedHcf(error, facilityId, hcfId);
 
         error = errorRepository.save(error);
         log.info("New error reported: {} [{}]", title, error.getId());
         return error;
+    }
+
+    private void attachScopedHcf(SystemError error, UUID facilityId, UUID hcfId) {
+        if (hcfId == null) {
+            return;
+        }
+        if (facilityId != null) {
+            hcfRepository.findByIdAndFacilityId(hcfId, facilityId).ifPresent(error::setHcf);
+            return;
+        }
+        hcfRepository.findById(hcfId).ifPresent(error::setHcf);
     }
 
     @Transactional
@@ -107,12 +120,35 @@ public class SystemErrorService {
 
     @Transactional
     public SystemError updateStatus(UUID errorId, String status) {
+        SystemError.Status normalizedStatus = normalizeStatus(status);
         return errorRepository.findById(errorId)
                 .map(error -> {
-                    error.setStatus(status);
+                    error.setStatusEnum(normalizedStatus);
                     return errorRepository.save(error);
                 })
                 .orElseThrow(() -> new RuntimeException("Error not found: " + errorId));
+    }
+
+    private SystemError.Severity normalizeSeverity(String severity) {
+        if (severity == null || severity.isBlank()) {
+            return SystemError.Severity.WARNING;
+        }
+        try {
+            return SystemError.Severity.valueOf(severity.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Invalid error severity: " + severity);
+        }
+    }
+
+    private SystemError.Status normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException("Error status is required");
+        }
+        try {
+            return SystemError.Status.valueOf(status.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Invalid error status: " + status);
+        }
     }
 
     // ========== Statistics ==========
@@ -126,7 +162,7 @@ public class SystemErrorService {
     }
 
     public List<SystemError> getRecentOpenErrors() {
-        return errorRepository.findTop10OpenOrderedBySeverity();
+        return errorRepository.findTop10OpenOrderedBySeverity(PageRequest.of(0, 10));
     }
 
     // ========== Auto-Detection (Scheduled Job) ==========
@@ -169,19 +205,19 @@ public class SystemErrorService {
     }
 
     private void checkInactiveHcfs() {
-        String title = "HCFs with no recent activity";
-        if (errorRepository.hasOpenAutoDetectedError(title)) {
+        if (errorRepository.hasOpenAutoDetectedError(INACTIVE_HCFS_TITLE)) {
             return;
         }
 
-        // Check for HCFs with no activity - simplified check based on updatedAt
-        Instant sevenDaysAgo = Instant.now().minus(7, ChronoUnit.DAYS);
-        // This would ideally check pickup activity, but we'll use a simple check for
-        // now
-        long totalHcfs = hcfRepository.count();
-        if (totalHcfs > 0) {
-            // Placeholder - in production, check against bag_event or pickup tables
-            log.debug("HCF activity check: {} total HCFs", totalHcfs);
+        Instant cutoff = Instant.now().minus(HCF_INACTIVITY_DAYS, ChronoUnit.DAYS);
+        long inactiveCount = hcfRepository.countActiveHcfsWithoutRecentCollection(cutoff);
+        if (inactiveCount > 0) {
+            createAutoDetectedError(
+                    INACTIVE_HCFS_TITLE,
+                    inactiveCount + " active HCF(s) have no HCF collection event in the last "
+                            + HCF_INACTIVITY_DAYS + " days.",
+                    "HCF_ACTIVITY",
+                    SystemError.Severity.WARNING);
         }
     }
 
@@ -239,10 +275,9 @@ public class SystemErrorService {
         }
 
         // Check inactive HCFs
-        if ("HCFs with no recent activity".equals(title)) {
-            // This would need actual activity tracking to resolve
-            // For now, we don't auto-resolve this type
-            return false;
+        if (INACTIVE_HCFS_TITLE.equals(title)) {
+            Instant cutoff = Instant.now().minus(HCF_INACTIVITY_DAYS, ChronoUnit.DAYS);
+            return hcfRepository.countActiveHcfsWithoutRecentCollection(cutoff) == 0;
         }
 
         // Default: don't auto-resolve unknown error types

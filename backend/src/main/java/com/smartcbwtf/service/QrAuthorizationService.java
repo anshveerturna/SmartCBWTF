@@ -3,8 +3,10 @@ package com.smartcbwtf.service;
 import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.*;
 import com.smartcbwtf.repository.*;
+import com.smartcbwtf.util.PaginationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +16,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -33,6 +36,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class QrAuthorizationService {
 
     private static final Logger log = LoggerFactory.getLogger(QrAuthorizationService.class);
+    private static final int DEFAULT_QR_LIST_LIMIT = 100;
+    private static final int MAX_QR_LIST_LIMIT = 250;
 
     // Verification SLA: USED → VERIFIED must occur within this many hours
     public static final int VERIFICATION_SLA_HOURS = 24;
@@ -44,6 +49,7 @@ public class QrAuthorizationService {
     private final BagLabelRepository bagLabelRepository;
     private final QrSigningService signingService;
     private final AuditLogService auditLogService;
+    private final AlertService alertService;
     
     // Serial number counter (for generating unique serial numbers)
     private static final AtomicLong serialCounter = new AtomicLong(System.currentTimeMillis() % 100000);
@@ -55,7 +61,8 @@ public class QrAuthorizationService {
             FacilityRepository facilityRepository,
             BagLabelRepository bagLabelRepository,
             QrSigningService signingService,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            AlertService alertService) {
         this.qrRepository = qrRepository;
         this.agreementRepository = agreementRepository;
         this.hcfRepository = hcfRepository;
@@ -63,6 +70,7 @@ public class QrAuthorizationService {
         this.bagLabelRepository = bagLabelRepository;
         this.signingService = signingService;
         this.auditLogService = auditLogService;
+        this.alertService = alertService;
     }
 
     // ============= QR Generation =============
@@ -83,27 +91,12 @@ public class QrAuthorizationService {
             Instant validTo,
             UUID createdBy) {
 
-        // Validate HCF exists and belongs to facility
-        Hcf hcf = hcfRepository.findById(hcfId)
-                .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
-
-        // Get active agreement for HCF
-        Agreement agreement = agreementRepository.findByHcfIdAndStatus(hcfId, "ACTIVE")
-                .stream().findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No active agreement for this HCF"));
-
-        // Get facility ID - for CBWTF context use TenantContext, for HCF context derive
-        // from agreement
         UUID facilityId = TenantContext.getTenantId();
+        Agreement agreement = resolveActiveAgreementForGeneration(hcfId, facilityId);
         if (facilityId == null) {
-            // HCF Admin context - get facility from agreement
             facilityId = agreement.getFacility().getId();
-        } else {
-            // CBWTF Admin context - verify agreement belongs to this facility
-            if (!agreement.getFacility().getId().equals(facilityId)) {
-                throw new SecurityException("Agreement does not belong to this facility");
-            }
         }
+        Hcf hcf = agreement.getHcf();
 
         // Validate category
         QrAuthorization.WasteCategory.valueOf(wasteCategory); // Throws if invalid
@@ -191,21 +184,12 @@ public class QrAuthorizationService {
             Instant validTo,
             UUID createdBy) {
 
-        Hcf hcf = hcfRepository.findById(hcfId)
-                .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
-
-        Agreement agreement = agreementRepository.findByHcfIdAndStatus(hcfId, "ACTIVE")
-                .stream().findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No active agreement for this HCF"));
-
         UUID facilityId = TenantContext.getTenantId();
+        Agreement agreement = resolveActiveAgreementForGeneration(hcfId, facilityId);
         if (facilityId == null) {
             facilityId = agreement.getFacility().getId();
-        } else {
-            if (!agreement.getFacility().getId().equals(facilityId)) {
-                throw new SecurityException("Agreement does not belong to this facility");
-            }
         }
+        Hcf hcf = agreement.getHcf();
 
         QrAuthorization.WasteCategory.valueOf(wasteCategory);
 
@@ -413,30 +397,53 @@ public class QrAuthorizationService {
      * List QRs for facility with optional filters.
      */
     public List<QrAuthorization> listQrs(UUID hcfId, String status) {
+        return listQrs(hcfId, status, DEFAULT_QR_LIST_LIMIT);
+    }
+
+    public List<QrAuthorization> listQrs(UUID hcfId, String status, int limit) {
         UUID facilityId = TenantContext.getTenantId();
+        String normalizedStatus = normalizeStatus(status);
+        if (normalizedStatus == null && status != null && !status.isBlank()) {
+            return List.of();
+        }
+        PageRequest pageable = firstPage(limit);
 
         // For HCF users, facilityId will be null - query by hcfId instead
         if (facilityId == null && hcfId != null) {
             // HCF user context - query by hcfId only
-            if (status != null) {
-                return qrRepository.findByHcfIdAndStatusOrderByCreatedAtDesc(hcfId, status);
+            if (normalizedStatus != null) {
+                return qrRepository.findByHcfIdAndStatusOrderByCreatedAtDesc(hcfId, normalizedStatus, pageable);
             } else {
-                return qrRepository.findByHcfIdOrderByCreatedAtDesc(hcfId);
+                return qrRepository.findByHcfIdOrderByCreatedAtDesc(hcfId, pageable);
             }
         }
 
         // CBWTF context - query by facilityId
-        if (hcfId != null && status != null) {
-            return qrRepository.findByFacilityIdAndHcfIdOrderByCreatedAtDesc(facilityId, hcfId)
-                    .stream()
-                    .filter(qr -> status.equals(qr.getStatus()))
-                    .toList();
+        if (hcfId != null && normalizedStatus != null) {
+            return qrRepository.findByFacilityIdAndHcfIdAndStatusOrderByCreatedAtDesc(
+                    facilityId, hcfId, normalizedStatus, pageable);
         } else if (hcfId != null) {
-            return qrRepository.findByFacilityIdAndHcfIdOrderByCreatedAtDesc(facilityId, hcfId);
-        } else if (status != null) {
-            return qrRepository.findByFacilityIdAndStatusOrderByCreatedAtDesc(facilityId, status);
+            return qrRepository.findByFacilityIdAndHcfIdOrderByCreatedAtDesc(facilityId, hcfId, pageable);
+        } else if (normalizedStatus != null) {
+            return qrRepository.findByFacilityIdAndStatusOrderByCreatedAtDesc(facilityId, normalizedStatus, pageable);
         } else {
-            return qrRepository.findByFacilityIdOrderByCreatedAtDesc(facilityId);
+            return qrRepository.findByFacilityIdOrderByCreatedAtDesc(facilityId, pageable);
+        }
+    }
+
+    private PageRequest firstPage(int requestedLimit) {
+        int limit = PaginationUtils.normalizeSize(requestedLimit, DEFAULT_QR_LIST_LIMIT, MAX_QR_LIST_LIMIT);
+        return PageRequest.of(0, limit);
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        try {
+            return QrAuthorization.Status.valueOf(status.trim().toUpperCase(Locale.ROOT)).name();
+        } catch (IllegalArgumentException e) {
+            return null;
         }
     }
     // ============= Scheduled Jobs =============
@@ -475,13 +482,41 @@ public class QrAuthorizationService {
         for (QrAuthorization qr : breachedQrs) {
             auditLogService.log("QR", qr.getId(), "QR_VERIFICATION_SLA_BREACHED", null,
                     String.format("{\"usedAt\":\"%s\",\"slaHours\":%d}", qr.getUsedAt(), VERIFICATION_SLA_HOURS));
-            // TODO: Trigger alert
+            createVerificationSlaAlert(qr);
         }
 
         if (!breachedQrs.isEmpty()) {
             log.warn("Found {} QRs exceeding verification SLA of {} hours",
                     breachedQrs.size(), VERIFICATION_SLA_HOURS);
         }
+    }
+
+    private void createVerificationSlaAlert(QrAuthorization qr) {
+        UUID facilityId = qr.getFacility() != null ? qr.getFacility().getId() : null;
+        if (facilityId == null) {
+            log.warn("Cannot create QR verification SLA alert for QR {} without facility", qr.getId());
+            return;
+        }
+
+        String hcfName = qr.getHcf() != null && qr.getHcf().getName() != null
+                ? qr.getHcf().getName()
+                : "Unknown HCF";
+        String category = qr.getWasteCategory() != null ? qr.getWasteCategory() : "UNKNOWN";
+
+        alertService.createAlert(
+                qr.getId(),
+                facilityId,
+                AlertType.QR_VERIFICATION_SLA_BREACHED,
+                AlertSeverity.WARN,
+                "QR verification SLA breached",
+                String.format(
+                        "%s %s QR was used at %s and remains unverified after %d hours.",
+                        hcfName,
+                        category,
+                        qr.getUsedAt(),
+                        VERIFICATION_SLA_HOURS),
+                "QR_AUTHORIZATION",
+                qr.getId());
     }
 
     /**
@@ -519,6 +554,18 @@ public class QrAuthorizationService {
     }
 
     // ============= Helper Methods =============
+
+    private Agreement resolveActiveAgreementForGeneration(UUID hcfId, UUID facilityId) {
+        if (facilityId != null) {
+            return agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
+                    .orElseThrow(() -> new IllegalArgumentException("No active agreement for this HCF"));
+        }
+
+        return agreementRepository.findByHcfIdAndStatus(hcfId, "ACTIVE")
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No active agreement for this HCF"));
+    }
     
     /**
      * Generate a unique serial number for bag labels.

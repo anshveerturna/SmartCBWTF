@@ -4,6 +4,9 @@ import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.GpsEvent;
 import com.smartcbwtf.domain.Vehicle;
 import com.smartcbwtf.service.VehicleService;
+import com.smartcbwtf.util.PaginationUtils;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +24,8 @@ import java.util.UUID;
 @RequestMapping("/api/cbwtf/vehicles")
 @PreAuthorize("hasRole('CBWTF_ADMIN')")
 public class VehicleController {
+    private static final int DEFAULT_GPS_TRAIL_LIMIT = 50;
+    private static final int MAX_GPS_TRAIL_LIMIT = 100;
 
     private final VehicleService vehicleService;
 
@@ -76,9 +81,9 @@ public class VehicleController {
             return ResponseEntity.notFound().build();
         }
 
-        return vehicleService.getLastLocation(id)
-                .map(e -> ResponseEntity.ok(toLocationDTO(e)))
-                .orElse(ResponseEntity.noContent().build());
+        return vehicleService.getLastLocation(facilityId, id)
+                .map(e -> privateResponse(toLocationDTO(e)))
+                .orElse(ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build());
     }
 
     /**
@@ -102,7 +107,7 @@ public class VehicleController {
                 totalCount,
                 Instant.now());
 
-        return ResponseEntity.ok(response);
+        return privateResponse(response);
     }
 
     /**
@@ -123,12 +128,20 @@ public class VehicleController {
             return ResponseEntity.notFound().build();
         }
 
-        List<GpsLocationDTO> trail = vehicleService.getGpsTrail(id, Math.min(limit, 100))
+        int safeLimit = PaginationUtils.normalizeSize(limit, DEFAULT_GPS_TRAIL_LIMIT, MAX_GPS_TRAIL_LIMIT);
+        List<GpsLocationDTO> trail = vehicleService.getGpsTrail(facilityId, id, safeLimit)
                 .stream()
                 .map(this::toLocationDTO)
                 .toList();
 
-        return ResponseEntity.ok(trail);
+        return privateResponse(trail);
+    }
+
+    private static <T> ResponseEntity<T> privateResponse(T body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
     }
 
     // DTO conversion methods

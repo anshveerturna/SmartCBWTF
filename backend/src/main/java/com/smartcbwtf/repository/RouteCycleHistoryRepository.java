@@ -39,4 +39,13 @@ public interface RouteCycleHistoryRepository extends JpaRepository<RouteCycleHis
 
     @Query("SELECT c FROM RouteCycleHistory c WHERE c.route.id = :routeId AND c.cycleStart <= :date AND c.cycleEnd >= :date")
     Optional<RouteCycleHistory> findByRouteIdAndDate(@Param("routeId") UUID routeId, @Param("date") LocalDate date);
+
+    @Query("""
+            SELECT COALESCE(SUM(c.missedWaypoints), 0)
+            FROM RouteCycleHistory c
+            WHERE c.facility.id = :facilityId
+              AND c.cycleStart <= :date
+              AND c.cycleEnd >= :date
+            """)
+    long sumMissedWaypointsByFacilityAndDate(@Param("facilityId") UUID facilityId, @Param("date") LocalDate date);
 }

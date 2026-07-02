@@ -8,13 +8,21 @@ import com.smartcbwtf.service.EmailService;
 import com.smartcbwtf.service.SubscriptionService;
 import com.smartcbwtf.service.SystemConfigService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +32,8 @@ import org.springframework.web.bind.annotation.*;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+
+import static com.smartcbwtf.util.PaginationUtils.pageRequest;
 
 /**
  * Admin API for SuperAdmin CBWTF management.
@@ -35,13 +45,33 @@ import java.util.*;
 public class AdminController {
 
     private static final Logger log = LoggerFactory.getLogger(AdminController.class);
+    private static final int MAX_ADMIN_REASON_LENGTH = 1_000;
+    private static final int MAX_FEATURE_FLAGS_PER_REQUEST = 20;
+    private static final int MAX_REACTIVATION_DAYS = 3_650;
+    private static final int MAX_TEMPORARY_ACCESS_DAYS = 365;
+    private static final int MAX_QUERY_FILTER_LENGTH = 80;
+    private static final int MAX_SEARCH_LENGTH = 120;
+    private static final String FEATURE_KEY_PATTERN = "^[A-Z0-9_]+$";
+    private static final Set<String> SUPPORTED_FEATURE_KEYS = Set.of(
+            TenantFeatureFlag.ADVANCED_ANALYTICS,
+            TenantFeatureFlag.ROUTE_OPTIMIZATION,
+            TenantFeatureFlag.CPCB_REPORTING,
+            TenantFeatureFlag.INVOICE_AUTO_SEND,
+            TenantFeatureFlag.PAYMENT_GATEWAY,
+            TenantFeatureFlag.ATTENDANCE_ENFORCEMENT,
+            TenantFeatureFlag.VEHICLE_TRACKING,
+            TenantFeatureFlag.AI_INSIGHTS,
+            TenantFeatureFlag.MULTI_VEHICLE,
+            TenantFeatureFlag.HCF_SELF_SERVICE);
 
     private final FacilityRepository facilityRepository;
     private final AppUserRepository userRepository;
     private final HcfRepository hcfRepository;
+    private final AgreementRepository agreementRepository;
     private final SubscriptionService subscriptionService;
     private final SubscriptionAuditRepository auditRepository;
     private final InvoiceRepository invoiceRepository;
+    private final BagEventRepository bagEventRepository;
     private final SystemErrorRepository systemErrorRepository;
     private final PasswordEncoder passwordEncoder;
     private final SystemConfigService systemConfigService;
@@ -54,9 +84,11 @@ public class AdminController {
             FacilityRepository facilityRepository,
             AppUserRepository userRepository,
             HcfRepository hcfRepository,
+            AgreementRepository agreementRepository,
             SubscriptionService subscriptionService,
             SubscriptionAuditRepository auditRepository,
             InvoiceRepository invoiceRepository,
+            BagEventRepository bagEventRepository,
             SystemErrorRepository systemErrorRepository,
             PasswordEncoder passwordEncoder,
             SystemConfigService systemConfigService,
@@ -64,9 +96,11 @@ public class AdminController {
         this.facilityRepository = facilityRepository;
         this.userRepository = userRepository;
         this.hcfRepository = hcfRepository;
+        this.agreementRepository = agreementRepository;
         this.subscriptionService = subscriptionService;
         this.auditRepository = auditRepository;
         this.invoiceRepository = invoiceRepository;
+        this.bagEventRepository = bagEventRepository;
         this.systemErrorRepository = systemErrorRepository;
         this.passwordEncoder = passwordEncoder;
         this.systemConfigService = systemConfigService;
@@ -82,14 +116,16 @@ public class AdminController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = pageRequest(page, size, 20, Sort.by("createdAt").descending());
         Page<Facility> facilities;
+        String normalizedStatus = normalizeQueryFilter(status, "status");
+        String normalizedSearch = normalizeSearch(search);
 
-        if (search != null && !search.isBlank()) {
+        if (normalizedSearch != null) {
             facilities = facilityRepository.findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(
-                    search, search, pageable);
-        } else if (status != null && !status.isBlank()) {
-            facilities = facilityRepository.findBySubscriptionStatus(status, pageable);
+                    normalizedSearch, normalizedSearch, pageable);
+        } else if (normalizedStatus != null) {
+            facilities = facilityRepository.findBySubscriptionStatus(normalizedStatus, pageable);
         } else {
             facilities = facilityRepository.findAll(pageable);
         }
@@ -420,9 +456,9 @@ public class AdminController {
     @PostMapping("/cbwtfs/{id}/suspend")
     public ResponseEntity<TenantDTO> suspendCBWTF(
             @PathVariable("id") UUID id,
-            @RequestBody Map<String, String> body) {
+            @Valid @RequestBody(required = false) SuspendTenantRequest body) {
 
-        String reason = body.getOrDefault("reason", "Suspended by admin");
+        String reason = defaultCleanLine(body != null ? body.reason() : null, "Suspended by admin");
 
         Facility facility = subscriptionService.suspendTenant(
                 id,
@@ -440,10 +476,10 @@ public class AdminController {
     @PostMapping("/cbwtfs/{id}/reactivate")
     public ResponseEntity<TenantDTO> reactivateCBWTF(
             @PathVariable("id") UUID id,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody(required = false) ReactivateTenantRequest body) {
 
-        int days = (Integer) body.getOrDefault("days", 365);
-        String notes = (String) body.getOrDefault("notes", "Reactivated by admin");
+        int days = body != null && body.days() != null ? body.days() : 365;
+        String notes = defaultCleanLine(body != null ? body.notes() : null, "Reactivated by admin");
         Instant expiresAt = Instant.now().plus(days, ChronoUnit.DAYS);
 
         Facility facility = subscriptionService.reactivateTenant(
@@ -463,10 +499,10 @@ public class AdminController {
     @PostMapping("/cbwtfs/{id}/temporary-access")
     public ResponseEntity<TenantDTO> grantTemporaryAccess(
             @PathVariable("id") UUID id,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody(required = false) TemporaryAccessRequest body) {
 
-        int days = (Integer) body.getOrDefault("days", 7);
-        String reason = (String) body.getOrDefault("reason", "Temporary access granted");
+        int days = body != null && body.days() != null ? body.days() : 7;
+        String reason = defaultCleanLine(body != null ? body.reason() : null, "Temporary access granted");
 
         Facility facility = subscriptionService.grantTemporaryAccess(
                 id,
@@ -495,16 +531,25 @@ public class AdminController {
     @PutMapping("/cbwtfs/{id}/features")
     public ResponseEntity<Map<String, Boolean>> updateFeatures(
             @PathVariable("id") UUID id,
-            @RequestBody Map<String, Boolean> features) {
+            @Valid @RequestBody
+            @Size(max = MAX_FEATURE_FLAGS_PER_REQUEST, message = "Too many feature flags in one request")
+            Map<@NotBlank(message = "Feature key is required")
+                    @Size(max = 100, message = "Feature key must be 100 characters or less")
+                    @Pattern(regexp = FEATURE_KEY_PATTERN, message = "Feature key contains invalid characters") String,
+                    @NotNull(message = "Feature enabled value is required") Boolean> features) {
 
         if (!facilityRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
+        if (features == null) {
+            throw new IllegalArgumentException("Feature update request is required");
+        }
 
         for (Map.Entry<String, Boolean> entry : features.entrySet()) {
+            String featureKey = cleanFeatureKey(entry.getKey());
             subscriptionService.setFeatureEnabled(
                     id,
-                    entry.getKey(),
+                    featureKey,
                     entry.getValue(),
                     getCurrentUserId(),
                     getCurrentUsername());
@@ -521,11 +566,18 @@ public class AdminController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = pageRequest(page, size, 20);
         Page<SubscriptionAudit> audits = auditRepository.findByFacilityId(id, pageable);
         Page<TenantAuditDTO> result = audits.map(TenantAuditDTO::from);
 
-        return ResponseEntity.ok(result);
+        return privateResponse(result);
+    }
+
+    private static <T> ResponseEntity<T> privateResponse(T body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
     }
 
     // ========== EMAIL TEST ==========
@@ -535,11 +587,11 @@ public class AdminController {
      * SuperAdmin only - for verifying email configuration.
      */
     @PostMapping("/test-email")
-    public ResponseEntity<Map<String, Object>> sendTestEmail(@RequestBody Map<String, String> body) {
-        String toEmail = body.get("email");
-        if (toEmail == null || toEmail.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email address required"));
+    public ResponseEntity<Map<String, Object>> sendTestEmail(@Valid @RequestBody TestEmailRequest body) {
+        if (body == null) {
+            throw new IllegalArgumentException("Test email request is required");
         }
+        String toEmail = body.email().trim();
 
         try {
             String subject = "SmartCBWTF Test Email";
@@ -580,6 +632,7 @@ public class AdminController {
         // Get recent system errors (from audit log with ERROR action)
         List<PlatformStatsDTO.SystemErrorDTO> recentErrors = getRecentSystemErrors();
         int pendingErrors = (int) recentErrors.stream().filter(e -> !e.resolved()).count();
+        long totalBagsProcessed = bagEventRepository.countByEventType("CBWTF_VERIFICATION");
 
         return ResponseEntity.ok(new PlatformStatsDTO(
                 totalCBWTFs,
@@ -589,7 +642,7 @@ public class AdminController {
                 suspendedCBWTFs,
                 totalHcfs,
                 totalUsers,
-                0L, // TODO: Add bags processed count
+                totalBagsProcessed,
                 totalRevenue,
                 pendingErrors,
                 recentErrors,
@@ -598,7 +651,7 @@ public class AdminController {
 
     private List<PlatformStatsDTO.SystemErrorDTO> getRecentSystemErrors() {
         // Get real system errors from the error table
-        return systemErrorRepository.findTop10OpenOrderedBySeverity()
+        return systemErrorRepository.findTop10OpenOrderedBySeverity(pageRequest(0, 10, 10))
                 .stream()
                 .map(error -> new PlatformStatsDTO.SystemErrorDTO(
                         error.getId().toString(),
@@ -614,8 +667,7 @@ public class AdminController {
     // ========== HELPER METHODS ==========
 
     private int countHcfsForFacility(UUID facilityId) {
-        // TODO: Add proper query when HCF has facility relation
-        return 0;
+        return Math.toIntExact(agreementRepository.countDistinctActiveHcfsByFacilityId(facilityId));
     }
 
     private int countActiveUsersForFacility(UUID facilityId) {
@@ -630,6 +682,50 @@ public class AdminController {
     private String getCurrentUsername() {
         TenantContext.TenantInfo info = TenantContext.get();
         return info != null ? info.username() : "SYSTEM";
+    }
+
+    private static String cleanFeatureKey(String value) {
+        String cleaned = cleanLine(value).toUpperCase(Locale.ROOT);
+        if (!cleaned.matches(FEATURE_KEY_PATTERN) || !SUPPORTED_FEATURE_KEYS.contains(cleaned)) {
+            throw new IllegalArgumentException("Unsupported feature key: " + cleaned);
+        }
+        return cleaned;
+    }
+
+    private static String defaultCleanLine(String value, String fallback) {
+        String cleaned = cleanLine(value);
+        return cleaned.isBlank() ? fallback : cleaned;
+    }
+
+    private static String cleanLine(String value) {
+        return value == null ? "" : value.trim().replaceAll("[\\r\\n\\t]+", " ");
+    }
+
+    private static String normalizeSearch(String search) {
+        return normalizeQueryText(search, MAX_SEARCH_LENGTH, "search");
+    }
+
+    private static String normalizeQueryFilter(String value, String label) {
+        return normalizeQueryText(value, MAX_QUERY_FILTER_LENGTH, label);
+    }
+
+    private static String normalizeQueryText(String value, int maxLength, String label) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.strip();
+        if (normalized.isBlank()) {
+            return null;
+        }
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException(label + " must be " + maxLength + " characters or fewer");
+        }
+        for (int i = 0; i < normalized.length(); i++) {
+            if (Character.isISOControl(normalized.charAt(i))) {
+                throw new IllegalArgumentException(label + " contains unsupported control characters");
+            }
+        }
+        return normalized;
     }
 
     private String generateTempPassword() {
@@ -678,5 +774,33 @@ public class AdminController {
         }
 
         log.info("Feature defaults applied for CBWTF {}: [{}]", facility.getCode(), enabledFeatures);
+    }
+
+    public record SuspendTenantRequest(
+            @Size(max = MAX_ADMIN_REASON_LENGTH, message = "Reason must be 1000 characters or less")
+            String reason) {
+    }
+
+    public record ReactivateTenantRequest(
+            @Min(value = 1, message = "Reactivation days must be at least 1")
+            @Max(value = MAX_REACTIVATION_DAYS, message = "Reactivation days must be 3650 or less")
+            Integer days,
+            @Size(max = MAX_ADMIN_REASON_LENGTH, message = "Notes must be 1000 characters or less")
+            String notes) {
+    }
+
+    public record TemporaryAccessRequest(
+            @Min(value = 1, message = "Temporary access days must be at least 1")
+            @Max(value = MAX_TEMPORARY_ACCESS_DAYS, message = "Temporary access days must be 365 or less")
+            Integer days,
+            @Size(max = MAX_ADMIN_REASON_LENGTH, message = "Reason must be 1000 characters or less")
+            String reason) {
+    }
+
+    public record TestEmailRequest(
+            @NotBlank(message = "Email address is required")
+            @Email(message = "Invalid email address")
+            @Size(max = 255, message = "Email must be 255 characters or less")
+            String email) {
     }
 }

@@ -35,7 +35,7 @@ import java.util.*;
  * - 1 PAID invoice (historical)
  */
 @Component
-@Profile({ "dev", "test" })
+@Profile("dev")
 @Order(200) // Run after DataInitializer
 public class Phase2DataSeeder implements CommandLineRunner {
 

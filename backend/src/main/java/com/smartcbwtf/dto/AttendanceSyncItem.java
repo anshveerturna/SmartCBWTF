@@ -1,6 +1,9 @@
 package com.smartcbwtf.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -23,13 +26,19 @@ public class AttendanceSyncItem {
     private Long eventTsMillis;
 
     @NotNull
+    @DecimalMin(value = "-90.0")
+    @DecimalMax(value = "90.0")
     private Double gpsLat;
 
     @NotNull
+    @DecimalMin(value = "-180.0")
+    @DecimalMax(value = "180.0")
     private Double gpsLon;
 
+    @DecimalMin(value = "0.0")
     private Double gpsAccuracyM;
 
+    @Size(max = 100)
     private String appDeviceId;
 
     // Getters and setters

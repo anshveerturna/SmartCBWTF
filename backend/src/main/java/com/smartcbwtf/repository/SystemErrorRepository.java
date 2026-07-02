@@ -62,7 +62,7 @@ public interface SystemErrorRepository extends JpaRepository<SystemError, UUID> 
     @Query("SELECT e FROM SystemError e WHERE e.status = 'OPEN' ORDER BY " +
             "CASE e.severity WHEN 'CRITICAL' THEN 1 WHEN 'ERROR' THEN 2 WHEN 'WARNING' THEN 3 ELSE 4 END, " +
             "e.createdAt DESC")
-    List<SystemError> findTop10OpenOrderedBySeverity();
+    List<SystemError> findTop10OpenOrderedBySeverity(Pageable pageable);
 
     // Check for duplicate auto-detected errors (to avoid spamming)
     boolean existsByTitleAndSourceAndStatusIn(String title, String source, List<String> statuses);

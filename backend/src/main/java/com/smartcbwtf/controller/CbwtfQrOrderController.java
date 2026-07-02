@@ -1,18 +1,37 @@
 package com.smartcbwtf.controller;
 
 import com.smartcbwtf.config.TenantContext;
+import com.smartcbwtf.domain.QrAuthorization;
+import com.smartcbwtf.domain.QrAuthorization.WasteCategory;
 import com.smartcbwtf.domain.QrLabelOrder;
+import com.smartcbwtf.service.PdfService;
 import com.smartcbwtf.service.QrOrderService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,11 +46,16 @@ import java.util.UUID;
 public class CbwtfQrOrderController {
 
     private static final Logger log = LoggerFactory.getLogger(CbwtfQrOrderController.class);
+    private static final int MAX_QR_QUANTITY_PER_CATEGORY = 100_000;
+    private static final int MAX_WASTE_CATEGORIES_PER_ORDER = 4;
+    private static final int MAX_REJECTION_REASON_LENGTH = 1000;
 
     private final QrOrderService qrOrderService;
+    private final PdfService pdfService;
 
-    public CbwtfQrOrderController(QrOrderService qrOrderService) {
+    public CbwtfQrOrderController(QrOrderService qrOrderService, PdfService pdfService) {
         this.qrOrderService = qrOrderService;
+        this.pdfService = pdfService;
     }
 
     /**
@@ -39,35 +63,19 @@ public class CbwtfQrOrderController {
      * No charge — admin-initiated generation with PDF download.
      */
     @PostMapping("/generate-for-hcf")
-    public ResponseEntity<?> generateForHcf(@RequestBody GenerateForHcfRequest request) {
+    public ResponseEntity<?> generateForHcf(@Valid @RequestBody GenerateForHcfRequest request) {
         try {
             UUID adminUserId = TenantContext.getUserId();
-
-            // Build category-quantity map from the request
-            Map<String, Integer> categoryQuantities = new LinkedHashMap<>();
-            if (request.categoryQuantities() != null && !request.categoryQuantities().isEmpty()) {
-                categoryQuantities.putAll(request.categoryQuantities());
-            } else if (request.wasteCategory() != null && request.quantity() > 0) {
-                // Backward compatible: single category
-                categoryQuantities.put(request.wasteCategory(), request.quantity());
-            } else {
-                return ResponseEntity.badRequest().body(Map.of("error", "No categories/quantities provided"));
-            }
-
-            // Remove zero-quantity entries
-            categoryQuantities.entrySet().removeIf(e -> e.getValue() == null || e.getValue() <= 0);
-            if (categoryQuantities.isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "At least one category with quantity > 0 required"));
-            }
+            UUID hcfId = requireHcfId(request.hcfId());
+            Map<String, Integer> categoryQuantities = requireCategoryQuantities(request);
 
             int totalQty = categoryQuantities.values().stream().mapToInt(Integer::intValue).sum();
 
             var result = qrOrderService.adminDirectGenerateMulti(
-                    request.hcfId(), categoryQuantities, adminUserId, request.validUntil());
+                    hcfId, categoryQuantities, adminUserId, request.validUntil());
 
             log.info("CBWTF admin generated {} QR labels ({}) for HCF {}", totalQty, categoryQuantities.keySet(),
-                    request.hcfId());
+                    hcfId);
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -88,9 +96,10 @@ public class CbwtfQrOrderController {
      * List pending QR orders for this facility.
      */
     @GetMapping("/pending")
-    public ResponseEntity<List<QrOrderDTO>> listPendingOrders() {
+    public ResponseEntity<List<QrOrderDTO>> listPendingOrders(
+            @RequestParam(defaultValue = "100") int limit) {
         UUID facilityId = TenantContext.getTenantId();
-        List<QrLabelOrder> orders = qrOrderService.listPendingOrders(facilityId);
+        List<QrLabelOrder> orders = qrOrderService.listPendingOrders(facilityId, limit);
         return ResponseEntity.ok(orders.stream().map(QrOrderDTO::from).toList());
     }
 
@@ -99,11 +108,35 @@ public class CbwtfQrOrderController {
      */
     @GetMapping
     public ResponseEntity<List<QrOrderDTO>> listAllOrders(
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "100") int limit) {
         UUID facilityId = TenantContext.getTenantId();
-        // For now, return pending orders; can extend with status filter
-        List<QrLabelOrder> orders = qrOrderService.listPendingOrders(facilityId);
+        List<QrLabelOrder> orders = qrOrderService.listAllOrders(facilityId, status, limit);
         return ResponseEntity.ok(orders.stream().map(QrOrderDTO::from).toList());
+    }
+
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<Resource> downloadOrderPdf(@PathVariable("id") UUID id) {
+        try {
+            UUID facilityId = TenantContext.getTenantId();
+            QrLabelOrder order = qrOrderService.getOrderPdfForFacility(id, facilityId);
+
+            Path file = pdfService.generatedFilePath(order.getPdfUrl());
+            if (!Files.exists(file) || !Files.isRegularFile(file) || !Files.isReadable(file)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.noStore())
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"QR-labels-" + order.getId() + ".pdf\"")
+                    .body(new FileSystemResource(file));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     /**
@@ -113,7 +146,8 @@ public class CbwtfQrOrderController {
     public ResponseEntity<?> fulfillOrder(@PathVariable("id") UUID id) {
         try {
             UUID adminUserId = TenantContext.getUserId();
-            QrLabelOrder fulfilled = qrOrderService.fulfillRequest(id, adminUserId);
+            UUID facilityId = TenantContext.getTenantId();
+            QrLabelOrder fulfilled = qrOrderService.fulfillRequest(id, facilityId, adminUserId);
 
             log.info("QR order {} fulfilled by admin {}", id, adminUserId);
 
@@ -138,12 +172,14 @@ public class CbwtfQrOrderController {
     @PostMapping("/{id}/reject")
     public ResponseEntity<?> rejectOrder(
             @PathVariable("id") UUID id,
-            @RequestBody(required = false) RejectRequest request) {
+            @Valid @RequestBody(required = false) RejectRequest request) {
         try {
             UUID adminUserId = TenantContext.getUserId();
-            String reason = request != null && request.reason != null ? request.reason : "No reason provided";
+            UUID facilityId = TenantContext.getTenantId();
+            String reason = request != null ? trimToDefault(request.reason(), "No reason provided")
+                    : "No reason provided";
 
-            QrLabelOrder rejected = qrOrderService.rejectRequest(id, adminUserId, reason);
+            QrLabelOrder rejected = qrOrderService.rejectRequest(id, facilityId, adminUserId, reason);
 
             log.info("QR order {} rejected by admin {}: {}", id, adminUserId, reason);
 
@@ -164,16 +200,74 @@ public class CbwtfQrOrderController {
         return ResponseEntity.ok(qrOrderService.getPricing());
     }
 
+    private static UUID requireHcfId(UUID hcfId) {
+        if (hcfId == null) {
+            throw new IllegalArgumentException("HCF ID is required");
+        }
+        return hcfId;
+    }
+
+    private static Map<String, Integer> requireCategoryQuantities(GenerateForHcfRequest request) {
+        Map<String, Integer> categoryQuantities = new LinkedHashMap<>();
+        if (request.categoryQuantities() != null && !request.categoryQuantities().isEmpty()) {
+            request.categoryQuantities().forEach((category, quantity) ->
+                    addCategoryQuantity(categoryQuantities, category, quantity));
+        } else if (request.wasteCategory() != null || request.quantity() != null) {
+            addCategoryQuantity(categoryQuantities, request.wasteCategory(), request.quantity());
+        }
+
+        if (categoryQuantities.isEmpty()) {
+            throw new IllegalArgumentException("At least one category with quantity > 0 required");
+        }
+        return categoryQuantities;
+    }
+
+    private static void addCategoryQuantity(Map<String, Integer> categoryQuantities, String category, Integer quantity) {
+        String normalizedCategory = requireWasteCategory(category);
+        int normalizedQuantity = requireQuantity(quantity);
+        categoryQuantities.merge(normalizedCategory, normalizedQuantity, Integer::sum);
+    }
+
+    private static String requireWasteCategory(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Waste category is required");
+        }
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        try {
+            WasteCategory.valueOf(normalized);
+            return normalized;
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Waste category must be one of YELLOW, RED, BLUE, WHITE");
+        }
+    }
+
+    private static int requireQuantity(Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be positive");
+        }
+        if (quantity > MAX_QR_QUANTITY_PER_CATEGORY) {
+            throw new IllegalArgumentException("Quantity is too large");
+        }
+        return quantity;
+    }
+
+    private static String trimToDefault(String value, String defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return value.trim();
+    }
+
     // DTOs
-    public record RejectRequest(String reason) {
+    public record RejectRequest(@Size(max = MAX_REJECTION_REASON_LENGTH) String reason) {
     }
 
     public record GenerateForHcfRequest(
-            UUID hcfId,
-            String wasteCategory,
-            int quantity,
-            Map<String, Integer> categoryQuantities,
-            java.time.LocalDate validUntil) {
+            @NotNull UUID hcfId,
+            @Pattern(regexp = QrAuthorization.WASTE_CATEGORY_PATTERN, message = "must be one of YELLOW, RED, BLUE, WHITE") String wasteCategory,
+            @Positive @Max(MAX_QR_QUANTITY_PER_CATEGORY) Integer quantity,
+            @Valid @Size(max = MAX_WASTE_CATEGORIES_PER_ORDER) Map<@Pattern(regexp = QrAuthorization.WASTE_CATEGORY_PATTERN, message = "must be one of YELLOW, RED, BLUE, WHITE") String, @NotNull @Positive @Max(MAX_QR_QUANTITY_PER_CATEGORY) Integer> categoryQuantities,
+            @FutureOrPresent LocalDate validUntil) {
     }
 
     public record QrOrderDTO(

@@ -1,12 +1,15 @@
 package com.smartcbwtf.service;
 
+import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.*;
 import com.smartcbwtf.domain.QrLabelOrder.QrOrderStatus;
 import com.smartcbwtf.domain.QrLabelOrder.QrOrderType;
 import com.smartcbwtf.dto.LabelIssueRequest;
 import com.smartcbwtf.repository.*;
+import com.smartcbwtf.util.PaginationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +46,8 @@ public class QrOrderService {
         private static final BigDecimal DEFAULT_SELF_PRICE = new BigDecimal("5.00");
         private static final BigDecimal DEFAULT_CBWTF_PRICE = new BigDecimal("5.00");
         private static final int DEFAULT_MAX_QUANTITY = 500;
+        private static final int DEFAULT_ORDER_LIST_LIMIT = 100;
+        private static final int MAX_ORDER_LIST_LIMIT = 250;
 
         public QrOrderService(
                         QrLabelOrderRepository qrOrderRepository,
@@ -85,13 +90,19 @@ public class QrOrderService {
          */
         @Transactional
         public QrLabelOrder createCbwtfRequest(UUID hcfId, String category, int quantity, String notes) {
+                return createCbwtfRequest(hcfId, requireTenantFacilityId(), category, quantity, notes);
+        }
+
+        @Transactional
+        public QrLabelOrder createCbwtfRequest(UUID hcfId, UUID facilityId, String category, int quantity,
+                        String notes) {
                 validateQuantity(quantity);
 
-                Hcf hcf = hcfRepository.findById(hcfId)
+                Hcf hcf = hcfRepository.findByIdAndFacilityId(hcfId, facilityId)
                                 .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
 
                 // Find active agreement to identify the facility
-                Agreement agreement = agreementRepository.findActiveByHcfId(hcfId)
+                Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
                                 .orElseThrow(() -> new IllegalStateException("No active agreement found for this HCF"));
 
                 Facility facility = agreement.getFacility();
@@ -131,14 +142,20 @@ public class QrOrderService {
         @Transactional
         public QrSelfGenerateResult selfGenerate(UUID hcfId, String category, int quantity,
                         java.time.LocalDate validUntil) {
+                return selfGenerate(hcfId, requireTenantFacilityId(), category, quantity, validUntil);
+        }
+
+        @Transactional
+        public QrSelfGenerateResult selfGenerate(UUID hcfId, UUID facilityId, String category, int quantity,
+                        java.time.LocalDate validUntil) {
                 validateQuantity(quantity);
                 validateValidity(validUntil);
 
-                Hcf hcf = hcfRepository.findById(hcfId)
+                Hcf hcf = hcfRepository.findByIdAndFacilityId(hcfId, facilityId)
                                 .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
 
                 // Find active agreement to identify the facility
-                Agreement agreement = agreementRepository.findActiveByHcfId(hcfId)
+                Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
                                 .orElseThrow(() -> new IllegalStateException("No active agreement found for this HCF"));
 
                 Facility facility = agreement.getFacility();
@@ -191,12 +208,11 @@ public class QrOrderService {
                 validateQuantity(quantity);
                 validateValidity(validUntil);
 
-                Hcf hcf = hcfRepository.findById(hcfId)
-                                .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
-
-                Agreement agreement = agreementRepository.findActiveByHcfId(hcfId)
+                UUID facilityId = requireTenantFacilityId();
+                Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
                                 .orElseThrow(() -> new IllegalStateException("No active agreement found for this HCF"));
 
+                Hcf hcf = agreement.getHcf();
                 Facility facility = agreement.getFacility();
 
                 // Admin-generated labels are free (no charge to HCF)
@@ -243,13 +259,19 @@ public class QrOrderService {
         @Transactional
         public QrSelfGenerateResult selfGenerateMulti(UUID hcfId, Map<String, Integer> categoryQuantities,
                         java.time.LocalDate validUntil) {
+                return selfGenerateMulti(hcfId, requireTenantFacilityId(), categoryQuantities, validUntil);
+        }
+
+        @Transactional
+        public QrSelfGenerateResult selfGenerateMulti(UUID hcfId, UUID facilityId,
+                        Map<String, Integer> categoryQuantities, java.time.LocalDate validUntil) {
                 int totalQuantity = categoryQuantities.values().stream().mapToInt(Integer::intValue).sum();
                 validateQuantity(totalQuantity);
                 validateValidity(validUntil);
 
-                Hcf hcf = hcfRepository.findById(hcfId)
+                Hcf hcf = hcfRepository.findByIdAndFacilityId(hcfId, facilityId)
                                 .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
-                Agreement agreement = agreementRepository.findActiveByHcfId(hcfId)
+                Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
                                 .orElseThrow(() -> new IllegalStateException("No active agreement found for this HCF"));
                 Facility facility = agreement.getFacility();
 
@@ -297,10 +319,10 @@ public class QrOrderService {
                 validateQuantity(totalQuantity);
                 validateValidity(validUntil);
 
-                Hcf hcf = hcfRepository.findById(hcfId)
-                                .orElseThrow(() -> new IllegalArgumentException("HCF not found"));
-                Agreement agreement = agreementRepository.findActiveByHcfId(hcfId)
+                UUID facilityId = requireTenantFacilityId();
+                Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
                                 .orElseThrow(() -> new IllegalStateException("No active agreement found for this HCF"));
+                Hcf hcf = agreement.getHcf();
                 Facility facility = agreement.getFacility();
 
                 QrLabelOrder order = new QrLabelOrder();
@@ -338,8 +360,8 @@ public class QrOrderService {
          * CBWTF admin fulfills a QR request.
          */
         @Transactional
-        public QrLabelOrder fulfillRequest(UUID orderId, UUID adminUserId) {
-                QrLabelOrder order = qrOrderRepository.findById(orderId)
+        public QrLabelOrder fulfillRequest(UUID orderId, UUID facilityId, UUID adminUserId) {
+                QrLabelOrder order = qrOrderRepository.findByIdAndFacilityId(orderId, facilityId)
                                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
 
                 if (order.getStatus() != QrOrderStatus.PENDING) {
@@ -373,8 +395,8 @@ public class QrOrderService {
          * CBWTF admin rejects a QR request.
          */
         @Transactional
-        public QrLabelOrder rejectRequest(UUID orderId, UUID adminUserId, String reason) {
-                QrLabelOrder order = qrOrderRepository.findById(orderId)
+        public QrLabelOrder rejectRequest(UUID orderId, UUID facilityId, UUID adminUserId, String reason) {
+                QrLabelOrder order = qrOrderRepository.findByIdAndFacilityId(orderId, facilityId)
                                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
 
                 if (order.getStatus() != QrOrderStatus.PENDING) {
@@ -393,21 +415,80 @@ public class QrOrderService {
          * List pending orders for CBWTF admin.
          */
         public List<QrLabelOrder> listPendingOrders(UUID facilityId) {
-                return qrOrderRepository.findPendingOrdersByFacility(facilityId);
+                return listPendingOrders(facilityId, DEFAULT_ORDER_LIST_LIMIT);
+        }
+
+        public List<QrLabelOrder> listPendingOrders(UUID facilityId, int limit) {
+                return qrOrderRepository.findPendingOrdersByFacility(facilityId, firstPage(limit));
         }
 
         /**
          * List all orders for a facility.
          */
         public List<QrLabelOrder> listAllOrders(UUID facilityId) {
-                return qrOrderRepository.findByFacilityIdOrderByRequestedAtDesc(facilityId);
+                return listAllOrders(facilityId, null, DEFAULT_ORDER_LIST_LIMIT);
+        }
+
+        public List<QrLabelOrder> listAllOrders(UUID facilityId, String status, int limit) {
+                if (status != null && !status.isBlank()) {
+                        try {
+                                QrOrderStatus parsedStatus = QrOrderStatus.valueOf(status.trim().toUpperCase());
+                                return qrOrderRepository.findRecentByFacilityIdAndStatus(
+                                                facilityId, parsedStatus, firstPage(limit));
+                        } catch (IllegalArgumentException e) {
+                                return List.of();
+                        }
+                }
+                return qrOrderRepository.findRecentByFacilityId(facilityId, firstPage(limit));
         }
 
         /**
          * List all orders for an HCF.
          */
         public List<QrLabelOrder> listHcfOrders(UUID hcfId) {
-                return qrOrderRepository.findByHcfIdOrderByRequestedAtDesc(hcfId);
+                return listHcfOrders(hcfId, DEFAULT_ORDER_LIST_LIMIT);
+        }
+
+        public List<QrLabelOrder> listHcfOrders(UUID hcfId, int limit) {
+                return listHcfOrders(hcfId, requireTenantFacilityId(), limit);
+        }
+
+        public List<QrLabelOrder> listHcfOrders(UUID hcfId, UUID facilityId, int limit) {
+                return qrOrderRepository.findByHcfIdAndFacilityIdOrderByRequestedAtDesc(
+                                hcfId, facilityId, firstPage(limit));
+        }
+
+        public QrLabelOrder getOrderPdfForFacility(UUID orderId, UUID facilityId) {
+                QrLabelOrder order = qrOrderRepository.findByIdAndFacilityId(orderId, facilityId)
+                                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+                ensurePdfReady(order);
+                return order;
+        }
+
+        public QrLabelOrder getOrderPdfForHcf(UUID orderId, UUID hcfId) {
+                return getOrderPdfForHcf(orderId, hcfId, requireTenantFacilityId());
+        }
+
+        public QrLabelOrder getOrderPdfForHcf(UUID orderId, UUID hcfId, UUID facilityId) {
+                QrLabelOrder order = qrOrderRepository.findByIdAndHcfIdAndFacilityId(orderId, hcfId, facilityId)
+                                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+                ensurePdfReady(order);
+                return order;
+        }
+
+        private void ensurePdfReady(QrLabelOrder order) {
+                if (order.getPdfUrl() == null || order.getPdfUrl().isBlank()) {
+                        throw new IllegalStateException("QR label PDF is not available");
+                }
+                if (order.getStatus() != QrOrderStatus.FULFILLED) {
+                        throw new IllegalStateException("QR label order is not fulfilled");
+                }
+        }
+
+        private PageRequest firstPage(int requestedLimit) {
+                int limit = PaginationUtils.normalizeSize(requestedLimit, DEFAULT_ORDER_LIST_LIMIT,
+                                MAX_ORDER_LIST_LIMIT);
+                return PageRequest.of(0, limit);
         }
 
         // Helper methods
@@ -431,6 +512,15 @@ public class QrOrderService {
                 if (validUntil.isAfter(today.plusDays(31))) {
                         throw new IllegalArgumentException("Validity cannot exceed 1 month from today");
                 }
+        }
+
+        private UUID requireTenantFacilityId() {
+                UUID facilityId = TenantContext.getTenantId();
+                if (facilityId == null) {
+                        throw new TenantAssertionService.TenantAccessDeniedException(
+                                        "Tenant context is required for CBWTF QR order operations");
+                }
+                return facilityId;
         }
 
         // DTOs

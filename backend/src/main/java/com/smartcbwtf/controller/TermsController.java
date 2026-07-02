@@ -38,27 +38,37 @@ public class TermsController {
         
         <h4>1. TERMS OF PAYMENT</h4>
         <ol>
-        <li>All payment will be made advance of the month. In case payments are not received within month, service will be suspended.</li>
-        <li>Payment should be transfer by NEFT/RTGS/IMPS/Cheque &amp; online. (No Cash)</li>
-        <li>GST on BMW Services is 5% will be charged extra as per Govt. rule.</li>
+        <li>All payments shall be made in advance for the month. In case payments are not received within the month, service may be suspended and the HCF shall be responsible for non-compliance of BMW rules and regulations. Service shall resume only after payment, and charges shall apply from the date of stoppage/resumption as applicable.</li>
+        <li>No cash payment shall be made to any company staff or to any personal account. If any such payment is made, the HCF shall be solely responsible for that transaction. Payment shall be made only in the company account by cheque, NEFT, RTGS, IMPS, UPI, or other approved online mode.</li>
+        <li>Cheque bouncing charges of Rs. 500 shall be payable for each dishonoured cheque.</li>
+        <li>GST on BMW services shall be charged extra as per applicable government rules.</li>
+        <li>HCFs whose monthly billing charges are Rs. 2,500 or less may be billed quarterly and must pay within 7 days of billing.</li>
+        <li>If the HCF wants to stop the service or switch to another service provider, all outstanding dues must be cleared first. Otherwise, dues may be recovered by legal action. All disputes shall be subject to Rudrapur jurisdiction.</li>
         </ol>
         
         <h4>2. RESPONSIBILITIES OF THE SERVICE PROVIDER</h4>
         <ol>
-        <li>The Service Provider shall comply with provisions as stipulated in Schedule-1 of the BMW Rule 2025.</li>
-        <li>The Service Provider shall collect the segregated bio-medical waste from the designated collection point.</li>
-        <li>The Service Provider shall transport the segregated waste in closed container vehicle to its treatment facility.</li>
+        <li>The Service Provider shall comply with the provisions stipulated in Schedule-I of the Bio-medical Waste Management Rules, 2016, as amended from time to time.</li>
+        <li>The Service Provider shall collect segregated bio-medical waste from one designated waste collection point within the premises of the Waste Generator on alternate days, except Sundays and national/government holidays.</li>
+        <li>The Service Provider shall schedule the timings for collecting waste in consultation with the Waste Generator.</li>
+        <li>The Service Provider shall transport segregated waste in a closed container vehicle to its treatment facility.</li>
+        <li>The Service Provider shall not be held liable for violations made by the Waste Generator or its staff under the Bio-medical Waste Management Rules, 2016, as amended from time to time.</li>
         </ol>
         
         <h4>3. RESPONSIBILITIES OF THE WASTE GENERATOR</h4>
         <ol>
-        <li>The Waste Generator shall segregate the Bio-Medical waste at the point of generation in accordance with the BMW Rules 2025.</li>
-        <li>The Waste Generator shall collect, pack, label and handover the segregated BMW in non-chlorinated bags.</li>
-        <li>The Waste Generator shall take all necessary steps to ensure that the waste is handled without causing any adverse effect to human health and environment.</li>
+        <li>The Waste Generator shall segregate bio-medical waste at the point of generation in accordance with the Bio-medical Waste Management Rules, 2016, as amended from time to time.</li>
+        <li>The Waste Generator shall collect, pack, label, and hand over segregated BMW in non-chlorinated bags as stipulated under the Bio-medical Waste Management Rules, 2016, as amended from time to time, arranged by the Waste Generator at its own cost.</li>
+        <li>The Waste Generator shall keep BMW under lock and key to protect it from mishandling before handover to the authorised person of the Service Provider.</li>
+        <li>The Waste Generator shall disinfect and mutilate sharps and hand them over in sealed puncture-proof containers to the Service Provider.</li>
+        <li>The Waste Generator shall take all necessary steps to ensure waste is handled without causing adverse effect to human health and environment.</li>
+        <li>The Waste Generator shall establish a common secured waste collection point within its premises for collection and storage of BMW before handover to the Service Provider.</li>
+        <li>The Waste Generator shall designate a Nodal Officer to interact with the Service Provider.</li>
+        <li>The Waste Generator shall apply for and obtain necessary authorisation from the Prescribed Authority under the Bio-medical Waste Management Rules, 2016, as amended from time to time, or submit necessary returns to the Prescribed Authority from time to time as laid down in the said Rules.</li>
         </ol>
         
         <h4>DECLARATION</h4>
-        <p>I/We have read and understood the entire contents of this agreement and give my/our free consent to the terms and conditions set out herein above.</p>
+        <p>I/We have read and understood the contents of this agreement and agree that both parties shall remain bound by the terms and conditions stated herein.</p>
         """;
 
     /**
@@ -69,11 +79,11 @@ public class TermsController {
     public ResponseEntity<TermsResponse> getLatestTerms(
             @RequestParam(name = "facilityId", required = false) UUID facilityId) {
         
-        // Service handles null facilityId by returning global default
+        // Service returns only facility-specific terms; fallback is the built-in
+        // default so one facility's custom terms never leak to another.
         return termsService.getLatestTerms(facilityId)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> {
-                    // Return hardcoded default when no terms exist in database
                     TermsResponse defaultTerms = new TermsResponse(
                             null,                           // id
                             null,                           // facilityId

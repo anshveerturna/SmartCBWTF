@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -73,6 +74,7 @@ public class BagEventService {
             try {
                 BagLabel label = bagLabelRepository.findByQrCode(item.getQrCode())
                         .orElseThrow(() -> new IllegalArgumentException("Label not found"));
+                assertLabelBelongsToCurrentTenant(label);
 
                 // *** CRITICAL: Agreement Guard Check ***
                 assertAgreementActiveForLabel(label, item.getEventType());
@@ -131,6 +133,7 @@ public class BagEventService {
                 event.setEventTs(eventTs);
                 event.setGpsLat(item.getGpsLat());
                 event.setGpsLon(item.getGpsLon());
+                event.setGpsAccuracyM(item.getGpsAccuracyM());
                 event.setWeightKg(item.getWeightKg());
                 event.setCollectedByUserId(authenticatedUserId);
                 event.setAppDeviceId(item.getAppDeviceId());
@@ -291,6 +294,9 @@ public class BagEventService {
         if (label == null) {
             return new VerifyResult(404, BagVerifyResponse.error("NOT_FOUND", "Bag label not found"));
         }
+        if (!labelBelongsToCurrentTenant(label)) {
+            return new VerifyResult(404, BagVerifyResponse.error("NOT_FOUND", "Bag label not found"));
+        }
 
         // *** CRITICAL: Agreement Guard Check ***
         try {
@@ -399,6 +405,19 @@ public class BagEventService {
             throw new IllegalStateException("Authenticated user context is required");
         }
         return userId;
+    }
+
+    private void assertLabelBelongsToCurrentTenant(BagLabel label) {
+        if (!labelBelongsToCurrentTenant(label)) {
+            throw new NoSuchElementException("Label not found");
+        }
+    }
+
+    private boolean labelBelongsToCurrentTenant(BagLabel label) {
+        UUID facilityId = TenantContext.getTenantId();
+        return facilityId != null
+                && label.getFacility() != null
+                && facilityId.equals(label.getFacility().getId());
     }
 
     private Optional<QrAuthorization> findQrAuthorization(BagLabel label) {

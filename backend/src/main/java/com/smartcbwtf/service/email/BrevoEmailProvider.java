@@ -11,9 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import jakarta.annotation.PostConstruct;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 /**
@@ -27,6 +28,7 @@ public class BrevoEmailProvider {
 
     private static final Logger log = LoggerFactory.getLogger(BrevoEmailProvider.class);
     private static final String BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+    static final long MAX_ATTACHMENT_BYTES = 10L * 1024L * 1024L;
 
     @Value("${app.email.brevo.api-key:}")
     private String apiKey;
@@ -39,6 +41,9 @@ public class BrevoEmailProvider {
 
     @Value("${app.email.enabled:false}")
     private boolean emailEnabled;
+
+    @Value("${app.email.attachment-root:files}")
+    private String attachmentRoot;
 
     private RestTemplate restTemplate;
     private ObjectMapper objectMapper;
@@ -84,14 +89,24 @@ public class BrevoEmailProvider {
             if (attachmentPaths != null && !attachmentPaths.isEmpty()) {
                 request.attachment = new ArrayList<>();
                 for (String path : attachmentPaths) {
-                    File file = new File(path);
-                    if (file.exists()) {
-                        byte[] content = Files.readAllBytes(file.toPath());
+                    try {
+                        Path file = resolveAllowedAttachmentPath(path);
+                        if (!Files.exists(file) || !Files.isRegularFile(file) || !Files.isReadable(file)) {
+                            log.warn("[BREVO] Attachment file not found or unreadable: {}", safeAttachmentName(path));
+                            continue;
+                        }
+                        long size = Files.size(file);
+                        if (size > MAX_ATTACHMENT_BYTES) {
+                            log.warn("[BREVO] Attachment skipped because it is too large: {} bytes={}",
+                                    file.getFileName(), size);
+                            continue;
+                        }
+                        byte[] content = Files.readAllBytes(file);
                         String base64 = Base64.getEncoder().encodeToString(content);
-                        request.attachment.add(new Attachment(file.getName(), base64));
-                        log.debug("[BREVO] Added attachment: {}", file.getName());
-                    } else {
-                        log.warn("[BREVO] Attachment file not found: {}", path);
+                        request.attachment.add(new Attachment(file.getFileName().toString(), base64));
+                        log.debug("[BREVO] Added attachment: {}", file.getFileName());
+                    } catch (IllegalArgumentException | IOException e) {
+                        log.warn("[BREVO] Attachment skipped: {} ({})", safeAttachmentName(path), e.getMessage());
                     }
                 }
             }
@@ -133,6 +148,41 @@ public class BrevoEmailProvider {
     public String sendSimpleEmail(String to, String subject, String textBody) {
         String htmlContent = wrapInHtmlTemplate(textBody);
         return sendEmail(to, subject, htmlContent, null);
+    }
+
+    Path resolveAllowedAttachmentPath(String requestedPath) {
+        if (requestedPath == null || requestedPath.isBlank() || requestedPath.indexOf('\0') >= 0
+                || requestedPath.contains("\\")) {
+            throw new IllegalArgumentException("Invalid attachment path");
+        }
+
+        Path root = Paths.get(attachmentRoot).toAbsolutePath().normalize();
+        Path resolved;
+        if (requestedPath.startsWith("/files/")) {
+            resolved = root.resolve(requestedPath.substring("/files/".length())).normalize();
+        } else if (requestedPath.startsWith("files/")) {
+            resolved = root.resolve(requestedPath.substring("files/".length())).normalize();
+        } else {
+            Path raw = Paths.get(requestedPath);
+            resolved = raw.isAbsolute() ? raw.normalize() : raw.toAbsolutePath().normalize();
+        }
+
+        if (!resolved.startsWith(root)) {
+            throw new IllegalArgumentException("Attachment path is outside the allowed root");
+        }
+        return resolved;
+    }
+
+    private String safeAttachmentName(String path) {
+        if (path == null || path.isBlank()) {
+            return "(blank)";
+        }
+        try {
+            Path filename = Paths.get(path).getFileName();
+            return filename != null ? filename.toString() : "(unknown)";
+        } catch (Exception e) {
+            return "(invalid)";
+        }
     }
 
     /**

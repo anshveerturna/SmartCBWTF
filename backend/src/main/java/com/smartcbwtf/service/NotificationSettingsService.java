@@ -19,6 +19,14 @@ import java.util.UUID;
 public class NotificationSettingsService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationSettingsService.class);
+    private static final int MIN_PAYMENT_REMINDER_START_DAYS = 1;
+    private static final int MAX_PAYMENT_REMINDER_START_DAYS = 30;
+    private static final int MIN_PAYMENT_REMINDER_FREQUENCY_DAYS = 1;
+    private static final int MAX_PAYMENT_REMINDER_FREQUENCY_DAYS = 14;
+    private static final int MIN_MAX_OVERDUE_REMINDERS = 1;
+    private static final int MAX_MAX_OVERDUE_REMINDERS = 10;
+    private static final int MIN_AGREEMENT_EXPIRY_WARNING_DAYS = 7;
+    private static final int MAX_AGREEMENT_EXPIRY_WARNING_DAYS = 90;
 
     private final FacilityNotificationSettingsRepository settingsRepository;
     private final FacilityRepository facilityRepository;
@@ -63,6 +71,7 @@ public class NotificationSettingsService {
      */
     @Transactional
     public FacilityNotificationSettings updateSettings(UUID facilityId, UpdateRequest request) {
+        UpdateRequest safeRequest = validateRequest(request);
         FacilityNotificationSettings settings = getSettings(facilityId);
 
         String oldValues = String.format(
@@ -72,17 +81,17 @@ public class NotificationSettingsService {
                 settings.getMaxOverdueReminders(),
                 settings.getAgreementExpiryWarningDays());
 
-        if (request.paymentReminderStartDays != null) {
-            settings.setPaymentReminderStartDays(request.paymentReminderStartDays);
+        if (safeRequest.paymentReminderStartDays != null) {
+            settings.setPaymentReminderStartDays(safeRequest.paymentReminderStartDays);
         }
-        if (request.paymentReminderFrequencyDays != null) {
-            settings.setPaymentReminderFrequencyDays(request.paymentReminderFrequencyDays);
+        if (safeRequest.paymentReminderFrequencyDays != null) {
+            settings.setPaymentReminderFrequencyDays(safeRequest.paymentReminderFrequencyDays);
         }
-        if (request.maxOverdueReminders != null) {
-            settings.setMaxOverdueReminders(request.maxOverdueReminders);
+        if (safeRequest.maxOverdueReminders != null) {
+            settings.setMaxOverdueReminders(safeRequest.maxOverdueReminders);
         }
-        if (request.agreementExpiryWarningDays != null) {
-            settings.setAgreementExpiryWarningDays(request.agreementExpiryWarningDays);
+        if (safeRequest.agreementExpiryWarningDays != null) {
+            settings.setAgreementExpiryWarningDays(safeRequest.agreementExpiryWarningDays);
         }
 
         String newValues = String.format(
@@ -99,6 +108,42 @@ public class NotificationSettingsService {
 
         log.info("Updated notification settings for facility {}", facilityId);
         return settingsRepository.save(settings);
+    }
+
+    private UpdateRequest validateRequest(UpdateRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Notification settings request is required");
+        }
+        validateRange(
+                request.paymentReminderStartDays,
+                MIN_PAYMENT_REMINDER_START_DAYS,
+                MAX_PAYMENT_REMINDER_START_DAYS,
+                "Payment reminder start days");
+        validateRange(
+                request.paymentReminderFrequencyDays,
+                MIN_PAYMENT_REMINDER_FREQUENCY_DAYS,
+                MAX_PAYMENT_REMINDER_FREQUENCY_DAYS,
+                "Payment reminder frequency days");
+        validateRange(
+                request.maxOverdueReminders,
+                MIN_MAX_OVERDUE_REMINDERS,
+                MAX_MAX_OVERDUE_REMINDERS,
+                "Max overdue reminders");
+        validateRange(
+                request.agreementExpiryWarningDays,
+                MIN_AGREEMENT_EXPIRY_WARNING_DAYS,
+                MAX_AGREEMENT_EXPIRY_WARNING_DAYS,
+                "Agreement expiry warning days");
+        return request;
+    }
+
+    private void validateRange(Integer value, int min, int max, String fieldName) {
+        if (value == null) {
+            return;
+        }
+        if (value < min || value > max) {
+            throw new IllegalArgumentException(fieldName + " must be between " + min + " and " + max);
+        }
     }
 
     public record UpdateRequest(

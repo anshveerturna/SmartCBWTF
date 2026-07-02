@@ -4,6 +4,8 @@ import com.smartcbwtf.domain.*;
 import com.smartcbwtf.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +14,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.*;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -22,6 +25,7 @@ import java.util.stream.Collectors;
 public class AnalyticsAggregationService {
 
     private static final Logger log = LoggerFactory.getLogger(AnalyticsAggregationService.class);
+    private static final int FACILITY_PAGE_SIZE = 100;
 
     private final BagEventRepository bagEventRepository;
     private final FacilityRepository facilityRepository;
@@ -81,11 +85,7 @@ public class AnalyticsAggregationService {
      */
     @Transactional
     public void aggregateDailyForDate(LocalDate date) {
-        List<Facility> facilities = facilityRepository.findAll();
-
-        for (Facility facility : facilities) {
-            aggregateDailyForFacility(facility, date);
-        }
+        forEachFacility(facility -> aggregateDailyForFacility(facility, date));
     }
 
     /**
@@ -200,12 +200,17 @@ public class AnalyticsAggregationService {
      */
     @Transactional
     public void aggregateMonthlyForMonth(LocalDate firstDayOfMonth) {
-        List<Facility> facilities = facilityRepository.findAll();
         LocalDate lastDayOfMonth = firstDayOfMonth.plusMonths(1).minusDays(1);
+        forEachFacility(facility -> aggregateMonthlyForFacility(facility, firstDayOfMonth, lastDayOfMonth));
+    }
 
-        for (Facility facility : facilities) {
-            aggregateMonthlyForFacility(facility, firstDayOfMonth, lastDayOfMonth);
-        }
+    private void forEachFacility(Consumer<Facility> consumer) {
+        int pageNumber = 0;
+        Page<Facility> page;
+        do {
+            page = facilityRepository.findAll(PageRequest.of(pageNumber++, FACILITY_PAGE_SIZE));
+            page.forEach(consumer);
+        } while (page.hasNext());
     }
 
     /**

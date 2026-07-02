@@ -2,6 +2,7 @@ package com.smartcbwtf.service;
 
 import com.smartcbwtf.domain.GpsIngestionLog;
 import com.smartcbwtf.repository.GpsIngestionLogRepository;
+import org.springframework.data.domain.PageRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class GpsIngestionHealthService {
     private static final int HEALTHY_THRESHOLD_MINUTES = 15;
     private static final int DEGRADED_THRESHOLD_MINUTES = 60;
     private static final int FAILURE_COUNT_WARNING = 3;
+    private static final int MAX_ALL_HEALTH_ROWS = 500;
 
     private final GpsIngestionLogRepository ingestionLogRepository;
 
@@ -41,7 +43,8 @@ public class GpsIngestionHealthService {
      * Get health status for all facilities.
      */
     public List<IngestionHealthDTO> getAllHealth() {
-        List<GpsIngestionLog> logs = ingestionLogRepository.findAll();
+        List<GpsIngestionLog> logs = ingestionLogRepository.findAllByOrderByUpdatedAtDesc(
+                PageRequest.of(0, MAX_ALL_HEALTH_ROWS));
         return logs.stream()
                 .map(this::toHealthDTO)
                 .collect(Collectors.toList());
@@ -51,7 +54,7 @@ public class GpsIngestionHealthService {
      * Get health status for a specific facility.
      */
     public List<IngestionHealthDTO> getHealthByFacility(UUID facilityId) {
-        List<GpsIngestionLog> logs = ingestionLogRepository.findByFacilityId(facilityId);
+        List<GpsIngestionLog> logs = ingestionLogRepository.findByFacilityIdOrderByVendorAsc(facilityId);
         return logs.stream()
                 .map(this::toHealthDTO)
                 .collect(Collectors.toList());

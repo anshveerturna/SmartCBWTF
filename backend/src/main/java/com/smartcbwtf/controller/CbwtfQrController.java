@@ -10,13 +10,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
@@ -93,9 +95,10 @@ public class CbwtfQrController {
     @GetMapping
     public ResponseEntity<List<QrDetailDTO>> listQrs(
             @RequestParam(name = "hcfId", required = false) UUID hcfId,
-            @RequestParam(name = "status", required = false) String status) {
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "limit", defaultValue = "100") int limit) {
 
-        List<QrDetailDTO> qrs = qrService.listQrs(hcfId, status)
+        List<QrDetailDTO> qrs = qrService.listQrs(hcfId, status, limit)
                 .stream()
                 .map(QrDetailDTO::from)
                 .toList();
@@ -131,17 +134,16 @@ public class CbwtfQrController {
                 qr.getHcf(), qr.getFacility(), qr.getWasteCategory(), qr.getQrPayload(),
                 java.time.LocalDate.ofInstant(qr.getValidTo(), java.time.ZoneId.of("UTC")));
 
-        // pdfUrl is like /files/label-xxx.pdf — resolve to actual file
-        String filename = pdfUrl.replace("/files/", "");
-        File file = new File("files/" + filename);
-        if (!file.exists()) {
+        Path file = pdfService.generatedFilePath(pdfUrl);
+        if (!Files.exists(file) || !Files.isRegularFile(file) || !Files.isReadable(file)) {
             return ResponseEntity.notFound().build();
         }
 
         Resource resource = new FileSystemResource(file);
         return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + file.getName() + "\"")
+                        "attachment; filename=\"" + file.getFileName() + "\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(resource);
     }

@@ -4,6 +4,7 @@ import com.smartcbwtf.domain.BankAccount;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,6 +16,9 @@ import java.util.UUID;
  */
 @Repository
 public interface BankAccountRepository extends JpaRepository<BankAccount, UUID> {
+
+    @Query("SELECT b FROM BankAccount b WHERE b.id = :id AND b.facility.id = :facilityId")
+    Optional<BankAccount> findByIdAndFacilityId(@Param("id") UUID id, @Param("facilityId") UUID facilityId);
 
     /**
      * Find all bank accounts for a CBWTF.

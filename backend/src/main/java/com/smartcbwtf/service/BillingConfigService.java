@@ -1,5 +1,6 @@
 package com.smartcbwtf.service;
 
+import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.Agreement;
 import com.smartcbwtf.domain.AgreementBillingConfig;
 import com.smartcbwtf.dto.BillingConfigRequest;
@@ -91,7 +92,8 @@ public class BillingConfigService {
                 newConfig.setBaseRatePerBedPerDay(request.getBaseRatePerBedPerDay());
                 newConfig.setEffectiveFrom(today);
                 // effectiveTo stays null (active)
-                newConfig.setCreatedBy(UUID.randomUUID()); // TODO: Get from security context
+                UUID actorUserId = TenantContext.getUserId();
+                newConfig.setCreatedBy(actorUserId);
 
                 billingConfigRepository.save(newConfig);
 
@@ -99,7 +101,7 @@ public class BillingConfigService {
                 String details = String.format("Base: %s/bed/day, Allowance: %dg/bed/day",
                                 request.getBaseRatePerBedPerDay(),
                                 request.getBaseGramsPerBedPerDay());
-                auditLogService.log("AGREEMENT", agreement.getId(), "BILLING_CONFIG_CREATED", null, details);
+                auditLogService.log("AGREEMENT", agreement.getId(), "BILLING_CONFIG_CREATED", actorUserId, details);
                 log.info("Created billing config for agreement {}: {}", agreement.getAgreementNumber(), details);
 
                 return HcfDetailDTO.BillingConfigInfo.from(newConfig, agreement.getFacility());
