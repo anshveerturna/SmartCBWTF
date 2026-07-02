@@ -13,7 +13,7 @@ if [ -f "$APP_HOME/.bashrc" ]; then
   # Load deployment secrets exported on the host.
   # shellcheck disable=SC1091
   set +u
-  source "$APP_HOME/.bashrc"
+  source "$APP_HOME/.bashrc" || true
   set -u
 fi
 
