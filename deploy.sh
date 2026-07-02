@@ -12,7 +12,9 @@ DB_BACKUP_DIR="${DB_BACKUP_DIR:-$APP_HOME/db-backups}"
 if [ -f "$APP_HOME/.bashrc" ]; then
   # Load deployment secrets exported on the host.
   # shellcheck disable=SC1091
+  set +u
   source "$APP_HOME/.bashrc"
+  set -u
 fi
 
 DB_URL="${DB_URL:-${DATABASE_URL:-}}"
