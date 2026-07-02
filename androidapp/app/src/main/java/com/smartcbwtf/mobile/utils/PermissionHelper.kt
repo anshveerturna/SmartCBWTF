@@ -42,6 +42,14 @@ class PermissionHelper @Inject constructor(
         return true // Runtime permissions not required for BT before Android 12 (declared in manifest)
     }
 
+    fun hasNotificationPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+    }
+
     fun getRequiredPermissions(): List<String> {
         val permissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -51,6 +59,9 @@ class PermissionHelper @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permissions.add(Manifest.permission.BLUETOOTH_SCAN)
             permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
         }
         return permissions
     }

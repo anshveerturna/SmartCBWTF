@@ -1,13 +1,11 @@
 package com.smartcbwtf.mobile.repository
 
-import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
 import com.smartcbwtf.mobile.network.api.GpsEventItem
 import com.smartcbwtf.mobile.network.api.GpsPingRequest
 import com.smartcbwtf.mobile.network.api.LocationApi
 import com.smartcbwtf.mobile.storage.AuthTokenStore
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.smartcbwtf.mobile.utils.Logger
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -29,26 +27,22 @@ interface LocationRepository {
 
 @Singleton
 class DefaultLocationRepository @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val locationApi: LocationApi,
-    private val authTokenStore: AuthTokenStore
+    private val authTokenStore: AuthTokenStore,
+    private val prefs: SharedPreferences
 ) : LocationRepository {
 
     companion object {
         private const val TAG = "LocationRepository"
-        private const val PREFS_NAME = "location_prefs"
         private const val KEY_LAST_LAT = "last_lat"
         private const val KEY_LAST_LON = "last_lon"
         private const val KEY_LOCATION_CONSENT = "location_consent"
     }
 
-    private val prefs: SharedPreferences = 
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
     override suspend fun syncLocation(latitude: Double, longitude: Double, accuracy: Double?): Boolean {
         // Check if user is logged in
         if (authTokenStore.getToken() == null) {
-            Log.d(TAG, "Not logged in, skipping location sync")
+            Logger.d(TAG, "Not logged in, skipping location sync")
             return false
         }
 
@@ -70,14 +64,14 @@ class DefaultLocationRepository @Inject constructor(
             val response = locationApi.pingLocation(request)
 
             if (response.isSuccessful) {
-                Log.d(TAG, "Location synced successfully: ${response.body()?.successCount} events")
+                Logger.d(TAG, "Location synced successfully")
                 true
             } else {
-                Log.w(TAG, "Location sync failed: ${response.code()}")
+                Logger.w(TAG, "Location sync failed")
                 false
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Location sync error: ${e.message}", e)
+            Logger.e(TAG, "Location sync error", e)
             false
         }
     }

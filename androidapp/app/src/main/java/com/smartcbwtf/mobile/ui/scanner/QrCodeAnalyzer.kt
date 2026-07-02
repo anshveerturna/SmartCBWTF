@@ -1,22 +1,18 @@
 package com.smartcbwtf.mobile.ui.scanner
 
 import android.annotation.SuppressLint
-import android.graphics.ImageFormat
 import android.graphics.Rect
 import android.graphics.RectF
-import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import com.smartcbwtf.mobile.utils.Logger
 import com.google.zxing.*
 import com.google.zxing.common.HybridBinarizer
-import java.nio.ByteBuffer
-import java.util.concurrent.TimeUnit
 
 /**
  * Image analyzer for QR code detection using ML Kit with ZXing fallback.
@@ -118,7 +114,7 @@ class QrCodeAnalyzer(
                     }
                 }
                 .addOnFailureListener { e ->
-                    Log.w(TAG, "ML Kit failed, trying ZXing fallback", e)
+                    Logger.w(TAG, "ML Kit failed, trying ZXing fallback", e)
                     tryZxingFallback(imageProxy)
                 }
                 .addOnCompleteListener {
@@ -126,17 +122,17 @@ class QrCodeAnalyzer(
                     imageProxy.close()
                 }
         } catch (e: Exception) {
-            Log.e(TAG, "Error analyzing image", e)
+            Logger.e(TAG, "Error analyzing image", e)
             isProcessing = false
             imageProxy.close()
         }
     }
 
     private fun findValidBarcode(barcodes: List<Barcode>, imageProxy: ImageProxy): String? {
-        Log.d(TAG, "ML Kit found ${barcodes.size} barcode(s)")
+        Logger.d(TAG, "ML Kit found barcode candidates")
         for (barcode in barcodes) {
             val rawValue = barcode.rawValue ?: continue
-            Log.d(TAG, "Checking barcode: $rawValue")
+            Logger.d(TAG, "Checking barcode candidate")
             
             // Check if barcode is within viewfinder bounds (if set)
             val boundingBox = barcode.boundingBox
@@ -152,17 +148,17 @@ class QrCodeAnalyzer(
                 val centerX = barcodeRect.centerX()
                 val centerY = barcodeRect.centerY()
                 if (!viewfinderRect!!.contains(centerX, centerY)) {
-                    Log.d(TAG, "Barcode outside viewfinder, skipping")
+                    Logger.d(TAG, "Barcode outside viewfinder, skipping")
                     continue // Skip barcodes outside viewfinder
                 }
             }
 
             // Validate QR format (accepting any non-empty QR code)
             if (isValidQrFormat(rawValue)) {
-                Log.d(TAG, "Valid QR code detected: $rawValue")
+                Logger.d(TAG, "Valid QR code detected")
                 return rawValue
             } else {
-                Log.w(TAG, "QR format validation failed for: $rawValue")
+                Logger.w(TAG, "QR format validation failed")
             }
         }
         return null
@@ -205,7 +201,7 @@ class QrCodeAnalyzer(
         } catch (e: NotFoundException) {
             // No QR code found - this is normal
         } catch (e: Exception) {
-            Log.w(TAG, "ZXing fallback failed", e)
+            Logger.w(TAG, "ZXing fallback failed", e)
         }
     }
 

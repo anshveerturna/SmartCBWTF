@@ -4,6 +4,7 @@ import com.smartcbwtf.mobile.database.entity.BagEventEntity
 import com.smartcbwtf.mobile.network.model.SyncResponse
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.Instant
 import java.util.UUID
 
 class DefaultBagEventRepositoryMappingTest {
@@ -68,5 +69,28 @@ class DefaultBagEventRepositoryMappingTest {
 
         val result = resolveSuccessfulEventIds(pending, acks)
         assertEquals(emptyList<UUID>(), result)
+    }
+
+    @Test
+    fun `toPayload preserves gps accuracy event timestamp and facility`() {
+        val entity = BagEventEntity(
+            id = UUID.randomUUID(),
+            qrCode = "QR-1",
+            eventType = "HCF_COLLECTION",
+            eventTs = 123456789L,
+            gpsLat = 1.0,
+            gpsLon = 2.0,
+            gpsAccuracyM = 7.5,
+            weightKg = 3.0,
+            hcfId = "h1",
+            facilityId = "f1",
+            driverId = "driver-1"
+        )
+
+        val payload = entity.toPayload()
+
+        assertEquals(7.5, payload.gpsAccuracyM!!, 0.0)
+        assertEquals(Instant.ofEpochMilli(123456789L).toString(), payload.eventTs)
+        assertEquals("f1", payload.facilityId)
     }
 }

@@ -9,6 +9,7 @@ data class BagEvent(
     val eventTs: Long,
     val gpsLat: Double,
     val gpsLon: Double,
+    val gpsAccuracyM: Double? = null,
     val weightKg: Double,
     val hcfId: String,
     val facilityId: String?,

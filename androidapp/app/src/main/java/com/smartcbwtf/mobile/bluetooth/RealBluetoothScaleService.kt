@@ -403,10 +403,6 @@ class RealBluetoothScaleService @Inject constructor(
         recentWeights.clear()
     }
 
-    override suspend fun simulateWeight(value: Double?) {
-        // No-op for real hardware
-    }
-
     private fun parseWeight(data: String) {
         // Supported formats from various scales:
         // - "ST,GS,+   5.0kg" (common industrial scales)

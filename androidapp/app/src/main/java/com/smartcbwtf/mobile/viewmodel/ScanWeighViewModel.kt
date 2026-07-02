@@ -1,7 +1,6 @@
 package com.smartcbwtf.mobile.viewmodel
 
 import android.provider.Settings
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartcbwtf.mobile.bluetooth.ConnectionState
@@ -15,6 +14,7 @@ import com.smartcbwtf.mobile.network.api.VerificationApi
 import com.smartcbwtf.mobile.repository.BagEventRepository
 import com.smartcbwtf.mobile.storage.SessionManager
 import com.smartcbwtf.mobile.utils.GeoUtils
+import com.smartcbwtf.mobile.utils.Logger
 import com.smartcbwtf.mobile.utils.LocationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -37,6 +37,7 @@ data class BagEntry(
     val weightKg: Double,
     val gpsLat: Double,
     val gpsLon: Double,
+    val gpsAccuracyM: Double?,
     val timestamp: Long
 )
 
@@ -242,7 +243,6 @@ class ScanWeighViewModel @Inject constructor(
         val w = weight.value
         val loc = _location.value as? LocationState.Ready
 
-        // Require QR and weight, but GPS is optional
         if (qr == null) {
             _error.value = "Cannot add bag: QR code not scanned"
             return false
@@ -251,16 +251,17 @@ class ScanWeighViewModel @Inject constructor(
             _error.value = "Cannot add bag: weight not captured (connect scale and place bag)"
             return false
         }
-
-        // Use GPS if available, otherwise use default coordinates
-        val gpsLat = loc?.lat ?: 0.0
-        val gpsLon = loc?.lon ?: 0.0
+        if (loc == null) {
+            _error.value = "Cannot add bag: GPS location not ready"
+            return false
+        }
 
         val entry = BagEntry(
             qrCode = qr,
             weightKg = w,
-            gpsLat = gpsLat,
-            gpsLon = gpsLon,
+            gpsLat = loc.lat,
+            gpsLon = loc.lon,
+            gpsAccuracyM = loc.accuracy?.toDouble(),
             timestamp = System.currentTimeMillis()
         )
 
@@ -305,16 +306,18 @@ class ScanWeighViewModel @Inject constructor(
             _scannedQr.value = qrCode  // Keep QR saved so user can see it
             return false
         }
-
-        // Use GPS if available, otherwise use default coordinates
-        val gpsLat = loc?.lat ?: 0.0
-        val gpsLon = loc?.lon ?: 0.0
+        if (loc == null) {
+            _error.value = "Cannot add bag: GPS location not ready"
+            _scannedQr.value = qrCode  // Keep QR saved so user can retry after GPS is ready
+            return false
+        }
 
         val entry = BagEntry(
             qrCode = qrCode,
             weightKg = capturedWeight,
-            gpsLat = gpsLat,
-            gpsLon = gpsLon,
+            gpsLat = loc.lat,
+            gpsLon = loc.lon,
+            gpsAccuracyM = loc.accuracy?.toDouble(),
             timestamp = System.currentTimeMillis()
         )
 
@@ -338,9 +341,9 @@ class ScanWeighViewModel @Inject constructor(
      */
     fun submitAll(eventType: String = "HCF_COLLECTION") {
         val bags = _sessionState.value.bags
-        Log.d("ScanWeighVM", "submitAll called: bags=${bags.size}, eventType=$eventType")
+        Logger.d("ScanWeighVM", "submitAll called")
         if (bags.isEmpty()) {
-            Log.w("ScanWeighVM", "No bags to submit")
+            Logger.w("ScanWeighVM", "No bags to submit")
             _error.value = "No bags to submit"
             return
         }
@@ -353,7 +356,7 @@ class ScanWeighViewModel @Inject constructor(
                 if (currentUserId.isNullOrBlank()) {
                     throw IllegalStateException("User session expired. Please log in again.")
                 }
-                Log.d("ScanWeighVM", "Session data: userId=$currentUserId, facilityId=$currentFacilityId")
+                Logger.d("ScanWeighVM", "Session data loaded for batch submission")
                 val events = bags.map { bag ->
                     BagEvent(
                         id = UUID.randomUUID(),
@@ -362,6 +365,7 @@ class ScanWeighViewModel @Inject constructor(
                         eventTs = bag.timestamp,
                         gpsLat = bag.gpsLat,
                         gpsLon = bag.gpsLon,
+                        gpsAccuracyM = bag.gpsAccuracyM,
                         weightKg = bag.weightKg,
                         hcfId = "", // Backend resolves from QR
                         facilityId = currentFacilityId,
@@ -369,15 +373,15 @@ class ScanWeighViewModel @Inject constructor(
                         driverId = currentUserId
                     )
                 }
-                Log.d("ScanWeighVM", "Calling bagEventRepository.recordBatch with ${events.size} events")
+                Logger.d("ScanWeighVM", "Calling bag event repository")
                 bagEventRepository.recordBatch(events)
-                Log.d("ScanWeighVM", "recordBatch completed successfully")
+                Logger.d("ScanWeighVM", "recordBatch completed successfully")
                 _submissionState.value = SubmissionState.BatchSuccess(bags.size)
                 
                 // Clear session after successful submit
                 clearSession()
             } catch (e: Exception) {
-                Log.e("ScanWeighVM", "Submit failed: ${e.message}", e)
+                Logger.e("ScanWeighVM", "Submit failed", e)
                 _submissionState.value = SubmissionState.Error(e.message ?: "Batch submission failed")
             }
         }
@@ -433,6 +437,7 @@ class ScanWeighViewModel @Inject constructor(
                     eventTs = System.currentTimeMillis(),
                     gpsLat = loc.lat,
                     gpsLon = loc.lon,
+                    gpsAccuracyM = loc.accuracy?.toDouble(),
                     weightKg = w,
                     hcfId = hcfId,
                     facilityId = sessionManager.facilityId,
@@ -523,7 +528,6 @@ class ScanWeighViewModel @Inject constructor(
     private suspend fun acquireGpsForVerification() {
         _geofenceState.value = GeofenceState.AcquiringGPS
         
-        val startTime = System.currentTimeMillis()
         var bestLocation: LocationState.Ready? = null
         
         // Try to get a good GPS fix within timeout
@@ -694,10 +698,6 @@ class ScanWeighViewModel @Inject constructor(
 
     fun clearVerificationResult() {
         _verificationResult.value = null
-    }
-
-    suspend fun simulateWeight() {
-        scaleService.simulateWeight()
     }
 
     private fun isValidQr(qr: String): Boolean {

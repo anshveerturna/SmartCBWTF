@@ -229,6 +229,60 @@
                     android:contentDescription="Status" />
             </LinearLayout>
 
+            <View
+                android:id="@+id/permissionNotificationsDivider"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="12dp"
+                android:background="#F3F4F6" />
+
+            <!-- Notification Permission -->
+            <LinearLayout
+                android:id="@+id/permissionNotifications"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="12dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    app:srcCompat="@drawable/ic_info"
+                    app:tint="#6B7280"
+                    android:contentDescription="Notifications" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Notifications"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
+                        android:textColor="#111827" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Required for live GPS tracking status"
+                        android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                        android:textColor="#9CA3AF" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/iconNotificationsStatus"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    app:srcCompat="@drawable/ic_check_circle"
+                    app:tint="#9CA3AF"
+                    android:contentDescription="Status" />
+            </LinearLayout>
+
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

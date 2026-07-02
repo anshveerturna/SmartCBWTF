@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Smart CBWTF</string>
-    <string name="base_url">http://13.235.98.218:8080</string>
 </resources>

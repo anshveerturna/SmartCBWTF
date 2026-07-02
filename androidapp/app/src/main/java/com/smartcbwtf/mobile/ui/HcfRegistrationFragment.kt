@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import com.smartcbwtf.mobile.BuildConfig
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -540,8 +541,11 @@ class HcfRegistrationFragment : Fragment(R.layout.fragment_hcf_registration) {
     
     private fun openPdf(pdfUrl: String) {
         try {
-            // Construct full URL from base URL + pdf path
-            val baseUrl = getString(R.string.base_url).trimEnd('/')
+            // Construct full URL from configured API host + PDF path.
+            val baseUrl = BuildConfig.BASE_URL
+                .removeSuffix("/")
+                .removeSuffix("api")
+                .removeSuffix("/")
             val fullUrl = if (pdfUrl.startsWith("http")) pdfUrl else "$baseUrl$pdfUrl"
             
             val intent = Intent(Intent.ACTION_VIEW).apply {

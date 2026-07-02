@@ -60,6 +60,7 @@ class VerifyAtPlantViewModel @Inject constructor(
                         eventTs = System.currentTimeMillis(),
                         gpsLat = loc?.latitude ?: 0.0,
                         gpsLon = loc?.longitude ?: 0.0,
+                        gpsAccuracyM = loc?.accuracy?.toDouble(),
                         weightKg = w,
                         hcfId = hcfId,
                         facilityId = sessionManager.facilityId,

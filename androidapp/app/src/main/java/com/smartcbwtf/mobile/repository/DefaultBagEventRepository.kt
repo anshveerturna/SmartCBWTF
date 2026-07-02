@@ -1,6 +1,5 @@
 package com.smartcbwtf.mobile.repository
 
-import android.util.Log
 import com.smartcbwtf.mobile.database.dao.BagEventDao
 import com.smartcbwtf.mobile.database.entity.BagEventEntity
 import com.smartcbwtf.mobile.model.BagEvent
@@ -8,6 +7,7 @@ import com.smartcbwtf.mobile.network.api.BagEventApi
 import com.smartcbwtf.mobile.network.model.BagEventPayload
 import com.smartcbwtf.mobile.network.model.BagEventSyncRequest
 import com.smartcbwtf.mobile.network.model.SyncResponse
+import com.smartcbwtf.mobile.utils.Logger
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -20,6 +20,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "BagEventSync"
+private const val MAX_SYNC_BATCH_SIZE = 500
 
 @Singleton
 class DefaultBagEventRepository @Inject constructor(
@@ -29,33 +30,30 @@ class DefaultBagEventRepository @Inject constructor(
 ) : BagEventRepository {
 
     override suspend fun record(event: BagEvent): Unit = withContext(ioDispatcher) {
-        Log.d(TAG, "Recording BagEvent: qr=${event.qrCode}, type=${event.eventType}, driverId=${event.driverId}, facilityId=${event.facilityId}")
+        Logger.d(TAG, "Recording bag event")
         dao.upsert(event.toEntity())
-        Log.d(TAG, "BagEvent saved to local DB")
+        Logger.d(TAG, "Bag event saved to local DB")
         
         // Trigger immediate sync attempt
-        Log.d(TAG, "Triggering immediate sync after save")
+        Logger.d(TAG, "Triggering immediate sync after save")
         try {
             syncPending()
         } catch (e: Exception) {
-            Log.w(TAG, "Immediate sync failed, will retry via WorkManager: ${e.message}")
+            Logger.w(TAG, "Immediate sync failed; will retry via WorkManager", e)
         }
     }
 
     override suspend fun recordBatch(events: List<BagEvent>): Unit = withContext(ioDispatcher) {
-        Log.d(TAG, "Recording batch of ${events.size} BagEvents")
-        events.forEach { event ->
-            Log.d(TAG, "Batch item: qr=${event.qrCode}, driverId=${event.driverId}, facilityId=${event.facilityId}")
-            dao.upsert(event.toEntity())
-        }
-        Log.d(TAG, "Batch saved to local DB")
+        Logger.d(TAG, "Recording bag event batch")
+        events.forEach { event -> dao.upsert(event.toEntity()) }
+        Logger.d(TAG, "Bag event batch saved to local DB")
         
         // Trigger immediate sync attempt
-        Log.d(TAG, "Triggering immediate sync after batch save")
+        Logger.d(TAG, "Triggering immediate sync after batch save")
         try {
             syncPending()
         } catch (e: Exception) {
-            Log.w(TAG, "Immediate sync failed, will retry via WorkManager: ${e.message}")
+            Logger.w(TAG, "Immediate sync failed; will retry via WorkManager", e)
         }
     }
 
@@ -69,33 +67,29 @@ class DefaultBagEventRepository @Inject constructor(
     }
 
     override suspend fun syncPending() = withContext(ioDispatcher) {
-        Log.d(TAG, "syncPending() called")
+        Logger.d(TAG, "syncPending() called")
         val pendingEntities = dao.getPending().firstOrNull() ?: emptyList()
-        Log.d(TAG, "Found ${pendingEntities.size} pending events to sync")
+        Logger.d(TAG, "Found pending bag events to sync")
         if (pendingEntities.isEmpty()) {
-            Log.d(TAG, "No pending events, returning")
+            Logger.d(TAG, "No pending events, returning")
             return@withContext
         }
-        val pendingPayloads = pendingEntities.map(BagEventEntity::toPayload)
-
-        // Log payload details
-        pendingPayloads.forEach { p ->
-            Log.d(TAG, "Payload: qr=${p.qrCode}, collectedByUserId=${p.collectedByUserId}, facilityId=${p.facilityId}")
-        }
+        val syncEntities = pendingEntities.take(MAX_SYNC_BATCH_SIZE)
+        val pendingPayloads = syncEntities.map(BagEventEntity::toPayload)
 
         // Wrap in BagEventSyncRequest to match backend format
         val request = BagEventSyncRequest(events = pendingPayloads)
-        Log.d(TAG, "Calling api.sync() with ${pendingPayloads.size} events")
+        Logger.d(TAG, "Calling bag sync API")
         
         try {
             val response = api.sync(request)
-            val successIds = resolveSuccessfulEventIds(pendingEntities, response.acks)
+            val successIds = resolveSuccessfulEventIds(syncEntities, response.acks)
             if (successIds.isNotEmpty()) {
                 dao.markSynced(successIds)
-                Log.d(TAG, "Marked ${successIds.size} events as synced")
+                Logger.d(TAG, "Marked bag events as synced")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Sync failed: ${e.message}", e)
+            Logger.e(TAG, "Bag event sync failed", e)
             throw e
         }
     }
@@ -108,6 +102,7 @@ private fun BagEvent.toEntity(): BagEventEntity = BagEventEntity(
     eventTs = eventTs,
     gpsLat = gpsLat,
     gpsLon = gpsLon,
+    gpsAccuracyM = gpsAccuracyM,
     weightKg = weightKg,
     hcfId = hcfId,
     facilityId = facilityId,
@@ -123,6 +118,7 @@ private fun BagEventEntity.toDomain(): BagEvent = BagEvent(
     eventTs = eventTs,
     gpsLat = gpsLat,
     gpsLon = gpsLon,
+    gpsAccuracyM = gpsAccuracyM,
     weightKg = weightKg,
     hcfId = hcfId,
     facilityId = facilityId,
@@ -131,16 +127,15 @@ private fun BagEventEntity.toDomain(): BagEvent = BagEvent(
     driverId = driverId,
 )
 
-private fun BagEventEntity.toPayload(): BagEventPayload = BagEventPayload(
+internal fun BagEventEntity.toPayload(): BagEventPayload = BagEventPayload(
     qrCode = qrCode,
     eventType = eventType,
     eventTs = Instant.ofEpochMilli(eventTs).toString(),  // Convert to ISO-8601 string
     gpsLat = gpsLat,
     gpsLon = gpsLon,
     weightKg = weightKg,
-    collectedByUserId = driverId ?: id.toString(),  // Use driverId as collectedByUserId
     facilityId = facilityId,
-    gpsAccuracyM = null,  // TODO: Add GPS accuracy tracking
+    gpsAccuracyM = gpsAccuracyM,
     appDeviceId = deviceId,
     notes = null,
 )
