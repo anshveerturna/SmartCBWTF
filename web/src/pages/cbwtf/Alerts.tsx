@@ -1,12 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Card,
   CardContent,
   Typography,
-  Tab,
-  Tabs,
   Table,
   TableBody,
   TableCell,
@@ -22,17 +20,25 @@ import {
   TablePagination,
   Button,
   Badge,
+  Stack,
 } from '@mui/material';
 import {
   Notifications as AlertsIcon,
   CheckCircle as ReadIcon,
   Circle as UnreadIcon,
   DoneAll as MarkAllReadIcon,
-  AttachMoney as FinancialIcon,
+  Route as RouteIcon,
+  Inventory as BagIcon,
   Build as OperationalIcon,
-  Gavel as ComplianceIcon,
+  Dashboard as DashboardIcon,
 } from '@mui/icons-material';
-import { getAlerts, getUnreadAlertCount, markAlertAsRead, markAllAlertsAsRead } from '../../api/cbwtf';
+import {
+  getUnifiedAlerts,
+  markAlertAsRead,
+  markAllAlertsAsRead,
+  resolveRouteAlert,
+  type UnifiedAlertDTO,
+} from '../../api/cbwtf';
 
 const formatDateTime = (dateStr: string) => {
   if (!dateStr) return '-';
@@ -47,59 +53,76 @@ const formatDateTime = (dateStr: string) => {
 };
 
 const getSeverityColor = (severity: string): 'error' | 'warning' | 'info' => {
-  switch (severity) {
+  switch (severity?.toUpperCase()) {
     case 'CRITICAL': return 'error';
+    case 'HIGH': return 'error';
     case 'WARN': return 'warning';
+    case 'WARNING': return 'warning';
+    case 'MEDIUM': return 'warning';
     default: return 'info';
   }
 };
 
-const getTypeIcon = (type: string) => {
-  if (type.includes('PAYMENT') || type.includes('BILL')) return <FinancialIcon fontSize="small" />;
-  if (type.includes('BAG') || type.includes('GPS') || type.includes('PICKUP')) return <OperationalIcon fontSize="small" />;
-  return <ComplianceIcon fontSize="small" />;
+const getSourceIcon = (alert: UnifiedAlertDTO) => {
+  if (alert.source === 'route') return <RouteIcon fontSize="small" />;
+  if (alert.source === 'bag') return <BagIcon fontSize="small" />;
+  if (alert.source === 'dashboard') return <DashboardIcon fontSize="small" />;
+  return <OperationalIcon fontSize="small" />;
+};
+
+const formatLabel = (value: string) => {
+  return value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
 export default function Alerts() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState(0);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
 
-  const categories = ['ALL', 'FINANCIAL', 'OPERATIONAL', 'COMPLIANCE'];
-  const category = categories[activeTab];
-
-  // Fetch alerts
-  const { data: alertsData, isLoading } = useQuery({
-    queryKey: ['alerts', category, page, rowsPerPage],
-    queryFn: () => getAlerts(page, rowsPerPage, category === 'ALL' ? undefined : category),
+  const { data: alertsData, isLoading, isError } = useQuery({
+    queryKey: ['unified-alerts'],
+    queryFn: getUnifiedAlerts,
+    refetchInterval: 60000,
   });
 
-  // Fetch unread count
-  const { data: unreadData } = useQuery({
-    queryKey: ['alertsUnread'],
-    queryFn: getUnreadAlertCount,
-  });
-
-  // Mark as read mutation
   const markReadMutation = useMutation({
     mutationFn: markAlertAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
-      queryClient.invalidateQueries({ queryKey: ['alertsUnread'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-alert-count'] });
     },
   });
 
-  // Mark all as read mutation
   const markAllReadMutation = useMutation({
     mutationFn: markAllAlertsAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
-      queryClient.invalidateQueries({ queryKey: ['alertsUnread'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-alert-count'] });
     },
   });
 
-  const handleMarkAsRead = (id: string) => {
+  const resolveRouteMutation = useMutation({
+    mutationFn: (alertId: string) => resolveRouteAlert(alertId, 'Resolved from alerts page'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unified-alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-alert-count'] });
+      queryClient.invalidateQueries({ queryKey: ['route-alerts'] });
+    },
+  });
+
+  const alerts = useMemo(() => alertsData?.alerts ?? [], [alertsData?.alerts]);
+  const activeCount = alertsData?.count || 0;
+  const portalUnreadCount = alerts.filter((alert) => alert.canMarkRead).length;
+
+  const visibleAlerts = useMemo(
+    () => alerts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
+    [alerts, page, rowsPerPage]
+  );
+
+  const handleMarkAsRead = (id: string | undefined) => {
+    if (!id) return;
     markReadMutation.mutate(id);
   };
 
@@ -112,7 +135,7 @@ export default function Alerts() {
       {/* Header */}
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
         <Box display="flex" alignItems="center" gap={2}>
-          <Badge badgeContent={unreadData?.count || 0} color="error">
+          <Badge badgeContent={activeCount} color="error">
             <AlertsIcon sx={{ fontSize: 32, color: 'primary.main' }} />
           </Badge>
           <Box>
@@ -120,71 +143,65 @@ export default function Alerts() {
               Alerts
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              System notifications and compliance alerts
+              All active system, route, dashboard, and bag alerts in one place
             </Typography>
           </Box>
         </Box>
-        {(unreadData?.count || 0) > 0 && (
+        {portalUnreadCount > 0 && (
           <Button
             variant="outlined"
             startIcon={<MarkAllReadIcon />}
             onClick={handleMarkAllAsRead}
             disabled={markAllReadMutation.isPending}
           >
-            Mark All as Read
+            Mark Stored Alerts Read
           </Button>
         )}
       </Box>
 
-      {/* Tabs */}
       <Card>
-        <Tabs
-          value={activeTab}
-          onChange={(_, newValue) => {
-            setActiveTab(newValue);
-            setPage(0);
-          }}
-          sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
-        >
-          <Tab label="All Alerts" />
-          <Tab label="Financial" icon={<FinancialIcon />} iconPosition="start" />
-          <Tab label="Operational" icon={<OperationalIcon />} iconPosition="start" />
-          <Tab label="Compliance" icon={<ComplianceIcon />} iconPosition="start" />
-        </Tabs>
-
         <CardContent>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
+            <Chip label={`${alerts.length} total alerts`} color="primary" variant="outlined" />
+            <Chip label={`${activeCount} active`} color={activeCount > 0 ? 'error' : 'success'} variant="outlined" />
+            <Chip label={`${portalUnreadCount} unread stored alerts`} variant="outlined" />
+          </Stack>
+
           {isLoading ? (
             <Box display="flex" justifyContent="center" p={4}>
               <CircularProgress />
             </Box>
-          ) : alertsData?.content?.length === 0 ? (
+          ) : isError ? (
+            <MuiAlert severity="error">Unable to load alerts right now. Please try again.</MuiAlert>
+          ) : alerts.length === 0 ? (
             <MuiAlert severity="success">No alerts. All systems operating normally.</MuiAlert>
           ) : (
             <>
               <TableContainer component={Paper} variant="outlined">
-                <Table>
+                <Table size="medium">
                   <TableHead>
                     <TableRow>
                       <TableCell width={50}></TableCell>
                       <TableCell>Alert</TableCell>
                       <TableCell>Severity</TableCell>
+                      <TableCell>Source</TableCell>
                       <TableCell>Type</TableCell>
                       <TableCell>Time</TableCell>
                       <TableCell align="center">Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {alertsData?.content?.map((alert: any) => (
+                    {visibleAlerts.map((alert) => (
                       <TableRow 
                         key={alert.id} 
                         hover
                         sx={{ 
-                          backgroundColor: alert.isRead ? 'transparent' : 'action.hover',
-                          opacity: alert.isRead ? 0.7 : 1
+                          backgroundColor: alert.canMarkRead || alert.canResolve ? 'action.hover' : 'transparent',
+                          opacity: alert.isRead || alert.isResolved ? 0.78 : 1
                         }}
                       >
                         <TableCell>
-                          {alert.isRead ? (
+                          {alert.isRead || alert.isResolved ? (
                             <ReadIcon color="disabled" fontSize="small" />
                           ) : (
                             <UnreadIcon color="primary" fontSize="small" />
@@ -192,9 +209,9 @@ export default function Alerts() {
                         </TableCell>
                         <TableCell>
                           <Box display="flex" alignItems="center" gap={1}>
-                            {getTypeIcon(alert.type)}
+                            {getSourceIcon(alert)}
                             <Box>
-                              <Typography fontWeight={alert.isRead ? 400 : 600}>
+                              <Typography fontWeight={alert.isRead || alert.isResolved ? 500 : 700}>
                                 {alert.title}
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
@@ -205,22 +222,37 @@ export default function Alerts() {
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={alert.severity}
+                            label={formatLabel(alert.severity)}
                             color={getSeverityColor(alert.severity)}
                             size="small"
                             variant="outlined"
                           />
                         </TableCell>
                         <TableCell>
-                          <Chip label={alert.type.replace(/_/g, ' ')} size="small" />
+                          <Chip label={alert.sourceLabel} size="small" variant="outlined" />
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={formatLabel(alert.type)} size="small" />
                         </TableCell>
                         <TableCell>{formatDateTime(alert.createdAt)}</TableCell>
                         <TableCell align="center">
-                          {!alert.isRead && (
+                          {alert.canMarkRead && (
                             <Tooltip title="Mark as Read">
                               <IconButton 
                                 size="small" 
-                                onClick={() => handleMarkAsRead(alert.id)}
+                                onClick={() => handleMarkAsRead(alert.rawId)}
+                                disabled={markReadMutation.isPending}
+                              >
+                                <ReadIcon />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                          {alert.canResolve && (
+                            <Tooltip title="Resolve route alert">
+                              <IconButton
+                                size="small"
+                                onClick={() => alert.rawId && resolveRouteMutation.mutate(alert.rawId)}
+                                disabled={resolveRouteMutation.isPending}
                               >
                                 <ReadIcon />
                               </IconButton>
@@ -234,11 +266,14 @@ export default function Alerts() {
               </TableContainer>
               <TablePagination
                 component="div"
-                count={alertsData?.totalElements || 0}
+                count={alerts.length}
                 page={page}
                 onPageChange={(_, newPage) => setPage(newPage)}
                 rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
               />
             </>
           )}

@@ -1,8 +1,19 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { ApiError } from '../types/api';
 
+const DEFAULT_API_BASE_URL = import.meta.env.DEV ? 'http://localhost:8080' : 'https://api.smartcbwtf.com';
+
 // API Base URL - configurable via environment
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const resolveApiBaseUrl = (): string => {
+  const configuredUrl = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
+  const parsedUrl = new URL(configuredUrl);
+  if (import.meta.env.PROD && parsedUrl.protocol !== 'https:') {
+    throw new Error('VITE_API_BASE_URL must use HTTPS in production builds.');
+  }
+  return configuredUrl;
+};
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 // Create axios instance
 const apiClient = axios.create({
@@ -12,6 +23,18 @@ const apiClient = axios.create({
   },
   timeout: 30000,
 });
+
+type ApiClientError = Error & {
+  code?: unknown;
+  status?: number;
+  details?: unknown;
+  feature?: unknown;
+};
+
+const createApiClientError = (
+  message: string,
+  metadata: Omit<ApiClientError, keyof Error> = {}
+): ApiClientError => Object.assign(new Error(message), metadata);
 
 // Token storage keys
 export const TOKEN_KEY = 'smartcbwtf_token';
@@ -23,11 +46,57 @@ export const tokenStorage = {
   remove: (): void => localStorage.removeItem(TOKEN_KEY),
 };
 
+export const saveBlob = (blob: Blob, filename: string): void => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const apiAssetUrl = (pathOrUrl: string | null | undefined, cacheKey?: string | number): string | undefined => {
+  if (!pathOrUrl) return undefined;
+  let base: string;
+  if (pathOrUrl.startsWith('blob:')) {
+    base = pathOrUrl;
+  } else {
+    try {
+      const apiOrigin = new URL(API_BASE_URL).origin;
+      const resolvedUrl = new URL(pathOrUrl, `${API_BASE_URL.replace(/\/$/, '')}/`);
+      if (resolvedUrl.origin !== apiOrigin) {
+        return undefined;
+      }
+      base = resolvedUrl.toString();
+    } catch {
+      return undefined;
+    }
+  }
+  if (cacheKey === undefined || cacheKey === null || cacheKey === '') {
+    return base;
+  }
+  const separator = base.includes('?') ? '&' : '?';
+  return `${base}${separator}t=${encodeURIComponent(String(cacheKey))}`;
+};
+
+const isConfiguredApiOrigin = (requestUrl: string | undefined, baseUrl: string | undefined): boolean => {
+  if (!requestUrl) return true;
+  try {
+    const apiOrigin = new URL(API_BASE_URL).origin;
+    const resolvedUrl = new URL(requestUrl, `${baseUrl || API_BASE_URL}/`);
+    return resolvedUrl.origin === apiOrigin;
+  } catch {
+    return false;
+  }
+};
+
 // Request interceptor - attach JWT token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = tokenStorage.get();
-    if (token && config.headers) {
+    if (token && config.headers && isConfiguredApiOrigin(config.url, config.baseURL)) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -49,11 +118,10 @@ apiClient.interceptors.response.use(
       // If this is a login attempt, pass the backend error message
       if (requestUrl.includes('/auth/login')) {
          const msg = (data?.message as string) || 'Invalid username or password.';
-         const err = new Error(msg);
-         // Attach extra props if needed
-         (err as any).code = data?.code || 'INVALID_CREDENTIALS';
-         (err as any).status = 401;
-         return Promise.reject(err);
+         return Promise.reject(createApiClientError(msg, {
+           code: data?.code || 'INVALID_CREDENTIALS',
+           status: 401,
+         }));
       }
 
       // Session expired handling for other requests
@@ -62,10 +130,10 @@ apiClient.interceptors.response.use(
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
-      const sessErr = new Error('Session expired. Please login again.');
-      (sessErr as any).code = 'UNAUTHORIZED';
-      (sessErr as any).status = 401;
-      return Promise.reject(sessErr);
+      return Promise.reject(createApiClientError('Session expired. Please login again.', {
+        code: 'UNAUTHORIZED',
+        status: 401,
+      }));
     }
 
     // Handle 403 Forbidden - differentiate by error type
@@ -76,11 +144,11 @@ apiClient.interceptors.response.use(
       // DO NOT logout, DO NOT redirect
       if (errorType === 'FEATURE_DISABLED') {
         const msg = (data?.message as string) || 'This feature is not enabled';
-        const err = new Error(msg);
-        (err as any).code = 'FEATURE_DISABLED';
-        (err as any).feature = details?.feature;
-        (err as any).status = 403;
-        return Promise.reject(err);
+        return Promise.reject(createApiClientError(msg, {
+          code: 'FEATURE_DISABLED',
+          feature: details?.feature,
+          status: 403,
+        }));
       }
       
       // SUBSCRIPTION_INACTIVE: Hard block - redirect to blocked page
@@ -88,19 +156,19 @@ apiClient.interceptors.response.use(
         tokenStorage.remove();
         sessionStorage.setItem('blocked_reason', data?.message as string || 'Subscription inactive');
         window.location.href = '/blocked';
-        const err = new Error((data?.message as string) || 'Subscription inactive');
-        (err as any).code = errorType;
-        (err as any).status = 403;
-        return Promise.reject(err);
+        return Promise.reject(createApiClientError((data?.message as string) || 'Subscription inactive', {
+          code: errorType,
+          status: 403,
+        }));
       }
       
       // Other 403 errors - access denied
       const msg = (data?.message as string) || 'Access denied';
-      const err = new Error(msg);
-      (err as any).code = 'ACCESS_DENIED';
-      (err as any).details = details;
-      (err as any).status = 403;
-      return Promise.reject(err);
+      return Promise.reject(createApiClientError(msg, {
+        code: 'ACCESS_DENIED',
+        details,
+        status: 403,
+      }));
     }
 
     // Handle 503 Service Unavailable - maintenance mode or system disabled
@@ -116,17 +184,13 @@ apiClient.interceptors.response.use(
         }
       }
        const msg = (data?.message as string) || 'Service unavailable. Please try again later.';
-       const err = new Error(msg);
-       (err as any).status = 503;
-       return Promise.reject(err);
+       return Promise.reject(createApiClientError(msg, { status: 503 }));
     }
     
     // Handle 500 Server Error
     if (status && status >= 500) {
         const msg = 'System error. Please contact support or try again later.';
-        const err = new Error(msg);
-        (err as any).status = status;
-        return Promise.reject(err);
+        return Promise.reject(createApiClientError(msg, { status }));
     }
 
     // Extract error message for all other errors
@@ -134,11 +198,11 @@ apiClient.interceptors.response.use(
       || error.message 
       || 'An unexpected error occurred';
 
-    const fallbackErr = new Error(message);
-    (fallbackErr as any).code = data?.code;
-    (fallbackErr as any).details = data?.details;
-    (fallbackErr as any).status = status;
-    return Promise.reject(fallbackErr);
+    return Promise.reject(createApiClientError(message, {
+      code: data?.code,
+      details: data?.details,
+      status,
+    }));
   }
 );
 

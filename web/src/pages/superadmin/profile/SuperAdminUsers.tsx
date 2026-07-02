@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -37,6 +37,7 @@ import {
   resetSuperAdminPassword,
 } from '../../../api/superadminProfile';
 import type { SuperAdminUser, CreateSuperAdminRequest } from '../../../api/superadminProfile';
+import { apiAssetUrl } from '../../../api/client';
 
 const SuperAdminUsers: React.FC = () => {
   const [users, setUsers] = useState<SuperAdminUser[]>([]);
@@ -61,12 +62,9 @@ const SuperAdminUsers: React.FC = () => {
   const [passwordUser, setPasswordUser] = useState<SuperAdminUser | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
+  const [disableUser, setDisableUser] = useState<SuperAdminUser | null>(null);
 
-  useEffect(() => {
-    loadUsers();
-  }, [page, search]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await listSuperAdminUsers({
@@ -81,7 +79,11 @@ const SuperAdminUsers: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize, search]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleCreate = async () => {
     try {
@@ -110,10 +112,10 @@ const SuperAdminUsers: React.FC = () => {
   };
 
   const handleDisable = async (user: SuperAdminUser) => {
-    if (!window.confirm(`Disable ${user.username}? They will no longer be able to log in.`)) return;
     try {
       await disableSuperAdmin(user.id);
       setSuccess('User disabled successfully');
+      setDisableUser(null);
       loadUsers();
     } catch (err: unknown) {
       const errObj = err as { response?: { data?: { message?: string } } };
@@ -136,11 +138,11 @@ const SuperAdminUsers: React.FC = () => {
   const validatePassword = (password: string) => {
     const rules = [
       { test: (p: string) => p.length >= 8, message: 'At least 8 characters' },
-      { test: (p: string) => p.length <= 12, message: 'At most 12 characters' },
+      { test: (p: string) => p.length <= 128, message: 'At most 128 characters' },
       { test: (p: string) => /[A-Z]/.test(p), message: 'One uppercase letter' },
       { test: (p: string) => /[a-z]/.test(p), message: 'One lowercase letter' },
       { test: (p: string) => /[0-9]/.test(p), message: 'One number' },
-      { test: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p), message: 'One special character' },
+      { test: (p: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(p), message: 'One special character (!@#$%^&*...)' },
     ];
     return rules.map(rule => ({ ...rule, valid: rule.test(password) }));
   };
@@ -184,7 +186,7 @@ const SuperAdminUsers: React.FC = () => {
       sortable: false,
       renderCell: (params) => (
         <Avatar
-          src={params.row.profilePhotoUrl ? `http://localhost:8080${params.row.profilePhotoUrl}` : undefined}
+          src={apiAssetUrl(params.row.profilePhotoUrl)}
           sx={{ width: 36, height: 36 }}
         >
           {params.row.fullName?.charAt(0) || params.row.username?.charAt(0)}
@@ -232,7 +234,7 @@ const SuperAdminUsers: React.FC = () => {
           </Tooltip>
           {params.row.active ? (
             <Tooltip title="Disable">
-              <IconButton size="small" color="error" onClick={() => handleDisable(params.row)}>
+              <IconButton size="small" color="error" onClick={() => setDisableUser(params.row)}>
                 <BlockIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -397,6 +399,25 @@ const SuperAdminUsers: React.FC = () => {
             disabled={passwordSaving || !isPasswordValid(newPassword)}
           >
             Set Password
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={disableUser !== null} onClose={() => setDisableUser(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Disable SuperAdmin</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Disable {disableUser?.username}? They will no longer be able to log in.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDisableUser(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => disableUser && handleDisable(disableUser)}
+          >
+            Disable
           </Button>
         </DialogActions>
       </Dialog>

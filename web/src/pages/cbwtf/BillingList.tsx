@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -27,7 +27,7 @@ import {
   Download as DownloadIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import { listBills, downloadBillPdf } from '../../api/cbwtf';
+import { getBillsForMonth, downloadBillPdf } from '../../api/cbwtf';
 import type { BillSummary } from '../../api/cbwtf';
 
 // Format currency
@@ -54,11 +54,22 @@ export default function BillingList() {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
-  // Fetch bills
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['bills', page, rowsPerPage],
-    queryFn: () => listBills(page, rowsPerPage),
+  const selectedPeriodLabel = useMemo(() => {
+    const date = new Date(selectedYear, selectedMonth - 1, 1);
+    return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'long' });
+  }, [selectedMonth, selectedYear]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [selectedMonth, selectedYear]);
+
+  // Fetch bills for the selected month.
+  const { data: bills = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['bills', selectedYear, selectedMonth],
+    queryFn: () => getBillsForMonth(selectedYear, selectedMonth),
   });
+
+  const paginatedBills = bills.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   // Handle view bill
   const handleView = (billId: string) => {
@@ -152,7 +163,7 @@ export default function BillingList() {
             ))}
           </TextField>
           <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-            Showing all bills (filter by month coming soon)
+            Showing bills for {selectedPeriodLabel}
           </Typography>
         </Box>
       </Paper>
@@ -173,6 +184,7 @@ export default function BillingList() {
               <TableCell>Billing Month</TableCell>
               <TableCell align="right">Total Amount</TableCell>
               <TableCell align="center">Status</TableCell>
+              <TableCell>Invoice</TableCell>
               <TableCell align="center">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -183,14 +195,14 @@ export default function BillingList() {
                   <CircularProgress />
                 </TableCell>
               </TableRow>
-            ) : data?.content.length === 0 ? (
+            ) : bills.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                  <Typography color="text.secondary">No bills found</Typography>
+                  <Typography color="text.secondary">No bills found for {selectedPeriodLabel}</Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              data?.content.map((bill) => (
+              paginatedBills.map((bill) => (
                 <TableRow key={bill.id} hover>
                   <TableCell>{bill.hcfName}</TableCell>
                   <TableCell>{formatMonth(bill.billingMonth)}</TableCell>
@@ -237,7 +249,7 @@ export default function BillingList() {
         </Table>
         <TablePagination
           component="div"
-          count={data?.totalElements || 0}
+          count={bills.length}
           page={page}
           onPageChange={(_, newPage) => setPage(newPage)}
           rowsPerPage={rowsPerPage}

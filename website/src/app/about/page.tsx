@@ -34,7 +34,7 @@ export default function AboutPage() {
                 transition={{ delay: 0.2 }}
                 className="text-xl text-[#525252] leading-relaxed"
               >
-                SmartCBWTF is building the infrastructure for regulatory-compliant biomedical waste management. We believe that compliance shouldn't be a burden—it should be built into every workflow.
+                SmartCBWTF is building the infrastructure for regulatory-compliant biomedical waste management. We believe that compliance shouldn&apos;t be a burden—it should be built into every workflow.
               </motion.p>
             </div>
             <motion.div
@@ -74,7 +74,7 @@ export default function AboutPage() {
                 Our mission is simple: <strong className="text-[#1a1a1a]">make regulatory compliance automatic</strong>. By digitizing every touchpoint—from waste generation to final treatment—we create an immutable chain of custody that satisfies regulators and protects operators.
               </p>
               <p className="text-lg text-[#525252] leading-relaxed">
-                We're building the operating system that CBWTFs and healthcare facilities deserve: modern, reliable, and built for compliance from day one.
+                We&apos;re building the operating system that CBWTFs and healthcare facilities deserve: modern, reliable, and built for compliance from day one.
               </p>
             </motion.div>
           </div>
@@ -139,7 +139,7 @@ export default function AboutPage() {
         <div className="container-tight text-center">
           <h2 className="text-white mb-6" style={{ color: 'white' }}>Join us in modernizing waste compliance</h2>
           <p className="text-neutral-400 mb-8 max-w-xl mx-auto">
-            Whether you're a CBWTF operator or a healthcare facility, we'd love to show you what's possible.
+            Whether you&apos;re a CBWTF operator or a healthcare facility, we&apos;d love to show you what&apos;s possible.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Link

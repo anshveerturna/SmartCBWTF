@@ -9,7 +9,6 @@ import {
   LinearProgress,
   alpha,
   Alert,
-  AlertTitle,
   Skeleton,
   Stack,
   Divider,
@@ -32,11 +31,9 @@ import {
   TrendingUp,
   TrendingDown,
   LocalShipping,
-  Delete as WasteIcon,
   Warning as WarningIcon,
   AttachMoney,
   People as PeopleIcon,
-  Speed as SpeedIcon,
   Schedule as ScheduleIcon,
   ErrorOutline,
   Autorenew,
@@ -59,7 +56,14 @@ import {
   Area,
   Legend,
 } from 'recharts';
-import { cbwtfApi, type CBWTFDashboardDTO, type RiskAlert } from '../../api/cbwtf';
+import { cbwtfApi, type AnomalyBagDTO, type CBWTFDashboardDTO } from '../../api/cbwtf';
+import { googleMapsUrl, hasFiniteCoordinate, openExternalUrl } from '../../utils/browser';
+
+const openMapLocation = (latitude: number | null | undefined, longitude: number | null | undefined) => {
+  if (hasFiniteCoordinate(latitude) && hasFiniteCoordinate(longitude)) {
+    openExternalUrl(googleMapsUrl(latitude, longitude));
+  }
+};
 
 // Premium Metric Card Component
 interface MetricCardProps {
@@ -83,12 +87,14 @@ const MetricCard: React.FC<MetricCardProps> = ({
   trend,
   gradient,
   loading = false,
-  glowColor, // Unused in new design but kept for prop compatibility
   onClick,
   clickable = false,
 }) => {
   const theme = useTheme();
   const primaryColor = gradient[0];
+  const renderedIcon = React.isValidElement<{ fontSize?: string }>(icon)
+    ? React.cloneElement(icon, { fontSize: 'small' })
+    : icon;
 
   return (
     <Card
@@ -118,7 +124,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
               justifyContent: 'center',
             }}
           >
-            {React.cloneElement(icon as any, { fontSize: 'small' })}
+            {renderedIcon}
           </Box>
           {trend && (
             <Chip
@@ -167,37 +173,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
   );
 };
 
-// Enhanced Risk Alert Component
-const RiskAlertCard: React.FC<{ alerts: RiskAlert[] }> = ({ alerts }) => {
-  if (alerts.length === 0) return null;
-
-  return (
-    <Card sx={{ mb: 4, bgcolor: 'background.paper', borderColor: 'warning.light' }}>
-      <CardContent sx={{ p: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-          <WarningIcon color="warning" />
-          <Typography variant="h6" fontWeight={600}>
-            Risk Alerts ({alerts.length})
-          </Typography>
-        </Box>
-        <Stack spacing={1}>
-          {alerts.map((alert, index) => (
-            <Alert 
-              key={index} 
-              severity={alert.severity === 'CRITICAL' ? 'error' : 'warning'}
-              icon={<ErrorOutline fontSize="small" />}
-              sx={{ py: 0, alignItems: 'center' }}
-            >
-              <AlertTitle sx={{ fontSize: '0.875rem', fontWeight: 600, mb: 0 }}>{alert.title}</AlertTitle>
-              {alert.description}
-            </Alert>
-          ))}
-        </Stack>
-      </CardContent>
-    </Card>
-  );
-};
-
 const CbwtfDashboard: React.FC = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -210,7 +185,7 @@ const CbwtfDashboard: React.FC = () => {
   });
 
   // Fetch anomaly bags when dialog is opened
-  const { data: anomalyBags, isLoading: anomalyLoading } = useQuery({
+  const { data: anomalyBags, isLoading: anomalyLoading } = useQuery<AnomalyBagDTO[]>({
     queryKey: ['cbwtf-anomaly-bags'],
     queryFn: cbwtfApi.getAnomalyBags,
     enabled: anomalyDialogOpen,
@@ -301,11 +276,6 @@ const CbwtfDashboard: React.FC = () => {
           />
         )}
       </Box>
-
-      {/* Risk Alerts */}
-      {dashboard?.riskAlerts && dashboard.riskAlerts.length > 0 && (
-        <RiskAlertCard alerts={dashboard.riskAlerts} />
-      )}
 
       {/* Primary Metrics Grid - 2x3 */}
       <Box 
@@ -825,7 +795,7 @@ const CbwtfDashboard: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {anomalyBags.map((bag: any, index: number) => (
+                  {anomalyBags.map((bag, index) => (
                     <TableRow 
                       key={bag.id || index}
                       sx={{ 
@@ -883,10 +853,10 @@ const CbwtfDashboard: React.FC = () => {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        {bag.gpsLat && bag.gpsLon ? (
+                        {hasFiniteCoordinate(bag.gpsLat) && hasFiniteCoordinate(bag.gpsLon) ? (
                           <IconButton 
                             size="small" 
-                            onClick={() => window.open(`https://www.google.com/maps?q=${bag.gpsLat},${bag.gpsLon}`, '_blank')}
+                            onClick={() => openMapLocation(bag.gpsLat, bag.gpsLon)}
                             sx={{ color: '#3B82F6' }}
                           >
                             <OpenInNewIcon fontSize="small" />

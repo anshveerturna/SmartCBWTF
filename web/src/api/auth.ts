@@ -6,10 +6,4 @@ export const authApi = {
     const response = await apiClient.post<LoginResponse>('/api/auth/login', credentials);
     return response.data;
   },
-
-  // Token refresh (if implemented on backend)
-  refresh: async (): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>('/api/auth/refresh');
-    return response.data;
-  },
 };

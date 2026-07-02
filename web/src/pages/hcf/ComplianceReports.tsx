@@ -21,7 +21,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Snackbar
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -29,9 +30,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
   Download as DownloadIcon,
   Lock as LockIcon,
-  Pending as PendingIcon,
-  CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon
+  Pending as PendingIcon
 } from '@mui/icons-material';
 import apiClient from '../../api/client';
 import { format, isFuture, startOfMonth } from 'date-fns';
@@ -48,6 +47,8 @@ interface DailyData {
   totalWeight: number;
   qrGenerated: number;
   categoryWeights: Record<string, number>;
+  pickupCount: number;
+  pickupLimit: number;
   pickups: PickupEvent[];
 }
 
@@ -57,9 +58,17 @@ interface MonthlyData {
   accessStatus: 'NONE' | 'PENDING' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 }
 
+interface YearlyData {
+  period: string;
+  totalWeight: number;
+}
+
 interface DuesStatus {
   status: 'PENDING' | 'REQUESTED' | 'CLEARED';
 }
+
+const errorMessage = (err: unknown, fallback: string): string =>
+  err instanceof Error && err.message ? err.message : fallback;
 
 export default function ComplianceReports() {
   const [tabIndex, setTabIndex] = useState(0);
@@ -69,13 +78,18 @@ export default function ComplianceReports() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [downloading, setDownloading] = useState(false);
+  const [feedback, setFeedback] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
 
   const queryClient = useQueryClient();
 
   // 1. Fetch Dues Status (Global)
-  const { data: duesStatus } = useQuery<DuesStatus>({
+  useQuery<DuesStatus>({
     queryKey: ['hcf-dues-status'],
-    queryFn: () => apiClient.get('/api/hcf/compliance/status').then((res: any) => res.data),
+    queryFn: () => apiClient.get<DuesStatus>('/api/hcf/compliance/status').then((res) => res.data),
   });
 
   // 2. Fetch Daily Data
@@ -83,7 +97,7 @@ export default function ComplianceReports() {
     queryKey: ['hcf-daily-compliance', selectedDate],
     queryFn: () => apiClient.get('/api/hcf/compliance/daily', {
       params: { date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined }
-    }).then((res: any) => res.data),
+    }).then((res) => res.data),
     enabled: !!selectedDate && tabIndex === 0
   });
 
@@ -92,8 +106,18 @@ export default function ComplianceReports() {
     queryKey: ['hcf-monthly-compliance', selectedYear, selectedMonth],
     queryFn: () => apiClient.get('/api/hcf/compliance/monthly', {
         params: { year: selectedYear, month: selectedMonth }
-    }).then((res: any) => res.data),
+    }).then((res) => res.data),
     enabled: tabIndex === 1,
+    retry: false
+  });
+
+  // 4. Fetch Yearly Summary
+  const { data: yearlyData, isLoading: loadingYearly, error: yearlyError } = useQuery<YearlyData>({
+    queryKey: ['hcf-yearly-compliance', selectedYear],
+    queryFn: () => apiClient.get('/api/hcf/compliance/yearly', {
+        params: { year: selectedYear }
+    }).then((res) => res.data),
+    enabled: tabIndex === 2,
     retry: false
   });
 
@@ -103,9 +127,10 @@ export default function ComplianceReports() {
     onSuccess: () => {
       refetchMonthly();
       queryClient.invalidateQueries({ queryKey: ['hcf-dues-status'] }); // Optional update
+      setFeedback({ open: true, message: 'Access request submitted.', severity: 'success' });
     },
-    onError: (err: any) => {
-        alert(err.response?.data?.message || 'Failed to request access.');
+    onError: (err: unknown) => {
+      setFeedback({ open: true, message: errorMessage(err, 'Failed to request access.'), severity: 'error' });
     }
   });
 
@@ -125,9 +150,11 @@ export default function ComplianceReports() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      setFeedback({ open: true, message: 'Report download started.', severity: 'success' });
     } catch (err) {
       console.error('Failed to download report', err);
-      alert('Failed to generate report. Please try again.');
+      setFeedback({ open: true, message: 'Failed to generate report. Please try again.', severity: 'error' });
     } finally {
       setDownloading(false);
     }
@@ -214,7 +241,7 @@ export default function ComplianceReports() {
       <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} sx={{ mb: 3 }}>
         <Tab label="Daily Report" />
         <Tab label="Monthly Report" />
-        <Tab label="Yearly Report" />
+        <Tab label="Yearly Summary" />
       </Tabs>
 
       {/* DAILY TAB */}
@@ -281,7 +308,14 @@ export default function ComplianceReports() {
               <Grid item xs={12}>
                 <Card>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>Pickup Timeline</Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap', mb: 1 }}>
+                      <Typography variant="h6">Pickup Timeline</Typography>
+                      {dailyData.pickupCount > dailyData.pickups.length && (
+                        <Typography variant="body2" color="text.secondary">
+                          Showing latest {dailyData.pickups.length} of {dailyData.pickupCount}
+                        </Typography>
+                      )}
+                    </Box>
                     <TableContainer>
                       <Table size="small">
                         <TableHead>
@@ -384,10 +418,63 @@ export default function ComplianceReports() {
         </Box>
       )}
 
-      {/* YEARLY TAB (Placeholder) */}
+      {/* YEARLY TAB */}
       {tabIndex === 2 && (
-          <Alert severity="info" icon={<LockIcon />}>Yearly reports coming soon.</Alert>
+        <Card sx={{ p: 4 }}>
+          <Typography variant="h6" gutterBottom>Yearly Compliance Summary</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+            Select a year to view total waste collected across approved reporting access.
+          </Typography>
+
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Year</InputLabel>
+                <Select
+                  value={selectedYear}
+                  label="Year"
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                >
+                  {[2024, 2025, 2026].map(y => (
+                    <MenuItem key={y} value={y}>{y}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={9}>
+              {loadingYearly ? (
+                <CircularProgress size={24} />
+              ) : yearlyError ? (
+                <Alert severity="warning" icon={<LockIcon />}>
+                  Yearly summary is locked until report access is approved.
+                </Alert>
+              ) : yearlyData ? (
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="overline" color="text.secondary">
+                      {yearlyData.period}
+                    </Typography>
+                    <Typography variant="h4" fontWeight={600}>
+                      {yearlyData.totalWeight.toFixed(2)} <span style={{ fontSize: '1rem' }}>kg Total</span>
+                    </Typography>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </Grid>
+          </Grid>
+        </Card>
       )}
+      <Snackbar
+        open={feedback.open}
+        autoHideDuration={4500}
+        onClose={() => setFeedback((current) => ({ ...current, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={feedback.severity} onClose={() => setFeedback((current) => ({ ...current, open: false }))}>
+          {feedback.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

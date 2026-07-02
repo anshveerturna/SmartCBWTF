@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
@@ -29,6 +29,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LocationAddress } from '../../components/LocationAddress';
+import { hasFiniteCoordinate } from '../../utils/browser';
 
 // Custom truck SVG icon creator
 const createTruckIcon = (color: string) => {
@@ -62,7 +63,7 @@ function FitBounds({ vehicles }: { vehicles: LivePositionDTO[] }) {
   const map = useMap();
   
   useEffect(() => {
-    const validVehicles = vehicles.filter(v => v.latitude && v.longitude);
+    const validVehicles = vehicles.filter(v => hasFiniteCoordinate(v.latitude) && hasFiniteCoordinate(v.longitude));
     if (validVehicles.length > 0) {
       const bounds = L.latLngBounds(
         validVehicles.map(v => [v.latitude!, v.longitude!] as [number, number])
@@ -76,7 +77,7 @@ function FitBounds({ vehicles }: { vehicles: LivePositionDTO[] }) {
 
 const VehicleLiveMap = () => {
   const navigate = useNavigate();
-  const [selectedVehicle, setSelectedVehicle] = useState<LivePositionDTO | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
 
   const {
     data: liveMap,
@@ -101,18 +102,15 @@ const VehicleLiveMap = () => {
     return `${Math.floor(diffMins / 60)}h ago`;
   };
 
-  // Auto-update selection when data refreshes
-  useEffect(() => {
-    if (selectedVehicle && liveMap?.vehicles) {
-      const updated = liveMap.vehicles.find(v => v.id === selectedVehicle.id);
-      if (updated) {
-        setSelectedVehicle(updated);
-      }
-    }
-  }, [liveMap, selectedVehicle?.id]);
+  const selectedVehicle = useMemo(
+    () => liveMap?.vehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? null,
+    [liveMap?.vehicles, selectedVehicleId]
+  );
 
   // Get vehicles with valid coordinates
-  const vehiclesWithLocation = liveMap?.vehicles.filter(v => v.latitude && v.longitude) || [];
+  const vehiclesWithLocation = liveMap?.vehicles.filter(
+    (v) => hasFiniteCoordinate(v.latitude) && hasFiniteCoordinate(v.longitude)
+  ) || [];
 
   return (
     <Box sx={{ p: 3, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
@@ -179,7 +177,7 @@ const VehicleLiveMap = () => {
                 <ListItem
                   key={vehicle.id}
                   component="div"
-                  onClick={() => setSelectedVehicle(vehicle)}
+                  onClick={() => setSelectedVehicleId(vehicle.id)}
                   sx={{
                     cursor: 'pointer',
                     bgcolor: selectedVehicle?.id === vehicle.id ? 'action.selected' : 'transparent',
@@ -240,7 +238,7 @@ const VehicleLiveMap = () => {
                     position={[vehicle.latitude!, vehicle.longitude!]}
                     icon={vehicle.gpsStatus === 'ONLINE' ? onlineTruckIcon : offlineTruckIcon}
                     eventHandlers={{
-                      click: () => setSelectedVehicle(vehicle),
+                      click: () => setSelectedVehicleId(vehicle.id),
                     }}
                   >
                     <Popup>
@@ -315,4 +313,3 @@ const VehicleLiveMap = () => {
 };
 
 export default VehicleLiveMap;
-

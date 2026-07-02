@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { TOKEN_KEY } from '../api/client';
 import { z } from 'zod';
 import {
   Box,
@@ -34,6 +33,11 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+const PORTAL_ROLES: readonly UserRole[] = ['SUPER_ADMIN', 'CBWTF_ADMIN', 'HCF_ADMIN', 'TOP_MANAGEMENT'];
+
+const isPortalRole = (value: unknown): value is UserRole =>
+  typeof value === 'string' && PORTAL_ROLES.includes(value as UserRole);
+
 // Role to redirect path mapping
 const getRoleRedirectPath = (role: UserRole): string => {
   switch (role) {
@@ -44,29 +48,20 @@ const getRoleRedirectPath = (role: UserRole): string => {
     case 'HCF_ADMIN':
       return '/hcf/dashboard';
     case 'TOP_MANAGEMENT':
-      return '/management/dues-approvals';
+      return '/management/hcfs';
     default:
       return '/';
   }
 };
 
-const extractRoleFromToken = (token: string): UserRole | null => {
-  try {
-    const payloadPart = token.split('.')[1];
-    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
-    const payload = JSON.parse(atob(padded)) as { role?: UserRole };
-    return payload.role ?? null;
-  } catch {
-    return null;
-  }
-};
-
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, isLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const locationState = location.state as { message?: unknown } | null;
+  const successMessage = typeof locationState?.message === 'string' ? locationState.message : null;
 
   const {
     register,
@@ -83,18 +78,13 @@ const Login: React.FC = () => {
   const onSubmit = async (data: LoginFormData) => {
     setError(null);
     try {
-      await login(data);
-      // Always redirect based on role from token
-      // Don't use 'from' location as it may be for a different role
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (token) {
-        const role = extractRoleFromToken(token);
-        const redirectPath = role ? getRoleRedirectPath(role) : '/';
-        navigate(redirectPath, { replace: true });
-      } else {
-        // Fallback to home
-        navigate('/', { replace: true });
+      const user = await login(data);
+      if (user.must_change_password) {
+        navigate('/change-password', { replace: true });
+        return;
       }
+      const redirectPath = isPortalRole(user.role) ? getRoleRedirectPath(user.role) : '/';
+      navigate(redirectPath, { replace: true });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Login failed. Please try again.';
       setError(message);
@@ -174,6 +164,12 @@ const Login: React.FC = () => {
               Enterprise Biomedical Waste Management
             </Typography>
           </Box>
+
+          {successMessage && (
+            <Alert severity="success" sx={{ mb: 3 }}>
+              {successMessage}
+            </Alert>
+          )}
 
           {/* Error Alert */}
           {error && (

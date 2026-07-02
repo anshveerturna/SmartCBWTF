@@ -27,14 +27,28 @@ import {
   Warning as FlaggedIcon,
   PictureAsPdf as PdfIcon,
   TableChart as ExcelIcon,
-  Visibility as ViewIcon,
 } from '@mui/icons-material';
 import { getComplianceReports, downloadComplianceReportPdf, downloadAnnualReportExcel } from '../../api/cbwtf';
+import type { ComplianceReportType } from '../../api/cbwtf';
 
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
   value: number;
+}
+
+interface ComplianceReportRow {
+  id: string;
+  reportDate?: string;
+  reportMonth?: string;
+  financialYear?: string | number;
+  status: string;
+  dataCompleteness?: string;
+  generatedAt?: string;
+  hasPdf?: boolean;
+  hasExcel?: boolean;
+  reportType?: string;
+  violationCount?: number;
 }
 
 function TabPanel(props: TabPanelProps) {
@@ -46,7 +60,7 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-const formatDate = (dateStr: string) => {
+const formatDate = (dateStr?: string) => {
   if (!dateStr) return '-';
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-IN', { 
@@ -56,7 +70,7 @@ const formatDate = (dateStr: string) => {
   });
 };
 
-const formatDateTime = (dateStr: string) => {
+const formatDateTime = (dateStr?: string) => {
   if (!dateStr) return '-';
   const date = new Date(dateStr);
   return date.toLocaleString('en-IN', { 
@@ -108,7 +122,7 @@ export default function ComplianceReports() {
     enabled: activeTab === 4,
   });
 
-  const handleDownloadPdf = async (type: string, id: string) => {
+  const handleDownloadPdf = async (type: ComplianceReportType, id: string) => {
     try {
       await downloadComplianceReportPdf(type, id);
     } catch (error) {
@@ -134,7 +148,7 @@ export default function ComplianceReports() {
     />
   );
 
-  const CompletenessChip = ({ completeness }: { completeness: string }) => (
+  const CompletenessChip = ({ completeness = 'UNKNOWN' }: { completeness?: string }) => (
     <Chip
       label={completeness}
       color={completeness === 'COMPLETE' ? 'default' : 'warning'}
@@ -204,7 +218,7 @@ export default function ComplianceReports() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {dailyReports?.content?.map((report: any) => (
+                      {dailyReports?.content?.map((report: ComplianceReportRow) => (
                         <TableRow key={report.id} hover>
                           <TableCell>
                             <Typography fontWeight={500}>{formatDate(report.reportDate)}</Typography>
@@ -217,11 +231,6 @@ export default function ComplianceReports() {
                           </TableCell>
                           <TableCell>{formatDateTime(report.generatedAt)}</TableCell>
                           <TableCell align="center">
-                            <Tooltip title="View Details">
-                              <IconButton size="small">
-                                <ViewIcon />
-                              </IconButton>
-                            </Tooltip>
                             <Tooltip title="Download PDF">
                               <IconButton 
                                 size="small" 
@@ -269,11 +278,13 @@ export default function ComplianceReports() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {monthlyReports?.content?.map((report: any) => (
+                    {monthlyReports?.content?.map((report: ComplianceReportRow) => (
                       <TableRow key={report.id} hover>
                         <TableCell>
                           <Typography fontWeight={500}>
-                            {new Date(report.reportMonth).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+                            {report.reportMonth
+                              ? new Date(report.reportMonth).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+                              : '-'}
                           </Typography>
                         </TableCell>
                         <TableCell><StatusChip status={report.status} /></TableCell>
@@ -315,7 +326,7 @@ export default function ComplianceReports() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {annualReports?.content?.map((report: any) => (
+                    {annualReports?.content?.map((report: ComplianceReportRow) => (
                       <TableRow key={report.id} hover>
                         <TableCell>
                           <Typography fontWeight={500}>FY {report.financialYear}</Typography>
@@ -372,7 +383,7 @@ export default function ComplianceReports() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {barcodeReports?.content?.map((report: any) => (
+                    {barcodeReports?.content?.map((report: ComplianceReportRow) => (
                       <TableRow key={report.id} hover>
                         <TableCell>{formatDate(report.reportDate)}</TableCell>
                         <TableCell><Chip label={report.reportType} size="small" /></TableCell>
@@ -414,22 +425,22 @@ export default function ComplianceReports() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {violationReports?.content?.map((report: any) => (
+                    {violationReports?.content?.map((report: ComplianceReportRow) => (
                       <TableRow key={report.id} hover>
                         <TableCell>{formatDate(report.reportDate)}</TableCell>
                         <TableCell>
                           <Chip 
-                            label={report.violationCount} 
-                            color={report.violationCount > 0 ? 'error' : 'success'}
+                            label={report.violationCount ?? 0}
+                            color={(report.violationCount ?? 0) > 0 ? 'error' : 'success'}
                             size="small"
                           />
                         </TableCell>
                         <TableCell><CompletenessChip completeness={report.dataCompleteness} /></TableCell>
                         <TableCell>{formatDateTime(report.generatedAt)}</TableCell>
                         <TableCell align="center">
-                          <Tooltip title="View Details">
-                            <IconButton size="small">
-                              <ViewIcon />
+                          <Tooltip title="Download PDF">
+                            <IconButton size="small" onClick={() => handleDownloadPdf('violations', report.id)}>
+                              <PdfIcon color="error" />
                             </IconButton>
                           </Tooltip>
                         </TableCell>

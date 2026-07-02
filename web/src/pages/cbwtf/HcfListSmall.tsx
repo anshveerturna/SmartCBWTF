@@ -26,6 +26,7 @@ import {
   CircularProgress,
   Alert,
   Button,
+  type ChipProps,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -35,7 +36,7 @@ import {
 } from '@mui/icons-material';
 import { getHcfList } from '../../api/cbwtf';
 
-const getStatusColor = (status: string | null) => {
+const getStatusColor = (status: string | null): ChipProps['color'] => {
   switch (status) {
     case 'ACTIVE':
       return 'success';
@@ -270,11 +271,9 @@ export default function HcfListSmall() {
                 onChange={(e) => setHcfTypeFilter(e.target.value)}
               >
                 <MenuItem value="all">All Types</MenuItem>
-                <MenuItem value="HOSPITAL">Hospital</MenuItem>
-                <MenuItem value="DENTAL">Dental</MenuItem>
-                <MenuItem value="CLINIC">Clinic</MenuItem>
-                <MenuItem value="PATHOLOGY_COLLECTION">Pathology (Collection)</MenuItem>
-                <MenuItem value="PATHOLOGY_STORAGE">Pathology (Storage)</MenuItem>
+                {hcfTypes.map((type) => (
+                  <MenuItem key={type} value={type}>{type.replace(/_/g, ' ')}</MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Stack>
@@ -334,7 +333,7 @@ export default function HcfListSmall() {
                   <TableCell>
                     <Chip
                       label={hcf.agreementStatus || 'N/A'}
-                      color={getStatusColor(hcf.agreementStatus) as any}
+                      color={getStatusColor(hcf.agreementStatus)}
                       size="small"
                     />
                   </TableCell>

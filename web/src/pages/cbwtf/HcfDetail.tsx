@@ -41,12 +41,22 @@ import {
   renewAgreement,
   downloadHcfAgreementPdf,
   downloadHcfAgreementPrintPdf,
+  downloadHcfRentAgreement,
+  submitCorrectionRequest,
+  getCorrectionRequests,
   type UpdateLocationRequest,
   type RenewAgreementRequest,
 } from '../../api/cbwtf';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { googleMapsUrl, hasFiniteCoordinate, openExternalUrl } from '../../utils/browser';
+
+const openMapLocation = (latitude: number | null | undefined, longitude: number | null | undefined) => {
+  if (hasFiniteCoordinate(latitude) && hasFiniteCoordinate(longitude)) {
+    openExternalUrl(googleMapsUrl(latitude, longitude));
+  }
+};
 
 // Custom location marker icon
 const createLocationIcon = () => {
@@ -66,11 +76,11 @@ const createLocationIcon = () => {
 const locationIcon = createLocationIcon();
 
 // Map interactions component
-function LocationPicker({ 
-  position, 
-  onLocationSelect, 
-  isEditing 
-}: { 
+function LocationPicker({
+  position,
+  onLocationSelect,
+  isEditing
+}: {
   position: { lat: number; lng: number } | null;
   onLocationSelect: (pos: { lat: number; lng: number }) => void;
   isEditing: boolean;
@@ -85,7 +95,7 @@ function LocationPicker({
     }
     mapMovedByUser.current = false; // Reset after potential external update
   }, [position, map]);
-  
+
   useMapEvents({
     click(e) {
       if (isEditing) {
@@ -150,6 +160,16 @@ interface CreateAdminResponse {
   message: string;
 }
 
+type ApiErrorWithMessage = {
+  response?: { data?: { message?: string } };
+  message?: string;
+};
+
+const getApiErrorMessage = (err: unknown, fallback: string): string => {
+  const apiError = err as ApiErrorWithMessage;
+  return apiError.response?.data?.message || apiError.message || fallback;
+};
+
 function PortalAccessCard({ hcfId, isSmallHcf = false }: { hcfId: string; isSmallHcf?: boolean }) {
   const queryClient = useQueryClient();
   const [newPassword, setNewPassword] = useState('');
@@ -180,8 +200,8 @@ function PortalAccessCard({ hcfId, isSmallHcf = false }: { hcfId: string; isSmal
       setSnackbar({ open: true, message: 'HCF Admin created successfully!', severity: 'success' });
       queryClient.invalidateQueries({ queryKey: ['hcf-portal-admin', hcfId] });
     },
-    onError: (err: any) => {
-      const message = err.response?.data?.message || err.message || 'Failed to create admin';
+    onError: (err: unknown) => {
+      const message = getApiErrorMessage(err, 'Failed to create admin');
       setSnackbar({ open: true, message, severity: 'error' });
     }
   });
@@ -198,8 +218,8 @@ function PortalAccessCard({ hcfId, isSmallHcf = false }: { hcfId: string; isSmal
       queryClient.invalidateQueries({ queryKey: ['hcf-portal-admin', hcfId] });
       queryClient.invalidateQueries({ queryKey: ['cbwtf-hcf', hcfId] });
     },
-    onError: (err: any) => {
-      const message = err.response?.data?.message || err.message || 'Failed to enable portal access';
+    onError: (err: unknown) => {
+      const message = getApiErrorMessage(err, 'Failed to enable portal access');
       setSnackbar({ open: true, message, severity: 'error' });
     }
   });
@@ -215,8 +235,8 @@ function PortalAccessCard({ hcfId, isSmallHcf = false }: { hcfId: string; isSmal
       setSnackbar({ open: true, message: 'Password updated successfully', severity: 'success' });
       queryClient.invalidateQueries({ queryKey: ['hcf-portal-admin', hcfId] });
     },
-    onError: (err: any) => {
-      const message = err.response?.data?.message || err.message || 'Failed to update password';
+    onError: (err: unknown) => {
+      const message = getApiErrorMessage(err, 'Failed to update password');
       setSnackbar({ open: true, message, severity: 'error' });
     }
   });
@@ -309,7 +329,7 @@ function PortalAccessCard({ hcfId, isSmallHcf = false }: { hcfId: string; isSmal
             </Alert>
          </CardContent>
       </Card>
-    ); 
+    );
   }
 
   return (
@@ -440,12 +460,38 @@ export default function HcfDetailPage() {
     perBedPerDayRate: 0,
   });
 
+  // Correction Request state
+  const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false);
+  const [correctionForm, setCorrectionForm] = useState({
+    fieldName: '',
+    requestedValue: '',
+    reason: '',
+  });
+
   // Queries
   const { data: hcf, isLoading, error } = useQuery({
     queryKey: ['cbwtf-hcf', id],
     queryFn: () => getHcfDetail(id!),
     enabled: !!id,
   });
+
+  const { data: correctionRequests } = useQuery({
+    queryKey: ['correction-requests', id],
+    queryFn: () => getCorrectionRequests(id!),
+    enabled: !!id,
+  });
+
+  const openRentAgreement = async () => {
+    if (!id) return;
+    try {
+      const blob = await downloadHcfRentAgreement(id);
+      const url = window.URL.createObjectURL(blob);
+      openExternalUrl(url);
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to open rent agreement document.', severity: 'error' });
+    }
+  };
 
   // Mutations
   const locationUpdateMutation = useMutation({
@@ -457,6 +503,20 @@ export default function HcfDetailPage() {
     },
     onError: () => {
       setSnackbar({ open: true, message: 'Failed to update location', severity: 'error' });
+    },
+  });
+
+  // Correction Mutation
+  const submitCorrectionMutation = useMutation({
+    mutationFn: (data: typeof correctionForm) => submitCorrectionRequest(id!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['correction-requests', id] });
+      setCorrectionDialogOpen(false);
+      setCorrectionForm({ fieldName: '', requestedValue: '', reason: '' });
+      setSnackbar({ open: true, message: 'Correction request submitted successfully', severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: 'Failed to submit correction request', severity: 'error' });
     },
   });
 
@@ -527,9 +587,9 @@ export default function HcfDetailPage() {
                     <HcfIcon color="primary" />
                     <Typography variant="h6" fontWeight="bold">Facility Profile</Typography>
                   </Box>
-                  <Chip 
-                    label={hcf.hcfStatus} 
-                    color={hcf.hcfStatus === 'ACTIVE' ? 'success' : hcf.hcfStatus === 'PENDING_APPROVAL' ? 'warning' : 'default'} 
+                  <Chip
+                    label={hcf.hcfStatus}
+                    color={hcf.hcfStatus === 'ACTIVE' ? 'success' : hcf.hcfStatus === 'PENDING_APPROVAL' ? 'warning' : 'default'}
                     size="small"
                   />
                 </Box>
@@ -542,10 +602,10 @@ export default function HcfDetailPage() {
                   <Grid item xs={12} sm={6}>
                     <Typography variant="caption" color="text.secondary">Facility Type</Typography>
                     <Box mt={0.5}>
-                      <Chip 
-                        label={hcf.bedded ? 'Bedded Facility' : 'Non-Bedded Facility'} 
-                        size="small" 
-                        variant="outlined" 
+                      <Chip
+                        label={hcf.bedded ? 'Bedded Facility' : 'Non-Bedded Facility'}
+                        size="small"
+                        variant="outlined"
                       />
                     </Box>
                   </Grid>
@@ -613,7 +673,7 @@ export default function HcfDetailPage() {
                     <Typography variant="caption" color="text.secondary">Rent Agreement</Typography>
                     <Box mt={0.5}>
                       {hcf.rentAgreementUrl ? (
-                        <Button variant="outlined" size="small" href={hcf.rentAgreementUrl} target="_blank">
+                        <Button variant="outlined" size="small" onClick={openRentAgreement}>
                           View Document
                         </Button>
                       ) : (
@@ -669,7 +729,7 @@ export default function HcfDetailPage() {
                     size="small"
                     startIcon={<EditIcon />}
                     onClick={() => {
-                       if (hcf.gpsLat && hcf.gpsLon) {
+                       if (hasFiniteCoordinate(hcf.gpsLat) && hasFiniteCoordinate(hcf.gpsLon)) {
                          setTempLocation({ lat: hcf.gpsLat, lng: hcf.gpsLon });
                        } else {
                          // Default to center of India or some reasonable default
@@ -682,13 +742,13 @@ export default function HcfDetailPage() {
                     Set Location
                   </Button>
                 </Box>
-                
+
                 <Stack spacing={2} sx={{ flex: 1 }}>
-                  {hcf.gpsLat && hcf.gpsLon ? (
-                    <Paper 
-                      variant="outlined" 
-                      sx={{ 
-                        overflow: 'hidden', 
+                  {hasFiniteCoordinate(hcf.gpsLat) && hasFiniteCoordinate(hcf.gpsLon) ? (
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        overflow: 'hidden',
                         borderRadius: 2,
                       }}
                     >
@@ -761,10 +821,21 @@ export default function HcfDetailPage() {
                       Renew Agreement
                     </Button>
                   )}
+                  {hcf.agreement && isActive && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="primary"
+                      startIcon={<EditIcon />}
+                      onClick={() => setCorrectionDialogOpen(true)}
+                    >
+                      Request Correction
+                    </Button>
+                  )}
 
                 </Box>
                 <Divider sx={{ mb: 2 }} />
-                
+
                 {hcf.agreement ? (
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={6}>
@@ -831,7 +902,34 @@ export default function HcfDetailPage() {
                         </Typography>
                       </Grid>
                     )}
-                    
+
+                    {/* Corrections History */}
+                    {correctionRequests && correctionRequests.length > 0 && (
+                      <Grid item xs={12} mt={2}>
+                        <Typography variant="subtitle2" fontWeight="bold" mb={1} color="primary.main">
+                          Correction Requests History
+                        </Typography>
+                        <Stack spacing={1}>
+                          {correctionRequests.map((req) => (
+                            <Paper key={req.id} variant="outlined" sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              <Box display="flex" justifyContent="space-between" alignItems="center">
+                                <Typography variant="body2" fontWeight={600}>{req.fieldName}: <span style={{ textDecoration: 'line-through', color: '#ff4444' }}>{req.currentValue}</span> → <span style={{ color: '#00C851' }}>{req.requestedValue}</span></Typography>
+                                <Chip
+                                  label={req.status}
+                                  size="small"
+                                  color={req.status === 'APPROVED' ? 'success' : req.status === 'REJECTED' ? 'error' : 'warning'}
+                                />
+                              </Box>
+                              <Typography variant="caption" color="text.secondary">Reason: {req.reason}</Typography>
+                              {req.status === 'REJECTED' && req.rejectionReason && (
+                                <Typography variant="caption" color="error">Rejection Notes: {req.rejectionReason}</Typography>
+                              )}
+                            </Paper>
+                          ))}
+                        </Stack>
+                      </Grid>
+                    )}
+
                     <Grid item xs={12} display="flex" gap={2} mt={1}>
                       <Button
                         variant="outlined"
@@ -907,7 +1005,7 @@ export default function HcfDetailPage() {
                   </Box>
                    <Box>
                     <Typography variant="caption" color="text.secondary">Registration GPS</Typography>
-                     {hcf.registrationGpsLat && hcf.registrationGpsLon ? (
+                     {hasFiniteCoordinate(hcf.registrationGpsLat) && hasFiniteCoordinate(hcf.registrationGpsLon) ? (
                         <>
                            <Typography fontFamily="monospace">
                             {hcf.registrationGpsLat.toFixed(6)}, {hcf.registrationGpsLon.toFixed(6)}
@@ -918,7 +1016,7 @@ export default function HcfDetailPage() {
                           <Button
                             variant="text"
                             size="small"
-                            onClick={() => window.open(`https://www.google.com/maps?q=${hcf.registrationGpsLat},${hcf.registrationGpsLon}`, '_blank')}
+                            onClick={() => openMapLocation(hcf.registrationGpsLat, hcf.registrationGpsLon)}
                             sx={{ p: 0, justifyContent: 'flex-start', mt: 0.5 }}
                           >
                             View location
@@ -972,9 +1070,9 @@ export default function HcfDetailPage() {
 
             {/* Portal Access Card - Shown for all approved HCFs */}
             {hcf.agreement?.status === 'ACTIVE' && (
-              <PortalAccessCard 
-                hcfId={id!} 
-                isSmallHcf={!hcf.numberOfBeds || hcf.numberOfBeds <= 30} 
+              <PortalAccessCard
+                hcfId={id!}
+                isSmallHcf={!hcf.numberOfBeds || hcf.numberOfBeds <= 30}
               />
             )}
            </Stack>
@@ -1071,11 +1169,11 @@ export default function HcfDetailPage() {
                />
              </Grid>
            </Grid>
-           
-           <Box 
-              sx={{ 
-                height: 400, 
-                width: '100%', 
+
+           <Box
+              sx={{
+                height: 400,
+                width: '100%',
                 borderRadius: 2,
                 overflow: 'hidden',
                 border: '1px solid',
@@ -1083,13 +1181,13 @@ export default function HcfDetailPage() {
                 position: 'relative'
               }}
             >
-              <Alert 
-                 severity="info" 
-                 sx={{ 
-                   position: 'absolute', 
-                   top: 10, 
-                   left: '50%', 
-                   transform: 'translateX(-50%)', 
+              <Alert
+                 severity="info"
+                 sx={{
+                   position: 'absolute',
+                   top: 10,
+                   left: '50%',
+                   transform: 'translateX(-50%)',
                    zIndex: 1000,
                    opacity: 0.9,
                    width: 'auto'
@@ -1098,16 +1196,16 @@ export default function HcfDetailPage() {
                  Click map or drag marker to set location
                </Alert>
                {locationDialogOpen && tempLocation && (
-                 <MapContainer 
-                   center={[tempLocation.lat, tempLocation.lng]} 
-                   zoom={13} 
+                 <MapContainer
+                   center={[tempLocation.lat, tempLocation.lng]}
+                   zoom={13}
                    style={{ height: '100%', width: '100%' }}
                  >
                    <TileLayer
                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                    />
-                   <LocationPicker 
+                   <LocationPicker
                      position={tempLocation}
                      isEditing={true}
                      onLocationSelect={setTempLocation}
@@ -1118,19 +1216,82 @@ export default function HcfDetailPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setLocationDialogOpen(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
+          <Button
+            color="primary"
+            variant="contained"
             onClick={() => {
               if (tempLocation) {
                 locationUpdateMutation.mutate({
                   latitude: tempLocation.lat,
-                  longitude: tempLocation.lng
+                  longitude: tempLocation.lng,
                 });
               }
             }}
-            disabled={locationUpdateMutation.isPending}
+            disabled={!tempLocation || locationUpdateMutation.isPending}
           >
-             {locationUpdateMutation.isPending ? 'Saving...' : 'Set Location'}
+            {locationUpdateMutation.isPending ? <CircularProgress size={20} /> : 'Save New Location'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Correction Request Dialog */}
+      <Dialog open={correctionDialogOpen} onClose={() => setCorrectionDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Request Agreement Correction</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2, mt: 1 }}>
+            Submit a request to change HCF details or agreement terms. This will be reviewed by Top Management.
+          </Alert>
+          <Stack spacing={2}>
+            <TextField
+              select
+              label="Field to Correct"
+              fullWidth
+              size="small"
+              value={correctionForm.fieldName}
+              onChange={(e) => setCorrectionForm({ ...correctionForm, fieldName: e.target.value })}
+              SelectProps={{ native: true }}
+            >
+              <option value="">Select a field...</option>
+              <option value="HCF Name">HCF Name</option>
+              <option value="Address">Address</option>
+              <option value="Contact Phone">Contact Phone</option>
+              <option value="Contact Email">Contact Email</option>
+              <option value="Doctor Name">Doctor Name</option>
+              <option value="Number of Beds">Number of Beds (or Seats)</option>
+              <option value="Per Bed Rate">Rate per Bed/Day</option>
+              <option value="Start Date">Agreement Start Date</option>
+              <option value="End Date">Agreement End Date</option>
+              <option value="PAN No">PAN Number</option>
+              <option value="GST No">GST Number</option>
+            </TextField>
+            <TextField
+              label="Requested Value"
+              fullWidth
+              size="small"
+              value={correctionForm.requestedValue}
+              onChange={(e) => setCorrectionForm({ ...correctionForm, requestedValue: e.target.value })}
+              placeholder="Enter the new requested value"
+            />
+            <TextField
+              label="Reason for Correction"
+              fullWidth
+              multiline
+              rows={3}
+              value={correctionForm.reason}
+              onChange={(e) => setCorrectionForm({ ...correctionForm, reason: e.target.value })}
+              placeholder="Explain why this correction is needed..."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCorrectionDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={!correctionForm.fieldName || !correctionForm.requestedValue || !correctionForm.reason || submitCorrectionMutation.isPending}
+            onClick={() => submitCorrectionMutation.mutate(correctionForm)}
+          >
+            {submitCorrectionMutation.isPending ? <CircularProgress size={20} /> : 'Submit Request'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1240,7 +1401,7 @@ export default function HcfDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* Snackbar */}
       <Snackbar
         open={snackbar.open}

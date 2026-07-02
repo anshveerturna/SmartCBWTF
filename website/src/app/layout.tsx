@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { SITE_URL } from "@/lib/siteConfig";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -11,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://smartcbwtf.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "SmartCBWTF | Regulatory-Grade Biomedical Waste Management Platform",
     template: "%s | SmartCBWTF",
@@ -41,7 +42,7 @@ export const metadata: Metadata = {
     title: "SmartCBWTF | Bio-Medical Waste Compliance Platform",
     description:
       "Enterprise-grade SaaS for biomedical waste logistics, compliance, and auditability. CPCB compliant. Built for CBWTFs.",
-    url: "https://smartcbwtf.com",
+    url: SITE_URL,
     siteName: "SmartCBWTF",
     images: [
       {
@@ -77,7 +78,7 @@ export const metadata: Metadata = {
     // google: "your-google-verification-code",
   },
   alternates: {
-    canonical: "https://smartcbwtf.com",
+    canonical: SITE_URL,
   },
 };
 
@@ -103,7 +104,7 @@ const jsonLd = {
   provider: {
     "@type": "Organization",
     name: "SmartCBWTF",
-    url: "https://smartcbwtf.com",
+    url: SITE_URL,
   },
 };
 

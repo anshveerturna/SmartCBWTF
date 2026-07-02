@@ -10,6 +10,10 @@ import {
   CircularProgress,
   Switch,
   FormControlLabel,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   Divider,
   Paper,
   Chip,
@@ -22,6 +26,8 @@ interface Props {
   onSave: () => void;
 }
 
+const MAX_TERMS_TEMPLATE_LENGTH = 20_000;
+
 const AgreementRulesSection = ({ data, onSave }: Props) => {
   const [formData, setFormData] = useState<AgreementRulesDTO>(data);
   const [error, setError] = useState<string | null>(null);
@@ -30,17 +36,24 @@ const AgreementRulesSection = ({ data, onSave }: Props) => {
   const [termsSaved, setTermsSaved] = useState(false);
   const [previewDebounce, setPreviewDebounce] = useState<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    setFormData(data);
+    setTermsTemplate(data.agreementTermsTemplate || '');
+  }, [data]);
+
   // Live preview of agreement number
   const { data: previewData, refetch: refetchPreview } = useQuery({
     queryKey: ['agreement-number-preview', formData.agreementNumberPrefix, formData.agreementNumberSeparator,
       formData.agreementNumberSequenceDigits, formData.agreementNumberIncludeFacilityCode,
-      formData.agreementNumberIncludeYear],
+      formData.agreementNumberIncludeYear, formData.agreementNumberTemplate, formData.agreementNumberResetFrequency],
     queryFn: () => previewAgreementNumber({
       prefix: formData.agreementNumberPrefix,
       separator: formData.agreementNumberSeparator,
       digits: formData.agreementNumberSequenceDigits,
       includeFacilityCode: formData.agreementNumberIncludeFacilityCode,
       includeYear: formData.agreementNumberIncludeYear,
+      template: formData.agreementNumberTemplate,
+      resetFrequency: formData.agreementNumberResetFrequency,
     }),
     enabled: false, // Manual trigger via debounce
   });
@@ -60,7 +73,8 @@ const AgreementRulesSection = ({ data, onSave }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.agreementNumberPrefix, formData.agreementNumberSeparator,
     formData.agreementNumberSequenceDigits, formData.agreementNumberIncludeFacilityCode,
-    formData.agreementNumberIncludeYear]);
+    formData.agreementNumberIncludeYear, formData.agreementNumberTemplate,
+    formData.agreementNumberResetFrequency]);
 
   const mutation = useMutation({
     mutationFn: updateAgreementRules,
@@ -84,6 +98,11 @@ const AgreementRulesSection = ({ data, onSave }: Props) => {
       setTermsError(err.message || 'Failed to update terms template');
     }
   });
+
+  const termsValidationError =
+    termsTemplate.length > MAX_TERMS_TEMPLATE_LENGTH
+      ? `Agreement terms template must be ${MAX_TERMS_TEMPLATE_LENGTH.toLocaleString('en-IN')} characters or less.`
+      : null;
 
   const handleChange = (field: keyof AgreementRulesDTO) => (
     e: React.ChangeEvent<HTMLInputElement>
@@ -218,6 +237,25 @@ const AgreementRulesSection = ({ data, onSave }: Props) => {
           />
         </Grid>
 
+        <Grid item xs={12} md={4}>
+          <FormControl fullWidth>
+            <InputLabel id="agreement-reset-frequency-label">Reset Frequency</InputLabel>
+            <Select
+              labelId="agreement-reset-frequency-label"
+              label="Reset Frequency"
+              value={formData.agreementNumberResetFrequency}
+              onChange={(e) => setFormData({
+                ...formData,
+                agreementNumberResetFrequency: e.target.value as AgreementRulesDTO['agreementNumberResetFrequency'],
+              })}
+            >
+              <MenuItem value="MONTHLY">Monthly</MenuItem>
+              <MenuItem value="YEARLY">Yearly</MenuItem>
+              <MenuItem value="NEVER">Never</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+
         <Grid item xs={12} md={6}>
           <FormControlLabel
             control={
@@ -246,6 +284,17 @@ const AgreementRulesSection = ({ data, onSave }: Props) => {
           <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 4 }}>
             Include the current year in the agreement number.
           </Typography>
+        </Grid>
+
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Custom Format Template"
+            value={formData.agreementNumberTemplate || ''}
+            onChange={handleChange('agreementNumberTemplate')}
+            placeholder="{{sequence}} {{month}} {{year}}"
+            helperText="Optional. Supported placeholders: {{sequence}}, {{month}}, {{year}}, {{prefix}}, {{facilityCode}}. Leave blank to use the legacy format fields below."
+          />
         </Grid>
 
         {/* Format breakdown */}
@@ -282,8 +331,10 @@ const AgreementRulesSection = ({ data, onSave }: Props) => {
           variant="contained"
           size="small"
           startIcon={termsMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
-          onClick={() => termsMutation.mutate(termsTemplate)}
-          disabled={termsMutation.isPending}
+          onClick={() => {
+            if (!termsValidationError) termsMutation.mutate(termsTemplate);
+          }}
+          disabled={termsMutation.isPending || !!termsValidationError}
         >
           Save Terms
         </Button>
@@ -295,6 +346,9 @@ const AgreementRulesSection = ({ data, onSave }: Props) => {
 
       {termsError && (
         <Alert severity="error" sx={{ mb: 2 }}>{termsError}</Alert>
+      )}
+      {termsValidationError && (
+        <Alert severity="warning" sx={{ mb: 2 }}>{termsValidationError}</Alert>
       )}
       {termsSaved && (
         <Alert severity="success" sx={{ mb: 2 }}>Terms template saved successfully</Alert>
@@ -315,7 +369,7 @@ const AgreementRulesSection = ({ data, onSave }: Props) => {
             lineHeight: 1.8,
           },
         }}
-        helperText={`${termsTemplate.split('\n').filter(l => l.trim()).length} clause(s) — each non-empty line becomes a numbered clause in the PDF`}
+        helperText={`${termsTemplate.split('\n').filter(l => l.trim()).length} clause(s) — ${termsTemplate.length.toLocaleString('en-IN')}/${MAX_TERMS_TEMPLATE_LENGTH.toLocaleString('en-IN')} characters`}
       />
     </Box>
   );

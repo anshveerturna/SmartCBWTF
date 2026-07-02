@@ -56,7 +56,7 @@ const ConsumableNew: React.FC = () => {
         if (data.length > 0) {
           setForm(prev => ({ ...prev, categoryId: data[0].id }));
         }
-      } catch (err) {
+      } catch {
         setError('Failed to load categories');
       }
     };
@@ -108,8 +108,9 @@ const ConsumableNew: React.FC = () => {
       }
       
       navigate(`/cbwtf/consumables/${created.id}`);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create consumable');
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: string } } };
+      setError(apiError.response?.data?.message || 'Failed to create consumable');
     } finally {
       setLoading(false);
     }

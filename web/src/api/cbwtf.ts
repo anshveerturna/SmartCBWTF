@@ -322,6 +322,8 @@ export interface PaymentReminderDTO {
   autoAlertEscalation: boolean;
 }
 
+export type AgreementNumberResetFrequency = 'NEVER' | 'YEARLY' | 'MONTHLY';
+
 export interface AgreementRulesDTO {
   defaultAgreementValidityMonths: number;
   agreementRenewalWindowDays: number;
@@ -332,6 +334,8 @@ export interface AgreementRulesDTO {
   agreementNumberSequenceDigits: number;
   agreementNumberIncludeFacilityCode: boolean;
   agreementNumberIncludeYear: boolean;
+  agreementNumberTemplate: string | null;
+  agreementNumberResetFrequency: AgreementNumberResetFrequency;
   // Agreement Terms & Conditions Template
   agreementTermsTemplate: string;
 }
@@ -457,6 +461,13 @@ export const downloadHcfAgreementPrintPdf = async (hcfId: string): Promise<Blob>
   return response.data;
 };
 
+export const downloadHcfRentAgreement = async (hcfId: string): Promise<Blob> => {
+  const response = await apiClient.get(`/api/cbwtf/hcfs/${hcfId}/rent-agreement`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
 export const downloadQrLabelPdf = async (qrId: string): Promise<Blob> => {
   const response = await apiClient.get(`/api/cbwtf/qr/${qrId}/label-pdf`, {
     responseType: 'blob',
@@ -470,6 +481,8 @@ export const previewAgreementNumber = async (params?: {
   digits?: number;
   includeFacilityCode?: boolean;
   includeYear?: boolean;
+  template?: string | null;
+  resetFrequency?: AgreementNumberResetFrequency;
 }): Promise<{ preview: string }> => {
   const response = await apiClient.get('/api/cbwtf/settings/agreement-number-preview', { params });
   return response.data;
@@ -640,6 +653,7 @@ export interface HcfListItem {
   city: string | null;
   state: string | null;
   hcfType: string | null;
+  hcfTypeDisplay?: string;
   contactPhone: string | null;
   contactEmail: string | null;
   numberOfBeds: number | null;
@@ -733,6 +747,10 @@ export interface HcfDetail {
   agreement: AgreementInfo | null;
   billingConfig: BillingConfigInfo | null;
   summary: OperationalSummary | null;
+  excessRatePerKg?: number;
+  taxRate?: number;
+  hcfType?: string;
+  rejectionReason?: string;
 }
 
 export interface UpdateHcfRequest {
@@ -779,8 +797,39 @@ export interface HcfRejectionRequest {
 
 // ============= HCF API Functions =============
 
+export const HCF_LIST_LIMIT = 1000;
+
 export const getHcfList = async (): Promise<HcfListItem[]> => {
-  const response = await apiClient.get('/api/cbwtf/hcfs');
+  const response = await apiClient.get('/api/cbwtf/hcfs', {
+    params: { limit: HCF_LIST_LIMIT },
+  });
+  return response.data;
+};
+
+// ==========================================
+// Correction Requests
+// ==========================================
+
+export interface CorrectionRequest {
+  id: string;
+  fieldName: string;
+  currentValue: string;
+  requestedValue: string;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason?: string;
+  requestedAt: string;
+}
+
+export const submitCorrectionRequest = async (
+  hcfId: string,
+  payload: { fieldName: string; requestedValue: string; reason: string }
+): Promise<void> => {
+  await apiClient.post(`/api/cbwtf/hcfs/${hcfId}/agreement/correction-request`, payload);
+};
+
+export const getCorrectionRequests = async (hcfId: string): Promise<CorrectionRequest[]> => {
+  const response = await apiClient.get(`/api/cbwtf/hcfs/${hcfId}/agreement/correction-requests`);
   return response.data;
 };
 
@@ -803,20 +852,6 @@ export const deactivateHcf = async (id: string, data: DeactivateHcfRequest): Pro
   await apiClient.post(`/api/cbwtf/hcfs/${id}/deactivate`, data);
 };
 
-export const activateHcf = async (id: string): Promise<void> => {
-  await apiClient.post(`/api/cbwtf/hcfs/${id}/activate`);
-};
-
-export interface UpdateAgreementRequest {
-  startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD
-}
-
-export const updateHcfAgreement = async (id: string, data: UpdateAgreementRequest): Promise<HcfDetail> => {
-  const response = await apiClient.put(`/api/cbwtf/hcfs/${id}/agreement`, data);
-  return response.data;
-};
-
 export const getHcfBillingConfig = async (id: string): Promise<BillingConfigInfo> => {
   const response = await apiClient.get(`/api/cbwtf/hcfs/${id}/billing`);
   return response.data;
@@ -828,7 +863,7 @@ export const updateHcfBillingConfig = async (id: string, data: BillingConfigRequ
 };
 
 export const getPendingHcfs = async (): Promise<HcfListItem[]> => {
-  const response = await apiClient.get('/api/cbwtf/hcfs/pending');
+  const response = await apiClient.get('/api/cbwtf/hcfs/pending', { params: { limit: 250 } });
   return response.data;
 };
 
@@ -837,8 +872,13 @@ export const approveHcf = async (id: string, data: HcfApprovalRequest): Promise<
   return response.data;
 };
 
-export const rejectHcf = async (id: string, data: HcfRejectionRequest): Promise<void> => {
-  await apiClient.post(`/api/hcfs/${id}/reject`, data);
+export const rejectHcf = async (hcfId: string, data: HcfRejectionRequest): Promise<void> => {
+  await apiClient.post(`/api/cbwtf/hcfs/${hcfId}/reject`, data);
+};
+
+export const resubmitHcf = async (hcfId: string, data: CbwtfAdminHcfRegistrationRequest): Promise<HcfDetail> => {
+  const response = await apiClient.post<HcfDetail>(`/api/cbwtf/hcfs/${hcfId}/resubmit`, data);
+  return response.data;
 };
 
 // Request to update HCF billing model (only for PENDING/REJECTED)
@@ -850,19 +890,7 @@ export interface HcfBillingModelUpdateRequest {
 
 // Update HCF billing model before approval
 export const updateHcfBillingModel = async (id: string, data: HcfBillingModelUpdateRequest): Promise<HcfListItem> => {
-  const response = await apiClient.put(`/api/hcfs/${id}`, data);
-  return response.data;
-};
-
-// Simple approve HCF (without agreement creation)
-export const simpleApproveHcf = async (id: string): Promise<HcfListItem> => {
-  const response = await apiClient.post(`/api/hcfs/${id}/simple-approve`);
-  return response.data;
-};
-
-// Resubmit rejected HCF for approval
-export const resubmitHcf = async (id: string): Promise<HcfListItem> => {
-  const response = await apiClient.post(`/api/hcfs/${id}/resubmit`);
+  const response = await apiClient.put(`/api/cbwtf/hcfs/${id}/billing-model`, data);
   return response.data;
 };
 
@@ -881,6 +909,7 @@ export const renewAgreement = async (id: string, data: RenewAgreementRequest): P
 // ============= HCF Admin Registration =============
 
 export interface CbwtfAdminHcfRegistrationRequest {
+  id?: string; // Set when updating an existing draft
   name: string;
   address: string;
   pincode: string;
@@ -916,6 +945,16 @@ export interface CbwtfAdminHcfRegistrationRequest {
 export const registerHcf = async (data: CbwtfAdminHcfRegistrationRequest): Promise<HcfDetail> => {
   const response = await apiClient.post('/api/cbwtf/hcfs', data);
   return response.data;
+};
+
+export const saveDraftHcf = async (data: Partial<CbwtfAdminHcfRegistrationRequest>): Promise<HcfDetail> => {
+  const response = await apiClient.post('/api/cbwtf/hcfs/draft', data);
+  return response.data;
+};
+
+export const getDraftHcfs = async (): Promise<HcfListItem[]> => {
+  const { data } = await apiClient.get('/api/cbwtf/hcfs/drafts', { params: { limit: 250 } });
+  return data;
 };
 
 export const uploadRentAgreement = async (file: File): Promise<{ url: string }> => {
@@ -1028,6 +1067,13 @@ export interface GenerateLabelsForHcfResponse {
 
 export const generateLabelsForHcf = async (data: GenerateLabelsForHcfRequest): Promise<GenerateLabelsForHcfResponse> => {
   const response = await apiClient.post('/api/cbwtf/qr-orders/generate-for-hcf', data);
+  return response.data;
+};
+
+export const downloadQrOrderPdf = async (orderId: string): Promise<Blob> => {
+  const response = await apiClient.get(`/api/cbwtf/qr-orders/${orderId}/pdf`, {
+    responseType: 'blob',
+  });
   return response.data;
 };
 
@@ -1229,15 +1275,25 @@ export const downloadInvoiceById = async (invoiceId: string): Promise<Blob> => {
 
 // ============= Compliance Reports API =============
 
-export const getComplianceReports = async (type: string, page = 0, size = 20) => {
-  const response = await apiClient.get(`/api/cbwtf/compliance/${type}`, {
+export type ComplianceReportType = 'daily' | 'monthly' | 'annual' | 'barcode' | 'violations';
+
+const COMPLIANCE_REPORT_PATHS: Record<ComplianceReportType, string> = {
+  daily: '/api/cbwtf/compliance/daily',
+  monthly: '/api/cbwtf/compliance/monthly',
+  annual: '/api/cbwtf/compliance/annual',
+  barcode: '/api/cbwtf/compliance/barcode',
+  violations: '/api/cbwtf/compliance/violations',
+};
+
+export const getComplianceReports = async (type: ComplianceReportType, page = 0, size = 20) => {
+  const response = await apiClient.get(COMPLIANCE_REPORT_PATHS[type], {
     params: { page, size }
   });
   return response.data;
 };
 
-export const downloadComplianceReportPdf = async (type: string, id: string) => {
-  const response = await apiClient.get(`/api/cbwtf/compliance/${type}/${id}/pdf`, {
+export const downloadComplianceReportPdf = async (type: ComplianceReportType, id: string) => {
+  const response = await apiClient.get(`${COMPLIANCE_REPORT_PATHS[type]}/${id}/pdf`, {
     responseType: 'blob'
   });
   const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -1264,6 +1320,61 @@ export const downloadAnnualReportExcel = async (id: string) => {
 
 // ============= Alerts API =============
 
+export interface PortalAlertDTO {
+  id: string;
+  type: string;
+  category?: string;
+  severity: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  isRead: boolean;
+}
+
+export interface AlertMissingBagDTO {
+  bagLabelId: string;
+  qrCode: string | null;
+  category: string | null;
+  hcfName: string | null;
+  weightKg: number | null;
+  eventTs: string;
+  gpsLat: number | null;
+  gpsLon: number | null;
+  driverId: string | null;
+}
+
+export interface AlertMismatchedBagDTO {
+  bagLabelId: string;
+  qrCode: string | null;
+  category: string | null;
+  hcfName: string | null;
+  hcfWeightKg: number | null;
+  cbtwfWeightKg: number | null;
+  deltaKg: number | null;
+  verificationTs: string;
+}
+
+export interface UnifiedAlertDTO {
+  id: string;
+  rawId?: string;
+  source: 'portal' | 'dashboard' | 'route' | 'bag';
+  sourceLabel: string;
+  severity: 'INFO' | 'WARNING' | 'WARN' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  type: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  isRead?: boolean;
+  isResolved?: boolean;
+  canMarkRead?: boolean;
+  canResolve?: boolean;
+}
+
+export interface UnifiedAlertsResponse {
+  alerts: UnifiedAlertDTO[];
+  count: number;
+}
+
 export const getAlerts = async (page = 0, size = 20, category?: string) => {
   const response = await apiClient.get('/api/cbwtf/alerts', {
     params: { page, size, category }
@@ -1286,6 +1397,131 @@ export const markAllAlertsAsRead = async () => {
   return response.data;
 };
 
+export const getMissingBagAlerts = async (): Promise<AlertMissingBagDTO[]> => {
+  const response = await apiClient.get('/api/alerts/missing_bags');
+  return response.data;
+};
+
+export const getMismatchedBagAlerts = async (): Promise<AlertMismatchedBagDTO[]> => {
+  const response = await apiClient.get('/api/alerts/mismatched_bags');
+  return response.data;
+};
+
+const resultValue = <T>(result: PromiseSettledResult<T>, fallback: T): T =>
+  result.status === 'fulfilled' ? result.value : fallback;
+
+const normalizeRiskSeverity = (severity: RiskAlert['severity']): UnifiedAlertDTO['severity'] => {
+  if (severity === 'MEDIUM') return 'WARNING';
+  return severity;
+};
+
+const formatKg = (value: number | null | undefined): string =>
+  typeof value === 'number' ? `${value.toFixed(2)} kg` : 'N/A';
+
+type PortalAlertsPage = {
+  content?: PortalAlertDTO[];
+};
+
+export const getUnifiedAlerts = async (): Promise<UnifiedAlertsResponse> => {
+  const [
+    portalResult,
+    routeResult,
+    dashboardResult,
+    missingBagResult,
+    mismatchedBagResult,
+  ] = await Promise.allSettled([
+    getAlerts(0, 200),
+    getRouteAlerts(),
+    cbwtfApi.getDashboard(),
+    getMissingBagAlerts(),
+    getMismatchedBagAlerts(),
+  ]);
+
+  const portalPage = resultValue<PortalAlertsPage>(portalResult, { content: [] });
+  const portalAlerts: PortalAlertDTO[] = Array.isArray(portalPage?.content) ? portalPage.content : [];
+  const routeAlerts = resultValue<RouteAlertDTO[]>(routeResult, []);
+  const dashboard = resultValue<CBWTFDashboardDTO | null>(dashboardResult, null);
+  const missingBags = resultValue<AlertMissingBagDTO[]>(missingBagResult, []);
+  const mismatchedBags = resultValue<AlertMismatchedBagDTO[]>(mismatchedBagResult, []);
+
+  const alerts: UnifiedAlertDTO[] = [
+    ...portalAlerts.map((alert) => ({
+      id: `portal-${alert.id}`,
+      rawId: alert.id,
+      source: 'portal' as const,
+      sourceLabel: 'System',
+      severity: (alert.severity || 'INFO') as UnifiedAlertDTO['severity'],
+      type: alert.type,
+      title: alert.title,
+      message: alert.message,
+      createdAt: alert.createdAt,
+      isRead: alert.isRead,
+      canMarkRead: !alert.isRead,
+    })),
+    ...routeAlerts.map((alert) => ({
+      id: `route-${alert.alertId}`,
+      rawId: alert.alertId,
+      source: 'route' as const,
+      sourceLabel: 'Route',
+      severity: alert.severity,
+      type: alert.alertType,
+      title: alert.title,
+      message: alert.message || `Route ${alert.routeName} needs attention.`,
+      createdAt: alert.createdAt,
+      isResolved: alert.isResolved,
+      canResolve: !alert.isResolved,
+    })),
+    ...(dashboard?.riskAlerts || []).map((alert, index) => ({
+      id: `dashboard-${alert.type}-${alert.entityId || index}`,
+      rawId: alert.entityId || undefined,
+      source: 'dashboard' as const,
+      sourceLabel: 'Dashboard',
+      severity: normalizeRiskSeverity(alert.severity),
+      type: alert.type,
+      title: alert.title,
+      message: alert.description,
+      createdAt: new Date().toISOString(),
+    })),
+    ...missingBags.map((bag) => ({
+      id: `missing-bag-${bag.bagLabelId}`,
+      rawId: bag.bagLabelId,
+      source: 'bag' as const,
+      sourceLabel: 'Bag',
+      severity: 'WARNING' as const,
+      type: 'UNVERIFIED_BAG_DETECTED',
+      title: `Unverified bag${bag.qrCode ? `: ${bag.qrCode}` : ''}`,
+      message: `${bag.hcfName || 'Unknown HCF'} has a ${bag.category || 'BMW'} bag pending CBWTF verification. Weight: ${formatKg(bag.weightKg)}.`,
+      createdAt: bag.eventTs,
+    })),
+    ...mismatchedBags.map((bag) => ({
+      id: `mismatched-bag-${bag.bagLabelId}`,
+      rawId: bag.bagLabelId,
+      source: 'bag' as const,
+      sourceLabel: 'Bag',
+      severity: 'CRITICAL' as const,
+      type: 'WEIGHT_MISMATCH',
+      title: `Weight mismatch${bag.qrCode ? `: ${bag.qrCode}` : ''}`,
+      message: `${bag.hcfName || 'Unknown HCF'} reported ${formatKg(bag.hcfWeightKg)} and CBWTF verified ${formatKg(bag.cbtwfWeightKg)}. Delta: ${formatKg(bag.deltaKg)}.`,
+      createdAt: bag.verificationTs,
+    })),
+  ];
+
+  alerts.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+  const count = alerts.filter((alert) => {
+    if (alert.source === 'portal') return !alert.isRead;
+    if (alert.source === 'route') return !alert.isResolved;
+    return true;
+  }).length;
+
+  return { alerts, count };
+};
+
+export const getUnifiedAlertCount = async (): Promise<{ count: number }> => {
+  const response = await getUnifiedAlerts();
+  return { count: response.count };
+};
+
 // ============= Notification Settings API =============
 
 export const getNotificationSettings = async () => {
@@ -1300,57 +1536,6 @@ export const updateNotificationSettings = async (settings: {
   agreementExpiryWarningDays?: number;
 }) => {
   const response = await apiClient.put('/api/cbwtf/settings/notifications', settings);
-  return response.data;
-};
-
-// ============= Email Templates API =============
-
-export interface EmailTemplateDTO {
-  id?: string;
-  templateCode: string;
-  subjectTemplate: string;
-  bodyTemplate: string;
-  version?: number;
-  isActive?: boolean;
-  requiredPlaceholders?: string[];
-  availablePlaceholders?: string[];
-}
-
-export const getEmailTemplates = async (): Promise<EmailTemplateDTO[]> => {
-  const response = await apiClient.get('/api/cbwtf/email-templates');
-  return response.data;
-};
-
-export const getEmailTemplate = async (templateCode: string): Promise<EmailTemplateDTO> => {
-  const response = await apiClient.get(`/api/cbwtf/email-templates/${templateCode}`);
-  return response.data;
-};
-
-export const updateEmailTemplate = async (templateCode: string, data: EmailTemplateDTO): Promise<void> => {
-  await apiClient.put(`/api/cbwtf/email-templates/${templateCode}`, data);
-};
-
-export const previewEmailTemplate = async (
-  templateCode: string, 
-  bodyTemplate: string, 
-  sampleData: Record<string, string>
-): Promise<{ html: string }> => {
-  const response = await apiClient.post(`/api/cbwtf/email-templates/${templateCode}/preview`, {
-    bodyTemplate,
-    sampleData
-  });
-  return response.data;
-};
-
-export const resetEmailTemplate = async (templateCode: string): Promise<void> => {
-  await apiClient.post(`/api/cbwtf/email-templates/${templateCode}/reset`);
-};
-
-export const getEmailTemplatePlaceholders = async (templateCode: string): Promise<{
-  required: string[];
-  available: string[];
-}> => {
-  const response = await apiClient.get(`/api/cbwtf/email-templates/${templateCode}/placeholders`);
   return response.data;
 };
 

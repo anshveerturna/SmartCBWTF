@@ -22,7 +22,6 @@ import {
   Snackbar,
   Paper,
   InputAdornment,
-  CircularProgress,
   LinearProgress,
   Select,
   MenuItem,
@@ -36,12 +35,14 @@ import {
   LocationOn as LocationIcon,
   CloudUpload as UploadIcon,
   CheckCircle as CheckIcon,
+  Save as SaveIcon,
 } from '@mui/icons-material';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { State, City } from 'country-state-city';
-import { registerHcf, uploadRentAgreement, getFacilitySettings, type CbwtfAdminHcfRegistrationRequest } from '../../api/cbwtf';
+import { useSearchParams } from 'react-router-dom';
+import { registerHcf, saveDraftHcf, uploadRentAgreement, getFacilitySettings, getHcfDetail, resubmitHcf, type CbwtfAdminHcfRegistrationRequest } from '../../api/cbwtf';
+import { getCitiesForState, INDIAN_STATES } from '../../utils/indian_locations';
 
 // Custom location marker icon
 const createLocationIcon = () => {
@@ -59,6 +60,7 @@ const createLocationIcon = () => {
 };
 
 const locationIcon = createLocationIcon();
+type StateOption = { name: string; isoCode: string };
 
 // Map click handler component
 function LocationPicker({
@@ -100,7 +102,11 @@ function LocationPicker({
 
 export default function HcfRegister() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const resubmitId = searchParams.get('id');
+  const isResubmit = searchParams.get('resubmit') === 'true' && !!resubmitId;
+  const isDraftEdit = searchParams.get('draft') === 'true' && !!resubmitId;
 
   // Fetch facility settings for agreement defaults
   const { data: facilitySettings } = useQuery({
@@ -153,21 +159,70 @@ export default function HcfRegister() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   // States and Cities data
-  const states = useMemo(() => State.getStatesOfCountry('IN'), []);
+  const states = useMemo<StateOption[]>(
+    () => INDIAN_STATES.map((name) => ({ name, isoCode: name })),
+    []
+  );
   const cities = useMemo(() => {
-    if (!form.stateCode) return [];
-    return City.getCitiesOfState('IN', form.stateCode);
-  }, [form.stateCode]);
+    if (!form.state) return [];
+    return getCitiesForState(form.state).map((name) => ({ name }));
+  }, [form.state]);
+
+  // Fetch HCF Detail if resubmitting or editing draft
+  const { data: existingHcf } = useQuery({
+    queryKey: ['cbwtf-hcf', resubmitId],
+    queryFn: () => getHcfDetail(resubmitId!),
+    enabled: isResubmit || isDraftEdit,
+  });
+
+  // Populate form if resubmitting or editing a draft
+  useEffect(() => {
+    if ((isResubmit || isDraftEdit) && existingHcf) {
+      setForm(prev => ({
+        ...prev,
+        name: existingHcf.name || '',
+        address: existingHcf.address || '',
+        pincode: existingHcf.pincode || '',
+        state: existingHcf.state || '',
+        stateCode: existingHcf.state || '',
+        city: existingHcf.city || '',
+        doctorName: existingHcf.doctorName || '',
+        contactPhone: existingHcf.contactPhone || '',
+        contactEmail: existingHcf.contactEmail || '',
+        panNo: existingHcf.panNo || '',
+        gstNo: existingHcf.gstNo || '',
+        aadharNo: existingHcf.aadharNo || '',
+        ownershipType: existingHcf.ownershipType || 'OWNED',
+        rentAgreementUrl: existingHcf.rentAgreementUrl || '',
+        bedded: existingHcf.bedded || false,
+        numberOfBeds: existingHcf.numberOfBeds?.toString() || '',
+        monthlyCharges: existingHcf.monthlyCharges?.toString() || '',
+        occupancy: existingHcf.occupancy?.toString() || '',
+        otherNotes: existingHcf.otherNotes || '',
+        agreementStartDate: existingHcf.agreement?.startDate || new Date().toISOString().split('T')[0],
+        agreementEndDate: existingHcf.agreement?.endDate || '',
+        perBedPerDayRate: existingHcf.agreement?.perBedPerDayRate?.toString() || '',
+        excessRatePerKg: existingHcf.excessRatePerKg?.toString() || '',
+        taxRate: existingHcf.taxRate?.toString() || '5',
+        hcfType: existingHcf.hcfType || 'HOSPITAL',
+        seatCount: existingHcf.seatCount?.toString() || '',
+        customAgreementNumber: isDraftEdit ? '' : existingHcf.agreement?.agreementNumber || '',
+      }));
+      if (existingHcf.gpsLat != null && existingHcf.gpsLon != null) {
+        setLocation({ lat: existingHcf.gpsLat, lng: existingHcf.gpsLon });
+      }
+    }
+  }, [isResubmit, isDraftEdit, existingHcf]);
 
   // Auto-compute agreement end date from settings
   useEffect(() => {
-    if (form.agreementStartDate && (!form.agreementEndDate || form.agreementEndDate === '')) {
+    if (!isResubmit && form.agreementStartDate && (!form.agreementEndDate || form.agreementEndDate === '')) {
       setForm(prev => ({
         ...prev,
         agreementEndDate: computeEndDate(prev.agreementStartDate, defaultValidityMonths),
       }));
     }
-  }, [defaultValidityMonths, form.agreementStartDate]);
+  }, [defaultValidityMonths, form.agreementEndDate, form.agreementStartDate, isResubmit]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -180,23 +235,32 @@ export default function HcfRegister() {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Initialize map to India center
-  useEffect(() => {
-    if (!location) {
-      setLocation({ lat: 20.5937, lng: 78.9629 });
-    }
-  }, [location]);
-
   // Mutation
   const mutation = useMutation({
-    mutationFn: (data: CbwtfAdminHcfRegistrationRequest) => registerHcf(data),
+    mutationFn: (data: CbwtfAdminHcfRegistrationRequest) =>
+      isResubmit ? resubmitHcf(resubmitId!, data) : registerHcf(data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['cbwtf-hcfs'] });
+      queryClient.invalidateQueries({ queryKey: ['cbwtf-drafts'] });
       setSnackbar({ open: true, message: 'HCF registration requested successfully, pending Top Management approval!', severity: 'success' });
       setTimeout(() => navigate(data.bedded ? '/cbwtf/hcfs/large' : '/cbwtf/hcfs/small'), 1500);
     },
     onError: (error: Error) => {
       setSnackbar({ open: true, message: error.message || 'Failed to request HCF registration', severity: 'error' });
+    },
+  });
+
+  // Draft mutation
+  const draftMutation = useMutation({
+    mutationFn: (data: Partial<CbwtfAdminHcfRegistrationRequest>) => saveDraftHcf(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cbwtf-drafts'] });
+      queryClient.invalidateQueries({ queryKey: ['cbwtf-hcfs'] });
+      setSnackbar({ open: true, message: 'Draft saved successfully! You can resume later from Pending Approvals.', severity: 'success' });
+      setTimeout(() => navigate('/cbwtf/hcfs/pending'), 1500);
+    },
+    onError: (error: Error) => {
+      setSnackbar({ open: true, message: error.message || 'Failed to save draft', severity: 'error' });
     },
   });
 
@@ -211,6 +275,7 @@ export default function HcfRegister() {
     }
 
     const request: CbwtfAdminHcfRegistrationRequest = {
+      id: isDraftEdit ? resubmitId! : undefined,
       name: form.name,
       address: form.address,
       pincode: form.pincode,
@@ -245,6 +310,41 @@ export default function HcfRegister() {
     };
 
     mutation.mutate(request);
+  };
+
+  const handleSaveDraft = () => {
+    const draftData: Partial<CbwtfAdminHcfRegistrationRequest> = {
+      id: isDraftEdit ? resubmitId! : undefined,
+      name: form.name || undefined,
+      address: form.address || undefined,
+      pincode: form.pincode || undefined,
+      state: form.state || undefined,
+      doctorName: form.doctorName || undefined,
+      contactPhone: form.contactPhone || undefined,
+      contactEmail: form.contactEmail || undefined,
+      panNo: form.panNo || undefined,
+      gstNo: form.gstNo || undefined,
+      aadharNo: form.aadharNo || undefined,
+      ownershipType: form.ownershipType || 'OWNED',
+      rentAgreementUrl: form.ownershipType === 'RENTED' ? form.rentAgreementUrl : undefined,
+      bedded: form.bedded,
+      numberOfBeds: form.bedded && form.numberOfBeds ? parseInt(form.numberOfBeds) : undefined,
+      monthlyCharges: form.monthlyCharges ? parseFloat(form.monthlyCharges) : undefined,
+      occupancy: form.occupancy ? parseFloat(form.occupancy) : undefined,
+      otherNotes: form.otherNotes || undefined,
+      gpsLat: location?.lat ?? undefined,
+      gpsLon: location?.lng ?? undefined,
+      agreementStartDate: form.agreementStartDate || undefined,
+      agreementEndDate: form.agreementEndDate || undefined,
+      perBedPerDayRate: form.perBedPerDayRate ? parseFloat(form.perBedPerDayRate) : undefined,
+      excessRatePerKg: form.excessRatePerKg ? parseFloat(form.excessRatePerKg) : undefined,
+      taxRate: form.taxRate ? parseFloat(form.taxRate) : undefined,
+      hcfType: form.hcfType as 'HOSPITAL' | 'DENTAL' | 'CLINIC' | 'PATHOLOGY_COLLECTION' | 'PATHOLOGY_STORAGE',
+      city: form.city || undefined,
+      seatCount: (form.hcfType === 'DENTAL' || form.hcfType === 'CLINIC') && form.seatCount ? parseInt(form.seatCount) : undefined,
+      customAgreementNumber: form.customAgreementNumber?.trim() || undefined,
+    };
+    draftMutation.mutate(draftData);
   };
 
   const labelFixSx = {
@@ -283,9 +383,16 @@ export default function HcfRegister() {
         </IconButton>
         <HcfIcon sx={{ fontSize: 32, color: 'primary.main' }} />
         <Typography variant="h4" fontWeight="bold">
-          Register New HCF
+          {isResubmit ? 'Edit & Resubmit HCF' : isDraftEdit ? 'Resume Draft HCF' : 'Register New HCF'}
         </Typography>
       </Box>
+
+      {isResubmit && existingHcf?.rejectionReason && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" fontWeight="bold">Rejection Reason from Top Management:</Typography>
+          <Typography variant="body2">{existingHcf.rejectionReason}</Typography>
+        </Alert>
+      )}
 
       <Grid container spacing={3}>
         {/* Left Column: Form */}
@@ -559,7 +666,7 @@ export default function HcfRegister() {
                             setUploadProgress(100);
                             setForm({ ...form, rentAgreementUrl: result.url });
                             setSnackbar({ open: true, message: 'Rent agreement uploaded!', severity: 'success' });
-                          } catch (err) {
+                          } catch {
                             setSnackbar({ open: true, message: 'Failed to upload file', severity: 'error' });
                             setRentAgreementFile(null);
                           } finally {
@@ -943,17 +1050,26 @@ export default function HcfRegister() {
           <strong>Note:</strong> Only request to register an HCF if the payment has been received. Your request is subject to Top Management approval and may be rejected.
         </Alert>
         <Box display="flex" justifyContent="flex-end" gap={2}>
-          <Button variant="outlined" onClick={() => navigate('/cbwtf/hcfs')}>
+          <Button onClick={() => navigate(-1)} variant="outlined">
             Cancel
           </Button>
           <Button
-            variant="contained"
-            size="large"
-            onClick={handleSubmit}
-            disabled={!isFormValid() || mutation.isPending}
-            startIcon={mutation.isPending && <CircularProgress size={20} color="inherit" />}
+            variant="outlined"
+            color="secondary"
+            startIcon={<SaveIcon />}
+            onClick={handleSaveDraft}
+            disabled={draftMutation.isPending || mutation.isPending}
           >
-            {mutation.isPending ? 'Requesting...' : 'Request to Register HCF'}
+            {draftMutation.isPending ? 'Saving...' : 'Save as Draft'}
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<CheckIcon />}
+            onClick={handleSubmit}
+            disabled={!isFormValid() || mutation.isPending || draftMutation.isPending}
+          >
+            {mutation.isPending ? 'Submitting...' : isResubmit ? 'Resubmit Registration' : 'Submit Registration Request'}
           </Button>
         </Box>
       </Box>

@@ -18,106 +18,63 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Checkbox,
-  Alert,
   alpha,
 } from '@mui/material';
 import {
   CheckCircle,
   Cancel,
   Pending,
-  Business,
+  ArrowRightAlt,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../../api/client';
+import {
+  getPendingCorrections,
+  approveCorrection,
+  rejectCorrection
+} from '../../api/topManagement';
+import type { PendingCorrection } from '../../api/topManagement';
 
-interface ClearanceRequest {
-  id: string;
-  hcfId: string;
-  hcfName: string;
-  hcfCode: string;
-  facilityName: string;
-  agreementNumber?: string;
-  status: string;
-  requestedAt: string;
-  submittedAt?: string;
-  amountCleared?: number;
-  cbwtfNotes?: string;
-}
-
-const DuesApprovals: React.FC = () => {
+const CorrectionRequests: React.FC = () => {
   const queryClient = useQueryClient();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [approveId, setApproveId] = useState<string | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
   // Fetch pending approvals
-  const { data, isLoading } = useQuery({
-    queryKey: ['management-dues-approvals'],
-    queryFn: async () => {
-      const res = await apiClient.get('/api/management/dues-approvals');
-      return res.data;
-    },
+  const { data: requests, isLoading } = useQuery({
+    queryKey: ['management-correction-requests'],
+    queryFn: getPendingCorrections,
   });
 
   // Approve mutation
   const approveMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await apiClient.post(`/api/management/dues-approvals/${id}/approve`);
-      return res.data;
-    },
+    mutationFn: approveCorrection,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['management-dues-approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['management-correction-requests'] });
+      setApproveId(null);
     },
   });
 
   // Reject mutation
   const rejectMutation = useMutation({
-    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      const res = await apiClient.post(`/api/management/dues-approvals/${id}/reject`, { reason });
-      return res.data;
-    },
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => rejectCorrection(id, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['management-dues-approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['management-correction-requests'] });
       setRejectDialogOpen(false);
       setRejectReason('');
     },
   });
 
-  // Bulk approve mutation
-  const bulkApproveMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const res = await apiClient.post('/api/management/dues-approvals/bulk-approve', { ids });
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['management-dues-approvals'] });
-      setSelected(new Set());
-    },
-  });
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked && data?.requests) {
-      setSelected(new Set(data.requests.map((r: ClearanceRequest) => r.id)));
-    } else {
-      setSelected(new Set());
-    }
-  };
-
-  const handleSelect = (id: string, checked: boolean) => {
-    const newSelected = new Set(selected);
-    if (checked) {
-      newSelected.add(id);
-    } else {
-      newSelected.delete(id);
-    }
-    setSelected(newSelected);
-  };
-
   const openRejectDialog = (id: string) => {
     setRejectId(id);
     setRejectDialogOpen(true);
+  };
+
+  const handleApproveConfirm = () => {
+    if (approveId) {
+      approveMutation.mutate(approveId);
+    }
   };
 
   return (
@@ -125,41 +82,19 @@ const DuesApprovals: React.FC = () => {
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Dues Clearance Approvals
+          Agreement Correction Requests
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Review and approve HCF dues clearance requests
+          Review and approve corrections to active HCF agreements
         </Typography>
       </Box>
-
-      {/* Bulk Actions */}
-      {selected.size > 0 && (
-        <Alert
-          severity="info"
-          sx={{ mb: 3 }}
-          action={
-            <Button
-              color="success"
-              variant="contained"
-              size="small"
-              startIcon={bulkApproveMutation.isPending ? <CircularProgress size={16} /> : <CheckCircle />}
-              onClick={() => bulkApproveMutation.mutate(Array.from(selected))}
-              disabled={bulkApproveMutation.isPending}
-            >
-              Approve Selected ({selected.size})
-            </Button>
-          }
-        >
-          {selected.size} request(s) selected
-        </Alert>
-      )}
 
       {/* Pending Requests */}
       <Card>
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Pending color="warning" /> Pending Approvals ({data?.total || 0})
+              <Pending color="warning" /> Pending Approvals ({requests?.length || 0})
             </Typography>
           </Box>
 
@@ -167,11 +102,11 @@ const DuesApprovals: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
             </Box>
-          ) : data?.requests?.length === 0 ? (
+          ) : !requests || requests.length === 0 ? (
             <Paper sx={{ p: 4, textAlign: 'center', bgcolor: alpha('#10B981', 0.05) }}>
               <CheckCircle sx={{ fontSize: 48, color: 'success.main', mb: 2 }} />
               <Typography color="text.secondary">
-                All caught up! No pending approvals.
+                All caught up! No pending correction requests.
               </Typography>
             </Paper>
           ) : (
@@ -179,32 +114,19 @@ const DuesApprovals: React.FC = () => {
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        checked={!!data?.requests?.length && selected.size === data?.requests?.length}
-                        indeterminate={!!data?.requests?.length && selected.size > 0 && selected.size < data?.requests?.length}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                      />
-                    </TableCell>
                     <TableCell>HCF</TableCell>
-                    <TableCell>Facility</TableCell>
+                    <TableCell>Contact</TableCell>
                     <TableCell>Agreement No.</TableCell>
-                    <TableCell align="right">Amount</TableCell>
+                    <TableCell>Field to Change</TableCell>
+                    <TableCell>Current → Requested</TableCell>
+                    <TableCell>Reason</TableCell>
                     <TableCell>Submitted</TableCell>
-                    <TableCell>Notes</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data?.requests?.map((req: ClearanceRequest) => (
-                    <TableRow key={req.id} hover selected={selected.has(req.id)}>
-                      <TableCell padding="checkbox">
-                        <Checkbox
-                          checked={selected.has(req.id)}
-                          onChange={(e) => handleSelect(req.id, e.target.checked)}
-                        />
-                      </TableCell>
-
+                  {requests.map((req: PendingCorrection) => (
+                    <TableRow key={req.id} hover>
                       <TableCell>
                         <Box>
                           <Typography variant="subtitle2" fontWeight={600} sx={{ color: 'text.primary' }}>
@@ -215,32 +137,48 @@ const DuesApprovals: React.FC = () => {
                           </Typography>
                         </Box>
                       </TableCell>
+
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Business fontSize="small" sx={{ color: 'primary.main', opacity: 0.7 }} />
-                          <Typography variant="body2">{req.facilityName}</Typography>
-                        </Box>
+                        <Typography variant="body2">{req.contactPhone}</Typography>
+                        <Typography variant="caption" color="text.secondary">{req.doctorName}</Typography>
                       </TableCell>
+
                       <TableCell>
                          <Typography variant="body2" sx={{ fontFamily: 'monospace', bgcolor: alpha('#fff', 0.05), py: 0.5, px: 1, borderRadius: 1, display: 'inline-block' }}>
                            {req.agreementNumber || '-'}
                          </Typography>
                       </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="subtitle2" fontWeight={700} sx={{ color: 'success.light' }}>
-                           {req.amountCleared ? `₹${req.amountCleared.toLocaleString()}` : '-'}
-                        </Typography>
-                      </TableCell>
+
                       <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {req.submittedAt ? new Date(req.submittedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                        <Typography variant="subtitle2" fontWeight={700} color="primary.main">
+                           {req.fieldName}
                         </Typography>
                       </TableCell>
+
                       <TableCell>
-                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {req.cbwtfNotes || '-'}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" color="error.main" sx={{ textDecoration: 'line-through' }}>
+                                {req.currentValue || 'N/A'}
+                            </Typography>
+                            <ArrowRightAlt fontSize="small" color="action" />
+                            <Typography variant="body2" color="success.main" fontWeight={600}>
+                                {req.requestedValue}
+                            </Typography>
+                        </Box>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={req.reason}>
+                          {req.reason}
                         </Typography>
                       </TableCell>
+
+                      <TableCell>
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(req.requestedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </Typography>
+                      </TableCell>
+
                       <TableCell align="right">
                         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                           <Button
@@ -248,7 +186,7 @@ const DuesApprovals: React.FC = () => {
                             variant="outlined"
                             color="success"
                             startIcon={approveMutation.isPending ? <CircularProgress size={14} /> : <CheckCircle />}
-                            onClick={() => approveMutation.mutate(req.id)}
+                            onClick={() => setApproveId(req.id)}
                             disabled={approveMutation.isPending}
                             sx={{ textTransform: 'none', fontWeight: 600 }}
                           >
@@ -275,9 +213,29 @@ const DuesApprovals: React.FC = () => {
         </CardContent>
       </Card>
 
+      <Dialog open={approveId !== null} onClose={() => setApproveId(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Approve Correction Request</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Approving this request will permanently replace the old agreement value.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setApproveId(null)} disabled={approveMutation.isPending}>Cancel</Button>
+          <Button
+            color="success"
+            variant="contained"
+            onClick={handleApproveConfirm}
+            disabled={approveMutation.isPending}
+          >
+            {approveMutation.isPending ? <CircularProgress size={20} /> : 'Approve'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Reject Dialog */}
       <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Reject Clearance Request</DialogTitle>
+        <DialogTitle>Reject Correction Request</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -307,4 +265,4 @@ const DuesApprovals: React.FC = () => {
   );
 };
 
-export default DuesApprovals;
+export default CorrectionRequests;

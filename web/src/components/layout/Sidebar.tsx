@@ -22,6 +22,7 @@ import {
   Business as BusinessIcon,
   Settings as SettingsIcon,
   Analytics as AnalyticsIcon,
+  ReportProblem as ErrorIcon,
   People as PeopleIcon,
   PersonAdd as PersonAddIcon,
   Add as AddIcon,
@@ -96,8 +97,8 @@ const getSuperAdminSections = (): NavSection[] => [
   {
     title: 'System',
     items: [
-      { path: '/superadmin/payment-gateway', label: 'Payment Gateway', icon: <AnalyticsIcon />, roles: ['SUPER_ADMIN'] },
       { path: '/superadmin/email-templates', label: 'Email Templates', icon: <AlertsIcon />, roles: ['SUPER_ADMIN'] },
+      { path: '/superadmin/errors', label: 'System Errors', icon: <ErrorIcon />, roles: ['SUPER_ADMIN'] },
       { path: '/superadmin/settings', label: 'Configuration', icon: <SettingsIcon />, roles: ['SUPER_ADMIN'] },
     ],
   },
@@ -125,7 +126,6 @@ const getCbwtfAdminItems = (): NavItem[] => [
 const getCbwtfFinanceItems = (): NavItem[] => [
   { path: '/cbwtf/payments', label: 'Payments', icon: <PaymentIcon />, roles: ['CBWTF_ADMIN'] },
   { path: '/cbwtf/billing', label: 'Bills', icon: <BillingIcon />, roles: ['CBWTF_ADMIN'] },
-  { path: '/cbwtf/finance/revenue', label: 'Revenue', icon: <AnalyticsIcon />, roles: ['CBWTF_ADMIN'] },
 ];
 
 const getHcfAdminItems = (): NavItem[] => [
@@ -138,7 +138,8 @@ const getHcfAdminItems = (): NavItem[] => [
 
 const getTopManagementItems = (): NavItem[] => [
   { path: '/management/hcfs', label: 'HCF Approvals', icon: <HcfIcon />, roles: ['TOP_MANAGEMENT'] },
-  { path: '/management/dues-approvals', label: 'Dues Approvals', icon: <CheckCircleIcon />, roles: ['TOP_MANAGEMENT'] },
+  { path: '/management/dues-approvals', label: 'Dues Approvals', icon: <FactCheckIcon />, roles: ['TOP_MANAGEMENT'] },
+  { path: '/management/correction-requests', label: 'Correction Requests', icon: <CheckCircleIcon />, roles: ['TOP_MANAGEMENT'] },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {

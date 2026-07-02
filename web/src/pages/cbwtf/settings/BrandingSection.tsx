@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Typography,
@@ -21,7 +21,7 @@ import {
 } from '@mui/icons-material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getBranding, updateBranding, uploadLogo, deleteLogo } from '../../../api/cbwtf';
-import { API_BASE_URL } from '../../../api/client';
+import { apiAssetUrl } from '../../../api/client';
 import type { BrandingDTO } from '../../../api/cbwtf';
 import { useTheme } from '@mui/material/styles';
 
@@ -80,21 +80,13 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
   const [imageError, setImageError] = useState(false);
 
   // Form state
-  const [formData, setFormData] = useState<BrandingDTO>({});
+  const [formData, setFormData] = useState<BrandingDTO | null>(null);
 
   // Fetch branding data
   const { data: branding, isLoading, error } = useQuery<BrandingDTO>({
     queryKey: ['branding'],
     queryFn: getBranding,
   });
-
-  // Sync form data when branding loads
-  useEffect(() => {
-    if (branding) {
-      setFormData(branding);
-      setImageError(false);
-    }
-  }, [branding]);
 
   // Update mutation
   const updateMutation = useMutation({
@@ -114,7 +106,7 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
     mutationFn: uploadLogo,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['branding'] });
-      setFormData(prev => ({ ...prev, logoUrl: data.logoUrl }));
+      setFormData(prev => ({ ...(prev ?? branding), logoUrl: data.logoUrl }));
       setImageError(false);
       setSnackbar({ open: true, message: 'Logo uploaded successfully', severity: 'success' });
     },
@@ -128,7 +120,7 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
     mutationFn: deleteLogo,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branding'] });
-      setFormData(prev => ({ ...prev, logoUrl: undefined }));
+      setFormData(prev => ({ ...(prev ?? branding), logoUrl: undefined }));
       setSnackbar({ open: true, message: 'Logo deleted successfully', severity: 'success' });
     },
     onError: () => {
@@ -154,14 +146,8 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
   const handleSave = () => {
     updateMutation.mutate({
       ...branding,
-      ...formData,
+      ...(formData ?? {}),
     });
-  };
-
-  const getLogoSrc = (url: string | undefined) => {
-    if (!url) return undefined;
-    if (url.startsWith('http') || url.startsWith('blob:')) return url;
-    return `${API_BASE_URL}${url}`;
   };
 
   if (isLoading) {
@@ -177,6 +163,9 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
   }
 
   const currentBranding = { ...branding, ...formData };
+  const updateBrandingField = (updates: Partial<BrandingDTO>) => {
+    setFormData({ ...currentBranding, ...updates });
+  };
   const isDark = theme.palette.mode === 'dark';
 
   return (
@@ -197,7 +186,7 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
           {currentBranding.logoUrl && !imageError ? (
             <Box
               component="img"
-              src={getLogoSrc(currentBranding.logoUrl)}
+              src={apiAssetUrl(currentBranding.logoUrl)}
               alt="Company logo"
               onError={() => setImageError(true)}
               sx={{
@@ -281,7 +270,7 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
             control={
               <Switch
                 checked={currentBranding.showLogoOnInvoice ?? true}
-                onChange={(e) => setFormData({ ...formData, showLogoOnInvoice: e.target.checked })}
+                onChange={(e) => updateBrandingField({ showLogoOnInvoice: e.target.checked })}
               />
             }
             label=""
@@ -293,7 +282,7 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
             control={
               <Switch
                 checked={currentBranding.showLogoOnReceipt ?? true}
-                onChange={(e) => setFormData({ ...formData, showLogoOnReceipt: e.target.checked })}
+                onChange={(e) => updateBrandingField({ showLogoOnReceipt: e.target.checked })}
               />
             }
             label=""
@@ -305,7 +294,7 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
             control={
               <Switch
                 checked={currentBranding.showLogoOnEmail ?? true}
-                onChange={(e) => setFormData({ ...formData, showLogoOnEmail: e.target.checked })}
+                onChange={(e) => updateBrandingField({ showLogoOnEmail: e.target.checked })}
               />
             }
             label=""
@@ -332,7 +321,7 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
             label="Invoice Footer"
             placeholder="Enter custom footer text for invoices..."
             value={currentBranding.invoiceFooterText || ''}
-            onChange={(e) => setFormData({ ...formData, invoiceFooterText: e.target.value })}
+            onChange={(e) => updateBrandingField({ invoiceFooterText: e.target.value })}
             sx={{ mb: 2 }}
           />
           <TextField
@@ -342,7 +331,7 @@ export default function BrandingSection({ onSettingsChange }: BrandingSectionPro
             label="Receipt Footer"
             placeholder="Enter custom footer text for receipts..."
             value={currentBranding.receiptFooterText || ''}
-            onChange={(e) => setFormData({ ...formData, receiptFooterText: e.target.value })}
+            onChange={(e) => updateBrandingField({ receiptFooterText: e.target.value })}
           />
         </Box>
       </Paper>

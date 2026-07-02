@@ -100,7 +100,7 @@ interface DashboardStats {
     status: string;
   }[];
   categorySplit: Record<string, number>;
-  dailyTrend: Record<string, any>[];
+  dailyTrend: Array<Record<string, string | number>>;
   blueCompliance: number;
 }
 
@@ -118,12 +118,27 @@ const CATEGORY_COLORS: Record<string, string> = {
   YELLOW: COLORS.YELLOW,
 };
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface ChartTooltipEntry {
+  name: string;
+  value: number;
+  color?: string;
+  payload: {
+    fullDate?: string;
+  };
+}
+
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: ChartTooltipEntry[];
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: ChartTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <Box sx={{ bgcolor: '#1E293B', p: 2, borderRadius: 2, border: '1px solid #334155' }}>
         <Typography variant="subtitle2" sx={{ color: '#F8FAFC', mb: 1 }}>{payload[0].payload.fullDate || label}</Typography>
-        {payload.map((entry: any) => (
+        {payload.map((entry) => (
           <Box key={entry.name} sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
             <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: entry.color, mr: 1 }} />
             <Typography variant="caption" sx={{ color: '#CBD5E1', minWidth: 60 }}>

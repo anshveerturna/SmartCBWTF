@@ -60,7 +60,7 @@ export default function DuesVerification() {
   // Fetch my facility's requests
   const { data: requests, isLoading } = useQuery<DuesRequest[]>({
     queryKey: ['cbwtf-dues-requests'],
-    queryFn: () => apiClient.get('/api/cbwtf/dues-clearance?status=PENDING').then((res: any) => res.data),
+    queryFn: () => apiClient.get<DuesRequest[]>('/api/cbwtf/dues-clearance?status=PENDING').then((res) => res.data),
   });
 
   // Submit Mutation
@@ -276,4 +276,3 @@ export default function DuesVerification() {
     </Box>
   );
 }
-

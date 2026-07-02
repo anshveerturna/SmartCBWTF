@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Card, CardContent, Typography, Stack, Skeleton, Alert, IconButton } from '@mui/material';
+import { Box, Card, CardContent, Typography, Skeleton, Alert, IconButton } from '@mui/material';
 import { Refresh as RefreshIcon, Payment as PaymentIcon } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
@@ -85,21 +85,13 @@ export default function MasterPayments() {
 
   return (
     <Box>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" fontWeight={700}>Payments</Typography>
-        <Typography variant="body2" color="text.secondary">All payments across all CBWTFs (Read-Only)</Typography>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+        <Box>
+          <Typography variant="h4" fontWeight={700}>Payments</Typography>
+          <Typography variant="body2" color="text.secondary">All payments across all CBWTFs</Typography>
+        </Box>
+        <IconButton onClick={() => refetch()} title="Refresh"><RefreshIcon /></IconButton>
       </Box>
-
-      <Card sx={{ mb: 3, borderRadius: 2 }}>
-        <CardContent>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <IconButton onClick={() => refetch()} title="Refresh"><RefreshIcon /></IconButton>
-            <Typography variant="body2" color="text.secondary">
-              Payment entity not yet implemented — this page will populate when Payment domain is added.
-            </Typography>
-          </Stack>
-        </CardContent>
-      </Card>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>Failed to load payments.</Alert>}
 
@@ -124,7 +116,6 @@ export default function MasterPayments() {
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', py: 6 }}>
                     <PaymentIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
                     <Typography color="text.secondary">No payments found</Typography>
-                    <Typography variant="caption" color="text.disabled" sx={{ mt: 1 }}>Payment entity pending implementation</Typography>
                   </Box>
                 ),
               }}

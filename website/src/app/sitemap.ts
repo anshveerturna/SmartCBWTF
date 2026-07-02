@@ -1,10 +1,11 @@
 import { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/siteConfig";
 
 export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://smartcbwtf.com";
-  
+  const baseUrl = SITE_URL;
+
   return [
     {
       url: baseUrl,

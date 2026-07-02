@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Typography, Skeleton, Tooltip } from '@mui/material';
+import { hasFiniteCoordinate } from '../utils/browser';
+
+const PUBLIC_REVERSE_GEOCODING_ENABLED = import.meta.env.VITE_ENABLE_PUBLIC_REVERSE_GEOCODING === 'true';
 
 // Cache for geocoded addresses to avoid repeated API calls
 const addressCache: Record<string, string> = {};
@@ -28,12 +31,7 @@ async function reverseGeocode(lat: number, lon: number): Promise<string> {
 
   try {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=16&addressdetails=1`,
-      {
-        headers: {
-          'User-Agent': 'SmartCBWTF/1.0 (contact@smartcbwtf.com)',
-        },
-      }
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=16&addressdetails=1`
     );
 
     if (!response.ok) {
@@ -71,8 +69,7 @@ async function reverseGeocode(lat: number, lon: number): Promise<string> {
 
     addressCache[cacheKey] = shortAddress;
     return shortAddress;
-  } catch (error) {
-    console.error('Reverse geocoding error:', error);
+  } catch {
     return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
   }
 }
@@ -88,22 +85,16 @@ interface LocationAddressProps {
  * Uses OpenStreetMap Nominatim for reverse geocoding.
  */
 export function LocationAddress({ latitude, longitude, showCoords = false }: LocationAddressProps) {
-  const [address, setAddress] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const hasCoordinates = hasFiniteCoordinate(latitude) && hasFiniteCoordinate(longitude);
+  const { data: address, isLoading } = useQuery({
+    queryKey: ['location-address', latitude, longitude],
+    queryFn: () => reverseGeocode(latitude!, longitude!),
+    enabled: hasCoordinates && PUBLIC_REVERSE_GEOCODING_ENABLED,
+    staleTime: Infinity,
+    gcTime: 24 * 60 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (latitude && longitude) {
-      setLoading(true);
-      reverseGeocode(latitude, longitude)
-        .then(setAddress)
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-      setAddress(null);
-    }
-  }, [latitude, longitude]);
-
-  if (!latitude || !longitude) {
+  if (!hasCoordinates) {
     return (
       <Typography variant="body2" color="text.secondary">
         -
@@ -111,7 +102,7 @@ export function LocationAddress({ latitude, longitude, showCoords = false }: Loc
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return <Skeleton variant="text" width={120} />;
   }
 

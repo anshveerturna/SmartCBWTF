@@ -26,6 +26,8 @@ import {
   Tab,
   ToggleButton,
   ToggleButtonGroup,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -42,7 +44,7 @@ import {
 } from '@mui/icons-material';
 import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../../api/client';
+import apiClient, { apiAssetUrl } from '../../api/client';
 
 interface OrderItem {
   name: string;
@@ -54,10 +56,49 @@ interface OrderItem {
   imageUrl?: string;
 }
 
+type ConsumableOrderStatus = 'PENDING' | 'CONFIRMED' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
+type ConsumableOrderAction = 'confirm' | 'dispatch' | 'deliver' | 'cancel';
+type QrOrderAction = 'fulfill' | 'reject';
+type AnalyticsPeriod = 'day' | 'week' | 'month';
+
+interface ActionDialogState {
+  open: boolean;
+  orderId: string;
+  action: ConsumableOrderAction | null;
+}
+
+interface QrActionDialogState {
+  open: boolean;
+  orderId: string;
+  action: QrOrderAction | null;
+}
+
+const emptyActionDialog = (): ActionDialogState => ({ open: false, orderId: '', action: null });
+const emptyQrActionDialog = (): QrActionDialogState => ({ open: false, orderId: '', action: null });
+
+const CONSUMABLE_ORDER_ACTION_PATHS: Record<ConsumableOrderAction, (id: string) => string> = {
+  confirm: (id) => `/api/cbwtf/consumable-orders/${id}/confirm`,
+  dispatch: (id) => `/api/cbwtf/consumable-orders/${id}/dispatch`,
+  deliver: (id) => `/api/cbwtf/consumable-orders/${id}/deliver`,
+  cancel: (id) => `/api/cbwtf/consumable-orders/${id}/cancel`,
+};
+
+const CONSUMABLE_ORDER_ACTION_TITLES: Record<ConsumableOrderAction, string> = {
+  confirm: 'Confirm Order',
+  dispatch: 'Mark as Dispatched',
+  deliver: 'Mark as Delivered',
+  cancel: 'Cancel Order',
+};
+
+const QR_ORDER_ACTION_PATHS: Record<QrOrderAction, (id: string) => string> = {
+  fulfill: (id) => `/api/cbwtf/qr-orders/${id}/fulfill`,
+  reject: (id) => `/api/cbwtf/qr-orders/${id}/reject`,
+};
+
 interface Order {
   id: string;
   orderNumber: string;
-  status: string;
+  status: ConsumableOrderStatus;
   itemCount: number;
   subtotal: number;
   gstAmount: number;
@@ -100,15 +141,18 @@ const ConsumableOrders: React.FC = () => {
   const [mainTab, setMainTab] = useState(0); // 0 = Orders, 1 = Analytics
   const [tab, setTab] = useState(0);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
-  const [actionDialog, setActionDialog] = useState<{ open: boolean; orderId: string; action: string }>({
-    open: false, orderId: '', action: ''
-  });
+  const [actionDialog, setActionDialog] = useState<ActionDialogState>(() => emptyActionDialog());
   const [notes, setNotes] = useState('');
-  const [analyticsPeriod, setAnalyticsPeriod] = useState<'day' | 'week' | 'month'>('month');
-  const [qrActionDialog, setQrActionDialog] = useState<{ open: boolean; orderId: string; action: string }>({ open: false, orderId: '', action: '' });
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>('month');
+  const [qrActionDialog, setQrActionDialog] = useState<QrActionDialogState>(() => emptyQrActionDialog());
   const [qrRejectReason, setQrRejectReason] = useState('');
+  const [feedback, setFeedback] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
 
-  const statusFilters = ['', 'PENDING', 'CONFIRMED', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
+  const statusFilters: Array<'' | ConsumableOrderStatus> = ['', 'PENDING', 'CONFIRMED', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
   const statusFilter = statusFilters[tab];
 
   // Fetch orders
@@ -163,30 +207,36 @@ const ConsumableOrders: React.FC = () => {
 
   // QR action mutation
   const qrActionMutation = useMutation({
-    mutationFn: async ({ id, action, reason }: { id: string; action: string; reason?: string }) => {
-      if (action === 'fulfill') {
-        return await apiClient.post(`/api/cbwtf/qr-orders/${id}/fulfill`);
-      } else {
-        return await apiClient.post(`/api/cbwtf/qr-orders/${id}/reject`, { reason });
-      }
+    mutationFn: async ({ id, action, reason }: { id: string; action: QrOrderAction; reason?: string }) => {
+      return action === 'reject'
+        ? await apiClient.post(QR_ORDER_ACTION_PATHS[action](id), { reason })
+        : await apiClient.post(QR_ORDER_ACTION_PATHS[action](id));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cbwtf-qr-orders'] });
-      setQrActionDialog({ open: false, orderId: '', action: '' });
+      setQrActionDialog(emptyQrActionDialog());
       setQrRejectReason('');
+      setFeedback({ open: true, message: 'QR label request updated.', severity: 'success' });
+    },
+    onError: () => {
+      setFeedback({ open: true, message: 'Failed to update QR label request.', severity: 'error' });
     },
   });
 
   // Action mutations
   const actionMutation = useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: string }) => {
-      const res = await apiClient.post(`/api/cbwtf/consumable-orders/${id}/${action}`, { notes });
+    mutationFn: async ({ id, action }: { id: string; action: ConsumableOrderAction }) => {
+      const res = await apiClient.post(CONSUMABLE_ORDER_ACTION_PATHS[action](id), { notes });
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cbwtf-consumable-orders'] });
-      setActionDialog({ open: false, orderId: '', action: '' });
+      setActionDialog(emptyActionDialog());
       setNotes('');
+      setFeedback({ open: true, message: 'Consumable order updated.', severity: 'success' });
+    },
+    onError: () => {
+      setFeedback({ open: true, message: 'Failed to update consumable order.', severity: 'error' });
     },
   });
 
@@ -233,18 +283,14 @@ const ConsumableOrders: React.FC = () => {
   };
 
   const handleAction = () => {
+    if (!actionDialog.action || !actionDialog.orderId) {
+      return;
+    }
     actionMutation.mutate({ id: actionDialog.orderId, action: actionDialog.action });
   };
 
-  const getActionTitle = (action: string) => {
-    switch (action) {
-      case 'confirm': return 'Confirm Order';
-      case 'dispatch': return 'Mark as Dispatched';
-      case 'deliver': return 'Mark as Delivered';
-      case 'cancel': return 'Cancel Order';
-      default: return 'Action';
-    }
-  };
+  const getActionTitle = (action: ConsumableOrderAction | null) =>
+    action ? CONSUMABLE_ORDER_ACTION_TITLES[action] : 'Action';
 
   return (
     <Box>
@@ -373,7 +419,7 @@ const ConsumableOrders: React.FC = () => {
                                           {item.imageUrl ? (
                                             <Box
                                               component="img"
-                                              src={`http://localhost:8080${item.imageUrl}`}
+                                              src={apiAssetUrl(item.imageUrl)}
                                               alt={item.name}
                                               sx={{ width: 45, height: 45, objectFit: 'cover', borderRadius: 1 }}
                                             />
@@ -423,7 +469,7 @@ const ConsumableOrders: React.FC = () => {
       </Card>
 
       {/* Action Dialog */}
-      <Dialog open={actionDialog.open} onClose={() => setActionDialog({ open: false, orderId: '', action: '' })} maxWidth="sm" fullWidth>
+      <Dialog open={actionDialog.open} onClose={() => setActionDialog(emptyActionDialog())} maxWidth="sm" fullWidth>
         <DialogTitle>{getActionTitle(actionDialog.action)}</DialogTitle>
         <DialogContent>
           <TextField
@@ -438,7 +484,7 @@ const ConsumableOrders: React.FC = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setActionDialog({ open: false, orderId: '', action: '' })}>Cancel</Button>
+          <Button onClick={() => setActionDialog(emptyActionDialog())}>Cancel</Button>
           <Button 
             variant="contained" 
             color={actionDialog.action === 'cancel' ? 'error' : 'primary'}
@@ -484,9 +530,10 @@ const ConsumableOrders: React.FC = () => {
                   a.click();
                   window.URL.revokeObjectURL(url);
                   document.body.removeChild(a);
+                  setFeedback({ open: true, message: 'Export download started.', severity: 'success' });
                 } catch (err) {
                   console.error('Export failed:', err);
-                  alert('Export failed. Please try again.');
+                  setFeedback({ open: true, message: 'Export failed. Please try again.', severity: 'error' });
                 }
               }}
             >
@@ -656,7 +703,7 @@ const ConsumableOrders: React.FC = () => {
                                                   {item.imageUrl ? (
                                                     <Box
                                                       component="img"
-                                                      src={`http://localhost:8080${item.imageUrl}`}
+                                                      src={apiAssetUrl(item.imageUrl)}
                                                       alt={item.name}
                                                       sx={{ width: 45, height: 45, objectFit: 'cover', borderRadius: 1 }}
                                                     />
@@ -805,7 +852,7 @@ const ConsumableOrders: React.FC = () => {
           {/* QR Action Dialog */}
           <Dialog 
             open={qrActionDialog.open} 
-            onClose={() => setQrActionDialog({ open: false, orderId: '', action: '' })} 
+            onClose={() => setQrActionDialog(emptyQrActionDialog())}
             maxWidth="sm" 
             fullWidth
           >
@@ -831,16 +878,21 @@ const ConsumableOrders: React.FC = () => {
               )}
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setQrActionDialog({ open: false, orderId: '', action: '' })}>Cancel</Button>
+              <Button onClick={() => setQrActionDialog(emptyQrActionDialog())}>Cancel</Button>
               <Button 
                 variant="contained" 
                 color={qrActionDialog.action === 'fulfill' ? 'success' : 'error'}
-                onClick={() => qrActionMutation.mutate({ 
-                  id: qrActionDialog.orderId, 
-                  action: qrActionDialog.action,
-                  reason: qrRejectReason
-                })}
-                disabled={qrActionMutation.isPending}
+                onClick={() => {
+                  if (!qrActionDialog.action || !qrActionDialog.orderId) {
+                    return;
+                  }
+                  qrActionMutation.mutate({
+                    id: qrActionDialog.orderId,
+                    action: qrActionDialog.action,
+                    reason: qrRejectReason
+                  });
+                }}
+                disabled={qrActionMutation.isPending || !qrActionDialog.action}
               >
                 {qrActionMutation.isPending ? <CircularProgress size={20} /> : 
                   qrActionDialog.action === 'fulfill' ? 'Fulfill & Generate' : 'Reject Request'}
@@ -849,6 +901,16 @@ const ConsumableOrders: React.FC = () => {
           </Dialog>
         </Box>
       )}
+      <Snackbar
+        open={feedback.open}
+        autoHideDuration={4500}
+        onClose={() => setFeedback((current) => ({ ...current, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={feedback.severity} onClose={() => setFeedback((current) => ({ ...current, open: false }))}>
+          {feedback.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

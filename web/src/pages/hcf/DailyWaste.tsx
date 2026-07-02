@@ -39,6 +39,7 @@ interface DailyWasteResponse {
   totalEvents: number;
   totalWeightKg: number;
   byCategory: Record<string, { count: number; weightKg: number }>;
+  eventLimit: number;
   events: WasteEvent[];
 }
 
@@ -227,6 +228,11 @@ const DailyWaste: React.FC = () => {
           <Typography variant="h6" sx={{ mb: 2 }}>
             Collection Events for {selectedDate}
           </Typography>
+          {dailyData && dailyData.totalEvents > dailyData.events.length && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Showing latest {dailyData.events.length} of {dailyData.totalEvents}
+            </Typography>
+          )}
 
           {dailyLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>

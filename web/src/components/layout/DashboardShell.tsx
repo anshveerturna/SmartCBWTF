@@ -8,6 +8,7 @@ import {
   Typography,
   IconButton,
   Avatar,
+  Badge,
   Menu,
   MenuItem,
   Divider,
@@ -19,10 +20,14 @@ import {
   Logout as LogoutIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
+  Notifications as NotificationsIcon,
 } from '@mui/icons-material';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../auth';
 import { Sidebar, DRAWER_WIDTH } from './Sidebar';
 import { useThemeMode } from '../../theme';
+import { getUnifiedAlerts } from '../../api/cbwtf';
+import { apiAssetUrl } from '../../api/client';
 
 export const DashboardShell: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -31,6 +36,14 @@ export const DashboardShell: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { mode, toggleTheme } = useThemeMode();
+  const isCbwtfAdmin = user?.role === 'CBWTF_ADMIN';
+
+  const { data: alertData } = useQuery({
+    queryKey: ['unified-alerts'],
+    queryFn: getUnifiedAlerts,
+    enabled: isCbwtfAdmin,
+    refetchInterval: 60000,
+  });
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -86,6 +99,19 @@ export const DashboardShell: React.FC = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {getPageTitle()}
           </Typography>
+          {isCbwtfAdmin && (
+            <Tooltip title="Alerts">
+              <IconButton
+                onClick={() => navigate('/cbwtf/alerts')}
+                color="inherit"
+                sx={{ mr: 1 }}
+              >
+                <Badge badgeContent={alertData?.count || 0} color="error" max={99}>
+                  <NotificationsIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+          )}
           {/* Theme Toggle */}
           <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
             <IconButton onClick={toggleTheme} color="inherit" sx={{ mr: 1 }}>
@@ -94,7 +120,7 @@ export const DashboardShell: React.FC = () => {
           </Tooltip>
           <IconButton onClick={handleProfileMenuOpen} size="small">
             <Avatar
-              src={user?.profile_photo_url ? `http://localhost:8080${user.profile_photo_url}` : undefined}
+              src={apiAssetUrl(user?.profile_photo_url)}
               sx={{
                 width: 36,
                 height: 36,

@@ -45,6 +45,7 @@ import {
   approveHcf,
   rejectHcf,
   updateHcfBillingModel,
+  getDraftHcfs,
 } from '../../api/cbwtf';
 import type { HcfListItem, HcfApprovalRequest, BillingModel } from '../../api/cbwtf';
 
@@ -87,6 +88,11 @@ export default function HcfPendingApprovals() {
   const { data: pendingHcfs, isLoading, error } = useQuery({
     queryKey: ['cbwtf-hcfs-pending'],
     queryFn: getPendingHcfs,
+  });
+
+  const { data: drafts, isLoading: isDraftsLoading } = useQuery({
+    queryKey: ['cbwtf-drafts'],
+    queryFn: getDraftHcfs,
   });
 
   // Mutations
@@ -206,6 +212,7 @@ export default function HcfPendingApprovals() {
             <TableHead>
               <TableRow sx={{ bgcolor: 'warning.light' }}>
                 <TableCell sx={{ fontWeight: 'bold' }}>HCF Name</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Agreement No.</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Code</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Billing</TableCell>
@@ -219,7 +226,19 @@ export default function HcfPendingApprovals() {
               {pendingHcfs.map((hcf) => (
                 <TableRow key={hcf.id} hover>
                   <TableCell>
-                    <Typography fontWeight="medium">{hcf.name}</Typography>
+                    <Typography fontWeight="medium" display="flex" alignItems="center" gap={1}>
+                      {hcf.name}
+                      {hcf.status === 'REJECTED' && (
+                         <Chip label="Rejected (Needs Correction)" color="error" size="small" />
+                      )}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {hcf.agreementNumber ? (
+                      <Chip label={hcf.agreementNumber} size="small" color="primary" variant="outlined" />
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">—</Typography>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" fontFamily="monospace">
@@ -253,32 +272,46 @@ export default function HcfPendingApprovals() {
                   <TableCell>{formatDate(hcf.createdAt)}</TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} justifyContent="center">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => openEditDialog(hcf)}
-                        title="Edit Billing Model"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        size="small"
-                        startIcon={<ApproveIcon />}
-                        onClick={() => openApproveDialog(hcf)}
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        size="small"
-                        startIcon={<RejectIcon />}
-                        onClick={() => openRejectDialog(hcf)}
-                      >
-                        Reject
-                      </Button>
+                      {hcf.status === 'REJECTED' ? (
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          startIcon={<EditIcon />}
+                          onClick={() => navigate(`/cbwtf/hcfs/register?resubmit=true&id=${hcf.id}`)}
+                        >
+                          Edit & Resubmit
+                        </Button>
+                      ) : (
+                        <>
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => openEditDialog(hcf)}
+                            title="Edit Billing Model"
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            startIcon={<ApproveIcon />}
+                            onClick={() => openApproveDialog(hcf)}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            startIcon={<RejectIcon />}
+                            onClick={() => openRejectDialog(hcf)}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -295,6 +328,80 @@ export default function HcfPendingApprovals() {
             </Typography>
             <Typography variant="body2" color="text.secondary">
               HCFs registered via the Android app will appear here for approval.
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Saved Drafts Section */}
+      <Box mt={6} mb={3}>
+        <Typography variant="h5" fontWeight="bold">Saved Drafts</Typography>
+        <Typography variant="body2" color="text.secondary">
+          HCF registrations saved as draft but not yet submitted for approval.
+        </Typography>
+      </Box>
+
+      {isDraftsLoading ? (
+        <Box display="flex" justifyContent="center" my={4}>
+          <CircularProgress />
+        </Box>
+      ) : drafts && drafts.length > 0 ? (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: 'grey.50' }}>
+                <TableCell>Saved At</TableCell>
+                <TableCell>HCF details</TableCell>
+                <TableCell>Location</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {drafts.map((draft) => (
+                <TableRow key={draft.id} hover>
+                  <TableCell>
+                    {formatDate(draft.createdAt)}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="subtitle2" fontWeight="bold">
+                      {draft.name || 'Unnamed Draft'}
+                    </Typography>
+                    {(draft.contactPhone || draft.contactEmail) && (
+                      <Typography variant="body2" color="text.secondary">
+                        {draft.contactPhone} {draft.contactEmail ? `| ${draft.contactEmail}` : ''}
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {draft.city ? `${draft.city}, ${draft.state}` : draft.state || 'Not specified'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip label={draft.hcfTypeDisplay || 'HOSPITAL'} size="small" color="default" />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="small"
+                      startIcon={<EditIcon />}
+                      onClick={() => navigate(`/cbwtf/hcfs/register?draft=true&id=${draft.id}`)}
+                    >
+                      Resume Draft
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        <Card>
+          <CardContent sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="body2" color="text.secondary">
+              No saved drafts found.
             </Typography>
           </CardContent>
         </Card>

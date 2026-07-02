@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -26,6 +26,32 @@ interface NotificationSettings {
   updatedAt: string;
 }
 
+const RANGES = {
+  paymentReminderStartDays: { min: 1, max: 30, label: 'Days before due to start reminders' },
+  paymentReminderFrequencyDays: { min: 1, max: 14, label: 'Reminder frequency' },
+  maxOverdueReminders: { min: 1, max: 10, label: 'Max overdue reminders' },
+  agreementExpiryWarningDays: { min: 7, max: 90, label: 'Days before expiry to warn' },
+} as const;
+
+const editablePayload = (settings: NotificationSettings) => ({
+  paymentReminderStartDays: settings.paymentReminderStartDays,
+  paymentReminderFrequencyDays: settings.paymentReminderFrequencyDays,
+  maxOverdueReminders: settings.maxOverdueReminders,
+  agreementExpiryWarningDays: settings.agreementExpiryWarningDays,
+});
+
+const getValidationError = (settings: NotificationSettings | null | undefined): string | null => {
+  if (!settings) return null;
+
+  for (const [field, config] of Object.entries(RANGES)) {
+    const value = settings[field as keyof typeof RANGES];
+    if (!Number.isInteger(value) || value < config.min || value > config.max) {
+      return `${config.label} must be between ${config.min} and ${config.max}.`;
+    }
+  }
+  return null;
+};
+
 export default function NotificationSettings() {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<NotificationSettings | null>(null);
@@ -35,12 +61,6 @@ export default function NotificationSettings() {
     queryKey: ['notificationSettings'],
     queryFn: getNotificationSettings,
   });
-
-  useEffect(() => {
-    if (settings && !formData) {
-      setFormData(settings);
-    }
-  }, [settings, formData]);
 
   const updateMutation = useMutation({
     mutationFn: updateNotificationSettings,
@@ -52,14 +72,17 @@ export default function NotificationSettings() {
   });
 
   const handleChange = (field: keyof NotificationSettings) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (formData) {
-      setFormData({ ...formData, [field]: parseInt(e.target.value) || 0 });
-    }
+    const current = formData ?? settings;
+    if (!current) return;
+    const parsed = Number.parseInt(e.target.value, 10);
+    setFormData({ ...current, [field]: Number.isNaN(parsed) ? 0 : parsed });
   };
 
   const handleSave = () => {
-    if (formData) {
-      updateMutation.mutate(formData);
+    const payload = formData ?? settings;
+    const validationError = getValidationError(payload);
+    if (payload && !validationError) {
+      updateMutation.mutate(editablePayload(payload));
     }
   };
 
@@ -74,6 +97,9 @@ export default function NotificationSettings() {
   if (error) {
     return <Alert severity="error">Failed to load notification settings</Alert>;
   }
+
+  const currentSettings = formData ?? settings;
+  const validationError = getValidationError(currentSettings);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -96,6 +122,18 @@ export default function NotificationSettings() {
         </Alert>
       )}
 
+      {validationError && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          {validationError}
+        </Alert>
+      )}
+
+      {updateMutation.isError && !validationError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Failed to save notification settings
+        </Alert>
+      )}
+
       <Card>
         <CardContent>
           <Typography variant="h6" gutterBottom>
@@ -110,7 +148,7 @@ export default function NotificationSettings() {
               fullWidth
               label="Days Before Due to Start Reminders"
               type="number"
-              value={formData?.paymentReminderStartDays ?? settings?.paymentReminderStartDays ?? 7}
+              value={currentSettings?.paymentReminderStartDays ?? 7}
               onChange={handleChange('paymentReminderStartDays')}
               helperText="Reminders begin this many days before the due date"
               inputProps={{ min: 1, max: 30 }}
@@ -119,7 +157,7 @@ export default function NotificationSettings() {
               fullWidth
               label="Reminder Frequency (Days)"
               type="number"
-              value={formData?.paymentReminderFrequencyDays ?? settings?.paymentReminderFrequencyDays ?? 3}
+              value={currentSettings?.paymentReminderFrequencyDays ?? 3}
               onChange={handleChange('paymentReminderFrequencyDays')}
               helperText="Days between each reminder"
               inputProps={{ min: 1, max: 14 }}
@@ -128,7 +166,7 @@ export default function NotificationSettings() {
               fullWidth
               label="Max Overdue Reminders"
               type="number"
-              value={formData?.maxOverdueReminders ?? settings?.maxOverdueReminders ?? 5}
+              value={currentSettings?.maxOverdueReminders ?? 5}
               onChange={handleChange('maxOverdueReminders')}
               helperText="Stop reminders after this many overdue notices"
               inputProps={{ min: 1, max: 10 }}
@@ -149,7 +187,7 @@ export default function NotificationSettings() {
               fullWidth
               label="Days Before Expiry to Warn"
               type="number"
-              value={formData?.agreementExpiryWarningDays ?? settings?.agreementExpiryWarningDays ?? 30}
+              value={currentSettings?.agreementExpiryWarningDays ?? 30}
               onChange={handleChange('agreementExpiryWarningDays')}
               helperText="Send warning this many days before agreement expires"
               inputProps={{ min: 7, max: 90 }}
@@ -161,7 +199,7 @@ export default function NotificationSettings() {
               variant="contained"
               startIcon={<SaveIcon />}
               onClick={handleSave}
-              disabled={updateMutation.isPending}
+              disabled={updateMutation.isPending || !!validationError}
             >
               {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
             </Button>

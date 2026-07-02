@@ -63,6 +63,7 @@ import type {
   RouteExecutionDTO,
 } from '../../api/cbwtf';
 import { getRouteExecution } from '../../api/cbwtf';
+import { hasFiniteCoordinate } from '../../utils/browser';
 
 // ========== MARKER ICONS ==========
 const createHcfMarker = (isSelected: boolean, color: string = '#DC2626') => {
@@ -195,7 +196,7 @@ export default function RoutePlanning() {
 
   const allHcfsBounds = useMemo(() => {
     if (!mapData?.hcfs.length) return null;
-    const valid = mapData.hcfs.filter(h => h.gpsLat && h.gpsLon);
+    const valid = mapData.hcfs.filter(h => hasFiniteCoordinate(h.gpsLat) && hasFiniteCoordinate(h.gpsLon));
     if (!valid.length) return null;
     return new LatLngBounds(valid.map(h => [h.gpsLat!, h.gpsLon!] as [number, number]));
   }, [mapData]);
@@ -289,9 +290,10 @@ export default function RoutePlanning() {
       }
       closeBuilder();
       loadData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Extract error message from Spring Boot response if available
-      const msg = err.response?.data?.message || err.response?.data?.detail || 'Failed to save route';
+      const apiError = err as { response?: { data?: { message?: string; detail?: string } } };
+      const msg = apiError.response?.data?.message || apiError.response?.data?.detail || 'Failed to save route';
       setError(msg);
       console.error(err);
     }
@@ -304,7 +306,7 @@ export default function RoutePlanning() {
       await setRouteStatus(routeDetail.id, status);
       setRouteDetail({ ...routeDetail, status, isActive: status === 'ACTIVE' });
       loadData();
-    } catch (err) {
+    } catch {
       setError('Failed to update status');
     }
   };
@@ -316,7 +318,7 @@ export default function RoutePlanning() {
       const updated = await getRoute(routeDetail.id);
       setRouteDetail(updated);
       loadData();
-    } catch (err) {
+    } catch {
       setError('Failed to unassign');
     }
   };
@@ -638,12 +640,12 @@ export default function RoutePlanning() {
 
                 {/* Preview polyline */}
                 {formHcfs.length > 1 && (() => {
-                  const coords = formHcfs.map(id => getHcfById(id)).filter((h): h is HcfGeoPointDTO => !!h?.gpsLat).map(h => [h.gpsLat!, h.gpsLon!] as [number, number]);
+                  const coords = formHcfs.map(id => getHcfById(id)).filter((h): h is HcfGeoPointDTO => !!h && hasFiniteCoordinate(h.gpsLat) && hasFiniteCoordinate(h.gpsLon)).map(h => [h.gpsLat!, h.gpsLon!] as [number, number]);
                   return coords.length >= 2 ? <Polyline positions={coords} pathOptions={{ color: formColor, weight: 4 }} /> : null;
                 })()}
 
                 {/* HCF markers */}
-                {mapData?.hcfs.filter(h => h.gpsLat && h.gpsLon).map(hcf => {
+                {mapData?.hcfs.filter(h => hasFiniteCoordinate(h.gpsLat) && hasFiniteCoordinate(h.gpsLon)).map(hcf => {
                   const isSelected = formHcfs.includes(hcf.id);
                   return (
                     <Marker key={hcf.id} position={[hcf.gpsLat!, hcf.gpsLon!]} icon={createHcfMarker(isSelected, formColor)} eventHandlers={{ click: () => toggleHcfInBuilder(hcf.id) }}>
@@ -659,7 +661,9 @@ export default function RoutePlanning() {
                 {/* Numbered markers */}
                 {formHcfs.map((id, idx) => {
                   const hcf = getHcfById(id);
-                  return hcf?.gpsLat ? <Marker key={`n-${id}`} position={[hcf.gpsLat, hcf.gpsLon!]} icon={createNumberMarker(idx + 1, formColor)} zIndexOffset={1000} /> : null;
+                  return hcf && hasFiniteCoordinate(hcf.gpsLat) && hasFiniteCoordinate(hcf.gpsLon)
+                    ? <Marker key={`n-${id}`} position={[hcf.gpsLat, hcf.gpsLon]} icon={createNumberMarker(idx + 1, formColor)} zIndexOffset={1000} />
+                    : null;
                 })}
               </MapContainer>
             </Box>
@@ -789,7 +793,7 @@ export default function RoutePlanning() {
                   {(() => {
                     const coords = routeDetail.waypoints
                       .map(w => getHcfById(w.hcfId))
-                      .filter((h): h is HcfGeoPointDTO => !!h?.gpsLat)
+                      .filter((h): h is HcfGeoPointDTO => !!h && hasFiniteCoordinate(h.gpsLat) && hasFiniteCoordinate(h.gpsLon))
                       .map(h => [h.gpsLat!, h.gpsLon!] as [number, number]);
                     const color = routes.find(r => r.id === routeDetail.id)?.color || '#3B82F6';
                     return coords.length >= 2 ? <Polyline positions={coords} pathOptions={{ color, weight: 5 }} /> : null;
@@ -799,8 +803,8 @@ export default function RoutePlanning() {
                   {routeDetail.waypoints.map((wp, idx) => {
                     const hcf = getHcfById(wp.hcfId);
                     const color = routes.find(r => r.id === routeDetail.id)?.color || '#3B82F6';
-                    return hcf?.gpsLat ? (
-                      <Marker key={wp.id} position={[hcf.gpsLat, hcf.gpsLon!]} icon={createNumberMarker(idx + 1, color)}>
+                    return hcf && hasFiniteCoordinate(hcf.gpsLat) && hasFiniteCoordinate(hcf.gpsLon) ? (
+                      <Marker key={wp.id} position={[hcf.gpsLat, hcf.gpsLon]} icon={createNumberMarker(idx + 1, color)}>
                         <MapTooltip direction="top" offset={[0, -15]}>
                           <Typography variant="body2" fontWeight={600}>Stop {idx + 1}: {hcf.name}</Typography>
                         </MapTooltip>

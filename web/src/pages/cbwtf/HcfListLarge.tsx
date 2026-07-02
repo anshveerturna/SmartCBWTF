@@ -26,6 +26,7 @@ import {
   CircularProgress,
   Alert,
   Button,
+  type ChipProps,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -35,7 +36,7 @@ import {
 } from '@mui/icons-material';
 import { getHcfList } from '../../api/cbwtf';
 
-const getStatusColor = (status: string | null) => {
+const getStatusColor = (status: string | null): ChipProps['color'] => {
   switch (status) {
     case 'ACTIVE':
       return 'success';
@@ -311,7 +312,7 @@ export default function HcfListLarge() {
                   <TableCell>
                     <Chip
                       label={hcf.agreementStatus || 'N/A'}
-                      color={getStatusColor(hcf.agreementStatus) as any}
+                      color={getStatusColor(hcf.agreementStatus)}
                       size="small"
                     />
                   </TableCell>

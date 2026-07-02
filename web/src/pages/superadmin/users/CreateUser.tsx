@@ -24,6 +24,12 @@ import {
 import { adminApi } from '../../../api/admin';
 import type { CreateUserRequest } from '../../../api/admin';
 
+type HcfOption = {
+  id: string;
+  name?: string;
+  code?: string;
+};
+
 const defaultFormData: CreateUserRequest = {
   username: '',
   fullName: '',
@@ -45,6 +51,20 @@ export default function CreateUser() {
     queryFn: () => adminApi.listCBWTFs({ size: 100 }),
   });
 
+  const showCbwtfSelector = formData.role !== 'SUPER_ADMIN';
+  const showHcfSelector = formData.role === 'HCF_ADMIN';
+
+  const { data: hcfsData, isFetching: isHcfsLoading } = useQuery({
+    queryKey: ['hcfs-for-user-dropdown', formData.cbwtfId],
+    queryFn: () => adminApi.listMasterHcfs({
+      cbwtfId: formData.cbwtfId,
+      status: 'ACTIVE',
+      size: 500,
+    }),
+    enabled: showHcfSelector && Boolean(formData.cbwtfId),
+  });
+  const hcfOptions = (hcfsData?.content || []) as HcfOption[];
+
   const mutation = useMutation({
     mutationFn: adminApi.createUser,
     onSuccess: (user) => {
@@ -55,7 +75,21 @@ export default function CreateUser() {
   });
 
   const updateField = (field: keyof CreateUserRequest, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === 'role') {
+        if (value === 'SUPER_ADMIN') {
+          next.cbwtfId = undefined;
+          next.hcfId = undefined;
+        } else if (value !== 'HCF_ADMIN') {
+          next.hcfId = undefined;
+        }
+      }
+      if (field === 'cbwtfId') {
+        next.hcfId = undefined;
+      }
+      return next;
+    });
     if (errors[field]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -80,6 +114,9 @@ export default function CreateUser() {
     if (formData.role !== 'SUPER_ADMIN' && !formData.cbwtfId) {
       newErrors.cbwtfId = 'CBWTF is required for this role';
     }
+    if (formData.role === 'HCF_ADMIN' && !formData.hcfId) {
+      newErrors.hcfId = 'HCF is required for this role';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -90,9 +127,6 @@ export default function CreateUser() {
       mutation.mutate(formData);
     }
   };
-
-  const showCbwtfSelector = formData.role !== 'SUPER_ADMIN';
-  const showHcfSelector = formData.role === 'HCF_ADMIN';
 
   return (
     <Box>
@@ -219,17 +253,26 @@ export default function CreateUser() {
             )}
             {showHcfSelector && (
               <Grid item xs={12} md={4}>
-                <FormControl fullWidth>
+                <FormControl fullWidth error={!!errors.hcfId}>
                   <InputLabel>HCF</InputLabel>
                   <Select
                     value={formData.hcfId || ''}
                     label="HCF"
                     onChange={(e) => updateField('hcfId', e.target.value || undefined)}
-                    disabled={!formData.cbwtfId}
+                    disabled={!formData.cbwtfId || isHcfsLoading}
                   >
                     <MenuItem value="">Select HCF</MenuItem>
-                    {/* TODO: Fetch HCFs based on selected CBWTF */}
+                    {hcfOptions.map((hcf) => (
+                      <MenuItem key={hcf.id} value={hcf.id}>
+                        {hcf.name || 'Unnamed HCF'} {hcf.code ? `(${hcf.code})` : ''}
+                      </MenuItem>
+                    ))}
                   </Select>
+                  {errors.hcfId && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 2 }}>
+                      {errors.hcfId}
+                    </Typography>
+                  )}
                 </FormControl>
               </Grid>
             )}

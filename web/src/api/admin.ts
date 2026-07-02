@@ -556,8 +556,8 @@ export const adminApi = {
   },
 
   // Get audit history for a config key
-  getConfigAuditHistory: async (key: string): Promise<ConfigAuditDTO[]> => {
-    const response = await apiClient.get(`/api/admin/system-config/key/${key}/audit`);
+  getConfigAuditHistory: async (key: string, params?: { page?: number; size?: number }): Promise<ConfigAuditDTO[]> => {
+    const response = await apiClient.get(`/api/admin/system-config/key/${key}/audit`, { params });
     return response.data;
   },
 

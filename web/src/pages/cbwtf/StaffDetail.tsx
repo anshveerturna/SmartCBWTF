@@ -61,6 +61,8 @@ import {
   type UpdateStaffRequest,
   type UpdateCredentialsRequest,
 } from '../../api/cbwtf';
+import { apiAssetUrl } from '../../api/client';
+import { hasFiniteCoordinate } from '../../utils/browser';
 
 const roleLabels: Record<string, string> = {
   DRIVER: 'Driver',
@@ -371,7 +373,7 @@ export default function StaffDetail() {
               <Box sx={{ textAlign: 'center', mb: 3 }}>
                 <Box sx={{ position: 'relative', display: 'inline-block' }}>
                   <Avatar
-                    src={staff.profilePhotoUrl ? `http://localhost:8080${staff.profilePhotoUrl}` : undefined}
+                    src={apiAssetUrl(staff.profilePhotoUrl)}
                     sx={{ width: 100, height: 100, fontSize: '2.5rem', bgcolor: 'primary.main', mx: 'auto' }}
                     slotProps={{ img: { sx: { objectFit: 'cover' } } }}
                   >
@@ -566,7 +568,7 @@ export default function StaffDetail() {
                 </Box>
 
                 {/* Mini Map */}
-                {staff.lastGpsLat && staff.lastGpsLon && (
+                {hasFiniteCoordinate(staff.lastGpsLat) && hasFiniteCoordinate(staff.lastGpsLon) && (
                   <Paper 
                     variant="outlined" 
                     sx={{ 
@@ -598,7 +600,7 @@ export default function StaffDetail() {
                   </Paper>
                 )}
 
-                {!staff.lastGpsLat && !staff.lastGpsLon && (
+                {!(hasFiniteCoordinate(staff.lastGpsLat) && hasFiniteCoordinate(staff.lastGpsLon)) && (
                   <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', bgcolor: 'grey.50' }}>
                     <LocationIcon sx={{ fontSize: 32, color: 'grey.400', mb: 1 }} />
                     <Typography variant="body2" color="text.secondary">

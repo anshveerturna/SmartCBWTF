@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -48,11 +48,7 @@ const AuditLogs: React.FC = () => {
   const [actionFilter, setActionFilter] = useState<string>('');
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>('');
 
-  useEffect(() => {
-    loadLogs();
-  }, [page, actionFilter, entityTypeFilter]);
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getAuditLogs({
@@ -68,7 +64,11 @@ const AuditLogs: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [actionFilter, entityTypeFilter, page, pageSize]);
+
+  useEffect(() => {
+    loadLogs();
+  }, [loadLogs]);
 
   const columns: GridColDef[] = [
     {

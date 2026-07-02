@@ -16,10 +16,8 @@ import {
 } from '@mui/material';
 import {
   Lock,
-  CheckCircle,
   HourglassEmpty,
   Send,
-  Error as ErrorIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';

@@ -36,6 +36,7 @@ import {
 } from '../../api/cbwtfProfile';
 import type { CbwtfProfile } from '../../api/cbwtfProfile';
 import { useAuth } from '../../auth';
+import { apiAssetUrl } from '../../api/client';
 
 const CbwtfProfilePage: React.FC = () => {
   const { updateUserProfile } = useAuth();
@@ -122,11 +123,11 @@ const CbwtfProfilePage: React.FC = () => {
   const validatePassword = (password: string) => {
     const rules = [
       { test: (p: string) => p.length >= 8, message: 'At least 8 characters' },
-      { test: (p: string) => p.length <= 12, message: 'At most 12 characters' },
+      { test: (p: string) => p.length <= 128, message: 'At most 128 characters' },
       { test: (p: string) => /[A-Z]/.test(p), message: 'One uppercase letter' },
       { test: (p: string) => /[a-z]/.test(p), message: 'One lowercase letter' },
       { test: (p: string) => /[0-9]/.test(p), message: 'One number' },
-      { test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p), message: 'One special character (!@#$%^&*...)' },
+      { test: (p: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(p), message: 'One special character (!@#$%^&*...)' },
     ];
     return rules.map(rule => ({ ...rule, valid: rule.test(password) }));
   };
@@ -194,7 +195,7 @@ const CbwtfProfilePage: React.FC = () => {
             <Box sx={{ textAlign: 'center' }}>
               <Box sx={{ position: 'relative', display: 'inline-block' }}>
                 <Avatar
-                  src={profile.profilePhotoUrl ? `http://localhost:8080${profile.profilePhotoUrl}` : undefined}
+                  src={apiAssetUrl(profile.profilePhotoUrl)}
                   sx={{ width: 150, height: 150, fontSize: '3rem', bgcolor: 'primary.main' }}
                   slotProps={{ img: { sx: { objectFit: 'cover' } } }}
                 >
