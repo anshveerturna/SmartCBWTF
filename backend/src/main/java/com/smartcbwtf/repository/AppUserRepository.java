@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -61,6 +62,11 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
 
         // Staff management - find by facility and roles (DRIVER, PLANT_OPERATOR)
         Page<AppUser> findByFacilityIdAndRoleIn(UUID facilityId, java.util.List<String> roles, Pageable pageable);
+
+        Optional<AppUser> findByIdAndFacilityIdAndRoleIn(UUID id, UUID facilityId, java.util.List<String> roles);
+
+        Optional<AppUser> findByIdAndFacilityIdAndRoleInAndActive(UUID id, UUID facilityId, Collection<String> roles,
+                        boolean active);
 
         // HCF Portal admin lookup
         java.util.List<AppUser> findByHcfIdAndRole(UUID hcfId, String role);

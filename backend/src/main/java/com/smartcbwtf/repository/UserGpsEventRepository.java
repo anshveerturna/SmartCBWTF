@@ -25,6 +25,9 @@ public interface UserGpsEventRepository extends JpaRepository<UserGpsEvent, UUID
      */
     boolean existsByClientEventId(UUID clientEventId);
 
+    @Query("SELECT e.clientEventId FROM UserGpsEvent e WHERE e.clientEventId IN :clientEventIds")
+    List<UUID> findExistingClientEventIds(@Param("clientEventIds") List<UUID> clientEventIds);
+
     /**
      * Find most recent GPS event for a staff user.
      */

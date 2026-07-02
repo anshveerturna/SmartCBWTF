@@ -51,6 +51,8 @@ public class LabelService {
 
         @Transactional
         public LabelIssueResponse issue(LabelIssueRequest request) {
+                assertFacilityMatchesTenant(request.getFacilityId());
+
                 Hcf hcf = hcfRepository.findById(request.getHcfId()).orElseThrow();
                 Facility facility = facilityRepository.findById(request.getFacilityId()).orElseThrow();
 
@@ -104,6 +106,8 @@ public class LabelService {
         @Transactional
         public LabelIssueResponse issueMultiCategory(UUID hcfId, UUID facilityId,
                         Map<String, Integer> categoryQuantities, java.time.LocalDate validUntil) {
+                assertFacilityMatchesTenant(facilityId);
+
                 Hcf hcf = hcfRepository.findById(hcfId).orElseThrow();
                 Facility facility = facilityRepository.findById(facilityId).orElseThrow();
 
@@ -154,5 +158,13 @@ public class LabelService {
 
                 return new LabelIssueResponse(hcf.getId(), facility.getId(), "MULTI", totalQuantity, allQrCodes,
                                 pdfUrl);
+        }
+
+        private void assertFacilityMatchesTenant(UUID facilityId) {
+                UUID tenantFacilityId = TenantContext.getTenantId();
+                if (tenantFacilityId != null && !tenantFacilityId.equals(facilityId)) {
+                        throw new TenantAssertionService.TenantAccessDeniedException(
+                                        "Facility does not match authenticated tenant");
+                }
         }
 }

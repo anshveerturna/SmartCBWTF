@@ -143,6 +143,13 @@ public class FacilitySettings {
     @Column(name = "agreement_number_include_year", nullable = false)
     private Boolean agreementNumberIncludeYear = true;
 
+    @Column(name = "agreement_number_template", columnDefinition = "TEXT")
+    private String agreementNumberTemplate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "agreement_number_reset_frequency", nullable = false, length = 20)
+    private AgreementNumberResetFrequency agreementNumberResetFrequency = AgreementNumberResetFrequency.YEARLY;
+
     @Column(name = "agreement_terms_template", columnDefinition = "TEXT")
     private String agreementTermsTemplate;
 
@@ -631,6 +638,22 @@ public class FacilitySettings {
 
     public void setAgreementNumberIncludeYear(Boolean agreementNumberIncludeYear) {
         this.agreementNumberIncludeYear = agreementNumberIncludeYear;
+    }
+
+    public String getAgreementNumberTemplate() {
+        return agreementNumberTemplate;
+    }
+
+    public void setAgreementNumberTemplate(String agreementNumberTemplate) {
+        this.agreementNumberTemplate = agreementNumberTemplate;
+    }
+
+    public AgreementNumberResetFrequency getAgreementNumberResetFrequency() {
+        return agreementNumberResetFrequency;
+    }
+
+    public void setAgreementNumberResetFrequency(AgreementNumberResetFrequency agreementNumberResetFrequency) {
+        this.agreementNumberResetFrequency = agreementNumberResetFrequency;
     }
 
     public String getAgreementTermsTemplate() {

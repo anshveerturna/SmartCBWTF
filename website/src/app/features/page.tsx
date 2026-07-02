@@ -57,7 +57,7 @@ export default function FeaturesPage() {
               transition={{ delay: 0.1 }}
               className="text-balance mb-6"
             >
-              Everything you need, nothing you don't
+              Everything you need, nothing you don&apos;t
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -138,7 +138,7 @@ export default function FeaturesPage() {
         <div className="container-tight text-center">
           <h2 className="mb-6">Ready to explore?</h2>
           <p className="text-lg text-[#525252] max-w-2xl mx-auto mb-10">
-            See all features in action with a personalized demo tailored to your facility's needs.
+            See all features in action with a personalized demo tailored to your facility&apos;s needs.
           </p>
           <a
             href="/contact"

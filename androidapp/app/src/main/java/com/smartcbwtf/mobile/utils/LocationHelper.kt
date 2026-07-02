@@ -3,7 +3,6 @@ package com.smartcbwtf.mobile.utils
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
-import android.util.Log
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -28,7 +27,7 @@ class LocationHelper @Inject constructor(
 
     @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(): Location? {
-        Log.d(TAG, "Requesting fresh GPS location...")
+        Logger.d(TAG, "Requesting fresh GPS location")
         
         return withTimeoutOrNull(LOCATION_TIMEOUT_MS) {
             try {
@@ -39,17 +38,17 @@ class LocationHelper @Inject constructor(
                 ).await()
                 
                 if (location != null) {
-                    Log.d(TAG, "Got location: ${location.latitude}, ${location.longitude}, accuracy: ${location.accuracy}m")
+                    Logger.d(TAG, "Got location with accuracy: ${location.accuracy}m")
                 } else {
-                    Log.w(TAG, "getCurrentLocation returned null")
+                    Logger.d(TAG, "getCurrentLocation returned null")
                 }
                 location
             } catch (e: Exception) {
-                Log.e(TAG, "Error getting location: ${e.message}", e)
+                Logger.e(TAG, "Error getting location", e)
                 null
             }
         } ?: run {
-            Log.e(TAG, "Location request timed out after ${LOCATION_TIMEOUT_MS/1000}s")
+            Logger.e(TAG, "Location request timed out after ${LOCATION_TIMEOUT_MS / 1000}s")
             null
         }
     }

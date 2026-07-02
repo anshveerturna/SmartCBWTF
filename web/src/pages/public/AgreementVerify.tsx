@@ -10,27 +10,19 @@ import {
   Divider,
   Grid,
   Button,
-  useTheme,
   ThemeProvider,
   createTheme,
   CssBaseline,
-  Paper
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   LocalHospital as HospitalIcon,
-  Business as BusinessIcon,
   VerifiedUser as VerifiedIcon,
   CalendarMonth as CalendarIcon,
-  Description as DescriptionIcon,
-  LocationOn as LocationIcon,
-  Phone as PhoneIcon,
-  Email as EmailIcon,
-  Bed as BedIcon,
-  Category as CategoryIcon,
-  AttachMoney as MoneyIcon
+  Description as DescriptionIcon
 } from '@mui/icons-material';
+import { API_BASE_URL } from '../../api/client';
 
 // Force Light Theme for this page
 const lightTheme = createTheme({
@@ -107,40 +99,50 @@ const lightTheme = createTheme({
 });
 
 interface AgreementVerificationDTO {
-  status: string;
-  valid: boolean;
-  hcfName: string;
-  hcfCode: string;
-  hcfAddress: string;
-  hcfState?: string;
-  hcfPincode?: string;
-  hcfCategory?: string;
-  hcfEmail?: string;
-  hcfDoctorName?: string;
-  hcfContactNumber?: string;
-  numberOfBeds?: number;
+  verified: boolean;
+  agreementId: string | null;
+  agreementNumber: string | null;
+  status: string | null;
+  facilityName: string | null;
+  facilityCode: string | null;
+  hcfName: string | null;
+  hcfCode: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  version: number | null;
+  createdAt: string | null;
+  message: string;
+}
+
+const displayValue = (value?: string | number | null) => value == null || value === '' ? '-' : String(value);
+
+const formatStatus = (status?: string | null) => displayValue(status).replace(/_/g, ' ');
+
+const formatDate = (value?: string | null) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-IN');
+};
+
+interface LegacyAgreementVerificationDTO {
+  valid?: boolean;
   agreementNumber: string;
   validFrom: string;
   validUntil: string;
-  facilityName: string;
-  facilityAddress?: string;
-  facilityContact?: string;
-  billingModel: string;
-  createdAt?: string;
 }
 
 const AgreementVerify: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<AgreementVerificationDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(() => Boolean(id));
+  const [error, setError] = useState<string | null>(() => id ? null : 'Agreement reference is missing');
 
   useEffect(() => {
-    // Determine API base URL
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-
+    if (!id) {
+      return;
+    }
     // Use pure fetch to bypass axios interceptors that might attach auth headers
-    fetch(`${baseUrl}/api/public/agreements/${id}/verify`)
+    fetch(`${API_BASE_URL}/api/public/agreement/verify/${encodeURIComponent(id)}`)
       .then(async (res) => {
         if (!res.ok) {
           if (res.status === 404) {
@@ -213,10 +215,14 @@ const AgreementVerify: React.FC = () => {
     );
   }
 
-  const isActive = data.valid;
+  const legacyData = data as AgreementVerificationDTO & LegacyAgreementVerificationDTO;
+  const isActive = data.verified && data.status === 'ACTIVE';
   const statusColor = isActive ? 'success' : 'error';
   const statusBg = isActive ? 'success.light' : 'error.light';
   const statusText = isActive ? 'success.contrastText' : 'error.contrastText';
+  const statusLabel = formatStatus(data.status);
+  const validityStart = data.startDate ?? legacyData.validFrom;
+  const validityEnd = data.endDate ?? legacyData.validUntil;
 
   return (
     <ThemeProvider theme={lightTheme}>
@@ -259,12 +265,12 @@ const AgreementVerify: React.FC = () => {
                 <CancelIcon sx={{ fontSize: 64, mb: 1, color: 'error.main' }} />
               )}
               <Typography variant="h4" sx={{ mb: 1, color: isActive ? 'success.dark' : 'error.dark' }}>
-                {isActive ? 'AGREEMENT VERIFIED' : 'AGREEMENT INVALID'}
+                {isActive ? 'AGREEMENT VERIFIED' : 'AGREEMENT NOT ACTIVE'}
               </Typography>
               <Typography variant="subtitle1" sx={{ color: isActive ? 'success.dark' : 'error.dark', opacity: 0.9 }}>
                 {isActive 
                   ? 'This record matches an active agreement in our system.' 
-                  : `This agreement is not active. Status: ${data.status.replace('_', ' ')}`
+                  : data.message || `This agreement is not active. Status: ${statusLabel}`
                 }
               </Typography>
             </Box>
@@ -276,10 +282,10 @@ const AgreementVerify: React.FC = () => {
                   Agreement Reference Number
                 </Typography>
                 <Typography variant="h5" sx={{ fontFamily: 'monospace', fontWeight: 600, mt: 0.5, letterSpacing: '1px' }}>
-                  {data.agreementNumber}
+                  {displayValue(data.agreementNumber)}
                 </Typography>
                 <Chip 
-                  label={data.status.replace('_', ' ')} 
+                  label={statusLabel}
                   color={statusColor} 
                   sx={{ mt: 2, fontWeight: 'bold' }} 
                 />
@@ -296,33 +302,14 @@ const AgreementVerify: React.FC = () => {
                     <Divider sx={{ mb: 2 }} />
                     
                     <Typography variant="subtitle2" color="text.secondary">Name</Typography>
-                    <Typography variant="body1" fontWeight={600} gutterBottom>{data.hcfName}</Typography>
+                    <Typography variant="body1" fontWeight={600} gutterBottom>{displayValue(data.hcfName)}</Typography>
 
-                    {/* Removed HCF Code as per request */}
-                    
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>Doctor Name</Typography>
-                    <Typography variant="body1" fontWeight={500}>{data.hcfDoctorName || 'N/A'}</Typography>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>HCF Code</Typography>
+                    <Typography variant="body1" fontWeight={500}>{displayValue(data.hcfCode)}</Typography>
 
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>Contact</Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                        <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>{data.hcfContactNumber || 'N/A'}</Typography>
-                        <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>{data.hcfEmail || 'N/A'}</Typography>
-                    </Box>
-
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>Address</Typography>
-                    <Typography variant="body2" gutterBottom sx={{ wordBreak: 'break-word', whiteSpace: 'normal' }}>
-                      {data.hcfAddress}<br/>
-                      {data.hcfState} {data.hcfPincode && `- ${data.hcfPincode}`}
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
+                      Detailed contact and address records are available only to authorized portal users.
                     </Typography>
-
-                    <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                       {data.hcfCategory && (
-                         <Chip size="small" icon={<CategoryIcon />} label={data.hcfCategory} variant="outlined" />
-                       )}
-                       {data.numberOfBeds != null && (
-                         <Chip size="small" icon={<BedIcon />} label={`${data.numberOfBeds} Beds`} variant="outlined" />
-                       )}
-                    </Box>
                   </Box>
                 </Grid>
 
@@ -348,24 +335,19 @@ const AgreementVerify: React.FC = () => {
                     }}>
                       <CalendarIcon fontSize="small" sx={{ mr: 1 }} />
                       <Typography variant="body1" fontWeight={700}>
-                        {data.validFrom} <span style={{ margin: '0 8px', opacity: 0.7 }}>to</span> {data.validUntil}
+                        {formatDate(validityStart)} <span style={{ margin: '0 8px', opacity: 0.7 }}>to</span> {formatDate(validityEnd)}
                       </Typography>
                     </Box>
 
-                    <Typography variant="subtitle2" color="text.secondary">Billing Model</Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5, mb: 2 }}>
-                       <MoneyIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                       <Typography variant="body2">{data.billingModel}</Typography>
-                    </Box>
-
                     <Typography variant="subtitle2" color="text.secondary">Authorized CBWTF</Typography>
-                    <Typography variant="body1" fontWeight={600} gutterBottom>{data.facilityName}</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem', wordBreak: 'break-word', whiteSpace: 'normal' }}>
-                      {data.facilityAddress}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem', mt: 1, wordBreak: 'break-word', whiteSpace: 'normal' }}>
-                      Contact: {data.facilityContact}
-                    </Typography>
+                    <Typography variant="body1" fontWeight={600} gutterBottom>{displayValue(data.facilityName)}</Typography>
+
+                    {data.createdAt && (
+                      <>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>Record Created</Typography>
+                        <Typography variant="body2">{formatDate(data.createdAt)}</Typography>
+                      </>
+                    )}
                   </Box>
                 </Grid>
               </Grid>

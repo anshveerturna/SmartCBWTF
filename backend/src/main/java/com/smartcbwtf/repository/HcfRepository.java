@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,6 +20,8 @@ public interface HcfRepository extends JpaRepository<Hcf, UUID> {
     List<Hcf> findByDuesClearStatusNot(DuesClearStatus status);
 
     Optional<Hcf> findByCode(String code);
+
+    long countByNameStartingWith(String namePrefix);
 
     // ============================================================================
     // LEGACY DUPLICATE DETECTION (global - for backwards compatibility)
@@ -157,6 +160,70 @@ public interface HcfRepository extends JpaRepository<Hcf, UUID> {
     // MASTER DATA QUERIES - SuperAdmin
     // ============================================================================
     Page<Hcf> findByStatus(String status, Pageable pageable);
+
+    @Query("""
+                SELECT DISTINCT h FROM Hcf h
+                JOIN Agreement a ON a.hcf = h
+                WHERE a.facility.id = :facilityId
+                AND (:status IS NULL OR h.status = :status)
+                AND (
+                    :search IS NULL
+                    OR LOWER(h.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(h.code) LIKE LOWER(CONCAT('%', :search, '%'))
+                )
+            """)
+    Page<Hcf> findByFacilityIdWithFilters(
+            @Param("facilityId") UUID facilityId,
+            @Param("status") String status,
+            @Param("search") String search,
+            Pageable pageable);
+
+    @Query("SELECT h FROM Hcf h WHERE h.status = 'PENDING_APPROVAL' OR (h.status = 'REJECTED' AND h.rejectionCount = 1)")
+    List<Hcf> findPendingAndResubmittable();
+
+    @Query("""
+                SELECT h FROM Hcf h
+                WHERE h.id = :hcfId
+                AND EXISTS (
+                    SELECT 1 FROM Agreement a
+                    WHERE a.hcf = h
+                    AND a.facility.id = :facilityId
+                )
+            """)
+    Optional<Hcf> findByIdAndFacilityId(
+            @Param("hcfId") UUID hcfId,
+            @Param("facilityId") UUID facilityId);
+
+    @Query("""
+                SELECT DISTINCT h FROM Hcf h
+                WHERE h.id IN :hcfIds
+                AND EXISTS (
+                    SELECT 1 FROM Agreement a
+                    WHERE a.hcf = h
+                    AND a.facility.id = :facilityId
+                    AND a.status = 'ACTIVE'
+                )
+            """)
+    List<Hcf> findActiveByFacilityIdAndIdIn(
+            @Param("facilityId") UUID facilityId,
+            @Param("hcfIds") Collection<UUID> hcfIds);
+
+    @Query("""
+                SELECT COUNT(DISTINCT h.id)
+                FROM Hcf h
+                JOIN Agreement a ON a.hcf = h
+                WHERE h.status = 'ACTIVE'
+                AND a.status = 'ACTIVE'
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM BagEvent e
+                    WHERE e.hcf = h
+                    AND e.facility = a.facility
+                    AND e.eventType = 'HCF_COLLECTION'
+                    AND e.eventTs >= :since
+                )
+            """)
+    long countActiveHcfsWithoutRecentCollection(@Param("since") java.time.Instant since);
 
     @Query("SELECT h FROM Hcf h WHERE LOWER(h.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(h.code) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<Hcf> searchByNameOrCode(@Param("search") String search, Pageable pageable);

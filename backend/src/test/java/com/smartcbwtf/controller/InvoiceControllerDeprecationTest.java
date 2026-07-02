@@ -5,15 +5,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import com.smartcbwtf.config.JwtService;
+import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.service.FeatureGuardService;
 import com.smartcbwtf.service.SubscriptionService;
 import com.smartcbwtf.service.SystemConfigService;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -38,6 +41,9 @@ class InvoiceControllerDeprecationTest {
 
     @MockBean
     private AppUserRepository appUserRepository;
+
+    @MockBean
+    private AgreementRepository agreementRepository;
 
     @MockBean
     private SubscriptionService subscriptionService;
@@ -92,5 +98,13 @@ class InvoiceControllerDeprecationTest {
         mockMvc.perform(get("/api/invoices/123e4567-e89b-12d3-a456-426614174000"))
                 .andExpect(status().isGone())
                 .andExpect(jsonPath("$.error").value(containsString("Tally")));
+    }
+
+    @Test
+    @DisplayName("Deprecated invoice controller should stay CBWTF-admin scoped")
+    void invoiceControllerShouldStayCbwtfAdminScoped() {
+        PreAuthorize annotation = InvoiceController.class.getAnnotation(PreAuthorize.class);
+
+        assertEquals("hasRole('CBWTF_ADMIN')", annotation.value());
     }
 }

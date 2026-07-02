@@ -20,7 +20,6 @@ import {
   Chip,
   Alert,
   CircularProgress,
-  Paper,
   alpha,
   IconButton,
   Tooltip,
@@ -34,9 +33,7 @@ import {
   History,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../../api/client';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+import apiClient, { saveBlob } from '../../api/client';
 
 const WASTE_CATEGORIES = [
   { code: 'YELLOW', name: 'Infectious Waste', color: '#FFEB3B' },
@@ -44,6 +41,21 @@ const WASTE_CATEGORIES = [
   { code: 'BLUE', name: 'Glassware Waste', color: '#2196F3' },
   { code: 'WHITE', name: 'Sharps Waste', color: '#9E9E9E' },
 ];
+
+const dateOffset = (days: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split('T')[0];
+};
+
+const errorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null) {
+    const maybeResponse = error as { response?: { data?: { error?: string; message?: string } } };
+    return maybeResponse.response?.data?.error || maybeResponse.response?.data?.message || fallback;
+  }
+  return fallback;
+};
 
 interface QrPricing {
   selfGeneratePrice: number;
@@ -64,8 +76,15 @@ interface QrOrder {
   notes?: string;
 }
 
+interface QrGenerateResponse {
+  orderId: string;
+  pdfUrl?: string;
+  message?: string;
+}
+
 const QrLabels: React.FC = () => {
   const queryClient = useQueryClient();
+  const [dateBounds] = useState(() => ({ min: dateOffset(0), max: dateOffset(31) }));
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -104,9 +123,7 @@ const QrLabels: React.FC = () => {
 
   // Validity Date
   const [validUntil, setValidUntil] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    return d.toISOString().split('T')[0];
+    return dateOffset(7);
   });
 
   const generateMutation = useMutation({
@@ -119,19 +136,23 @@ const QrLabels: React.FC = () => {
         categoryQuantities: filtered,
         validUntil,
       });
-      return res.data;
+      return res.data as QrGenerateResponse;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setSuccess(data.message || 'QR labels generated successfully');
       setError(null);
       setCategoryQuantities({ YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0 });
       queryClient.invalidateQueries({ queryKey: ['hcf-qr-orders'] });
-      if (data.pdfUrl) {
-        window.open(getDownloadUrl(data.pdfUrl), '_blank');
+      if (data.orderId) {
+        try {
+          await downloadOrderPdf(data.orderId);
+        } catch {
+          setError('QR labels were generated, but PDF download failed');
+        }
       }
     },
-    onError: (err: any) => {
-      setError(err.response?.data?.error || 'Failed to generate labels');
+    onError: (err: unknown) => {
+      setError(errorMessage(err, 'Failed to generate labels'));
       setSuccess(null);
     },
   });
@@ -151,8 +172,8 @@ const QrLabels: React.FC = () => {
       setError(null);
       queryClient.invalidateQueries({ queryKey: ['hcf-qr-orders'] });
     },
-    onError: (err: any) => {
-      setError(err.response?.data?.error || 'Failed to submit request');
+    onError: (err: unknown) => {
+      setError(errorMessage(err, 'Failed to submit request'));
       setSuccess(null);
     },
   });
@@ -194,15 +215,16 @@ const QrLabels: React.FC = () => {
     return WASTE_CATEGORIES.find((c) => c.code === code)?.color || '#9E9E9E';
   };
 
-  const getDownloadUrl = (url: string) => {
-    if (!url) return '';
-    let filePath = url;
-    if (!url.startsWith('/files/')) {
-      const parts = url.split(/[/\\]/);
-      const filename = parts[parts.length - 1];
-      filePath = `/files/${filename}`;
+  const downloadOrderPdf = async (orderId: string) => {
+    try {
+      const response = await apiClient.get(`/api/hcf/qr-orders/${orderId}/pdf`, {
+        responseType: 'blob',
+      });
+      const blob = response.data as Blob;
+      saveBlob(blob, `QR-labels-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch {
+      setError('Failed to download QR label PDF');
     }
-    return API_BASE_URL ? `${API_BASE_URL}${filePath}` : filePath;
   };
 
   return (
@@ -279,10 +301,7 @@ const QrLabels: React.FC = () => {
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{
-                  min: new Date().toISOString().split('T')[0],
-                  max: new Date(Date.now() + 31 * 86400000).toISOString().split('T')[0]
-                }}
+                inputProps={dateBounds}
                 helperText="Max validity: 1 month from today"
                 sx={{ mb: 2 }}
               />
@@ -436,7 +455,7 @@ const QrLabels: React.FC = () => {
                             <IconButton
                               size="small"
                               color="primary"
-                              onClick={() => order.pdfUrl && window.open(getDownloadUrl(order.pdfUrl), '_blank')}
+                              onClick={() => downloadOrderPdf(order.id)}
                             >
                               <PictureAsPdf />
                             </IconButton>

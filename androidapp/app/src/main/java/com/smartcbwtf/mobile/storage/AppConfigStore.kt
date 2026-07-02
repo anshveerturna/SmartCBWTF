@@ -1,9 +1,7 @@
 package com.smartcbwtf.mobile.storage
 
-import android.content.Context
 import android.content.SharedPreferences
 import com.smartcbwtf.mobile.network.api.MobileConfigResponse
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,9 +11,28 @@ import javax.inject.Singleton
  */
 @Singleton
 class AppConfigStore @Inject constructor(
-    @ApplicationContext private val context: Context
+    private val prefs: SharedPreferences
 ) {
-    private val prefs: SharedPreferences = context.getSharedPreferences("app_config", Context.MODE_PRIVATE)
+    private val staticConfigKeys = setOf(
+        "geofenceRadiusMeters",
+        "locationUpdateIntervalMinutes",
+        "attendanceDistanceToleranceMeters",
+        "maxVerificationDelayMinutes",
+        "weightMismatchTolerancePercent",
+        "blueWasteMinPercentage",
+        "platformName",
+        "supportEmail",
+        "supportPhone",
+        "androidSyncDisabled",
+        "qrVerificationDisabled",
+        "gpsEnabled",
+        "gpsPingIntervalMinutes",
+        "gpsRequireForeground",
+        "userRole",
+        "subscriptionActive",
+        "subscriptionStatus",
+        "lastConfigSync"
+    )
 
     // Operational thresholds
     val geofenceRadiusMeters: Int
@@ -121,9 +138,16 @@ class AppConfigStore @Inject constructor(
     }
 
     /**
-     * Clear all config (on logout).
+     * Clear cached config only. Auth/session/location stores share the same
+     * encrypted preferences and must remain responsible for their own keys.
      */
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit().apply {
+            staticConfigKeys.forEach(::remove)
+            prefs.all.keys
+                .filter { it.startsWith("feature_") }
+                .forEach(::remove)
+            apply()
+        }
     }
 }

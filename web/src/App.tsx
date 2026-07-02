@@ -22,12 +22,13 @@ const MasterBags = lazy(() => import('./pages/superadmin/master/MasterBags'));
 const MasterQrLabels = lazy(() => import('./pages/superadmin/master/MasterQrLabels'));
 const MasterAttendance = lazy(() => import('./pages/superadmin/master/MasterAttendance'));
 const MasterVehicles = lazy(() => import('./pages/superadmin/master/MasterVehicles'));
+const MasterBills = lazy(() => import('./pages/superadmin/master/MasterBills'));
 const MasterPayments = lazy(() => import('./pages/superadmin/master/MasterPayments'));
 const MasterAuditLogs = lazy(() => import('./pages/superadmin/master/MasterAuditLogs'));
-const PaymentGateway = lazy(() => import('./pages/superadmin/PaymentGateway'));
 const SystemConfig = lazy(() => import('./pages/superadmin/SystemConfig'));
 const ProfilePage = lazy(() => import('./pages/superadmin/profile/ProfilePage'));
 const EmailTemplates = lazy(() => import('./pages/superadmin/EmailTemplates'));
+const SystemErrors = lazy(() => import('./pages/superadmin/SystemErrors'));
 const CbwtfDashboard = lazy(() => import('./pages/cbwtf/Dashboard'));
 const CbwtfAnalytics = lazy(() => import('./pages/cbwtf/Analytics'));
 const CbwtfVehicles = lazy(() => import('./pages/cbwtf/Vehicles'));
@@ -66,20 +67,15 @@ const HcfComplianceReports = lazy(() => import('./pages/hcf/ComplianceReports'))
 const CbwtfDuesVerification = lazy(() => import('./pages/cbwtf/DuesVerification'));
 // Management pages
 const ManagementDuesApprovals = lazy(() => import('./pages/management/DuesApprovals'));
+const ManagementCorrectionRequests = lazy(() => import('./pages/management/CorrectionRequests'));
 const ManagementHcfApprovals = lazy(() => import('./pages/management/ManagementHcfApprovals'));
-// CBWTF Finance pages
-const FinanceBankAccounts = lazy(() => import('./pages/cbwtf/finance/BankAccounts'));
-const FinanceBills = lazy(() => import('./pages/cbwtf/finance/Bills'));
+const ManagementHcfDetail = lazy(() => import('./pages/management/ManagementHcfDetail'));
 const CbwtfSettings = lazy(() => import('./pages/cbwtf/Settings'));
-const FinanceRevenue = lazy(() => import('./pages/cbwtf/finance/Revenue'));
 // Utility pages
 const Blocked = lazy(() => import('./pages/Blocked'));
 const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 // Public pages
 const AgreementVerify = lazy(() => import('./pages/public/AgreementVerify'));
-
-// Standalone Tools
-const TemporaryQrGenerator = lazy(() => import('./pages/shared/TemporaryQrGenerator'));
 
 // Loading fallback
 const PageLoader: React.FC = () => (
@@ -121,7 +117,6 @@ const App: React.FC = () => {
                 <Route path="/blocked" element={<Blocked />} />
                 <Route path="/change-password" element={<ChangePassword />} />
                 <Route path="/verify/agreement/:id" element={<AgreementVerify />} />
-                <Route path="/temporary-qr" element={<TemporaryQrGenerator />} />
 
                 {/* SuperAdmin Routes */}
                 <Route
@@ -151,13 +146,13 @@ const App: React.FC = () => {
                   <Route path="master/qr-labels" element={<MasterQrLabels />} />
                   <Route path="master/attendance" element={<MasterAttendance />} />
                   <Route path="master/vehicles" element={<MasterVehicles />} />
-                  <Route path="master/bills" element={<CbwtfBillingList />} />
+                  <Route path="master/bills" element={<MasterBills />} />
                   <Route path="master/payments" element={<MasterPayments />} />
                   <Route path="master/audit-logs" element={<MasterAuditLogs />} />
-                  {/* Payment Gateway & Settings */}
-                  <Route path="payment-gateway" element={<PaymentGateway />} />
+                  {/* System Settings */}
                   <Route path="settings" element={<SystemConfig />} />
                   <Route path="email-templates" element={<EmailTemplates />} />
+                  <Route path="errors" element={<SystemErrors />} />
                   <Route path="profile" element={<ProfilePage />} />
                 </Route>
 
@@ -192,10 +187,6 @@ const App: React.FC = () => {
                   <Route path="consumables/:id" element={<CbwtfConsumableDetail />} />
                   <Route path="consumable-orders" element={<CbwtfConsumableOrders />} />
                   <Route path="routes" element={<CbwtfRoutePlanning />} />
-                  {/* Finance Section */}
-                  <Route path="finance/bank-accounts" element={<FinanceBankAccounts />} />
-                  <Route path="finance/bills" element={<FinanceBills />} />
-                  <Route path="finance/revenue" element={<FinanceRevenue />} />
                   <Route path="settings" element={<CbwtfSettings />} />
                   <Route path="billing" element={<CbwtfBillingList />} />
                   <Route path="billing/:billId" element={<CbwtfBillDetail />} />
@@ -247,7 +238,9 @@ const App: React.FC = () => {
                 >
                   <Route index element={<Navigate to="hcfs" replace />} />
                   <Route path="hcfs" element={<ManagementHcfApprovals />} />
+                  <Route path="hcfs/:id" element={<ManagementHcfDetail />} />
                   <Route path="dues-approvals" element={<ManagementDuesApprovals />} />
+                  <Route path="correction-requests" element={<ManagementCorrectionRequests />} />
                 </Route>
 
                 {/* Default redirect */}

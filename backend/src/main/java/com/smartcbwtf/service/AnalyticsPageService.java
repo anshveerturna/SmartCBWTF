@@ -1,5 +1,6 @@
 package com.smartcbwtf.service;
 
+import com.smartcbwtf.domain.AppUser;
 import com.smartcbwtf.domain.BagEvent;
 import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.dto.AnalyticsPageDTO;
@@ -20,7 +21,11 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service for Analytics Page operations.
@@ -190,8 +195,10 @@ public class AnalyticsPageService {
                     facilityId, fromInstant, toInstant, pageRequest);
         }
 
-        List<AnalyticsPageDTO.ProcessedBagEntry> entries = bagEventsPage.getContent().stream()
-                .map(this::mapToProcessedBagEntry)
+        List<BagEvent> bagEvents = bagEventsPage.getContent();
+        Map<UUID, String> staffNamesByUserId = staffNamesByUserId(bagEvents);
+        List<AnalyticsPageDTO.ProcessedBagEntry> entries = bagEvents.stream()
+                .map(event -> mapToProcessedBagEntry(event, staffNamesByUserId))
                 .toList();
 
         log.debug("getProcessedBags: facility={}, from={}, to={}, hcfId={}, page={}, total={}",
@@ -208,13 +215,9 @@ public class AnalyticsPageService {
     /**
      * Map BagEvent entity to ProcessedBagEntry DTO.
      */
-    private AnalyticsPageDTO.ProcessedBagEntry mapToProcessedBagEntry(BagEvent event) {
-        String staffName = "Unknown";
-        if (event.getCollectedByUserId() != null) {
-            staffName = appUserRepository.findById(event.getCollectedByUserId())
-                    .map(user -> user.getFullName() != null ? user.getFullName() : user.getUsername())
-                    .orElse("Unknown");
-        }
+    private AnalyticsPageDTO.ProcessedBagEntry mapToProcessedBagEntry(
+            BagEvent event, Map<UUID, String> staffNamesByUserId) {
+        String staffName = staffNamesByUserId.getOrDefault(event.getCollectedByUserId(), "Unknown");
 
         String qrCode = event.getBagLabel() != null ? event.getBagLabel().getQrCode() : "N/A";
         String category = event.getBagLabel() != null ? event.getBagLabel().getCategory() : "N/A";
@@ -231,6 +234,30 @@ public class AnalyticsPageService {
                 hcfName,
                 event.getEventType(),
                 event.getAnomalyState());
+    }
+
+    private Map<UUID, String> staffNamesByUserId(List<BagEvent> events) {
+        Set<UUID> userIds = events.stream()
+                .map(BagEvent::getCollectedByUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return appUserRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(AppUser::getId, this::displayName, (first, ignored) -> first));
+    }
+
+    private String displayName(AppUser user) {
+        if (user.getFullName() != null && !user.getFullName().isBlank()) {
+            return user.getFullName();
+        }
+        if (user.getUsername() != null && !user.getUsername().isBlank()) {
+            return user.getUsername();
+        }
+        return "Unknown";
     }
 
     /**

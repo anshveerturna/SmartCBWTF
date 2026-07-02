@@ -31,6 +31,7 @@ import {
   Tab,
   IconButton,
   Tooltip,
+  type ChipProps,
 } from '@mui/material';
 import {
   Payment as PaymentIcon,
@@ -44,7 +45,8 @@ import {
   Download as DownloadIcon,
   Undo as UndoIcon,
 } from '@mui/icons-material';
-import axios from 'axios';
+import apiClient, { saveBlob } from '../../api/client';
+import { HCF_LIST_LIMIT } from '../../api/cbwtf';
 
 interface Payment {
   id: string;
@@ -58,6 +60,7 @@ interface Payment {
   bankName: string | null;
   createdAt: string;
   isReversed: boolean;
+  isReversalEntry?: boolean;
 }
 
 interface Summary {
@@ -82,25 +85,23 @@ interface BankAccount {
   status: string;
 }
 
-const api = axios.create({ baseURL: '/api/cbwtf' });
-
 const fetchPayments = async (): Promise<{ content: Payment[] }> => {
-  const { data } = await api.get('/payments');
+  const { data } = await apiClient.get('/api/cbwtf/payments');
   return data;
 };
 
 const fetchSummary = async (): Promise<Summary> => {
-  const { data } = await api.get('/payments/summary');
+  const { data } = await apiClient.get('/api/cbwtf/payments/summary');
   return data;
 };
 
 const fetchHcfs = async (): Promise<Hcf[]> => {
-  const { data } = await api.get('/hcfs');
+  const { data } = await apiClient.get('/api/cbwtf/hcfs', { params: { limit: HCF_LIST_LIMIT } });
   return Array.isArray(data) ? data : (data.content ?? []);
 };
 
 const fetchBankAccounts = async (): Promise<BankAccount[]> => {
-  const { data } = await api.get('/bank-accounts');
+  const { data } = await apiClient.get('/api/cbwtf/bank-accounts');
   return Array.isArray(data) ? data : (data.content ?? []);
 };
 
@@ -120,6 +121,8 @@ export default function Payments() {
   const [reverseDialogOpen, setReverseDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [reverseReason, setReverseReason] = useState('');
+  const [receiptDownloadId, setReceiptDownloadId] = useState<string | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     hcfId: '',
     bankAccountId: '',
@@ -159,7 +162,7 @@ export default function Payments() {
   });
 
   const recordMutation = useMutation({
-    mutationFn: (data: typeof formData) => api.post('/payments', {
+    mutationFn: (data: typeof formData) => apiClient.post('/api/cbwtf/payments', {
       ...data,
       amount: parseFloat(data.amount),
     }),
@@ -172,7 +175,7 @@ export default function Payments() {
   });
 
   const createBankMutation = useMutation({
-    mutationFn: (data: typeof bankFormData) => api.post('/bank-accounts', data),
+    mutationFn: (data: typeof bankFormData) => apiClient.post('/api/cbwtf/bank-accounts', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       setAddBankDialogOpen(false);
@@ -181,18 +184,18 @@ export default function Payments() {
   });
 
   const setPrimaryMutation = useMutation({
-    mutationFn: (id: string) => api.post(`/bank-accounts/${id}/set-primary`),
+    mutationFn: (id: string) => apiClient.post(`/api/cbwtf/bank-accounts/${id}/set-primary`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bankAccounts'] }),
   });
 
   const disableMutation = useMutation({
-    mutationFn: (id: string) => api.put(`/bank-accounts/${id}/disable`),
+    mutationFn: (id: string) => apiClient.put(`/api/cbwtf/bank-accounts/${id}/disable`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bankAccounts'] }),
   });
 
   const reverseMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) => 
-      api.post(`/payments/${id}/reverse`, { reason }),
+      apiClient.post(`/api/cbwtf/payments/${id}/reverse`, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       queryClient.invalidateQueries({ queryKey: ['paymentsSummary'] });
@@ -220,8 +223,19 @@ export default function Payments() {
     recordMutation.mutate(formData);
   };
 
-  const handleDownloadReceipt = (paymentId: string) => {
-    window.open(`/api/cbwtf/payments/${paymentId}/receipt`, '_blank');
+  const handleDownloadReceipt = async (paymentId: string) => {
+    setReceiptError(null);
+    setReceiptDownloadId(paymentId);
+    try {
+      const { data } = await apiClient.get(`/api/cbwtf/payments/${paymentId}/receipt`, {
+        responseType: 'blob',
+      });
+      saveBlob(data as Blob, `payment_receipt_${paymentId}.pdf`);
+    } catch {
+      setReceiptError('Failed to download receipt.');
+    } finally {
+      setReceiptDownloadId(null);
+    }
   };
 
   const handleReverseClick = (payment: Payment) => {
@@ -235,7 +249,7 @@ export default function Payments() {
     }
   };
 
-  const getModeColor = (mode: string) => {
+  const getModeColor = (mode: string): ChipProps['color'] => {
     switch (mode) {
       case 'UPI': return 'primary';
       case 'NET_BANKING': return 'secondary';
@@ -342,6 +356,11 @@ export default function Payments() {
 
           {/* Payments Table */}
           <TableContainer component={Paper}>
+            {receiptError && (
+              <Alert severity="error" sx={{ m: 2 }}>
+                {receiptError}
+              </Alert>
+            )}
             <Table>
               <TableHead>
                 <TableRow>
@@ -355,48 +374,74 @@ export default function Payments() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {payments.map((payment) => (
-                  <TableRow key={payment.id} sx={payment.isReversed ? { opacity: 0.6 } : {}}>
-                    <TableCell>{new Date(payment.paymentDate).toLocaleDateString('en-IN')}</TableCell>
-                    <TableCell>{payment.hcfName}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', color: payment.isReversed ? 'text.disabled' : 'success.main' }}>
-                      {formatCurrency(payment.amount)}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={payment.mode.replace('_', ' ')}
-                        color={getModeColor(payment.mode) as any}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace' }}>
-                      {payment.referenceNumber || '-'}
-                    </TableCell>
-                    <TableCell>
-                      {payment.isReversed ? (
-                        <Chip label="REVERSED" color="error" size="small" />
-                      ) : (
-                        <Chip label="ACTIVE" color="success" size="small" variant="outlined" />
-                      )}
-                    </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <Tooltip title="Download Receipt">
-                          <IconButton size="small" onClick={() => handleDownloadReceipt(payment.id)}>
-                            <DownloadIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        {!payment.isReversed && (
-                          <Tooltip title="Reverse Payment">
-                            <IconButton size="small" color="error" onClick={() => handleReverseClick(payment)}>
-                              <UndoIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                {payments.map((payment) => {
+                  const isReversalEntry = Boolean(payment.isReversalEntry) || payment.amount < 0;
+                  const isInactive = payment.isReversed || isReversalEntry;
+                  return (
+                    <TableRow key={payment.id} sx={isInactive ? { opacity: 0.6 } : {}}>
+                      <TableCell>{new Date(payment.paymentDate).toLocaleDateString('en-IN')}</TableCell>
+                      <TableCell>{payment.hcfName}</TableCell>
+                      <TableCell
+                        align="right"
+                        sx={{
+                          fontWeight: 'bold',
+                          color: isReversalEntry
+                            ? 'error.main'
+                            : payment.isReversed
+                              ? 'text.disabled'
+                              : 'success.main',
+                        }}
+                      >
+                        {formatCurrency(payment.amount)}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={payment.mode.replace('_', ' ')}
+                          color={getModeColor(payment.mode)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace' }}>
+                        {payment.referenceNumber || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {isReversalEntry ? (
+                          <Chip label="REVERSAL" color="warning" size="small" />
+                        ) : payment.isReversed ? (
+                          <Chip label="REVERSED" color="error" size="small" />
+                        ) : (
+                          <Chip label="ACTIVE" color="success" size="small" variant="outlined" />
                         )}
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell align="right">
+                        <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                          <Tooltip title={isReversalEntry ? 'Receipt is available on the original payment' : 'Download Receipt'}>
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDownloadReceipt(payment.id)}
+                                disabled={isReversalEntry || receiptDownloadId === payment.id}
+                              >
+                                {receiptDownloadId === payment.id ? (
+                                  <CircularProgress size={16} />
+                                ) : (
+                                  <DownloadIcon fontSize="small" />
+                                )}
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                          {!payment.isReversed && !isReversalEntry && (
+                            <Tooltip title="Reverse Payment">
+                              <IconButton size="small" color="error" onClick={() => handleReverseClick(payment)}>
+                                <UndoIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 {payments.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} align="center" sx={{ py: 4 }}>

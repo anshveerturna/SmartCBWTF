@@ -34,21 +34,18 @@ class DefaultAuthRepository @Inject constructor(
             throw Exception("No internet connection")
         }
         val response = api.login(AuthRequest(username, password))
-        tokenStore.setToken(response.accessToken)
-        
-        // Store mustChangePassword flag for security enforcement
-        if (response.mustChangePassword) {
-            tokenStore.setMustChangePassword(true)
-        }
+
+        // Validate token claims before persisting any authenticated state.
+        val userId = extractUserIdFromJwt(response.accessToken)
+            ?: throw IllegalStateException("Authenticated token is missing user_id claim")
+
+        tokenStore.setMustChangePassword(response.mustChangePassword)
 
         // Store user role for GPS tracking guard
         response.role?.let { role ->
             appConfigStore.setUserRole(role)
         }
         
-        // Extract userId from JWT token and save session data
-        val userId = extractUserIdFromJwt(response.accessToken)
-            ?: throw IllegalStateException("Authenticated token is missing user_id claim")
         val facilityId = response.tenantId
         
         Log.d(TAG, "Login response accepted for role=${response.role}")
@@ -61,6 +58,7 @@ class DefaultAuthRepository @Inject constructor(
             userRole = response.role,
             facilityId = facilityId
         )
+        tokenStore.setToken(response.accessToken)
         
         response
     }
@@ -94,7 +92,7 @@ class DefaultAuthRepository @Inject constructor(
         Log.i(TAG, "Logging out: clearing all auth & session state")
         tokenStore.setToken(null)         // Clears token (triggers service shutdown via token flow)
         tokenStore.setMustChangePassword(false)
-        appConfigStore.clear()            // Clear ALL cached config (role, GPS settings, etc.)
+        appConfigStore.clear()            // Clear cached app config (role, GPS settings, features, etc.)
         sessionManager.clearSession()     // Clear session data (userId, facilityId, etc.)
     }
 

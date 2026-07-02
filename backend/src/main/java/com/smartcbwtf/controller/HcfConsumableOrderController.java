@@ -4,8 +4,18 @@ import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.*;
 import com.smartcbwtf.repository.*;
 import com.smartcbwtf.service.HcfAccessGuard;
+import com.smartcbwtf.util.PaginationUtils;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,8 +24,10 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * HCF Consumable Order Controller - Order consumables from CBWTF.
@@ -28,6 +40,11 @@ import java.util.UUID;
 public class HcfConsumableOrderController {
 
     private static final Logger log = LoggerFactory.getLogger(HcfConsumableOrderController.class);
+    private static final int DEFAULT_ORDER_LIST_LIMIT = 100;
+    private static final int MAX_ORDER_LIST_LIMIT = 250;
+    private static final int MAX_ITEMS_PER_ORDER = 100;
+    private static final int MAX_ORDER_QUANTITY = 100_000;
+    private static final int MAX_ORDER_NOTES_LENGTH = 1000;
 
     private final ConsumableOrderRepository orderRepo;
     private final ConsumableItemRepository itemRepo;
@@ -51,12 +68,8 @@ public class HcfConsumableOrderController {
         this.emailService = emailService;
     }
 
-    private UUID getFacilityIdForHcf(UUID hcfId) {
-        return agreementRepo.findByHcfIdAndStatus(hcfId, Agreement.Status.ACTIVE.name())
-                .stream()
-                .findFirst()
-                .map(a -> a.getFacility().getId())
-                .orElse(null);
+    private Agreement findActiveAgreementForTenant(UUID hcfId, UUID facilityId) {
+        return agreementRepo.findActiveByHcfAndFacility(hcfId, facilityId).orElse(null);
     }
 
     /**
@@ -65,16 +78,25 @@ public class HcfConsumableOrderController {
     @GetMapping("/catalog")
     public ResponseEntity<?> getCatalog() {
         UUID hcfId = TenantContext.getHcfId();
-        accessGuard.assertPortalAccess(hcfId);
+        UUID facilityId = TenantContext.getTenantId();
+        accessGuard.assertPortalAccess(hcfId, facilityId);
 
-        UUID facilityId = getFacilityIdForHcf(hcfId);
-        if (facilityId == null) {
+        Agreement agreement = findActiveAgreementForTenant(hcfId, facilityId);
+        if (agreement == null) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "NO_FACILITY",
                     "message", "No active agreement found"));
         }
 
         List<ConsumableItem> items = itemRepo.findActiveByFacility(facilityId);
+        Map<UUID, ConsumablePricing> pricingByItemId = items.isEmpty()
+                ? Map.of()
+                : pricingRepo.findActiveByConsumableItemIdIn(items.stream().map(ConsumableItem::getId).toList())
+                        .stream()
+                        .collect(Collectors.toMap(
+                                pricing -> pricing.getConsumableItem().getId(),
+                                pricing -> pricing,
+                                (first, ignored) -> first));
 
         return ResponseEntity.ok(Map.of(
                 "items", items.stream().map(item -> {
@@ -87,12 +109,11 @@ public class HcfConsumableOrderController {
                     itemMap.put("unit", item.getUnitOfMeasure());
                     itemMap.put("imageUrl", item.getImageUrl());
 
-                    // Get current pricing
-                    pricingRepo.findActiveByConsumableItemId(item.getId())
-                            .ifPresent(pricing -> {
-                                itemMap.put("price", pricing.getPricePerUnit());
-                                itemMap.put("gstRate", pricing.getGstRate());
-                            });
+                    ConsumablePricing pricing = pricingByItemId.get(item.getId());
+                    if (pricing != null) {
+                        itemMap.put("price", pricing.getPricePerUnit());
+                        itemMap.put("gstRate", pricing.getGstRate());
+                    }
                     return itemMap;
                 }).toList()));
     }
@@ -101,10 +122,11 @@ public class HcfConsumableOrderController {
      * Place a new order.
      */
     @PostMapping("/order")
-    public ResponseEntity<?> placeOrder(@RequestBody PlaceOrderRequest request) {
+    public ResponseEntity<?> placeOrder(@Valid @RequestBody PlaceOrderRequest request) {
         UUID hcfId = TenantContext.getHcfId();
+        UUID facilityId = TenantContext.getTenantId();
         UUID userId = TenantContext.getUserId();
-        accessGuard.assertPortalAccess(hcfId);
+        accessGuard.assertPortalAccess(hcfId, facilityId);
 
         if (request.items == null || request.items.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -113,8 +135,7 @@ public class HcfConsumableOrderController {
         }
 
         // Get facility from agreement
-        Agreement agreement = agreementRepo.findByHcfIdAndStatus(hcfId, Agreement.Status.ACTIVE.name())
-                .stream().findFirst().orElse(null);
+        Agreement agreement = findActiveAgreementForTenant(hcfId, facilityId);
         if (agreement == null) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "NO_AGREEMENT",
@@ -133,15 +154,17 @@ public class HcfConsumableOrderController {
         order.setFacility(facility);
         order.setOrderNumber(orderNumber);
         order.setOrderedBy(userId);
-        order.setHcfNotes(request.notes);
+        order.setHcfNotes(trimToNull(request.notes));
 
         // Add items
         for (OrderItemRequest itemReq : request.items) {
-            ConsumableItem item = itemRepo.findById(itemReq.itemId).orElse(null);
+            ConsumableItem item = itemRepo.findByIdAndFacilityId(itemReq.itemId, facility.getId())
+                    .filter(consumable -> Boolean.TRUE.equals(consumable.getIsActive()))
+                    .orElse(null);
             if (item == null) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "error", "INVALID_ITEM",
-                        "message", "Item not found: " + itemReq.itemId));
+                        "message", "Item not found or unavailable"));
             }
 
             ConsumablePricing pricing = pricingRepo.findActiveByConsumableItemId(item.getId())
@@ -232,21 +255,34 @@ public class HcfConsumableOrderController {
      */
     @GetMapping("/orders")
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public ResponseEntity<?> getOrders(@RequestParam(name = "status", required = false) String status) {
+    public ResponseEntity<?> getOrders(
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "limit", defaultValue = "100") int limit) {
         UUID hcfId = TenantContext.getHcfId();
-        accessGuard.assertPortalAccess(hcfId);
+        UUID facilityId = TenantContext.getTenantId();
+        accessGuard.assertPortalAccess(hcfId, facilityId);
+        String normalizedStatus = normalizeStatus(status);
+        if (normalizedStatus == null && status != null && !status.isBlank()) {
+            return privateResponse(Map.of("orders", List.of(), "total", 0L));
+        }
 
-        List<ConsumableOrder> orders = status != null
-                ? orderRepo.findByHcfIdAndStatusOrderByOrderedAtDesc(hcfId, status)
-                : orderRepo.findByHcfIdOrderByOrderedAtDesc(hcfId);
+        PageRequest pageable = firstPage(limit);
+        List<ConsumableOrder> orders = normalizedStatus != null
+                ? orderRepo.findByHcfIdAndFacilityIdAndStatusOrderByOrderedAtDesc(
+                        hcfId, facilityId, normalizedStatus, pageable)
+                : orderRepo.findByHcfIdAndFacilityIdOrderByOrderedAtDesc(hcfId, facilityId, pageable);
+        long total = normalizedStatus != null
+                ? orderRepo.countByHcfIdAndFacilityIdAndStatus(hcfId, facilityId, normalizedStatus)
+                : orderRepo.countByHcfIdAndFacilityId(hcfId, facilityId);
 
-        return ResponseEntity.ok(Map.of(
+        Map<UUID, Long> itemCountsByOrderId = itemCountsByOrderId(orders);
+        return privateResponse(Map.of(
                 "orders", orders.stream().map(order -> {
                     Map<String, Object> orderMap = new HashMap<>();
                     orderMap.put("id", order.getId().toString());
                     orderMap.put("orderNumber", order.getOrderNumber());
                     orderMap.put("status", order.getStatus());
-                    orderMap.put("itemCount", order.getItems().size());
+                    orderMap.put("itemCount", itemCountsByOrderId.getOrDefault(order.getId(), 0L));
                     orderMap.put("totalAmount", order.getTotalAmount());
                     orderMap.put("orderedAt", order.getOrderedAt().toString());
                     if (order.getConfirmedAt() != null) {
@@ -257,7 +293,7 @@ public class HcfConsumableOrderController {
                     }
                     return orderMap;
                 }).toList(),
-                "total", orders.size()));
+                "total", total));
     }
 
     /**
@@ -267,10 +303,10 @@ public class HcfConsumableOrderController {
     @Transactional(readOnly = true)
     public ResponseEntity<?> getOrderDetails(@PathVariable("id") UUID id) {
         UUID hcfId = TenantContext.getHcfId();
-        accessGuard.assertPortalAccess(hcfId);
+        UUID facilityId = TenantContext.getTenantId();
+        accessGuard.assertPortalAccess(hcfId, facilityId);
 
-        return orderRepo.findById(id)
-                .filter(order -> order.getHcf().getId().equals(hcfId))
+        return orderRepo.findByIdAndHcfIdAndFacilityId(id, hcfId, facilityId)
                 .map(order -> {
                     Map<String, Object> result = new HashMap<>();
                     result.put("id", order.getId().toString());
@@ -297,9 +333,16 @@ public class HcfConsumableOrderController {
                         return itemMap;
                     }).toList());
 
-                    return ResponseEntity.ok(result);
+                    return privateResponse(result);
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    private static <T> ResponseEntity<T> privateResponse(T body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
     }
 
     /**
@@ -308,11 +351,10 @@ public class HcfConsumableOrderController {
     @PostMapping("/orders/{id}/cancel")
     public ResponseEntity<?> cancelOrder(@PathVariable UUID id) {
         UUID hcfId = TenantContext.getHcfId();
-        accessGuard.assertPortalAccess(hcfId);
+        UUID facilityId = TenantContext.getTenantId();
+        accessGuard.assertPortalAccess(hcfId, facilityId);
 
-        ConsumableOrder order = orderRepo.findById(id)
-                .filter(o -> o.getHcf().getId().equals(hcfId))
-                .orElse(null);
+        ConsumableOrder order = orderRepo.findByIdAndHcfIdAndFacilityId(id, hcfId, facilityId).orElse(null);
 
         if (order == null) {
             return ResponseEntity.notFound().build();
@@ -354,13 +396,56 @@ public class HcfConsumableOrderController {
                 "message", "Order cancelled successfully"));
     }
 
+    private Map<UUID, Long> itemCountsByOrderId(List<ConsumableOrder> orders) {
+        if (orders.isEmpty()) {
+            return Map.of();
+        }
+        return orderRepo.countItemsByOrderIds(orders.stream().map(ConsumableOrder::getId).toList())
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1],
+                        (first, ignored) -> first));
+    }
+
     public static class PlaceOrderRequest {
+        @NotEmpty
+        @Size(max = MAX_ITEMS_PER_ORDER)
+        @Valid
         public List<OrderItemRequest> items;
+        @Size(max = MAX_ORDER_NOTES_LENGTH)
         public String notes;
     }
 
     public static class OrderItemRequest {
+        @NotNull
         public UUID itemId;
+        @NotNull
+        @Positive
+        @Max(MAX_ORDER_QUANTITY)
         public Integer quantity;
+    }
+
+    private static PageRequest firstPage(int requestedLimit) {
+        int limit = PaginationUtils.normalizeSize(requestedLimit, DEFAULT_ORDER_LIST_LIMIT, MAX_ORDER_LIST_LIMIT);
+        return PageRequest.of(0, limit);
+    }
+
+    private static String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        try {
+            return ConsumableOrder.Status.valueOf(status.trim().toUpperCase(Locale.ROOT)).name();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

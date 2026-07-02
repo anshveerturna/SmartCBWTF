@@ -21,7 +21,6 @@ import {
   alpha,
   Tabs,
   Tab,
-  Badge,
   Collapse,
 } from '@mui/material';
 import {
@@ -37,7 +36,7 @@ import {
   Inventory,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../../api/client';
+import apiClient, { apiAssetUrl } from '../../api/client';
 
 interface CatalogItem {
   id: string;
@@ -240,7 +239,7 @@ const ConsumablesOrder: React.FC = () => {
                               {item.imageUrl ? (
                                 <Box
                                   component="img"
-                                  src={`http://localhost:8080${item.imageUrl}`}
+                                  src={apiAssetUrl(item.imageUrl)}
                                   alt={item.name}
                                   sx={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 1 }}
                                 />
@@ -434,7 +433,7 @@ const ConsumablesOrder: React.FC = () => {
                                             {item.imageUrl ? (
                                               <Box
                                                 component="img"
-                                                src={`http://localhost:8080${item.imageUrl}`}
+                                                src={apiAssetUrl(item.imageUrl)}
                                                 alt={item.name}
                                                 sx={{ width: 45, height: 45, objectFit: 'cover', borderRadius: 1 }}
                                               />

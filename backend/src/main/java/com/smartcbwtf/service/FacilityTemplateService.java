@@ -6,14 +6,17 @@ import com.smartcbwtf.dto.TemplateListItem;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.repository.FacilityRepository;
 import com.smartcbwtf.repository.FacilityTemplateRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -25,23 +28,34 @@ import java.util.stream.Collectors;
  */
 @Service
 public class FacilityTemplateService {
+    static final long HTML_TEMPLATE_MAX_BYTES = 1024L * 1024L;
+    static final long PDF_TEMPLATE_MAX_BYTES = 10L * 1024L * 1024L;
 
     private final FacilityTemplateRepository templateRepository;
     private final FacilityRepository facilityRepository;
     private final AppUserRepository userRepository;
     private final Path templatesDir;
 
+    @Autowired
     public FacilityTemplateService(
             FacilityTemplateRepository templateRepository,
             FacilityRepository facilityRepository,
             AppUserRepository userRepository) {
+        this(templateRepository, facilityRepository, userRepository, Paths.get("files", "templates"));
+    }
+
+    FacilityTemplateService(
+            FacilityTemplateRepository templateRepository,
+            FacilityRepository facilityRepository,
+            AppUserRepository userRepository,
+            Path templatesDir) {
         this.templateRepository = templateRepository;
         this.facilityRepository = facilityRepository;
         this.userRepository = userRepository;
-        this.templatesDir = Paths.get("files", "templates");
+        this.templatesDir = templatesDir.toAbsolutePath().normalize();
         
         try {
-            Files.createDirectories(templatesDir);
+            Files.createDirectories(this.templatesDir);
         } catch (IOException e) {
             throw new RuntimeException("Failed to create templates directory", e);
         }
@@ -92,26 +106,22 @@ public class FacilityTemplateService {
             throw new IllegalArgumentException("Template version already exists: " + version);
         }
 
-        // Validate template type
-        if (!templateType.equals("HTML") && !templateType.equals("PDF")) {
-            throw new IllegalArgumentException("Template type must be HTML or PDF");
-        }
+        String normalizedTemplateType = normalizeTemplateType(templateType);
 
-        // Save file
-        String extension = templateType.equals("HTML") ? ".html" : ".pdf";
-        String filename = String.format("%s_%s_%s%s", 
-                facility.getCode(), 
-                version.replace("/", "_"), 
+        String extension = validateTemplateFile(normalizedTemplateType, file);
+        String filename = String.format("%s_%s_%s.%s",
+                safeFilenameToken(facility.getCode(), "facility code"),
+                safeFilenameToken(version, "version"),
                 System.currentTimeMillis(),
                 extension);
-        Path filePath = templatesDir.resolve(filename);
-        Files.copy(file.getInputStream(), filePath);
+        Path filePath = resolveTemplateFile(filename);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
         // Create template record
         FacilityTemplate template = new FacilityTemplate();
         template.setFacility(facility);
         template.setName(name);
-        template.setTemplateType(templateType);
+        template.setTemplateType(normalizedTemplateType);
         template.setContentLocation(filePath.toString());
         template.setVersion(version);
         template.setCreatedAt(Instant.now());
@@ -153,13 +163,13 @@ public class FacilityTemplateService {
             throw new IllegalArgumentException("Template version already exists: " + version);
         }
 
-        // Save HTML content to file
+        validateHtmlContent(htmlContent);
         String filename = String.format("%s_%s_%s.html", 
-                facility.getCode(), 
-                version.replace("/", "_"), 
+                safeFilenameToken(facility.getCode(), "facility code"),
+                safeFilenameToken(version, "version"),
                 System.currentTimeMillis());
-        Path filePath = templatesDir.resolve(filename);
-        Files.writeString(filePath, htmlContent);
+        Path filePath = resolveTemplateFile(filename);
+        Files.writeString(filePath, htmlContent, StandardCharsets.UTF_8);
 
         // Create template record
         FacilityTemplate template = new FacilityTemplate();
@@ -212,10 +222,84 @@ public class FacilityTemplateService {
      * Read template content.
      */
     public String readTemplateContent(FacilityTemplate template) throws IOException {
-        Path path = Paths.get(template.getContentLocation());
+        Path path = resolveStoredTemplatePath(template.getContentLocation());
         if (Files.exists(path)) {
             return Files.readString(path);
         }
         throw new IOException("Template file not found: " + template.getContentLocation());
+    }
+
+    private String normalizeTemplateType(String templateType) {
+        if (templateType == null) {
+            throw new IllegalArgumentException("Template type must be HTML or PDF");
+        }
+        String normalized = templateType.trim().toUpperCase();
+        if (!normalized.equals("HTML") && !normalized.equals("PDF")) {
+            throw new IllegalArgumentException("Template type must be HTML or PDF");
+        }
+        return normalized;
+    }
+
+    private String validateTemplateFile(String templateType, MultipartFile file) {
+        if ("HTML".equals(templateType)) {
+            return UploadFileValidator.htmlTemplateExtension(file, HTML_TEMPLATE_MAX_BYTES);
+        }
+        return UploadFileValidator.rentAgreementExtension(file, PDF_TEMPLATE_MAX_BYTES);
+    }
+
+    private void validateHtmlContent(String htmlContent) {
+        if (htmlContent == null || htmlContent.isBlank()) {
+            throw new IllegalArgumentException("HTML template content is required");
+        }
+        if (htmlContent.getBytes(StandardCharsets.UTF_8).length > HTML_TEMPLATE_MAX_BYTES) {
+            throw new IllegalArgumentException("HTML template must be under 1MB");
+        }
+    }
+
+    private String safeFilenameToken(String value, String label) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Template " + label + " is required");
+        }
+        String token = value.trim().replaceAll("[^A-Za-z0-9._-]", "_");
+        token = token.replaceAll("\\.+", ".");
+        token = token.replaceAll("^\\.+", "");
+        token = token.replaceAll("\\.+$", "");
+        if (token.isBlank() || token.contains("..") || token.contains("/") || token.contains("\\")) {
+            throw new IllegalArgumentException("Invalid template " + label);
+        }
+        return token;
+    }
+
+    private Path resolveTemplateFile(String filename) {
+        Path path = templatesDir.resolve(filename).normalize();
+        if (!path.startsWith(templatesDir)) {
+            throw new IllegalArgumentException("Invalid template storage path");
+        }
+        return path;
+    }
+
+    private Path resolveStoredTemplatePath(String contentLocation) {
+        if (contentLocation == null || contentLocation.isBlank()) {
+            throw new IllegalArgumentException("Template content location is required");
+        }
+        if (contentLocation.indexOf('\0') >= 0) {
+            throw new IllegalArgumentException("Invalid template content location");
+        }
+        Path rawPath = Paths.get(contentLocation);
+        Path resolvedPath;
+        if (rawPath.isAbsolute() || contentLocation.contains("/") || contentLocation.contains("\\")) {
+            resolvedPath = rawPath.toAbsolutePath().normalize();
+        } else {
+            resolvedPath = templatesDir.resolve(rawPath).normalize();
+        }
+        if (!resolvedPath.startsWith(templatesDir)) {
+            throw new IllegalArgumentException("Invalid template content location");
+        }
+        Path filename = resolvedPath.getFileName();
+        if (filename == null || filename.toString().isBlank() || filename.toString().contains("..")
+                || filename.toString().contains("/") || filename.toString().contains("\\")) {
+            throw new IllegalArgumentException("Invalid template content location");
+        }
+        return resolvedPath;
     }
 }

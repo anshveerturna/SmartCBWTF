@@ -28,6 +28,8 @@ import java.util.UUID;
 public class AttendanceService {
 
     private static final Logger log = LoggerFactory.getLogger(AttendanceService.class);
+    private static final Duration MAX_FUTURE_CLOCK_SKEW = Duration.ofMinutes(5);
+    private static final Duration MAX_OFFLINE_EVENT_AGE = Duration.ofDays(30);
 
     private final AttendanceRepository attendanceRepository;
     private final HcfRepository hcfRepository;
@@ -94,6 +96,12 @@ public class AttendanceService {
 
     private AttendanceSyncItemResult processItem(AttendanceSyncItem item, UUID driverId, UUID facilityId) {
         UUID clientEventId = item.getClientEventId();
+        Instant eventTs = item.getEventTs();
+
+        String timestampError = validateEventTimestamp(eventTs);
+        if (timestampError != null) {
+            return AttendanceSyncItemResult.error(clientEventId, "INVALID_TIMESTAMP", timestampError);
+        }
 
         // Idempotency check
         if (attendanceRepository.existsByClientEventId(clientEventId)) {
@@ -137,7 +145,7 @@ public class AttendanceService {
         }
 
         // Cooldown validation (server-side enforcement)
-        Instant cooldownStart = item.getEventTs().minus(Duration.ofMinutes(cooldownMinutes));
+        Instant cooldownStart = eventTs.minus(Duration.ofMinutes(cooldownMinutes));
         if (attendanceRepository.existsByDriverIdAndEventTsAfter(driverId, cooldownStart)) {
             Optional<Attendance> lastAttendance = attendanceRepository.findLatestByDriverId(driverId);
             if (lastAttendance.isPresent()) {
@@ -158,7 +166,7 @@ public class AttendanceService {
         attendance.setDriver(driver);
         attendance.setHcf(hcf);
         attendance.setFacility(facility); // Denormalized for efficient queries
-        attendance.setEventTs(item.getEventTs());
+        attendance.setEventTs(eventTs);
         attendance.setGpsLat(item.getGpsLat());
         attendance.setGpsLon(item.getGpsLon());
         attendance.setGpsAccuracyM(item.getGpsAccuracyM());
@@ -185,6 +193,21 @@ public class AttendanceService {
                         hcf.getId(), hcf.getName(), distance));
 
         return AttendanceSyncItemResult.success(clientEventId);
+    }
+
+    private String validateEventTimestamp(Instant eventTs) {
+        if (eventTs == null) {
+            return "Event timestamp is required";
+        }
+
+        Instant now = Instant.now();
+        if (eventTs.isAfter(now.plus(MAX_FUTURE_CLOCK_SKEW))) {
+            return "Event timestamp is too far in the future";
+        }
+        if (eventTs.isBefore(now.minus(MAX_OFFLINE_EVENT_AGE))) {
+            return "Event timestamp is too old for offline sync";
+        }
+        return null;
     }
 
     private double haversineMeters(double lat1, double lon1, double lat2, double lon2) {

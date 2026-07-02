@@ -4,6 +4,7 @@ import com.smartcbwtf.domain.Agreement;
 import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.repository.AgreementRepository;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,8 +30,12 @@ public class AgreementVerificationController {
     @GetMapping("/verify/{id}")
     public ResponseEntity<AgreementVerificationDTO> verifyAgreement(@PathVariable("id") UUID id) {
         return agreementRepository.findById(id)
-                .map(agreement -> ResponseEntity.ok(AgreementVerificationDTO.from(agreement)))
-                .orElse(ResponseEntity.ok(AgreementVerificationDTO.notFound(id)));
+                .map(agreement -> ResponseEntity.ok()
+                        .cacheControl(CacheControl.noStore())
+                        .body(AgreementVerificationDTO.from(agreement)))
+                .orElseGet(() -> ResponseEntity.notFound()
+                        .cacheControl(CacheControl.noStore())
+                        .build());
     }
 
     /**
@@ -55,14 +60,13 @@ public class AgreementVerificationController {
         public static AgreementVerificationDTO from(Agreement agreement) {
             Facility facility = agreement.getFacility();
             Hcf hcf = agreement.getHcf();
-
-            boolean isActive = "ACTIVE".equals(agreement.getStatus());
+            String status = effectiveStatus(agreement);
 
             return new AgreementVerificationDTO(
                     true,
                     agreement.getId(),
                     agreement.getAgreementNumber(),
-                    agreement.getStatus(),
+                    status,
                     facility != null ? facility.getName() : null,
                     facility != null ? facility.getCode() : null,
                     hcf != null ? hcf.getName() : null,
@@ -71,16 +75,29 @@ public class AgreementVerificationController {
                     agreement.getEndDate(),
                     agreement.getVersion(),
                     agreement.getCreatedAt(),
-                    isActive
-                            ? "This agreement is verified and currently ACTIVE."
-                            : "This agreement is verified but has status: " + agreement.getStatus() + ".");
+                    messageFor(status));
         }
 
-        public static AgreementVerificationDTO notFound(UUID id) {
-            return new AgreementVerificationDTO(
-                    false, id, null, null, null, null, null, null,
-                    null, null, null, null,
-                    "No agreement found with the given ID. This may be an invalid or tampered QR code.");
+        private static String effectiveStatus(Agreement agreement) {
+            if (agreement.getFacility() == null || agreement.getHcf() == null) {
+                return "INVALID";
+            }
+            if (!"ACTIVE".equals(agreement.getStatus())) {
+                return agreement.getStatus() == null ? "INACTIVE" : agreement.getStatus();
+            }
+            if (agreement.getEndDate() != null && agreement.getEndDate().isBefore(LocalDate.now())) {
+                return "EXPIRED";
+            }
+            return "ACTIVE";
+        }
+
+        private static String messageFor(String status) {
+            return switch (status) {
+                case "ACTIVE" -> "This agreement is verified and currently ACTIVE.";
+                case "EXPIRED" -> "This agreement is verified but has expired.";
+                case "INVALID" -> "This agreement record is incomplete and cannot be verified as active.";
+                default -> "This agreement is verified but has status: " + status + ".";
+            };
         }
     }
 }

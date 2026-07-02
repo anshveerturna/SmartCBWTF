@@ -50,6 +50,32 @@ public interface AttendanceRepository extends JpaRepository<Attendance, UUID> {
                         @Param("start") Instant start,
                         @Param("end") Instant end);
 
+        @Query("""
+                        SELECT COUNT(a)
+                        FROM Attendance a
+                        WHERE a.hcf.id = :hcfId
+                          AND (
+                              a.facility.id = :facilityId
+                              OR a.driver.facility.id = :facilityId
+                          )
+                        """)
+        long countByFacilityIdAndHcfId(
+                        @Param("facilityId") UUID facilityId,
+                        @Param("hcfId") UUID hcfId);
+
+        @Query("""
+                        SELECT MAX(a.eventTs)
+                        FROM Attendance a
+                        WHERE a.hcf.id = :hcfId
+                          AND (
+                              a.facility.id = :facilityId
+                              OR a.driver.facility.id = :facilityId
+                          )
+                        """)
+        Instant findLastAttendanceTimeByFacilityIdAndHcfId(
+                        @Param("facilityId") UUID facilityId,
+                        @Param("hcfId") UUID hcfId);
+
         // Master Data queries for SuperAdmin
         Page<Attendance> findByEventTsBetween(Instant start, Instant end, Pageable pageable);
 

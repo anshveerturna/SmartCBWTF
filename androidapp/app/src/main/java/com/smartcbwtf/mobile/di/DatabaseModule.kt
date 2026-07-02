@@ -22,6 +22,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
         return Room.databaseBuilder(context, AppDatabase::class.java, "smartcbwtf.db")
+            .addMigrations(AppDatabase.MIGRATION_4_5)
             .build()
     }
 

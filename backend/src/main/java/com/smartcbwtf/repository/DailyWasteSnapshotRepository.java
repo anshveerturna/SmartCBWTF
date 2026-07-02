@@ -32,6 +32,12 @@ public interface DailyWasteSnapshotRepository extends JpaRepository<DailyWasteSn
                         UUID hcfId, LocalDate startDate, LocalDate endDate);
 
         /**
+         * Find all snapshots for an HCF under a facility within date range.
+         */
+        List<DailyWasteSnapshot> findByFacilityIdAndHcfIdAndSnapshotDateBetweenOrderBySnapshotDateDesc(
+                        UUID facilityId, UUID hcfId, LocalDate startDate, LocalDate endDate);
+
+        /**
          * Aggregate daily totals for a facility by date
          */
         @Query("""

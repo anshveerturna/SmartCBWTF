@@ -1,6 +1,7 @@
 package com.smartcbwtf.repository;
 
 import com.smartcbwtf.domain.QrAuthorization;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -18,20 +19,38 @@ public interface QrAuthorizationRepository extends JpaRepository<QrAuthorization
         // Find by facility (tenant-scoped)
         List<QrAuthorization> findByFacilityIdOrderByCreatedAtDesc(UUID facilityId);
 
+        List<QrAuthorization> findByFacilityIdOrderByCreatedAtDesc(UUID facilityId, Pageable pageable);
+
         // Find by HCF within facility
         List<QrAuthorization> findByFacilityIdAndHcfIdOrderByCreatedAtDesc(UUID facilityId, UUID hcfId);
+
+        List<QrAuthorization> findByFacilityIdAndHcfIdOrderByCreatedAtDesc(UUID facilityId, UUID hcfId,
+                        Pageable pageable);
+
+        List<QrAuthorization> findByFacilityIdAndHcfIdAndStatusOrderByCreatedAtDesc(
+                        UUID facilityId, UUID hcfId, String status, Pageable pageable);
 
         // Find by HCF only (for HCF admin portal)
         @Query("SELECT q FROM QrAuthorization q WHERE q.hcf.id = :hcfId ORDER BY q.createdAt DESC")
         List<QrAuthorization> findByHcfIdOrderByCreatedAtDesc(@Param("hcfId") UUID hcfId);
+
+        @Query("SELECT q FROM QrAuthorization q WHERE q.hcf.id = :hcfId ORDER BY q.createdAt DESC")
+        List<QrAuthorization> findByHcfIdOrderByCreatedAtDesc(@Param("hcfId") UUID hcfId, Pageable pageable);
 
         // Find by HCF and status (for HCF admin portal)
         @Query("SELECT q FROM QrAuthorization q WHERE q.hcf.id = :hcfId AND q.status = :status ORDER BY q.createdAt DESC")
         List<QrAuthorization> findByHcfIdAndStatusOrderByCreatedAtDesc(@Param("hcfId") UUID hcfId,
                         @Param("status") String status);
 
+        @Query("SELECT q FROM QrAuthorization q WHERE q.hcf.id = :hcfId AND q.status = :status ORDER BY q.createdAt DESC")
+        List<QrAuthorization> findByHcfIdAndStatusOrderByCreatedAtDesc(@Param("hcfId") UUID hcfId,
+                        @Param("status") String status, Pageable pageable);
+
         // Find by status within facility
         List<QrAuthorization> findByFacilityIdAndStatusOrderByCreatedAtDesc(UUID facilityId, String status);
+
+        List<QrAuthorization> findByFacilityIdAndStatusOrderByCreatedAtDesc(UUID facilityId, String status,
+                        Pageable pageable);
 
         // Find by agreement
         List<QrAuthorization> findByAgreementIdOrderByCreatedAtDesc(UUID agreementId);

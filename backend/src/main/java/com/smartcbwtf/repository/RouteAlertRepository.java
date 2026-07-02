@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -17,6 +18,8 @@ public interface RouteAlertRepository extends JpaRepository<RouteAlert, UUID> {
     List<RouteAlert> findByRouteId(UUID routeId);
 
     Page<RouteAlert> findByFacilityIdOrderByCreatedAtDesc(UUID facilityId, Pageable pageable);
+
+    Optional<RouteAlert> findByIdAndFacilityId(UUID id, UUID facilityId);
 
     @Query("SELECT a FROM RouteAlert a WHERE a.facility.id = :facilityId AND a.isResolved = false ORDER BY a.createdAt DESC")
     List<RouteAlert> findUnresolvedByFacilityId(@Param("facilityId") UUID facilityId);

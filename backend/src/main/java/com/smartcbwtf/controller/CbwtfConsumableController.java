@@ -1,14 +1,17 @@
 package com.smartcbwtf.controller;
 
 import com.smartcbwtf.config.TenantContext;
+import com.smartcbwtf.dto.AddConsumablePricingRequest;
 import com.smartcbwtf.dto.ConsumableCategoryDTO;
 import com.smartcbwtf.dto.ConsumableItemDTO;
 import com.smartcbwtf.service.ConsumableImageService;
 import com.smartcbwtf.service.ConsumableService;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -55,7 +58,7 @@ public class CbwtfConsumableController {
     @GetMapping("/{id}")
     public ResponseEntity<ConsumableItemDTO> getConsumableDetail(@PathVariable("id") UUID id) {
         UUID facilityId = TenantContext.getTenantId();
-        return ResponseEntity.ok(consumableService.getDetail(id, facilityId));
+        return privateResponse(consumableService.getDetail(id, facilityId));
     }
 
     /**
@@ -72,7 +75,7 @@ public class CbwtfConsumableController {
      */
     @PostMapping
     public ResponseEntity<ConsumableItemDTO> createConsumable(
-            @RequestBody com.smartcbwtf.dto.CreateConsumableRequest request) {
+            @Valid @RequestBody com.smartcbwtf.dto.CreateConsumableRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(consumableService.create(facilityId, request));
     }
@@ -83,9 +86,36 @@ public class CbwtfConsumableController {
     @PutMapping("/{id}")
     public ResponseEntity<ConsumableItemDTO> updateConsumable(
             @PathVariable("id") UUID id,
-            @RequestBody com.smartcbwtf.dto.UpdateConsumableRequest request) {
+            @Valid @RequestBody com.smartcbwtf.dto.UpdateConsumableRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         return ResponseEntity.ok(consumableService.update(id, facilityId, request));
+    }
+
+    /**
+     * Add a new active price and retain previous pricing history.
+     */
+    @PostMapping("/{id}/pricing")
+    public ResponseEntity<ConsumableItemDTO> addPricing(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody AddConsumablePricingRequest request) {
+        UUID facilityId = TenantContext.getTenantId();
+        return ResponseEntity.ok(consumableService.addPricing(id, facilityId, request));
+    }
+
+    /**
+     * Get pricing history for a consumable.
+     */
+    @GetMapping("/{id}/pricing")
+    public ResponseEntity<List<ConsumableItemDTO.PricingHistoryItem>> getPricingHistory(@PathVariable("id") UUID id) {
+        UUID facilityId = TenantContext.getTenantId();
+        return privateResponse(consumableService.getPricingHistory(id, facilityId));
+    }
+
+    private static <T> ResponseEntity<T> privateResponse(T body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
     }
 
     /**
@@ -118,10 +148,8 @@ public class CbwtfConsumableController {
         UUID facilityId = TenantContext.getTenantId();
 
         try {
-            // Store the actual file
+            consumableService.requireFacilityItem(id, facilityId);
             String filename = imageService.storeImage(id, file);
-
-            // Build the URL to serve the image
             String imageUrl = "/api/cbwtf/consumables/" + id + "/image/view";
             log.info("Image upload for consumable {}: {} bytes, stored as {}", id, file.getSize(), filename);
 
@@ -139,8 +167,7 @@ public class CbwtfConsumableController {
     public ResponseEntity<ConsumableItemDTO> deleteImage(@PathVariable("id") UUID id) {
         UUID facilityId = TenantContext.getTenantId();
         try {
-            // Delete physical file
-            // Try common extensions as stored in ImageService logic
+            consumableService.requireFacilityItem(id, facilityId);
             String[] extensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
             for (String ext : extensions) {
                 String filename = id.toString() + ext;
@@ -148,7 +175,6 @@ public class CbwtfConsumableController {
                     imageService.deleteImage(filename);
                 }
             }
-            // Clear DB record
             return ResponseEntity.ok(consumableService.deleteImage(id, facilityId));
         } catch (IOException e) {
             log.error("Failed to delete image for consumable {}", id, e);
@@ -163,6 +189,10 @@ public class CbwtfConsumableController {
     @PreAuthorize("permitAll()")
     public ResponseEntity<Resource> viewImage(@PathVariable("id") UUID id) {
         try {
+            if (!consumableService.hasReferencedImage(id)) {
+                return ResponseEntity.notFound().build();
+            }
+
             // Try common extensions
             String[] extensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
             for (String ext : extensions) {
@@ -182,6 +212,7 @@ public class CbwtfConsumableController {
                     return ResponseEntity.ok()
                             .contentType(MediaType.parseMediaType(contentType))
                             .header(HttpHeaders.CACHE_CONTROL, "max-age=86400")
+                            .header("X-Content-Type-Options", "nosniff")
                             .body(resource);
                 }
             }

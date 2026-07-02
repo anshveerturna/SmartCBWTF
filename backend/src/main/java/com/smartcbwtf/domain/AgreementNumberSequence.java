@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Sequence table for generating unique agreement numbers per facility per year.
+ * Sequence table for generating unique agreement numbers per facility and reset period.
  * Used for atomic agreement number generation.
  */
 @Entity
@@ -20,8 +20,11 @@ public class AgreementNumberSequence {
     @JoinColumn(name = "facility_id", nullable = false)
     private Facility facility;
 
-    @Column(nullable = false)
+    @Column(name = "sequence_year", nullable = false)
     private Integer year;
+
+    @Column(name = "period_month", nullable = false)
+    private Integer periodMonth = 0;
 
     @Column(name = "last_sequence", nullable = false)
     private Integer lastSequence = 0;
@@ -41,6 +44,9 @@ public class AgreementNumberSequence {
 
     public Integer getYear() { return year; }
     public void setYear(Integer year) { this.year = year; }
+
+    public Integer getPeriodMonth() { return periodMonth; }
+    public void setPeriodMonth(Integer periodMonth) { this.periodMonth = periodMonth; }
 
     public Integer getLastSequence() { return lastSequence; }
     public void setLastSequence(Integer lastSequence) { this.lastSequence = lastSequence; }

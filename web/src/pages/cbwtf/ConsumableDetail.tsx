@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -52,6 +52,7 @@ import type {
   UpdateConsumableRequest,
   AddPricingRequest,
 } from '../../api/cbwtf';
+import { apiAssetUrl } from '../../api/client';
 
 const ConsumableDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -64,13 +65,14 @@ const ConsumableDetail: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<UpdateConsumableRequest>({});
   const [pricingDialogOpen, setPricingDialogOpen] = useState(false);
+  const [deleteImageDialogOpen, setDeleteImageDialogOpen] = useState(false);
   const [pricingForm, setPricingForm] = useState<AddPricingRequest>({
     pricePerUnit: 0,
     gstRate: 18,
     effectiveFrom: new Date().toISOString().split('T')[0],
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!id) return;
     try {
       setLoading(true);
@@ -93,11 +95,11 @@ const ConsumableDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchData();
-  }, [id]);
+  }, [fetchData]);
 
   const handleSave = async () => {
     if (!id) return;
@@ -106,7 +108,7 @@ const ConsumableDetail: React.FC = () => {
       const updated = await updateConsumable(id, editForm);
       setConsumable(updated);
       setEditing(false);
-    } catch (err) {
+    } catch {
       setError('Failed to save changes');
     } finally {
       setSaving(false);
@@ -120,7 +122,7 @@ const ConsumableDetail: React.FC = () => {
       const updated = await addConsumablePricing(id, pricingForm);
       setConsumable(updated);
       setPricingDialogOpen(false);
-    } catch (err) {
+    } catch {
       setError('Failed to add pricing');
     } finally {
       setSaving(false);
@@ -133,8 +135,22 @@ const ConsumableDetail: React.FC = () => {
       setSaving(true);
       const updated = await uploadConsumableImage(id, file);
       setConsumable(updated);
-    } catch (err) {
+    } catch {
       setError('Failed to upload image');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteImage = async () => {
+    if (!id) return;
+    try {
+      setSaving(true);
+      const updated = await deleteConsumableImage(id);
+      setConsumable(updated);
+      setDeleteImageDialogOpen(false);
+    } catch {
+      setError('Failed to delete image');
     } finally {
       setSaving(false);
     }
@@ -150,7 +166,7 @@ const ConsumableDetail: React.FC = () => {
         await activateConsumable(id);
       }
       fetchData();
-    } catch (err) {
+    } catch {
       setError('Failed to update status');
     } finally {
       setSaving(false);
@@ -336,7 +352,7 @@ const ConsumableDetail: React.FC = () => {
           <Paper sx={{ p: 3, mb: 3, textAlign: 'center' }}>
             <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Image</Typography>
             <Avatar 
-              src={consumable.imageUrl ? `http://localhost:8080${consumable.imageUrl}?t=${new Date(consumable.updatedAt).getTime()}` : undefined} 
+              src={apiAssetUrl(consumable.imageUrl, new Date(consumable.updatedAt).getTime())}
               variant="rounded" 
               sx={{ width: 200, height: 200, mx: 'auto', mb: 2, bgcolor: 'grey.100' }}
             >
@@ -360,20 +376,7 @@ const ConsumableDetail: React.FC = () => {
                   color="error"
                   startIcon={<DeleteIcon />} 
                   disabled={saving}
-                  onClick={async () => {
-                   if (!id) return;
-                   if (window.confirm('Are you sure you want to delete this image?')) {
-                     try {
-                       setSaving(true);
-                       const updated = await deleteConsumableImage(id);
-                       setConsumable(updated);
-                     } catch (err) {
-                       setError('Failed to delete image');
-                     } finally {
-                       setSaving(false);
-                     }
-                   }
-                  }}
+                  onClick={() => setDeleteImageDialogOpen(true)}
                 >
                   Delete
                 </Button>
@@ -425,6 +428,21 @@ const ConsumableDetail: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setPricingDialogOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleAddPricing} disabled={saving}>Add</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteImageDialogOpen} onClose={() => setDeleteImageDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Image</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Remove this consumable image from the catalog?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteImageDialogOpen(false)} disabled={saving}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleDeleteImage} disabled={saving}>
+            Delete
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

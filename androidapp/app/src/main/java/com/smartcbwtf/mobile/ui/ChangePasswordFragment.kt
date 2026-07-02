@@ -86,6 +86,11 @@ class ChangePasswordFragment : Fragment() {
                 return@setOnClickListener
             }
 
+            if (newPassword.length > 128) {
+                showError("Password must be at most 128 characters")
+                return@setOnClickListener
+            }
+
             if (newPassword != confirmPassword) {
                 showError("Passwords do not match")
                 return@setOnClickListener
@@ -230,4 +235,3 @@ data class ChangePasswordRequest(
     val currentPassword: String,
     val newPassword: String
 )
-

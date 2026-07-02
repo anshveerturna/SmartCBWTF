@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -151,7 +151,7 @@ export default function Settings() {
   });
 
   // Form states
-  const [legalForm, setLegalForm] = useState<LegalProfileDTO>({});
+  const [legalForm, setLegalForm] = useState<LegalProfileDTO | null>(null);
 
   // Audit state
   const [auditPage, setAuditPage] = useState(0);
@@ -169,28 +169,22 @@ export default function Settings() {
     enabled: activeTab === 4,
   });
 
-  useEffect(() => {
-    if (settings) {
-      setLegalForm(settings.legal);
-    }
-  }, [settings]);
-
-  // Mutations
-  const createMutation = <T,>(mutationFn: (data: T) => Promise<void>, sectionName: string) =>
-    useMutation({
-      mutationFn,
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['facility-settings'] });
-        setSnackbar({ open: true, message: `${sectionName} saved successfully`, severity: 'success' });
-      },
-      onError: (err: Error) => {
-        setSnackbar({ open: true, message: err.message || `Failed to save ${sectionName}`, severity: 'error' });
-      },
-    });
-
-  const legalMutation = createMutation(updateLegalProfile, 'Legal profile');
+  const legalMutation = useMutation({
+    mutationFn: updateLegalProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['facility-settings'] });
+      setSnackbar({ open: true, message: 'Legal profile saved successfully', severity: 'success' });
+    },
+    onError: (err: Error) => {
+      setSnackbar({ open: true, message: err.message || 'Failed to save Legal profile', severity: 'error' });
+    },
+  });
 
   const lockedFields = settings?.lockedFields || {} as LockedFieldsDTO;
+  const effectiveLegalForm = legalForm ?? settings?.legal ?? {};
+  const updateLegalField = (field: keyof LegalProfileDTO, value: string) => {
+    setLegalForm({ ...effectiveLegalForm, [field]: value });
+  };
 
   // Render content
   const renderTabContent = () => {
@@ -220,8 +214,8 @@ export default function Settings() {
               <TextField
                 fullWidth
                 size="small"
-                value={legalForm.legalName || ''}
-                onChange={(e) => setLegalForm({ ...legalForm, legalName: e.target.value })}
+                value={effectiveLegalForm.legalName || ''}
+                onChange={(e) => updateLegalField('legalName', e.target.value)}
                 placeholder="Enter registered legal name"
                 sx={{ maxWidth: 320 }}
               />
@@ -231,8 +225,8 @@ export default function Settings() {
               <TextField
                 fullWidth
                 size="small"
-                value={legalForm.tradeName || ''}
-                onChange={(e) => setLegalForm({ ...legalForm, tradeName: e.target.value })}
+                value={effectiveLegalForm.tradeName || ''}
+                onChange={(e) => updateLegalField('tradeName', e.target.value)}
                 placeholder="Enter trade name"
                 sx={{ maxWidth: 320 }}
               />
@@ -242,8 +236,8 @@ export default function Settings() {
               <TextField
                 fullWidth
                 size="small"
-                value={legalForm.gstin || ''}
-                onChange={(e) => setLegalForm({ ...legalForm, gstin: e.target.value })}
+                value={effectiveLegalForm.gstin || ''}
+                onChange={(e) => updateLegalField('gstin', e.target.value)}
                 disabled={lockedFields.gstLocked}
                 placeholder="22AAAAA0000A1Z5"
                 sx={{ maxWidth: 320 }}
@@ -254,8 +248,8 @@ export default function Settings() {
               <TextField
                 fullWidth
                 size="small"
-                value={legalForm.pan || ''}
-                onChange={(e) => setLegalForm({ ...legalForm, pan: e.target.value })}
+                value={effectiveLegalForm.pan || ''}
+                onChange={(e) => updateLegalField('pan', e.target.value)}
                 placeholder="AAAAA0000A"
                 sx={{ maxWidth: 320 }}
               />
@@ -265,8 +259,8 @@ export default function Settings() {
               <TextField
                 fullWidth
                 size="small"
-                value={legalForm.authorizationNumber || ''}
-                onChange={(e) => setLegalForm({ ...legalForm, authorizationNumber: e.target.value })}
+                value={effectiveLegalForm.authorizationNumber || ''}
+                onChange={(e) => updateLegalField('authorizationNumber', e.target.value)}
                 disabled={lockedFields.complianceLocked}
                 placeholder="SPCB Authorization No."
                 sx={{ maxWidth: 320 }}
@@ -277,8 +271,8 @@ export default function Settings() {
               <TextField
                 fullWidth
                 size="small"
-                value={legalForm.spcbName || ''}
-                onChange={(e) => setLegalForm({ ...legalForm, spcbName: e.target.value })}
+                value={effectiveLegalForm.spcbName || ''}
+                onChange={(e) => updateLegalField('spcbName', e.target.value)}
                 placeholder="Enter SPCB name"
                 sx={{ maxWidth: 320 }}
               />
@@ -288,8 +282,8 @@ export default function Settings() {
               <TextField
                 fullWidth
                 size="small"
-                value={legalForm.spcbState || ''}
-                onChange={(e) => setLegalForm({ ...legalForm, spcbState: e.target.value })}
+                value={effectiveLegalForm.spcbState || ''}
+                onChange={(e) => updateLegalField('spcbState', e.target.value)}
                 placeholder="Enter state"
                 sx={{ maxWidth: 320 }}
               />
@@ -301,8 +295,8 @@ export default function Settings() {
                 size="small"
                 multiline
                 rows={2}
-                value={legalForm.registeredAddress || ''}
-                onChange={(e) => setLegalForm({ ...legalForm, registeredAddress: e.target.value })}
+                value={effectiveLegalForm.registeredAddress || ''}
+                onChange={(e) => updateLegalField('registeredAddress', e.target.value)}
                 placeholder="Enter full address"
                 sx={{ maxWidth: 320 }}
               />
@@ -313,8 +307,8 @@ export default function Settings() {
                 fullWidth
                 size="small"
                 type="email"
-                value={legalForm.officialEmail || ''}
-                onChange={(e) => setLegalForm({ ...legalForm, officialEmail: e.target.value })}
+                value={effectiveLegalForm.officialEmail || ''}
+                onChange={(e) => updateLegalField('officialEmail', e.target.value)}
                 placeholder="info@example.com"
                 sx={{ maxWidth: 320 }}
               />
@@ -324,8 +318,8 @@ export default function Settings() {
               <TextField
                 fullWidth
                 size="small"
-                value={legalForm.officialPhone || ''}
-                onChange={(e) => setLegalForm({ ...legalForm, officialPhone: e.target.value })}
+                value={effectiveLegalForm.officialPhone || ''}
+                onChange={(e) => updateLegalField('officialPhone', e.target.value)}
                 placeholder="+91 XXXXX XXXXX"
                 sx={{ maxWidth: 320 }}
               />
@@ -336,7 +330,7 @@ export default function Settings() {
                 variant="contained"
                 size="large"
                 startIcon={legalMutation.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-                onClick={() => legalMutation.mutate(legalForm)}
+                onClick={() => legalMutation.mutate(effectiveLegalForm)}
                 disabled={legalMutation.isPending}
                 sx={{ px: 4, fontWeight: 600 }}
               >

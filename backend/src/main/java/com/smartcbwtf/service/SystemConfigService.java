@@ -6,6 +6,7 @@ import com.smartcbwtf.domain.SystemConfigAudit;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.repository.SystemConfigAuditRepository;
 import com.smartcbwtf.repository.SystemConfigRepository;
+import com.smartcbwtf.util.PaginationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,16 @@ import java.util.stream.Collectors;
 public class SystemConfigService {
 
     private static final Logger log = LoggerFactory.getLogger(SystemConfigService.class);
+    public static final String MASKED_VALUE = "********";
+    private static final List<String> SENSITIVE_CONFIG_KEY_MARKERS = List.of(
+            "password",
+            "secret",
+            "token",
+            "credential",
+            "private_key",
+            "api_key",
+            "apikey",
+            "access_key");
 
     private final SystemConfigRepository configRepository;
     private final SystemConfigAuditRepository auditRepository;
@@ -134,13 +145,18 @@ public class SystemConfigService {
 
         // Create audit log
         AppUser changedBy = updatedById != null ? userRepository.findById(updatedById).orElse(null) : null;
-        SystemConfigAudit audit = SystemConfigAudit.create(key, oldValue, newValue, changedBy, reason, ipAddress);
+        String auditOldValue = config.isSensitive() ? MASKED_VALUE : oldValue;
+        String auditNewValue = config.isSensitive() ? MASKED_VALUE : newValue;
+        SystemConfigAudit audit = SystemConfigAudit.create(key, auditOldValue, auditNewValue, changedBy, reason,
+                ipAddress);
         auditRepository.save(audit);
 
         // Update cache
         configCache.put(key, config);
 
-        log.info("Config updated: {} = {} (was: {})", key, newValue, oldValue);
+        String logOldValue = config.isSensitive() ? MASKED_VALUE : oldValue;
+        String logNewValue = config.isSensitive() ? MASKED_VALUE : newValue;
+        log.info("Config updated: {} = {} (was: {})", key, logNewValue, logOldValue);
         return config;
     }
 
@@ -258,7 +274,17 @@ public class SystemConfigService {
      * Get audit history for a configuration key.
      */
     public List<SystemConfigAudit> getAuditHistory(String key) {
-        return auditRepository.findByConfigKeyOrderByChangedAtDesc(key);
+        return getAuditHistory(key, 0, 50);
+    }
+
+    /**
+     * Get bounded audit history for a configuration key.
+     */
+    public List<SystemConfigAudit> getAuditHistory(String key, int page, int size) {
+        return auditRepository.findByConfigKeyOrderByChangedAtDesc(
+                key,
+                PaginationUtils.pageRequest(page, size, 50))
+                .getContent();
     }
 
     /**
@@ -266,5 +292,17 @@ public class SystemConfigService {
      */
     public List<SystemConfigAudit> getRecentChanges() {
         return auditRepository.findTop20ByOrderByChangedAtDesc();
+    }
+
+    public boolean isSensitiveConfigKey(String key) {
+        if (key == null || key.isBlank()) {
+            return false;
+        }
+        return getByKey(key).map(SystemConfig::isSensitive).orElseGet(() -> looksSensitiveConfigKey(key));
+    }
+
+    private boolean looksSensitiveConfigKey(String key) {
+        String normalized = key.toLowerCase(Locale.ROOT).replace('-', '_');
+        return SENSITIVE_CONFIG_KEY_MARKERS.stream().anyMatch(normalized::contains);
     }
 }

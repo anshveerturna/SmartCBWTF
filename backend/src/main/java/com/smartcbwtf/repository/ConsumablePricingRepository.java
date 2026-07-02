@@ -20,6 +20,9 @@ public interface ConsumablePricingRepository extends JpaRepository<ConsumablePri
     @Query("SELECT p FROM ConsumablePricing p WHERE p.consumableItem.id = :consumableItemId AND p.isActive = true")
     Optional<ConsumablePricing> findActiveByConsumableItemId(@Param("consumableItemId") UUID consumableItemId);
 
+    @Query("SELECT p FROM ConsumablePricing p JOIN FETCH p.consumableItem WHERE p.consumableItem.id IN :consumableItemIds AND p.isActive = true")
+    List<ConsumablePricing> findActiveByConsumableItemIdIn(@Param("consumableItemIds") List<UUID> consumableItemIds);
+
     @Modifying
     @Query("UPDATE ConsumablePricing p SET p.isActive = false WHERE p.consumableItem.id = :consumableItemId AND p.isActive = true")
     int deactivateAllForConsumable(@Param("consumableItemId") UUID consumableItemId);

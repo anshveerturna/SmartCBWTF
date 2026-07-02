@@ -126,7 +126,7 @@ SmartCBWTF is a comprehensive digital system for managing biomedical waste colle
 | Component | Technology |
 |-----------|------------|
 | Mobile App | Kotlin, MVVM, Hilt DI, Room, Retrofit, WorkManager, ZXing/ML Kit |
-| Backend | Java 17, Spring Boot 3.2, Spring Security, Spring Data JPA |
+| Backend | Java 21, Spring Boot 3.2, Spring Security, Spring Data JPA |
 | Database | PostgreSQL 14+ with Flyway migrations |
 | PDF Generation | OpenPDF (iText fork) |
 | Authentication | JWT (HMAC-SHA256), bcrypt password hashing |
@@ -401,7 +401,7 @@ GPS-enforced driver attendance at HCF locations:
 
 | Tool | Version |
 |------|---------|
-| Java | 17+ |
+| Java | 21 LTS |
 | PostgreSQL | 14+ |
 | Android Studio | Arctic Fox+ |
 | Maven | 3.8+ |
@@ -432,11 +432,50 @@ mvn -DskipTests spring-boot:run
 cd backend
 docker build -t smartcbwtf-backend .
 docker run -p 8080:8080 \
-  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/smart_cbwtf \
-  -e SPRING_DATASOURCE_USERNAME=smart_cbwtf \
-  -e SPRING_DATASOURCE_PASSWORD=change-me \
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/smart_cbwtf \
+  -e DB_USERNAME=smart_cbwtf \
+  -e DB_PASSWORD=change-me \
+  -e JWT_SECRET="$(openssl rand -base64 48)" \
+  -e APP_EMAIL_ENABLED=false \
   smartcbwtf-backend
 ```
+
+For production email delivery, set `BREVO_API_KEY` and leave `APP_EMAIL_ENABLED` enabled.
+
+### Staging / Production Backend Deploy
+
+The backend deploy scripts fail closed unless required runtime secrets are present,
+Java 21 LTS is selected, and a PostgreSQL backup is created before app startup
+and Flyway migrations.
+
+Required remote env vars, unless the same values already exist in
+`$APP_HOME/application-prod.yml` or `$APP_HOME/application.yml`:
+
+```bash
+export DB_URL="jdbc:postgresql://host:5432/smart_cbwtf"
+export DB_USERNAME="smart_cbwtf"
+export DB_PASSWORD="..."
+export JWT_SECRET="$(openssl rand -base64 48)"
+export BREVO_API_KEY="..." # or export APP_EMAIL_ENABLED=false
+export JAVA_BIN="/path/to/java-21/bin/java"
+```
+
+Deploy staging first:
+
+```bash
+cd backend && mvn -DskipTests package
+cd ..
+DEPLOY_ENV=staging SMARTCBWTF_DEPLOY_HOST=ec2-user@staging-host ./deploy-backend.sh
+```
+
+Deploy production only after staging smoke passes:
+
+```bash
+DEPLOY_ENV=production SMARTCBWTF_DEPLOY_HOST=ec2-user@production-host ./deploy-backend.sh
+```
+
+Backups are written to `$APP_HOME/db-backups` by default. Override with
+`DB_BACKUP_DIR=/secure/backup/path` when needed.
 
 ### Android App
 

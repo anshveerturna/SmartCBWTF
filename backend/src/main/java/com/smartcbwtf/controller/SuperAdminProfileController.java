@@ -5,9 +5,17 @@ import com.smartcbwtf.domain.SubscriptionAudit;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.repository.SubscriptionAuditRepository;
 import com.smartcbwtf.service.PasswordPolicyValidator;
+import com.smartcbwtf.service.UploadFileValidator;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -42,6 +50,7 @@ import java.util.UUID;
 public class SuperAdminProfileController {
 
     private static final Logger log = LoggerFactory.getLogger(SuperAdminProfileController.class);
+    private static final String OPTIONAL_PHONE_PATTERN = "^\\s*$|^[0-9+()\\-\\s]{7,20}$";
 
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -71,7 +80,7 @@ public class SuperAdminProfileController {
         if (user == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(SuperAdminProfileDTO.from(user));
+        return privateProfileResponse(SuperAdminProfileDTO.from(user));
     }
 
     /**
@@ -79,7 +88,11 @@ public class SuperAdminProfileController {
      */
     @PutMapping("/me")
     @Transactional
-    public ResponseEntity<?> updateMyProfile(@RequestBody ProfileUpdateRequest request) {
+    public ResponseEntity<?> updateMyProfile(@Valid @RequestBody ProfileUpdateRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Profile update request is required");
+        }
+
         AppUser user = getCurrentUser();
         if (user == null) {
             return ResponseEntity.notFound().build();
@@ -90,13 +103,13 @@ public class SuperAdminProfileController {
 
         // Update allowed fields
         if (request.fullName() != null) {
-            user.setFullName(request.fullName());
+            user.setFullName(cleanLineRequired(request.fullName(), "Full name"));
         }
         if (request.email() != null) {
-            user.setEmail(request.email());
+            user.setEmail(optionalCleanLine(request.email()));
         }
         if (request.phone() != null) {
-            user.setPhone(request.phone());
+            user.setPhone(optionalCleanLine(request.phone()));
         }
 
         user.setUpdatedAt(Instant.now());
@@ -114,7 +127,7 @@ public class SuperAdminProfileController {
                 "Self profile update"));
 
         log.info("Profile updated: user={}", user.getUsername());
-        return ResponseEntity.ok(SuperAdminProfileDTO.from(user));
+        return privateProfileResponse(SuperAdminProfileDTO.from(user));
     }
 
     /**
@@ -128,24 +141,12 @@ public class SuperAdminProfileController {
             return ResponseEntity.notFound().build();
         }
 
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "No file provided"));
+        String ext;
+        try {
+            ext = UploadFileValidator.publicImageExtension(file);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-
-        // Validate file type
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only image files allowed"));
-        }
-
-        // Determine extension
-        String ext = switch (contentType) {
-            case "image/jpeg" -> "jpg";
-            case "image/png" -> "png";
-            case "image/gif" -> "gif";
-            case "image/webp" -> "webp";
-            default -> "jpg";
-        };
 
         try {
             // Create upload directory if not exists
@@ -162,6 +163,7 @@ public class SuperAdminProfileController {
             // Update user profile
             String oldPhoto = user.getProfilePhotoUrl();
             String newPhoto = "/uploads/profiles/" + filename;
+            deleteOldProfilePhoto(oldPhoto, newPhoto);
             user.setProfilePhotoUrl(newPhoto);
             user.setUpdatedAt(Instant.now());
             userRepository.save(user);
@@ -203,9 +205,8 @@ public class SuperAdminProfileController {
 
         // Delete the file
         try {
-            Path filePath = Paths.get(uploadDir, oldPhoto.replace("/uploads/profiles/", ""));
-            Files.deleteIfExists(filePath);
-        } catch (IOException e) {
+            UploadFileValidator.deleteProfilePhotoIfPresent(uploadDir, oldPhoto);
+        } catch (IOException | IllegalArgumentException e) {
             log.warn("Failed to delete photo file: {}", e.getMessage());
         }
 
@@ -226,12 +227,50 @@ public class SuperAdminProfileController {
         return ResponseEntity.ok(Map.of("message", "Photo removed successfully"));
     }
 
+    private void deleteOldProfilePhoto(String oldPhoto, String newPhoto) {
+        if (oldPhoto == null || oldPhoto.equals(newPhoto)) {
+            return;
+        }
+        try {
+            UploadFileValidator.deleteProfilePhotoIfPresent(uploadDir, oldPhoto);
+        } catch (IOException | IllegalArgumentException e) {
+            log.warn("Failed to delete old photo file: {}", e.getMessage());
+        }
+    }
+
+    private static String cleanLineRequired(String value, String fieldName) {
+        String cleaned = cleanLine(value);
+        if (cleaned.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return cleaned;
+    }
+
+    private static String optionalCleanLine(String value) {
+        String cleaned = cleanLine(value);
+        return cleaned.isBlank() ? null : cleaned;
+    }
+
+    private static String cleanLine(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().replaceAll("[\\r\\n\\t]+", " ");
+    }
+
+    private static ResponseEntity<SuperAdminProfileDTO> privateProfileResponse(SuperAdminProfileDTO body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
+    }
+
     /**
      * Change password.
      */
     @PostMapping("/me/password")
     @Transactional
-    public ResponseEntity<?> changePassword(@RequestBody PasswordChangeRequest request) {
+    public ResponseEntity<?> changePassword(@Valid @RequestBody PasswordChangeRequest request) {
         AppUser user = getCurrentUser();
         if (user == null) {
             return ResponseEntity.notFound().build();
@@ -320,9 +359,19 @@ public class SuperAdminProfileController {
         }
     }
 
-    public record ProfileUpdateRequest(String fullName, String email, String phone) {
+    public record ProfileUpdateRequest(
+            @Size(max = 120, message = "Full name must be 120 characters or less")
+            String fullName,
+            @Email(message = "Invalid email format")
+            @Size(max = 180, message = "Email must be 180 characters or less")
+            String email,
+            @Size(max = 20, message = "Phone must be 20 characters or less")
+            @Pattern(regexp = OPTIONAL_PHONE_PATTERN, message = "Invalid phone number")
+            String phone) {
     }
 
-    public record PasswordChangeRequest(String currentPassword, String newPassword) {
+    public record PasswordChangeRequest(
+            @NotBlank @Size(max = 256) String currentPassword,
+            @NotBlank @Size(max = 256) String newPassword) {
     }
 }

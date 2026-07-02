@@ -267,8 +267,8 @@ public class RouteExecutionService {
     /**
      * Gets unresolved alerts for a facility.
      */
-    public List<RouteAlert> getUnresolvedAlerts(UUID facilityId) {
-        return alertRepository.findUnresolvedByFacilityId(facilityId);
+    public List<RouteAlert> getUnresolvedAlerts(UUID facilityId, Pageable pageable) {
+        return alertRepository.findUnresolvedByFacilityIdPaged(facilityId, pageable).getContent();
     }
 
     /**

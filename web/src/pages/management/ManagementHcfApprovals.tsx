@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
-  CardContent,
   Typography,
   Table,
   TableBody,
@@ -25,6 +25,7 @@ import {
 import {
   CheckCircle as ApproveIcon,
   Cancel as RejectIcon,
+  Visibility as ViewIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import {
@@ -33,9 +34,17 @@ import {
   rejectHcfRegistration,
 } from '../../api/topManagement';
 
+const errorMessage = (err: unknown, fallback: string): string =>
+  err instanceof Error && err.message ? err.message : fallback;
+
 export default function ManagementHcfApprovals() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [rejectDialog, setRejectDialog] = useState<{ open: boolean; id: string | null }>({
+    open: false,
+    id: null,
+  });
+  const [approveDialog, setApproveDialog] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
   });
@@ -56,11 +65,12 @@ export default function ManagementHcfApprovals() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['top-mgmt-hcf-approvals'] });
       setSnackbar({ open: true, message: 'HCF approved successfully', severity: 'success' });
+      setApproveDialog({ open: false, id: null });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       setSnackbar({
         open: true,
-        message: err.message || 'Failed to approve HCF',
+        message: errorMessage(err, 'Failed to approve HCF'),
         severity: 'error',
       });
     },
@@ -75,18 +85,22 @@ export default function ManagementHcfApprovals() {
       setRejectDialog({ open: false, id: null });
       setRejectReason('');
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       setSnackbar({
         open: true,
-        message: err.message || 'Failed to reject HCF',
+        message: errorMessage(err, 'Failed to reject HCF'),
         severity: 'error',
       });
     },
   });
 
   const handleApprove = (id: string) => {
-    if (window.confirm('Are you sure you want to approve this HCF registration? This will generate credentials and send welcome emails.')) {
-      approveMutation.mutate(id);
+    setApproveDialog({ open: true, id });
+  };
+
+  const handleApproveConfirm = () => {
+    if (approveDialog.id) {
+      approveMutation.mutate(approveDialog.id);
     }
   };
 
@@ -116,6 +130,8 @@ export default function ManagementHcfApprovals() {
     );
   }
 
+  const approvalTarget = hcfs?.find((hcf) => hcf.id === approveDialog.id);
+
   return (
     <Box>
       <Typography variant="h4" fontWeight="bold" mb={3}>
@@ -129,6 +145,7 @@ export default function ManagementHcfApprovals() {
               <TableRow>
                 <TableCell>Requested Date</TableCell>
                 <TableCell>HCF Name</TableCell>
+                <TableCell>Agreement No.</TableCell>
                 <TableCell>Contact</TableCell>
                 <TableCell>Beds</TableCell>
                 <TableCell>Monthly Charges (₹)</TableCell>
@@ -138,7 +155,7 @@ export default function ManagementHcfApprovals() {
             <TableBody>
               {hcfs?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={7} align="center">
                     <Typography color="text.secondary" py={3}>
                       No pending HCF registrations.
                     </Typography>
@@ -156,6 +173,13 @@ export default function ManagementHcfApprovals() {
                         <Typography variant="caption" color="text.secondary">
                           {hcf.code}
                         </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {hcf.agreementNumber ? (
+                        <Chip label={hcf.agreementNumber} size="small" color="primary" variant="outlined" />
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">—</Typography>
                       )}
                     </TableCell>
                     <TableCell>
@@ -180,6 +204,15 @@ export default function ManagementHcfApprovals() {
                     </TableCell>
                     <TableCell align="right">
                       <Box display="flex" gap={1} justifyContent="flex-end">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="info"
+                          startIcon={<ViewIcon />}
+                          onClick={() => navigate(`/management/hcfs/${hcf.id}`)}
+                        >
+                          View
+                        </Button>
                         <Button
                           size="small"
                           variant="contained"
@@ -209,6 +242,37 @@ export default function ManagementHcfApprovals() {
           </Table>
         </TableContainer>
       </Card>
+
+      {/* Approve Dialog */}
+      <Dialog
+        open={approveDialog.open}
+        onClose={() => !approveMutation.isPending && setApproveDialog({ open: false, id: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Approve HCF Registration</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            Approve {approvalTarget?.name || 'this HCF'} and generate portal credentials?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setApproveDialog({ open: false, id: null })}
+            disabled={approveMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleApproveConfirm}
+            color="success"
+            variant="contained"
+            disabled={approveMutation.isPending}
+          >
+            {approveMutation.isPending ? 'Approving...' : 'Approve'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Reject Dialog */}
       <Dialog

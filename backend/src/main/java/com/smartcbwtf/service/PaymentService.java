@@ -37,6 +37,7 @@ public class PaymentService {
     private final InvoiceRepository invoiceRepository;
     private final HcfRepository hcfRepository;
     private final FacilityRepository facilityRepository;
+    private final AgreementRepository agreementRepository;
     private final BankAccountRepository bankAccountRepository;
     private final AlertService alertService;
     private final ReceiptService receiptService;
@@ -50,6 +51,7 @@ public class PaymentService {
             InvoiceRepository invoiceRepository,
             HcfRepository hcfRepository,
             FacilityRepository facilityRepository,
+            AgreementRepository agreementRepository,
             BankAccountRepository bankAccountRepository,
             AlertService alertService,
             ReceiptService receiptService,
@@ -61,6 +63,7 @@ public class PaymentService {
         this.invoiceRepository = invoiceRepository;
         this.hcfRepository = hcfRepository;
         this.facilityRepository = facilityRepository;
+        this.agreementRepository = agreementRepository;
         this.bankAccountRepository = bankAccountRepository;
         this.alertService = alertService;
         this.receiptService = receiptService;
@@ -85,11 +88,19 @@ public class PaymentService {
             return PaymentResult.error("Facility not found");
         }
 
+        Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcf.getId(), facility.getId())
+                .orElse(null);
+        if (agreement == null) {
+            return PaymentResult.error("HCF is not active under this facility");
+        }
+
         // Validate bank account if provided
         BankAccount bankAccount = null;
         if (request.bankAccountId() != null) {
             bankAccount = bankAccountRepository.findById(request.bankAccountId()).orElse(null);
-            if (bankAccount == null || bankAccount.getStatus() != BankAccount.Status.ACTIVE) {
+            if (bankAccount == null || bankAccount.getStatus() != BankAccount.Status.ACTIVE
+                    || bankAccount.getFacility() == null
+                    || !bankAccount.getFacility().getId().equals(facility.getId())) {
                 return PaymentResult.error("Bank account not found or disabled");
             }
         }
@@ -112,7 +123,7 @@ public class PaymentService {
         log.info("Recorded payment {} for HCF {} amount {}", payment.getId(), hcf.getId(), request.amount());
 
         // Allocate to invoices (FIFO)
-        AllocationResult allocation = allocateToInvoices(payment, hcf.getId());
+        AllocationResult allocation = allocateToInvoices(payment, facility.getId(), hcf.getId());
 
         // Generate receipt SYNCHRONOUSLY (fail-closed)
         // If this fails, the entire transaction is rolled back
@@ -165,23 +176,27 @@ public class PaymentService {
      * 4. Negative advance ledger entry (if applicable)
      */
     @Transactional
-    public ReversalResult reversePayment(UUID paymentId, String reason, UUID reversedBy) {
+    public ReversalResult reversePayment(UUID facilityId, UUID paymentId, String reason, UUID reversedBy) {
         // Find original payment
-        Payment original = paymentRepository.findById(paymentId)
+        Payment original = paymentRepository.findByIdAndFacilityId(paymentId, facilityId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+
+        if (original.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Reversal counter-entries cannot be reversed");
+        }
 
         // Check not already reversed
         if (reversalRepository.existsByOriginalPaymentId(paymentId)) {
             throw new IllegalStateException("Payment already reversed: " + paymentId);
         }
 
-        // 1. Create reversal payment (same amount, linked to original)
+        // 1. Create reversal payment as a counter-entry, linked to original
         Payment reversalPayment = new Payment();
         reversalPayment.setFacility(original.getFacility());
         reversalPayment.setHcf(original.getHcf());
         reversalPayment.setBankAccount(original.getBankAccount());
         reversalPayment.setPaymentDate(LocalDate.now());
-        reversalPayment.setAmount(original.getAmount());
+        reversalPayment.setAmount(original.getAmount().negate());
         reversalPayment.setMode(original.getMode());
         reversalPayment.setReferenceNumber("REV-" + original.getId().toString().substring(0, 8));
         reversalPayment.setNotes("Reversal of payment " + original.getId() + ": " + reason);
@@ -238,13 +253,13 @@ public class PaymentService {
     /**
      * Allocate payment to invoices using FIFO (oldest first).
      */
-    private AllocationResult allocateToInvoices(Payment payment, UUID hcfId) {
+    private AllocationResult allocateToInvoices(Payment payment, UUID facilityId, UUID hcfId) {
         BigDecimal remainingAmount = payment.getAmount();
         BigDecimal totalAllocated = BigDecimal.ZERO;
         List<AllocationEntry> allocations = new ArrayList<>();
 
         // Get unpaid invoices for this HCF, sorted by date (FIFO)
-        List<Invoice> unpaidInvoices = invoiceRepository.findUnpaidByHcfIdOrderByDateAsc(hcfId);
+        List<Invoice> unpaidInvoices = invoiceRepository.findUnpaidByFacilityAndHcfOrderByDateAsc(facilityId, hcfId);
 
         for (Invoice invoice : unpaidInvoices) {
             if (remainingAmount.compareTo(BigDecimal.ZERO) <= 0)
@@ -300,8 +315,8 @@ public class PaymentService {
     /**
      * Get payments for HCF.
      */
-    public Page<Payment> getPaymentsForHcf(UUID hcfId, Pageable pageable) {
-        return paymentRepository.findByHcfId(hcfId, pageable);
+    public Page<Payment> getPaymentsForHcf(UUID facilityId, UUID hcfId, Pageable pageable) {
+        return paymentRepository.findByFacilityIdAndHcfId(facilityId, hcfId, pageable);
     }
 
     /**
@@ -314,15 +329,24 @@ public class PaymentService {
     /**
      * Get advance balance for HCF.
      */
-    public BigDecimal getAdvanceBalance(UUID hcfId) {
-        return advanceLedgerRepository.getAdvanceBalance(hcfId);
+    public BigDecimal getAdvanceBalance(UUID facilityId, UUID hcfId) {
+        return advanceLedgerRepository.getAdvanceBalanceForFacility(facilityId, hcfId);
+    }
+
+    /**
+     * Get total advance balance for facility.
+     */
+    public BigDecimal getTotalAdvanceBalance(UUID facilityId) {
+        return zeroIfNull(advanceLedgerRepository.getTotalAdvanceBalanceForFacility(facilityId));
     }
 
     /**
      * Get total outstanding for facility.
      */
     public BigDecimal getTotalOutstanding(UUID facilityId) {
-        return BigDecimal.ZERO; // TODO: implement query
+        BigDecimal invoiceTotal = zeroIfNull(invoiceRepository.sumTotalAmountByFacilityId(facilityId));
+        BigDecimal allocatedTotal = zeroIfNull(invoicePaymentRepository.getTotalAllocatedForFacility(facilityId));
+        return invoiceTotal.subtract(allocatedTotal).max(BigDecimal.ZERO);
     }
 
     /**
@@ -333,6 +357,10 @@ public class PaymentService {
         LocalDate today = LocalDate.now();
         BigDecimal total = paymentRepository.getTotalCollected(facilityId, startOfMonth, today);
         return total != null ? total : BigDecimal.ZERO;
+    }
+
+    private BigDecimal zeroIfNull(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 
     private String calculateChecksum(Payment p) {

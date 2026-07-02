@@ -5,8 +5,15 @@ web/node_modules/
 website/node_modules/
 website/.next/
 
+# Runtime-generated files and uploads
+backend/files/
+backend/uploads/
+Agreement_*.pdf
+qr labels.pdf
+
 # Android build artifacts
 androidapp/.gradle/
+androidapp/app/.gradle/
 androidapp/app/build/
 androidapp/build/
 androidapp/local.properties
@@ -28,6 +35,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local planning drafts
+SMARTCBWTF_NATIVE_LAYER.md
 
 # Node
 node_modules/

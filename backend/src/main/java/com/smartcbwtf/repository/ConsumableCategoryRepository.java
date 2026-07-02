@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -16,4 +17,6 @@ public interface ConsumableCategoryRepository extends JpaRepository<ConsumableCa
 
     @Query("SELECT c FROM ConsumableCategory c WHERE c.facility.id = :facilityId AND c.isActive = true ORDER BY c.displayOrder ASC")
     List<ConsumableCategory> findActiveCategoriesByFacility(@Param("facilityId") UUID facilityId);
+
+    Optional<ConsumableCategory> findByIdAndFacilityId(UUID id, UUID facilityId);
 }

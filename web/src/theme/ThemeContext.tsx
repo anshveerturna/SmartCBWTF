@@ -1,17 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import { lightTheme } from './lightTheme';
 import { darkTheme } from './darkTheme';
-
-type ThemeMode = 'light' | 'dark';
-
-interface ThemeContextValue {
-  mode: ThemeMode;
-  toggleTheme: () => void;
-  setMode: (mode: ThemeMode) => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+import { ThemeContext, type ThemeMode } from './themeContextCore';
 
 const STORAGE_KEY = 'smartcbwtf_theme_mode';
 
@@ -56,12 +47,4 @@ export const ThemeContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
       </ThemeProvider>
     </ThemeContext.Provider>
   );
-};
-
-export const useThemeMode = (): ThemeContextValue => {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useThemeMode must be used within a ThemeContextProvider');
-  }
-  return context;
 };

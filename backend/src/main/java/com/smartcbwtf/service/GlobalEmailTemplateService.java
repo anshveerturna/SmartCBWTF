@@ -28,6 +28,14 @@ public class GlobalEmailTemplateService {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalEmailTemplateService.class);
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{(\\w+)\\}\\}");
+    private static final Pattern PLACEHOLDER_NAME_PATTERN = Pattern.compile("^[A-Za-z][A-Za-z0-9_]{0,63}$");
+    private static final int MAX_TEMPLATE_CODE_LENGTH = 50;
+    private static final int MAX_SUBJECT_LENGTH = 200;
+    private static final int MAX_BODY_HTML_LENGTH = 100_000;
+    private static final int MAX_PLACEHOLDERS = 50;
+    private static final int MAX_PLACEHOLDER_LENGTH = 64;
+    private static final int MAX_RENDER_DATA_ENTRIES = 100;
+    private static final int MAX_RENDER_VALUE_LENGTH = 2_000;
 
     private static final Safelist EMAIL_SAFELIST = Safelist.relaxed()
             .addTags("table", "tr", "td", "th", "thead", "tbody")
@@ -84,11 +92,15 @@ public class GlobalEmailTemplateService {
             UUID createdBy) {
 
         TemplateCode code = validateCode(templateCodeStr);
+        String safeSubject = normalizeSubject(subject);
+        String safeBodyHtml = requireText(bodyHtml, "Body HTML", MAX_BODY_HTML_LENGTH);
+        String[] required = normalizePlaceholders(requiredPlaceholders);
+        String[] optional = normalizePlaceholders(optionalPlaceholders);
 
         // Validate placeholders
-        validatePlaceholders(code, subject, bodyHtml, requiredPlaceholders, optionalPlaceholders);
+        validatePlaceholders(code, safeSubject, safeBodyHtml, required, optional);
 
-        String sanitizedBody = sanitizeHtml(bodyHtml);
+        String sanitizedBody = sanitizeHtml(safeBodyHtml);
 
         // Deactivate current active
         templateRepository.findByTemplateCodeAndIsActiveTrue(code.name())
@@ -102,10 +114,10 @@ public class GlobalEmailTemplateService {
         GlobalEmailTemplate newTemplate = new GlobalEmailTemplate();
         newTemplate.setTemplateCode(code.name());
         newTemplate.setCategory(code.getCategory());
-        newTemplate.setSubject(subject);
+        newTemplate.setSubject(safeSubject);
         newTemplate.setBodyHtml(sanitizedBody);
-        newTemplate.setRequiredPlaceholders(requiredPlaceholders);
-        newTemplate.setOptionalPlaceholders(optionalPlaceholders);
+        newTemplate.setRequiredPlaceholders(required);
+        newTemplate.setOptionalPlaceholders(optional);
         newTemplate.setVersion(nextVersion);
         newTemplate.setIsActive(true);
         newTemplate.setCreatedBy(createdBy);
@@ -145,10 +157,15 @@ public class GlobalEmailTemplateService {
 
     public void validatePlaceholders(TemplateCode code, String subject, String bodyHtml,
             String[] requiredPlaceholders, String[] optionalPlaceholders) {
-        Set<String> found = extractPlaceholders(subject + " " + bodyHtml);
-        Set<String> required = new HashSet<>(Arrays.asList(requiredPlaceholders));
-        Set<String> allowed = new HashSet<>(Arrays.asList(requiredPlaceholders));
-        allowed.addAll(Arrays.asList(optionalPlaceholders));
+        String safeSubject = subject == null ? "" : subject;
+        String safeBodyHtml = bodyHtml == null ? "" : bodyHtml;
+        String[] requiredPlaceholdersSafe = normalizePlaceholders(requiredPlaceholders);
+        String[] optionalPlaceholdersSafe = normalizePlaceholders(optionalPlaceholders);
+
+        Set<String> found = extractPlaceholders(safeSubject + " " + safeBodyHtml);
+        Set<String> required = new HashSet<>(Arrays.asList(requiredPlaceholdersSafe));
+        Set<String> allowed = new HashSet<>(Arrays.asList(requiredPlaceholdersSafe));
+        allowed.addAll(Arrays.asList(optionalPlaceholdersSafe));
 
         Set<String> missing = new HashSet<>(required);
         missing.removeAll(found);
@@ -164,10 +181,11 @@ public class GlobalEmailTemplateService {
     }
 
     private TemplateCode validateCode(String codeStr) {
+        String cleaned = cleanLineRequired(codeStr, "Template code", MAX_TEMPLATE_CODE_LENGTH).toUpperCase(Locale.ROOT);
         try {
-            return TemplateCode.valueOf(codeStr);
+            return TemplateCode.valueOf(cleaned);
         } catch (IllegalArgumentException e) {
-            throw new TemplateValidationException("Invalid template code: " + codeStr);
+            throw new TemplateValidationException("Invalid template code: " + cleaned);
         }
     }
 
@@ -181,14 +199,15 @@ public class GlobalEmailTemplateService {
     }
 
     public String sanitizeHtml(String html) {
-        return Jsoup.clean(html, EMAIL_SAFELIST);
+        return html == null ? "" : Jsoup.clean(html, EMAIL_SAFELIST);
     }
 
     public RenderedEmail renderTemplate(String templateCodeStr, Map<String, String> data) {
         GlobalEmailTemplate template = getActiveTemplate(templateCodeStr);
+        Map<String, String> safeData = normalizeRenderData(data);
 
-        String renderedSubject = replacePlaceholders(template.getSubject(), data);
-        String renderedBody = replacePlaceholders(template.getBodyHtml(), data);
+        String renderedSubject = replacePlaceholders(template.getSubject(), safeData, false);
+        String renderedBody = replacePlaceholders(template.getBodyHtml(), safeData, true);
         String checksum = computeChecksum(renderedSubject + renderedBody);
 
         return new RenderedEmail(
@@ -199,14 +218,33 @@ public class GlobalEmailTemplateService {
                 renderedBody);
     }
 
-    private String replacePlaceholders(String text, Map<String, String> data) {
-        String result = text;
+    private String replacePlaceholders(String text, Map<String, String> data, boolean htmlContext) {
+        String result = text == null ? "" : text;
+        if (data == null) {
+            return result;
+        }
         for (Map.Entry<String, String> entry : data.entrySet()) {
             if (entry.getValue() != null) {
-                result = result.replace("{{" + entry.getKey() + "}}", entry.getValue());
+                String value = htmlContext
+                        ? escapeHtml(entry.getValue())
+                        : cleanSubjectValue(entry.getValue());
+                result = result.replace("{{" + entry.getKey() + "}}", value);
             }
         }
         return result;
+    }
+
+    private String cleanSubjectValue(String value) {
+        return value.replaceAll("[\\r\\n\\t]+", " ");
+    }
+
+    private String escapeHtml(String value) {
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     public String computeChecksum(String content) {
@@ -226,6 +264,78 @@ public class GlobalEmailTemplateService {
         }
     }
 
+    private String normalizeSubject(String subject) {
+        return cleanLineRequired(subject, "Subject", MAX_SUBJECT_LENGTH);
+    }
+
+    private String requireText(String value, String fieldName, int maxLength) {
+        if (value == null || value.isBlank()) {
+            throw new TemplateValidationException(fieldName + " is required");
+        }
+        if (value.length() > maxLength) {
+            throw new TemplateValidationException(fieldName + " must be " + maxLength + " characters or less");
+        }
+        return value;
+    }
+
+    private String[] normalizePlaceholders(String[] placeholders) {
+        if (placeholders == null || placeholders.length == 0) {
+            return new String[0];
+        }
+        if (placeholders.length > MAX_PLACEHOLDERS) {
+            throw new TemplateValidationException("Too many placeholders");
+        }
+
+        Set<String> normalized = new LinkedHashSet<>();
+        for (String placeholder : placeholders) {
+            normalized.add(normalizePlaceholderName(placeholder));
+        }
+        return normalized.toArray(String[]::new);
+    }
+
+    private Map<String, String> normalizeRenderData(Map<String, String> data) {
+        if (data == null || data.isEmpty()) {
+            return Map.of();
+        }
+        if (data.size() > MAX_RENDER_DATA_ENTRIES) {
+            throw new TemplateValidationException("Sample data contains too many entries");
+        }
+
+        Map<String, String> normalized = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : data.entrySet()) {
+            String key = normalizePlaceholderName(entry.getKey());
+            String value = entry.getValue();
+            if (value != null && value.length() > MAX_RENDER_VALUE_LENGTH) {
+                throw new TemplateValidationException("Sample value for " + key + " is too long");
+            }
+            normalized.put(key, value);
+        }
+        return normalized;
+    }
+
+    private String normalizePlaceholderName(String value) {
+        String cleaned = cleanLineRequired(value, "Placeholder name", MAX_PLACEHOLDER_LENGTH);
+        if (!PLACEHOLDER_NAME_PATTERN.matcher(cleaned).matches()) {
+            throw new TemplateValidationException("Invalid placeholder name: " + cleaned);
+        }
+        return cleaned;
+    }
+
+    private String cleanLineRequired(String value, String fieldName, int maxLength) {
+        String cleaned = cleanLine(value);
+        if (cleaned.isBlank()) {
+            throw new TemplateValidationException(fieldName + " is required");
+        }
+        if (cleaned.length() > maxLength) {
+            throw new TemplateValidationException(fieldName + " must be " + maxLength + " characters or less");
+        }
+        return cleaned;
+    }
+
+    private String cleanLine(String value) {
+        return value == null ? "" : value.trim().replaceAll("[\\r\\n\\t]+", " ");
+    }
+
     public record RenderedEmail(
             String templateCode,
             int templateVersion,
@@ -240,7 +350,7 @@ public class GlobalEmailTemplateService {
         }
     }
 
-    public static class TemplateValidationException extends RuntimeException {
+    public static class TemplateValidationException extends IllegalArgumentException {
         public TemplateValidationException(String message) {
             super(message);
         }

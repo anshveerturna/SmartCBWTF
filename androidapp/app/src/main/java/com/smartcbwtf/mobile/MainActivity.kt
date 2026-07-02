@@ -3,6 +3,7 @@ package com.smartcbwtf.mobile
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -16,6 +17,7 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import com.smartcbwtf.mobile.databinding.ActivityMainBinding
 import com.smartcbwtf.mobile.repository.AuthRepository
 import com.smartcbwtf.mobile.repository.LocationRepository
+import com.smartcbwtf.mobile.security.SessionLaunchGuard
 import com.smartcbwtf.mobile.service.ForegroundLocationService
 import com.smartcbwtf.mobile.storage.AppConfigStore
 import com.smartcbwtf.mobile.storage.SessionManager
@@ -79,6 +81,22 @@ class MainActivity : AppCompatActivity() {
         )
         
         setupActionBarWithNavController(navController, appBarConfiguration)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (authRepository.mustChangePassword()) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "You must change your password or logout to continue",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return
+                }
+
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+                isEnabled = true
+            }
+        })
         
         // Navigation lock: Intercept ALL navigation when mustChangePassword is true
         navController.addOnDestinationChangedListener { _, destination, _ ->
@@ -138,9 +156,15 @@ class MainActivity : AppCompatActivity() {
                             )
                             Toast.makeText(this@MainActivity, "Session expired. Please login again.", Toast.LENGTH_LONG).show()
                         }
-                    } else if (!servicesInitialized) {
+                    } else if (!servicesInitialized && SessionLaunchGuard.canInitializeOperationalServices(
+                            token,
+                            authRepository.mustChangePassword()
+                        )) {
                         // Token present but services not started — reinitialize
                         reinitializeServices()
+                    } else if (authRepository.mustChangePassword()) {
+                        servicesInitialized = false
+                        ForegroundLocationService.stopService(this@MainActivity)
                     }
                 }
             }
@@ -156,11 +180,14 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "onStart: checking if services need re-initialization")
         lifecycleScope.launch {
             val token = authRepository.currentToken()
-            if (token != null) {
+            if (SessionLaunchGuard.canInitializeOperationalServices(token, authRepository.mustChangePassword())) {
                 reinitializeServices()
             } else {
-                Log.d(TAG, "onStart: no token, skipping service init")
+                Log.d(TAG, "onStart: session not eligible for service init")
                 servicesInitialized = false
+                if (authRepository.mustChangePassword()) {
+                    ForegroundLocationService.stopService(this@MainActivity)
+                }
             }
         }
     }
@@ -170,6 +197,13 @@ class MainActivity : AppCompatActivity() {
      * Safe to call multiple times — idempotent.
      */
     private fun reinitializeServices() {
+        if (authRepository.mustChangePassword()) {
+            Log.i(TAG, "Skipping service initialization while password change is required")
+            servicesInitialized = false
+            ForegroundLocationService.stopService(this)
+            return
+        }
+
         Log.i(TAG, "Reinitializing services after app resume")
 
         // Restart ForegroundLocationService if consent was given
@@ -193,23 +227,6 @@ class MainActivity : AppCompatActivity() {
         return destinationId != R.id.changePasswordFragment &&
                destinationId != R.id.loginFragment &&
                destinationId != R.id.splashFragment
-    }
-
-    /**
-     * Override back press to prevent escape from password change screen.
-     */
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (authRepository.mustChangePassword()) {
-            // If must change password, only allow logout via the UI button
-            Toast.makeText(
-                this,
-                "You must change your password or logout to continue",
-                Toast.LENGTH_SHORT
-            ).show()
-            return
-        }
-        super.onBackPressed()
     }
 
     override fun onSupportNavigateUp(): Boolean {

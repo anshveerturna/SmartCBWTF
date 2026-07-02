@@ -2,9 +2,12 @@ package com.smartcbwtf.service;
 
 import com.smartcbwtf.controller.CBWTFDashboardController;
 import com.smartcbwtf.domain.Agreement;
+import com.smartcbwtf.domain.AppUser;
+import com.smartcbwtf.domain.BagEvent;
 import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.dto.CBWTFDashboardDTO;
 import com.smartcbwtf.repository.*;
+import org.springframework.data.domain.PageRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -16,6 +19,9 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -28,6 +34,9 @@ import java.util.stream.Collectors;
 public class CBWTFDashboardService {
 
         private static final Logger log = LoggerFactory.getLogger(CBWTFDashboardService.class);
+        private static final int DASHBOARD_EXPIRING_AGREEMENT_LIMIT = 10;
+        private static final int DASHBOARD_ANOMALY_EVENT_LIMIT = 50;
+        private static final int DASHBOARD_MISSING_VERIFICATION_LIMIT = 50;
 
         private final TenantAssertionService tenantAssertion;
         private final AgreementRepository agreementRepo;
@@ -157,7 +166,8 @@ public class CBWTFDashboardService {
 
                 // Expiring agreements
                 List<CBWTFDashboardDTO.AgreementSummary> expiringAgreements = agreementRepo
-                                .findExpiringSoonByFacilityId(facilityId, thirtyDaysFromNow)
+                                .findExpiringSoonByFacilityId(facilityId, thirtyDaysFromNow,
+                                                PageRequest.of(0, DASHBOARD_EXPIRING_AGREEMENT_LIMIT))
                                 .stream()
                                 .map(this::mapToAgreementSummary)
                                 .collect(Collectors.toList());
@@ -366,42 +376,56 @@ public class CBWTFDashboardService {
                         UUID facilityId = tenantAssertion.getRequiredTenantId();
                         Instant weekStart = Instant.now().minus(7, ChronoUnit.DAYS);
 
-                        // Get all bag events with anomalies from this week
-                        List<CBWTFDashboardController.AnomalyBagDTO> anomalyEvents = bagEventRepo
-                                        .findByFacilityIdAndEventTsBetween(
-                                                        facilityId, weekStart, Instant.now())
+                        List<DashboardAnomalySource> anomalyEvents = bagEventRepo
+                                        .findRecentAnomaliesByFacilityIdSince(facilityId, weekStart,
+                                                        PageRequest.of(0, DASHBOARD_ANOMALY_EVENT_LIMIT))
                                         .stream()
-                                        .filter(event -> event.getAnomalyState() != null
-                                                        && !"OK".equals(event.getAnomalyState()))
-                                        .map(event -> toAnomalyDto(event, event.getAnomalyState()))
-                                        .collect(Collectors.toList());
+                                        .map(event -> new DashboardAnomalySource(event, event.getAnomalyState()))
+                                        .collect(Collectors.toCollection(ArrayList::new));
 
-                        List<CBWTFDashboardController.AnomalyBagDTO> missingVerificationBags = bagEventRepo
-                                        .findMissingBags(facilityId, weekStart)
+                        bagEventRepo.findMissingBags(facilityId, weekStart,
+                                        PageRequest.of(0, DASHBOARD_MISSING_VERIFICATION_LIMIT))
                                         .stream()
-                                        .map(event -> toAnomalyDto(event, "NOT_VERIFIED_AT_CBWTF"))
-                                        .collect(Collectors.toList());
-                        anomalyEvents.addAll(missingVerificationBags);
-                        return anomalyEvents;
+                                        .map(event -> new DashboardAnomalySource(event, "NOT_VERIFIED_AT_CBWTF"))
+                                        .forEach(anomalyEvents::add);
+
+                        return toAnomalyDtos(anomalyEvents);
                 } catch (Exception e) {
                         log.warn("Error fetching anomaly bags: {}", e.getMessage());
                         return new ArrayList<>();
                 }
         }
 
+        private List<CBWTFDashboardController.AnomalyBagDTO> toAnomalyDtos(List<DashboardAnomalySource> sources) {
+                Set<UUID> staffIds = sources.stream()
+                                .map(source -> source.event().getCollectedByUserId())
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toSet());
+                Map<UUID, String> staffNamesById = staffIds.isEmpty()
+                                ? Map.of()
+                                : userRepo.findAllById(staffIds).stream()
+                                                .collect(Collectors.toMap(
+                                                                AppUser::getId,
+                                                                user -> user.getFullName() != null
+                                                                                ? user.getFullName()
+                                                                                : user.getUsername(),
+                                                                (first, ignored) -> first));
+                return sources.stream()
+                                .map(source -> toAnomalyDto(
+                                                source.event(), source.anomalyState(), staffNamesById))
+                                .toList();
+        }
+
         private CBWTFDashboardController.AnomalyBagDTO toAnomalyDto(
-                        com.smartcbwtf.domain.BagEvent event,
-                        String anomalyState) {
+                        BagEvent event,
+                        String anomalyState,
+                        Map<UUID, String> staffNamesById) {
+                UUID collectedByUserId = event.getCollectedByUserId();
                 String hcfName = event.getHcf() != null ? event.getHcf().getName() : "Unknown";
                 String category = event.getBagLabel() != null
                                 ? event.getBagLabel().getCategory()
                                 : "Unknown";
-                String staffName = null;
-                if (event.getCollectedByUserId() != null) {
-                        staffName = userRepo.findById(event.getCollectedByUserId())
-                                        .map(u -> u.getFullName() != null ? u.getFullName() : u.getUsername())
-                                        .orElse(null);
-                }
+                String staffName = collectedByUserId != null ? staffNamesById.get(collectedByUserId) : null;
 
                 return new CBWTFDashboardController.AnomalyBagDTO(
                                 event.getId().toString(),
@@ -415,5 +439,8 @@ public class CBWTFDashboardService {
                                 event.getGpsLat(),
                                 event.getGpsLon(),
                                 event.getEventType());
+        }
+
+        private record DashboardAnomalySource(BagEvent event, String anomalyState) {
         }
 }

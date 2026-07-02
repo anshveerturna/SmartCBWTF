@@ -6,12 +6,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.util.Locale;
 import java.util.UUID;
+
+import static com.smartcbwtf.util.PaginationUtils.pageRequest;
 
 /**
  * SuperAdmin audit log viewer.
@@ -23,6 +28,7 @@ import java.util.UUID;
 @RequestMapping("/api/superadmin/audit-logs")
 @PreAuthorize("hasRole('SUPER_ADMIN')")
 public class SuperAdminAuditController {
+    private static final int MAX_AUDIT_FILTER_LENGTH = 80;
 
     private final SubscriptionAuditRepository auditRepository;
 
@@ -51,21 +57,14 @@ public class SuperAdminAuditController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "50") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<SubscriptionAudit> audits;
+        Pageable pageable = pageRequest(page, size, 50, Sort.by("createdAt").descending());
+        String normalizedEntityType = normalizeFilter(entityType, "entityType");
+        String normalizedAction = normalizeFilter(action, "action");
+        validateDateRange(from, to);
+        Page<SubscriptionAudit> audits = auditRepository.searchAuditLogs(normalizedEntityType, normalizedAction,
+                actorId, from, to, pageable);
 
-        // Apply filters in priority order
-        if (actorId != null) {
-            audits = auditRepository.findByPerformedByOrderByCreatedAtDesc(actorId, pageable);
-        } else if (action != null && !action.isBlank()) {
-            audits = auditRepository.findByAction(action.toUpperCase(), pageable);
-        } else if (entityType != null && !entityType.isBlank()) {
-            audits = auditRepository.findByEntityTypeOrderByCreatedAtDesc(entityType.toUpperCase(), pageable);
-        } else {
-            audits = auditRepository.findAll(pageable);
-        }
-
-        return ResponseEntity.ok(audits.map(AuditLogDTO::from));
+        return privateResponse(audits.map(AuditLogDTO::from));
     }
 
     /**
@@ -75,7 +74,7 @@ public class SuperAdminAuditController {
     public ResponseEntity<?> getRecentAuditLogs() {
         Pageable pageable = PageRequest.of(0, 50, Sort.by("createdAt").descending());
         Page<SubscriptionAudit> audits = auditRepository.findAll(pageable);
-        return ResponseEntity.ok(audits.map(AuditLogDTO::from));
+        return privateResponse(audits.map(AuditLogDTO::from));
     }
 
     /**
@@ -86,10 +85,43 @@ public class SuperAdminAuditController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "50") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = pageRequest(page, size, 50, Sort.by("createdAt").descending());
         Page<SubscriptionAudit> audits = auditRepository.findByPerformedByRoleOrderByCreatedAtDesc(
                 "SUPER_ADMIN", pageable);
-        return ResponseEntity.ok(audits.map(AuditLogDTO::from));
+        return privateResponse(audits.map(AuditLogDTO::from));
+    }
+
+    private static <T> ResponseEntity<T> privateResponse(T body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
+    }
+
+    private static String normalizeFilter(String value, String label) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.strip();
+        if (normalized.isBlank()) {
+            return null;
+        }
+        if (normalized.length() > MAX_AUDIT_FILTER_LENGTH) {
+            throw new IllegalArgumentException(label + " must be " + MAX_AUDIT_FILTER_LENGTH
+                    + " characters or fewer");
+        }
+        for (int i = 0; i < normalized.length(); i++) {
+            if (Character.isISOControl(normalized.charAt(i))) {
+                throw new IllegalArgumentException(label + " contains unsupported control characters");
+            }
+        }
+        return normalized.toUpperCase(Locale.ROOT);
+    }
+
+    private static void validateDateRange(Instant from, Instant to) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new IllegalArgumentException("from must be before or equal to to");
+        }
     }
 
     // DTO

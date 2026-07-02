@@ -5,17 +5,24 @@ import com.smartcbwtf.domain.AppUser;
 import com.smartcbwtf.domain.UserLocation;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.repository.UserLocationRepository;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.util.*;
+
+import static com.smartcbwtf.util.PaginationUtils.pageRequest;
 
 /**
  * Location tracking controller.
@@ -45,7 +52,7 @@ public class LocationController {
      */
     @PostMapping("/location/update")
     @PreAuthorize("hasAnyRole('DRIVER', 'PLANT_OPERATOR')")
-    public ResponseEntity<Map<String, Object>> updateLocation(@RequestBody LocationUpdateRequest request) {
+    public ResponseEntity<Map<String, Object>> updateLocation(@Valid @RequestBody LocationUpdateRequest request) {
         TenantContext.TenantInfo info = TenantContext.get();
         if (info == null || info.userId() == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
@@ -53,15 +60,19 @@ public class LocationController {
 
         UUID userId = info.userId();
 
-        // Validate coordinates
-        if (request.latitude == null || request.longitude == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Latitude and longitude required"));
-        }
-
-        if (request.latitude < -90 || request.latitude > 90 ||
-                request.longitude < -180 || request.longitude > 180) {
+        if (!isFiniteInRange(request.latitude, -90, 90)
+                || !isFiniteInRange(request.longitude, -180, 180)) {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid coordinates"));
         }
+
+        if (request.accuracy != null && !isFiniteInRange(request.accuracy, 0, 10_000)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid accuracy"));
+        }
+
+        var previousLocation = locationRepository.findFirstByUserIdOrderByRecordedAtDesc(userId);
+        Instant throttleCutoff = Instant.now().minus(5, java.time.temporal.ChronoUnit.MINUTES);
+        boolean shouldUpdateUser = previousLocation.isEmpty()
+                || previousLocation.get().getRecordedAt().isBefore(throttleCutoff);
 
         // Save location
         UserLocation location = UserLocation.create(
@@ -71,12 +82,7 @@ public class LocationController {
                 request.accuracy);
         locationRepository.save(location);
 
-        // Update user's last GPS position (throttled - only if last update > 5 min ago)
-        var lastLoc = locationRepository.findFirstByUserIdOrderByRecordedAtDesc(userId);
-        boolean shouldUpdateUser = lastLoc.isEmpty() ||
-                lastLoc.get().getRecordedAt()
-                        .isBefore(java.time.Instant.now().minus(5, java.time.temporal.ChronoUnit.MINUTES));
-
+        // Update user's last GPS position, throttled to avoid write amplification.
         if (shouldUpdateUser) {
             userRepository.findById(userId).ifPresent(user -> {
                 user.updateGpsPosition(
@@ -86,7 +92,7 @@ public class LocationController {
             });
         }
 
-        log.debug("Recorded location for user {}: ({}, {})", userId, request.latitude, request.longitude);
+        log.debug("Recorded location for user {} with accuracy {}m", userId, request.accuracy);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
@@ -106,12 +112,12 @@ public class LocationController {
         }
 
         return locationRepository.findFirstByUserIdOrderByRecordedAtDesc(info.userId())
-                .map(loc -> ResponseEntity.ok(Map.<String, Object>of(
+                .map(loc -> privateResponse(Map.<String, Object>of(
                         "latitude", loc.getLatitude(),
                         "longitude", loc.getLongitude(),
                         "accuracy", loc.getAccuracy() != null ? loc.getAccuracy() : 0,
                         "recordedAt", loc.getRecordedAt().toString())))
-                .orElse(ResponseEntity.ok(Map.of("error", "No location recorded")));
+                .orElse(privateResponse(Map.of("error", "No location recorded")));
     }
 
     /**
@@ -128,7 +134,7 @@ public class LocationController {
             return ResponseEntity.notFound().build();
         }
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = pageRequest(page, size, 50);
         Page<UserLocation> locations = locationRepository.findByUserIdOrderByRecordedAtDesc(userId, pageable);
 
         Page<Map<String, Object>> result = locations.map(loc -> {
@@ -141,7 +147,7 @@ public class LocationController {
             return map;
         });
 
-        return ResponseEntity.ok(result);
+        return privateResponse(result);
     }
 
     /**
@@ -160,23 +166,44 @@ public class LocationController {
         }
 
         return locationRepository.findFirstByUserIdOrderByRecordedAtDesc(userId)
-                .map(loc -> ResponseEntity.ok(Map.<String, Object>of(
+                .map(loc -> privateResponse(Map.<String, Object>of(
                         "userId", userId,
                         "username", user.get().getUsername(),
                         "latitude", loc.getLatitude(),
                         "longitude", loc.getLongitude(),
                         "accuracy", loc.getAccuracy() != null ? loc.getAccuracy() : 0,
                         "recordedAt", loc.getRecordedAt().toString())))
-                .orElse(ResponseEntity.ok(Map.of(
+                .orElse(privateResponse(Map.of(
                         "userId", userId,
                         "username", user.get().getUsername(),
                         "error", "No location recorded")));
     }
 
+    private static <T> ResponseEntity<T> privateResponse(T body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
+    }
+
+    private boolean isFiniteInRange(Double value, double min, double max) {
+        return value != null && Double.isFinite(value) && value >= min && value <= max;
+    }
+
     // Request DTO
     public static class LocationUpdateRequest {
+        @NotNull(message = "Latitude is required")
+        @DecimalMin(value = "-90.0", message = "Latitude must be at least -90")
+        @DecimalMax(value = "90.0", message = "Latitude must be at most 90")
         public Double latitude;
+
+        @NotNull(message = "Longitude is required")
+        @DecimalMin(value = "-180.0", message = "Longitude must be at least -180")
+        @DecimalMax(value = "180.0", message = "Longitude must be at most 180")
         public Double longitude;
+
+        @DecimalMin(value = "0.0", message = "Accuracy must be zero or greater")
+        @DecimalMax(value = "10000.0", message = "Accuracy must be 10000 meters or less")
         public Double accuracy;
     }
 }

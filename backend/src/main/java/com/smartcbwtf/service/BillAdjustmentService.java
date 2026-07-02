@@ -175,6 +175,11 @@ public class BillAdjustmentService {
      */
     private void sendAdjustmentAlertEmail(Bill bill, BillVersion version) {
         try {
+            if (bill.getFacility() == null) {
+                log.warn("Bill {} has no facility. Skipping adjustment alert email.", bill.getId());
+                return;
+            }
+
             // Get CBWTF admin notification email - this is the management safeguard
             String notificationEmail = bill.getFacility().getCbwtfNotificationEmail();
             if (notificationEmail == null || notificationEmail.isBlank()) {
@@ -189,15 +194,29 @@ public class BillAdjustmentService {
                 return;
             }
 
+            String hcfName = "Unknown HCF";
+            if (bill.getAgreement() != null && bill.getAgreement().getHcf() != null
+                    && bill.getAgreement().getHcf().getName() != null
+                    && !bill.getAgreement().getHcf().getName().isBlank()) {
+                hcfName = bill.getAgreement().getHcf().getName();
+            }
+
+            if (emailService.getTemplates() == null) {
+                log.warn("Email templates are unavailable. Skipping adjustment alert email for bill {}", bill.getId());
+                return;
+            }
+
+            String billingPeriod = bill.getBillingMonth() == null ? "Unknown period" : bill.getBillingMonth().toString();
+
             // Build email with professional template
             String subject = String.format("[BILL ADJUSTMENT ALERT] %s - %s",
-                    bill.getAgreement().getHcf().getName(),
-                    bill.getBillingMonth().toString());
+                    hcfName,
+                    billingPeriod);
 
             String html = emailService.getTemplates().billAdjustment(
                     "CBWTF Admin",
-                    bill.getAgreement().getHcf().getName(),
-                    bill.getBillingMonth().toString(),
+                    hcfName,
+                    billingPeriod,
                     "Concession",
                     version.getAdjustmentAmount().abs().toPlainString(),
                     version.getAdjustmentReason());

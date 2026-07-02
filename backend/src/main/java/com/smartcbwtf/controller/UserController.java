@@ -3,6 +3,11 @@ package com.smartcbwtf.controller;
 import com.smartcbwtf.dto.UserProfileResponse;
 import com.smartcbwtf.repository.AppUserRepository;
 import com.smartcbwtf.service.PasswordPolicyValidator;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -52,7 +57,10 @@ public class UserController {
         String username = authentication.getPrincipal().toString();
 
         return userRepository.findByUsername(username)
-                .map(user -> ResponseEntity.ok(UserProfileResponse.fromUser(user)))
+                .map(user -> ResponseEntity.ok()
+                        .cacheControl(CacheControl.noStore())
+                        .header(HttpHeaders.PRAGMA, "no-cache")
+                        .body(UserProfileResponse.fromUser(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -66,7 +74,7 @@ public class UserController {
     @PostMapping("/me/change-password")
     @PreAuthorize("isAuthenticated()")
     @Transactional
-    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication.getPrincipal() == null) {
@@ -117,6 +125,8 @@ public class UserController {
     /**
      * Request body for password change.
      */
-    public record ChangePasswordRequest(String currentPassword, String newPassword) {
+    public record ChangePasswordRequest(
+            @NotBlank @Size(max = 256) String currentPassword,
+            @NotBlank @Size(max = 256) String newPassword) {
     }
 }

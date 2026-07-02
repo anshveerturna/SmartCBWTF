@@ -58,6 +58,14 @@ class PermissionsFragment : Fragment(R.layout.fragment_permissions) {
         checkAllPermissionsGranted()
     }
 
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        Log.d("PermissionsFragment", "Notification permission result: $granted")
+        updatePermissionStatus()
+        checkAllPermissionsGranted()
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentPermissionsBinding.bind(view)
@@ -108,6 +116,11 @@ class PermissionsFragment : Fragment(R.layout.fragment_permissions) {
             Log.d("PermissionsFragment", "Bluetooth row clicked")
             requestBluetoothPermission()
         }
+
+        binding.permissionNotifications.setOnClickListener {
+            Log.d("PermissionsFragment", "Notifications row clicked")
+            requestNotificationPermission()
+        }
     }
 
     private fun requestNextPermission() {
@@ -124,6 +137,10 @@ class PermissionsFragment : Fragment(R.layout.fragment_permissions) {
             !hasBluetoothPermissions() -> {
                 Log.d("PermissionsFragment", "Requesting bluetooth permission")
                 requestBluetoothPermission()
+            }
+            !hasNotificationPermission() -> {
+                Log.d("PermissionsFragment", "Requesting notification permission")
+                requestNotificationPermission()
             }
             else -> {
                 Log.d("PermissionsFragment", "All permissions already granted")
@@ -160,6 +177,12 @@ class PermissionsFragment : Fragment(R.layout.fragment_permissions) {
         }
     }
 
+    private fun requestNotificationPermission() {
+        if (!hasNotificationPermission() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     // Permission check helpers
     private fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
@@ -190,12 +213,23 @@ class PermissionsFragment : Fragment(R.layout.fragment_permissions) {
         }
     }
 
+    private fun hasNotificationPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+    }
+
     private fun updatePermissionStatus() {
-        Log.d("PermissionsFragment", "Updating permission status - Location: ${hasLocationPermission()}, Camera: ${hasCameraPermission()}, Bluetooth: ${hasBluetoothPermissions()}")
+        Log.d("PermissionsFragment", "Updating permission status - Location: ${hasLocationPermission()}, Camera: ${hasCameraPermission()}, Bluetooth: ${hasBluetoothPermissions()}, Notifications: ${hasNotificationPermission()}")
         
         updateStatusIcon(binding.iconLocationStatus, hasLocationPermission())
         updateStatusIcon(binding.iconCameraStatus, hasCameraPermission())
         updateStatusIcon(binding.iconBluetoothStatus, hasBluetoothPermissions())
+        binding.permissionNotifications.isVisible = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        binding.permissionNotificationsDivider.isVisible = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        updateStatusIcon(binding.iconNotificationsStatus, hasNotificationPermission())
     }
 
     private fun updateStatusIcon(icon: ImageView, granted: Boolean) {
@@ -212,7 +246,8 @@ class PermissionsFragment : Fragment(R.layout.fragment_permissions) {
         val locationGranted = hasLocationPermission()
         val cameraGranted = hasCameraPermission()
         val bluetoothGranted = hasBluetoothPermissions()
-        val allGranted = locationGranted && cameraGranted && bluetoothGranted
+        val notificationGranted = hasNotificationPermission()
+        val allGranted = locationGranted && cameraGranted && bluetoothGranted && notificationGranted
 
         Log.d("PermissionsFragment", "All permissions granted: $allGranted")
 
@@ -254,4 +289,3 @@ class PermissionsFragment : Fragment(R.layout.fragment_permissions) {
         const val PREF_ONBOARDING_COMPLETE = "onboarding_complete"
     }
 }
-

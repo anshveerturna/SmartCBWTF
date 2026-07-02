@@ -76,7 +76,7 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
     // Launcher to enable Bluetooth
     private val enableBluetoothLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { result ->
+    ) { _ ->
         val bluetoothManager = requireContext().getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         if (bluetoothManager.adapter?.isEnabled == true) {
             // Bluetooth is now enabled, proceed with device picker
@@ -367,12 +367,6 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
                             "Verified with MISMATCH! Weight delta: ${state.deltaKg?.let { "%.2f".format(it) } ?: "N/A"} kg"
                         } else {
                             "Bag verified successfully!"
-                        }
-                        
-                        val snackbarColor = if (state.anomalyState == "MISMATCH") {
-                            com.google.android.material.R.color.design_default_color_error
-                        } else {
-                            R.color.success
                         }
                         
                         Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG)

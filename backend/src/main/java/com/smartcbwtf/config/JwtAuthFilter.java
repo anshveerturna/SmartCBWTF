@@ -1,5 +1,6 @@
 package com.smartcbwtf.config;
 
+import com.smartcbwtf.domain.Agreement;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -7,6 +8,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,19 +20,35 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.Collections;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
+    public static final String ATTR_SCOPES = "smartcbwtf.oauth.scopes";
+    public static final String ATTR_CLIENT_ID = "smartcbwtf.oauth.client_id";
+    public static final String ATTR_TOKEN_USE = "smartcbwtf.oauth.token_use";
+    public static final String TOKEN_USE_OAUTH_ACCESS = "oauth_access_token";
 
     private final JwtService jwtService;
     private final com.smartcbwtf.repository.AppUserRepository appUserRepository;
+    private final com.smartcbwtf.repository.AgreementRepository agreementRepository;
+    private final ObjectProvider<com.smartcbwtf.repository.OAuthClientRepository> oAuthClientRepositoryProvider;
+    private final boolean exposeApiDocs;
 
-    public JwtAuthFilter(JwtService jwtService, com.smartcbwtf.repository.AppUserRepository appUserRepository) {
+    public JwtAuthFilter(JwtService jwtService, com.smartcbwtf.repository.AppUserRepository appUserRepository,
+            com.smartcbwtf.repository.AgreementRepository agreementRepository,
+            ObjectProvider<com.smartcbwtf.repository.OAuthClientRepository> oAuthClientRepositoryProvider,
+            Environment environment) {
         this.jwtService = jwtService;
         this.appUserRepository = appUserRepository;
+        this.agreementRepository = agreementRepository;
+        this.oAuthClientRepositoryProvider = oAuthClientRepositoryProvider;
+        this.exposeApiDocs = Binder.get(environment)
+                .bind("app.security.expose-api-docs", Boolean.class)
+                .orElse(false);
     }
 
     @Override
@@ -66,6 +86,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         return;
                     }
 
+                    String tokenUse = claims.get("token_use", String.class);
+                    String clientId = claims.get("client_id", String.class);
+                    if (TOKEN_USE_OAUTH_ACCESS.equals(tokenUse) && !isActiveOAuthClient(clientId)) {
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "OAuth client disabled or not found");
+                        return;
+                    }
+
                     String dbRole = user.getRole();
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                             username,
@@ -73,10 +100,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             Collections.singleton(new SimpleGrantedAuthority("ROLE_" + dbRole)));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                    String tenantIdStr = claims.get("tenant_id", String.class);
-                    String hcfIdStr = claims.get("hcf_id", String.class);
-                    java.util.UUID tenantId = parseOptionalUuidClaim(tenantIdStr, "tenant_id");
-                    java.util.UUID hcfId = parseOptionalUuidClaim(hcfIdStr, "hcf_id");
+                    request.setAttribute(ATTR_SCOPES, claims.get("scope", String.class));
+                    request.setAttribute(ATTR_CLIENT_ID, clientId);
+                    request.setAttribute(ATTR_TOKEN_USE, tokenUse);
+
+                    java.util.UUID tenantId = resolveTenantId(user);
+                    java.util.UUID hcfId = user.getHcf() != null ? user.getHcf().getId() : null;
 
                     TenantContext.set(new TenantContext.TenantInfo(userId, tenantId, hcfId, dbRole, username));
                 } catch (IllegalArgumentException e) {
@@ -100,23 +129,41 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
     }
 
-    private java.util.UUID parseOptionalUuidClaim(String value, String claimName) {
-        if (!StringUtils.hasText(value)) {
+    private java.util.UUID resolveTenantId(com.smartcbwtf.domain.AppUser user) {
+        if (user.getFacility() != null) {
+            return user.getFacility().getId();
+        }
+
+        if (!"HCF_ADMIN".equals(user.getRole()) || user.getHcf() == null) {
             return null;
         }
-        return parseUuidClaim(value, claimName);
+
+        return agreementRepository.findFirstByHcfIdAndStatusOrderByStartDateDesc(
+                        user.getHcf().getId(), Agreement.Status.ACTIVE.name())
+                .filter(agreement -> agreement.getEndDate() == null
+                        || !agreement.getEndDate().isBefore(LocalDate.now()))
+                .map(Agreement::getFacility)
+                .filter(facility -> facility != null)
+                .map(facility -> facility.getId())
+                .orElse(null);
+    }
+
+    private boolean isActiveOAuthClient(String clientId) {
+        if (!StringUtils.hasText(clientId)) {
+            return false;
+        }
+        var oAuthClientRepository = oAuthClientRepositoryProvider.getIfAvailable();
+        if (oAuthClientRepository == null) {
+            log.warn("OAuth access token rejected because OAuthClientRepository is not available");
+            return false;
+        }
+        return oAuthClientRepository.findById(clientId)
+                .map(com.smartcbwtf.domain.OAuthClient::isActive)
+                .orElse(false);
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return path.equals("/api/auth/login")
-                || path.equals("/api/health")
-                || path.equals("/actuator/health")
-                || path.startsWith("/v3/api-docs")
-                || path.startsWith("/swagger-ui")
-                || path.startsWith("/uploads/")
-                || path.startsWith("/files/")
-                || path.startsWith("/api/terms/latest");
+        return PublicEndpoints.isPublicPath(request.getRequestURI(), exposeApiDocs);
     }
 }

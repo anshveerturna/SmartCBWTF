@@ -38,24 +38,15 @@ public class FacilityTermsService {
 
     /**
      * Get the latest active terms for a facility.
-     * Falls back to any active terms if facility-specific not found.
+     * Terms are facility-specific; callers should use their explicit default when
+     * none are configured for that facility.
      */
     public Optional<TermsResponse> getLatestTerms(UUID facilityId) {
-        // First try facility-specific if provided
-        Optional<FacilityTerms> terms = Optional.empty();
-        if (facilityId != null) {
-            terms = termsRepository.findByFacilityIdAndActiveTrue(facilityId);
+        if (facilityId == null) {
+            return Optional.empty();
         }
-        
-        // Fallback to any active terms (global default)
-        if (terms.isEmpty()) {
-            List<FacilityTerms> allActive = termsRepository.findAllActive();
-            if (!allActive.isEmpty()) {
-                terms = Optional.of(allActive.get(0));
-            }
-        }
-
-        return terms.map(this::toResponse);
+        return termsRepository.findByFacilityIdAndActiveTrue(facilityId)
+                .map(this::toResponse);
     }
 
     /**
@@ -79,17 +70,10 @@ public class FacilityTermsService {
      * Get the active FacilityTerms entity for a facility.
      */
     public Optional<FacilityTerms> getActiveTermsEntity(UUID facilityId) {
-        Optional<FacilityTerms> terms = Optional.empty();
-        if (facilityId != null) {
-            terms = termsRepository.findByFacilityIdAndActiveTrue(facilityId);
+        if (facilityId == null) {
+            return Optional.empty();
         }
-        if (terms.isEmpty()) {
-            List<FacilityTerms> allActive = termsRepository.findAllActive();
-            if (!allActive.isEmpty()) {
-                return Optional.of(allActive.get(0));
-            }
-        }
-        return terms;
+        return termsRepository.findByFacilityIdAndActiveTrue(facilityId);
     }
 
     /**

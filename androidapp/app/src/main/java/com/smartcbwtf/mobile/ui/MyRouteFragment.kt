@@ -89,7 +89,7 @@ class MyRouteFragment : Fragment(R.layout.fragment_my_route) {
         }
 
         // Setup waypoints RecyclerView
-        val adapter = WaypointAdapter(route.routeColor) { waypoint ->
+        val adapter = WaypointAdapter(route.routeColor) {
             // Optional: Navigate to HCF details or start pickup
         }
         binding.recyclerWaypoints.layoutManager = LinearLayoutManager(requireContext())

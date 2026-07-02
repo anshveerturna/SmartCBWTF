@@ -27,6 +27,8 @@ import com.smartcbwtf.mobile.R
 import com.smartcbwtf.mobile.repository.LocationRepository
 import com.smartcbwtf.mobile.storage.AppConfigStore
 import com.smartcbwtf.mobile.storage.AuthTokenStore
+import com.smartcbwtf.mobile.utils.LocationLogSanitizer
+import com.smartcbwtf.mobile.utils.Logger
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -204,7 +206,7 @@ class ForegroundLocationService : Service() {
                 }
 
                 result.lastLocation?.let { location ->
-                    Log.d(TAG, "Location received: ${location.latitude}, ${location.longitude}")
+                    Logger.d(TAG, LocationLogSanitizer.locationReceivedMessage(location.accuracy.toDouble()))
                     serviceScope.launch {
                         locationRepository.syncLocation(
                             latitude = location.latitude,
@@ -270,4 +272,3 @@ class ForegroundLocationService : Service() {
             .build()
     }
 }
-

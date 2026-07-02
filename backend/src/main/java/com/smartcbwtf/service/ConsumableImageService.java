@@ -22,6 +22,7 @@ import java.util.UUID;
 public class ConsumableImageService {
 
     private static final Logger log = LoggerFactory.getLogger(ConsumableImageService.class);
+    private static final long MAX_IMAGE_BYTES = 2L * 1024L * 1024L;
 
     private final Path storageLocation;
 
@@ -40,18 +41,16 @@ public class ConsumableImageService {
      * Store an image file and return the stored filename.
      */
     public String storeImage(UUID consumableId, MultipartFile file) throws IOException {
+        String extension = "." + UploadFileValidator.imageExtension(file, MAX_IMAGE_BYTES);
+        String contentType = file.getContentType();
         String originalFilename = file.getOriginalFilename();
-        String extension = "";
-        if (originalFilename != null && originalFilename.contains(".")) {
-            extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
-        }
 
         // Bug fix: Delete any existing images for this consumable to prevent conflicts
         // e.g., if ID.jpg exists and we upload ID.png, we must delete ID.jpg first.
         String[] supportedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
         for (String ext : supportedExtensions) {
             String existingFilename = consumableId.toString() + ext;
-            Path existingPath = this.storageLocation.resolve(existingFilename);
+            Path existingPath = safeResolve(existingFilename);
             if (Files.exists(existingPath)) {
                 try {
                     Files.delete(existingPath);
@@ -64,10 +63,10 @@ public class ConsumableImageService {
 
         // Use consumable ID as filename to ensure uniqueness and easy lookup
         String filename = consumableId.toString() + extension;
-        Path targetLocation = this.storageLocation.resolve(filename);
+        Path targetLocation = safeResolve(filename);
 
-        log.info("Processing upload for file: '{}', resolved extension: '{}', saving as: '{}'",
-                originalFilename, extension, filename);
+        log.info("Processing upload for file: '{}', content type: '{}', saving as: '{}'",
+                originalFilename, contentType, filename);
 
         Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
         log.info("Stored image for consumable {}: {} ({} bytes)", consumableId, filename, file.getSize());
@@ -79,7 +78,7 @@ public class ConsumableImageService {
      * Get the path to a stored image.
      */
     public Path getImagePath(String filename) {
-        return this.storageLocation.resolve(filename).normalize();
+        return safeResolve(filename);
     }
 
     /**
@@ -97,5 +96,13 @@ public class ConsumableImageService {
         Path path = getImagePath(filename);
         Files.deleteIfExists(path);
         log.info("Deleted image: {}", filename);
+    }
+
+    private Path safeResolve(String filename) {
+        Path resolved = this.storageLocation.resolve(filename).normalize();
+        if (!resolved.startsWith(this.storageLocation)) {
+            throw new IllegalArgumentException("Invalid image filename");
+        }
+        return resolved;
     }
 }

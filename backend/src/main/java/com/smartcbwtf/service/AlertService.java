@@ -101,7 +101,7 @@ public class AlertService {
             case "OPERATIONAL" -> Arrays.asList(
                     AlertType.UNVERIFIED_BAG_DETECTED, AlertType.WEIGHT_MISMATCH_DETECTED,
                     AlertType.GPS_ANOMALY_DETECTED, AlertType.MISSED_PICKUP_DETECTED,
-                    AlertType.BLUE_WASTE_BELOW_THRESHOLD);
+                    AlertType.BLUE_WASTE_BELOW_THRESHOLD, AlertType.QR_VERIFICATION_SLA_BREACHED);
             case "COMPLIANCE" -> Arrays.asList(
                     AlertType.AGREEMENT_EXPIRING, AlertType.AGREEMENT_EXPIRED,
                     AlertType.REPORT_GENERATED, AlertType.REPORT_FLAGGED);

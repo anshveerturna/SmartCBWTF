@@ -11,12 +11,10 @@ import {
   TableRow,
   Paper,
   CircularProgress,
-  IconButton,
-  Tooltip,
   TablePagination,
-  Chip
+  Chip,
+  Tooltip
 } from '@mui/material';
-import { Info as InfoIcon } from '@mui/icons-material';
 import { getSettingsAuditHistory, type SettingsAuditDTO } from '../../../api/cbwtf';
 import dayjs from 'dayjs';
 

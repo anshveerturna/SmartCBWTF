@@ -5,10 +5,11 @@ import com.smartcbwtf.domain.*;
 import com.smartcbwtf.dto.admin.*;
 import com.smartcbwtf.repository.*;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,8 @@ import java.util.Map;
 import java.util.UUID;
 import com.smartcbwtf.service.PasswordPolicyValidator;
 
+import static com.smartcbwtf.util.PaginationUtils.pageRequest;
+
 /**
  * Global User Management API for SuperAdmin.
  * Provides full control over all users across all CBWTFs.
@@ -34,6 +37,11 @@ import com.smartcbwtf.service.PasswordPolicyValidator;
 public class UserManagementController {
 
     private static final Logger log = LoggerFactory.getLogger(UserManagementController.class);
+    private static final int MAX_DISABLE_REASON_LENGTH = 1000;
+    private static final int MAX_PASSWORD_LENGTH = 256;
+    private static final int MAX_QUERY_FILTER_LENGTH = 80;
+    private static final int MAX_SEARCH_LENGTH = 120;
+    private static final String DEFAULT_DISABLE_REASON = "Disabled by admin";
 
     private final AppUserRepository userRepository;
     private final FacilityRepository facilityRepository;
@@ -74,30 +82,32 @@ public class UserManagementController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = pageRequest(page, size, 20, Sort.by("createdAt").descending());
         Page<AppUser> users;
+        String normalizedRole = normalizeQueryFilter(role, "role");
+        String normalizedSearch = normalizeSearch(search);
 
         // Handle search
-        if (search != null && !search.isBlank()) {
+        if (normalizedSearch != null) {
             if (cbwtfId != null) {
-                users = userRepository.searchUsersByFacility(cbwtfId, search, pageable);
+                users = userRepository.searchUsersByFacility(cbwtfId, normalizedSearch, pageable);
             } else {
-                users = userRepository.searchUsers(search, pageable);
+                users = userRepository.searchUsers(normalizedSearch, pageable);
             }
         }
         // Handle filters
-        else if (cbwtfId != null && role != null && active != null) {
-            users = userRepository.findByFacilityIdAndRoleAndActive(cbwtfId, role, active, pageable);
-        } else if (cbwtfId != null && role != null) {
-            users = userRepository.findByFacilityIdAndRole(cbwtfId, role, pageable);
+        else if (cbwtfId != null && normalizedRole != null && active != null) {
+            users = userRepository.findByFacilityIdAndRoleAndActive(cbwtfId, normalizedRole, active, pageable);
+        } else if (cbwtfId != null && normalizedRole != null) {
+            users = userRepository.findByFacilityIdAndRole(cbwtfId, normalizedRole, pageable);
         } else if (cbwtfId != null && active != null) {
             users = userRepository.findByFacilityIdAndActive(cbwtfId, active, pageable);
-        } else if (role != null && active != null) {
-            users = userRepository.findByRoleAndActive(role, active, pageable);
+        } else if (normalizedRole != null && active != null) {
+            users = userRepository.findByRoleAndActive(normalizedRole, active, pageable);
         } else if (cbwtfId != null) {
             users = userRepository.findByFacilityId(cbwtfId, pageable);
-        } else if (role != null) {
-            users = userRepository.findByRole(role, pageable);
+        } else if (normalizedRole != null) {
+            users = userRepository.findByRole(normalizedRole, pageable);
         } else if (active != null) {
             users = userRepository.findByActive(active, pageable);
         } else {
@@ -253,9 +263,9 @@ public class UserManagementController {
     @Transactional
     public ResponseEntity<UserManagementDTO> disableUser(
             @PathVariable("id") UUID id,
-            @RequestBody Map<String, String> body) {
+            @Valid @RequestBody(required = false) DisableUserRequest body) {
 
-        String reason = body.getOrDefault("reason", "Disabled by admin");
+        String reason = normalizeDisableReason(body != null ? body.reason() : null);
 
         return userRepository.findById(id)
                 .map(user -> {
@@ -363,9 +373,9 @@ public class UserManagementController {
     @Transactional
     public ResponseEntity<?> changePassword(
             @PathVariable("id") UUID id,
-            @RequestBody Map<String, String> body) {
+            @Valid @RequestBody ChangeManagedUserPasswordRequest body) {
 
-        String newPassword = body.get("newPassword");
+        String newPassword = body != null ? body.newPassword() : null;
         if (newPassword == null || newPassword.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "MISSING_PASSWORD",
@@ -406,6 +416,17 @@ public class UserManagementController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    public record DisableUserRequest(
+            @Size(max = MAX_DISABLE_REASON_LENGTH, message = "Reason must be 1000 characters or fewer")
+            String reason) {
+    }
+
+    public record ChangeManagedUserPasswordRequest(
+            @NotBlank(message = "New password is required")
+            @Size(max = MAX_PASSWORD_LENGTH, message = "New password must be 256 characters or fewer")
+            String newPassword) {
+    }
+
     // ========== HELPER METHODS ==========
 
     private UUID getCurrentUserId() {
@@ -426,5 +447,46 @@ public class UserManagementController {
             sb.append(chars.charAt(random.nextInt(chars.length())));
         }
         return sb.toString();
+    }
+
+    private static String normalizeSearch(String search) {
+        return normalizeQueryText(search, MAX_SEARCH_LENGTH, "search");
+    }
+
+    private static String normalizeQueryFilter(String value, String label) {
+        return normalizeQueryText(value, MAX_QUERY_FILTER_LENGTH, label);
+    }
+
+    private static String normalizeQueryText(String value, int maxLength, String label) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.strip();
+        if (normalized.isBlank()) {
+            return null;
+        }
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException(label + " must be " + maxLength + " characters or fewer");
+        }
+        for (int i = 0; i < normalized.length(); i++) {
+            if (Character.isISOControl(normalized.charAt(i))) {
+                throw new IllegalArgumentException(label + " contains unsupported control characters");
+            }
+        }
+        return normalized;
+    }
+
+    private static String normalizeDisableReason(String reason) {
+        if (reason == null) {
+            return DEFAULT_DISABLE_REASON;
+        }
+        String normalized = reason.strip();
+        if (normalized.isBlank()) {
+            return DEFAULT_DISABLE_REASON;
+        }
+        if (normalized.length() > MAX_DISABLE_REASON_LENGTH) {
+            throw new IllegalArgumentException("Reason must be " + MAX_DISABLE_REASON_LENGTH + " characters or fewer");
+        }
+        return normalized;
     }
 }

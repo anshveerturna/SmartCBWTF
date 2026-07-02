@@ -4,6 +4,8 @@ import com.smartcbwtf.domain.SubscriptionAudit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -74,4 +76,21 @@ public interface SubscriptionAuditRepository extends JpaRepository<SubscriptionA
          * Find audit records by performer role
          */
         Page<SubscriptionAudit> findByPerformedByRoleOrderByCreatedAtDesc(String role, Pageable pageable);
+
+        @Query("""
+                        SELECT a FROM SubscriptionAudit a
+                        WHERE (:entityType IS NULL OR a.entityType = :entityType)
+                          AND (:action IS NULL OR a.action = :action)
+                          AND (:actorId IS NULL OR a.performedBy = :actorId)
+                          AND (:fromTs IS NULL OR a.createdAt >= :fromTs)
+                          AND (:toTs IS NULL OR a.createdAt <= :toTs)
+                        ORDER BY a.createdAt DESC
+                        """)
+        Page<SubscriptionAudit> searchAuditLogs(
+                        @Param("entityType") String entityType,
+                        @Param("action") String action,
+                        @Param("actorId") UUID actorId,
+                        @Param("fromTs") Instant from,
+                        @Param("toTs") Instant to,
+                        Pageable pageable);
 }

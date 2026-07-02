@@ -20,7 +20,7 @@ interface Props {
   onSave: () => void;
 }
 
-const ComplianceSettingsSection = ({ data, lockedFields, onSave }: Props) => {
+const ComplianceSettingsSection = ({ data, onSave }: Props) => {
   const [formData, setFormData] = useState<ComplianceSettingsDTO>(data);
   const [error, setError] = useState<string | null>(null);
 

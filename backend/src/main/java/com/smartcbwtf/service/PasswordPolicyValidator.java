@@ -41,7 +41,7 @@ public class PasswordPolicyValidator {
 
         // Get config values
         int minLength = configService.getInt("security.password_min_length", 8);
-        int maxLength = configService.getInt("security.password_max_length", 12);
+        int maxLength = configService.getInt("security.password_max_length", 128);
         boolean requireUppercase = configService.getBoolean("security.password_require_uppercase", true);
         boolean requireNumber = configService.getBoolean("security.password_require_number", true);
         boolean requireSpecial = configService.getBoolean("security.password_require_special", true);
@@ -98,12 +98,14 @@ public class PasswordPolicyValidator {
      */
     public String getPolicyDescription() {
         int minLength = configService.getInt("security.password_min_length", 8);
+        int maxLength = configService.getInt("security.password_max_length", 128);
         boolean requireUppercase = configService.getBoolean("security.password_require_uppercase", true);
         boolean requireNumber = configService.getBoolean("security.password_require_number", true);
-        boolean requireSpecial = configService.getBoolean("security.password_require_special", false);
+        boolean requireSpecial = configService.getBoolean("security.password_require_special", true);
 
         StringBuilder desc = new StringBuilder();
         desc.append("Minimum ").append(minLength).append(" characters");
+        desc.append(", maximum ").append(maxLength).append(" characters");
 
         List<String> requirements = new ArrayList<>();
         requirements.add("lowercase letter");

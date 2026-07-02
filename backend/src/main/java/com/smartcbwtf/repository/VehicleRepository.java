@@ -1,6 +1,8 @@
 package com.smartcbwtf.repository;
 
 import com.smartcbwtf.domain.Vehicle;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,6 +20,12 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
     List<Vehicle> findByFacilityIdAndStatus(UUID facilityId, String status);
 
     List<Vehicle> findByFacilityId(UUID facilityId);
+
+    Page<Vehicle> findByFacilityId(UUID facilityId, Pageable pageable);
+
+    Optional<Vehicle> findByIdAndFacilityId(UUID id, UUID facilityId);
+
+    Optional<Vehicle> findByIdAndFacilityIdAndStatus(UUID id, UUID facilityId, String status);
 
     // Find vehicle by registration number within a facility
     Optional<Vehicle> findByFacilityIdAndRegistrationNumber(UUID facilityId, String registrationNumber);

@@ -3,10 +3,10 @@ package com.smartcbwtf.controller;
 import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.*;
 import com.smartcbwtf.repository.*;
-import com.smartcbwtf.service.DailyReportGenerationService;
+import com.smartcbwtf.service.ComplianceReportExportService;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.UUID;
+
+import static com.smartcbwtf.util.PaginationUtils.pageRequest;
 
 /**
  * Compliance Report Controller.
@@ -32,7 +34,7 @@ public class ComplianceReportController {
     private final AnnualComplianceReportRepository annualReportRepository;
     private final BarcodeComplianceReportRepository barcodeReportRepository;
     private final ViolationReportRepository violationReportRepository;
-    private final DailyReportGenerationService dailyReportService;
+    private final ComplianceReportExportService reportExportService;
 
     public ComplianceReportController(
             DailyComplianceReportRepository dailyReportRepository,
@@ -40,13 +42,13 @@ public class ComplianceReportController {
             AnnualComplianceReportRepository annualReportRepository,
             BarcodeComplianceReportRepository barcodeReportRepository,
             ViolationReportRepository violationReportRepository,
-            DailyReportGenerationService dailyReportService) {
+            ComplianceReportExportService reportExportService) {
         this.dailyReportRepository = dailyReportRepository;
         this.monthlyReportRepository = monthlyReportRepository;
         this.annualReportRepository = annualReportRepository;
         this.barcodeReportRepository = barcodeReportRepository;
         this.violationReportRepository = violationReportRepository;
-        this.dailyReportService = dailyReportService;
+        this.reportExportService = reportExportService;
     }
 
     // ========================================================================
@@ -60,15 +62,14 @@ public class ComplianceReportController {
         UUID facilityId = TenantContext.getTenantId();
         Page<DailyComplianceReport> reports = dailyReportRepository.findByFacilityId(
                 facilityId,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "reportDate")));
+                pageRequest(page, size, 30, Sort.by(Sort.Direction.DESC, "reportDate")));
         return ResponseEntity.ok(reports.map(DailyReportDTO::from));
     }
 
     @GetMapping("/daily/{id}")
     public ResponseEntity<DailyReportDetailDTO> getDailyReport(@PathVariable UUID id) {
         UUID facilityId = TenantContext.getTenantId();
-        return dailyReportRepository.findById(id)
-                .filter(r -> r.getFacility().getId().equals(facilityId))
+        return dailyReportRepository.findByIdAndFacilityId(id, facilityId)
                 .map(DailyReportDetailDTO::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -77,19 +78,15 @@ public class ComplianceReportController {
     @GetMapping("/daily/{id}/pdf")
     public ResponseEntity<byte[]> downloadDailyReportPdf(@PathVariable UUID id) {
         UUID facilityId = TenantContext.getTenantId();
-        return dailyReportRepository.findById(id)
-                .filter(r -> r.getFacility().getId().equals(facilityId))
+        return dailyReportRepository.findByIdAndFacilityId(id, facilityId)
                 .map(r -> {
                     byte[] pdf = r.getPdfBytes();
                     if (pdf == null || pdf.length == 0) {
-                        // TODO: Generate PDF on-the-fly if not pre-generated
-                        return ResponseEntity.noContent().<byte[]>build();
+                        pdf = reportExportService.dailyPdf(r);
+                        r.setPdfBytes(pdf);
+                        dailyReportRepository.save(r);
                     }
-                    String filename = "daily_report_" + r.getReportDate() + ".pdf";
-                    return ResponseEntity.ok()
-                            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                            .contentType(MediaType.APPLICATION_PDF)
-                            .body(pdf);
+                    return pdfResponse(pdf, "daily_report_" + r.getReportDate() + ".pdf");
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -105,8 +102,24 @@ public class ComplianceReportController {
         UUID facilityId = TenantContext.getTenantId();
         Page<MonthlyComplianceReport> reports = monthlyReportRepository.findByFacilityId(
                 facilityId,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "reportMonth")));
+                pageRequest(page, size, 12, Sort.by(Sort.Direction.DESC, "reportMonth")));
         return ResponseEntity.ok(reports.map(MonthlyReportDTO::from));
+    }
+
+    @GetMapping("/monthly/{id}/pdf")
+    public ResponseEntity<byte[]> downloadMonthlyReportPdf(@PathVariable UUID id) {
+        UUID facilityId = TenantContext.getTenantId();
+        return monthlyReportRepository.findByIdAndFacilityId(id, facilityId)
+                .map(r -> {
+                    byte[] pdf = r.getPdfBytes();
+                    if (pdf == null || pdf.length == 0) {
+                        pdf = reportExportService.monthlyPdf(r);
+                        r.setPdfBytes(pdf);
+                        monthlyReportRepository.save(r);
+                    }
+                    return pdfResponse(pdf, "monthly_report_" + r.getReportMonth() + ".pdf");
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // ========================================================================
@@ -120,26 +133,44 @@ public class ComplianceReportController {
         UUID facilityId = TenantContext.getTenantId();
         Page<AnnualComplianceReport> reports = annualReportRepository.findByFacilityId(
                 facilityId,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "financialYear")));
+                pageRequest(page, size, 10, Sort.by(Sort.Direction.DESC, "financialYear")));
         return ResponseEntity.ok(reports.map(AnnualReportDTO::from));
     }
 
     @GetMapping("/annual/{id}/excel")
     public ResponseEntity<byte[]> downloadAnnualReportExcel(@PathVariable UUID id) {
         UUID facilityId = TenantContext.getTenantId();
-        return annualReportRepository.findById(id)
-                .filter(r -> r.getFacility().getId().equals(facilityId))
+        return annualReportRepository.findByIdAndFacilityId(id, facilityId)
                 .map(r -> {
                     byte[] excel = r.getExcelBytes();
                     if (excel == null || excel.length == 0) {
-                        return ResponseEntity.noContent().<byte[]>build();
+                        excel = reportExportService.annualExcel(r);
+                        r.setExcelBytes(excel);
+                        annualReportRepository.save(r);
                     }
                     String filename = "form_iv_" + r.getFinancialYear() + ".xlsx";
                     return ResponseEntity.ok()
+                            .cacheControl(CacheControl.noStore())
                             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                             .contentType(MediaType.parseMediaType(
                                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                             .body(excel);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/annual/{id}/pdf")
+    public ResponseEntity<byte[]> downloadAnnualReportPdf(@PathVariable UUID id) {
+        UUID facilityId = TenantContext.getTenantId();
+        return annualReportRepository.findByIdAndFacilityId(id, facilityId)
+                .map(r -> {
+                    byte[] pdf = r.getPdfBytes();
+                    if (pdf == null || pdf.length == 0) {
+                        pdf = reportExportService.annualPdf(r);
+                        r.setPdfBytes(pdf);
+                        annualReportRepository.save(r);
+                    }
+                    return pdfResponse(pdf, "form_iv_" + r.getFinancialYear() + ".pdf");
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -155,8 +186,24 @@ public class ComplianceReportController {
         UUID facilityId = TenantContext.getTenantId();
         Page<BarcodeComplianceReport> reports = barcodeReportRepository.findByFacilityId(
                 facilityId,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "reportDate")));
+                pageRequest(page, size, 30, Sort.by(Sort.Direction.DESC, "reportDate")));
         return ResponseEntity.ok(reports.map(BarcodeReportDTO::from));
+    }
+
+    @GetMapping("/barcode/{id}/pdf")
+    public ResponseEntity<byte[]> downloadBarcodeReportPdf(@PathVariable UUID id) {
+        UUID facilityId = TenantContext.getTenantId();
+        return barcodeReportRepository.findByIdAndFacilityId(id, facilityId)
+                .map(r -> {
+                    byte[] pdf = r.getPdfBytes();
+                    if (pdf == null || pdf.length == 0) {
+                        pdf = reportExportService.barcodePdf(r);
+                        r.setPdfBytes(pdf);
+                        barcodeReportRepository.save(r);
+                    }
+                    return pdfResponse(pdf, "barcode_report_" + r.getReportDate() + ".pdf");
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // ========================================================================
@@ -170,20 +217,32 @@ public class ComplianceReportController {
         UUID facilityId = TenantContext.getTenantId();
         Page<ViolationReport> reports = violationReportRepository.findByFacilityId(
                 facilityId,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "reportDate")));
+                pageRequest(page, size, 30, Sort.by(Sort.Direction.DESC, "reportDate")));
         return ResponseEntity.ok(reports.map(ViolationReportDTO::from));
     }
 
-    // ========================================================================
-    // MANUAL TRIGGER (Admin only - for testing)
-    // ========================================================================
-
-    @PostMapping("/daily/generate")
-    public ResponseEntity<?> triggerDailyReport(@RequestParam String date) {
+    @GetMapping("/violations/{id}/pdf")
+    public ResponseEntity<byte[]> downloadViolationReportPdf(@PathVariable UUID id) {
         UUID facilityId = TenantContext.getTenantId();
-        LocalDate reportDate = LocalDate.parse(date);
-        boolean generated = dailyReportService.generateReport(facilityId, reportDate);
-        return ResponseEntity.ok(java.util.Map.of("generated", generated));
+        return violationReportRepository.findByIdAndFacilityId(id, facilityId)
+                .map(r -> {
+                    byte[] pdf = r.getPdfBytes();
+                    if (pdf == null || pdf.length == 0) {
+                        pdf = reportExportService.violationPdf(r);
+                        r.setPdfBytes(pdf);
+                        violationReportRepository.save(r);
+                    }
+                    return pdfResponse(pdf, "violation_report_" + r.getReportDate() + ".pdf");
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    private ResponseEntity<byte[]> pdfResponse(byte[] pdf, String filename) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     // ========================================================================
@@ -230,7 +289,7 @@ public class ComplianceReportController {
                     r.getDataJson(),
                     r.getGeneratedAt().toString(),
                     r.getChecksum(),
-                    r.getPdfBytes() != null && r.getPdfBytes().length > 0);
+                    true);
         }
     }
 
@@ -265,7 +324,7 @@ public class ComplianceReportController {
                     r.getStatus().name(),
                     r.getDataCompleteness().name(),
                     r.getGeneratedAt().toString(),
-                    r.getPdfBytes() != null && r.getPdfBytes().length > 0,
+                    true,
                     r.getExcelBytes() != null && r.getExcelBytes().length > 0);
         }
     }

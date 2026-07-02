@@ -297,10 +297,10 @@ export default function CBWTFManagement() {
           View Details
         </MenuItem>
         <MenuItem onClick={() => {
-          if (selectedCBWTF) navigate(`/superadmin/cbwtfs/${selectedCBWTF.id}/edit`);
+          if (selectedCBWTF) navigate(`/superadmin/cbwtfs/${selectedCBWTF.id}`);
           handleMenuClose();
         }}>
-          Edit Subscription
+          Manage Subscription
         </MenuItem>
         {selectedCBWTF?.subscriptionStatus === 'ACTIVE' && (
           <MenuItem onClick={handleMenuClose} sx={{ color: 'warning.main' }}>

@@ -29,6 +29,9 @@ public class HcfDetailDTO {
     private String hcfStatus;
     private Double gpsLat;
     private Double gpsLon;
+    private String city;
+    private String hcfType;
+    private Integer seatCount;
     private String doctorName;
     private String panNo;
     private String gstNo;
@@ -36,8 +39,12 @@ public class HcfDetailDTO {
     private String aadharNo;
     private BigDecimal monthlyCharges;
     private Double occupancy;
+    private String billingModel;
     private Boolean bedded;
     private String otherNotes;
+    private Double taxRate;
+    private Double excessRatePerKg;
+    private String rejectionReason;
     private Double registrationGpsLat;
     private Double registrationGpsLon;
     private Double registrationGpsAccuracy;
@@ -250,6 +257,9 @@ public class HcfDetailDTO {
         dto.hcfStatus = hcf.getStatus();
         dto.gpsLat = hcf.getGpsLat();
         dto.gpsLon = hcf.getGpsLon();
+        dto.city = hcf.getCity();
+        dto.hcfType = hcf.getHcfType() != null ? hcf.getHcfType().name() : null;
+        dto.seatCount = hcf.getSeatCount();
         dto.doctorName = hcf.getDoctorName();
         dto.panNo = hcf.getPanNo();
         dto.gstNo = hcf.getGstNo();
@@ -258,8 +268,12 @@ public class HcfDetailDTO {
         dto.aadharNo = hcf.getAadharNo();
         dto.monthlyCharges = hcf.getMonthlyCharges();
         dto.occupancy = hcf.getOccupancy();
+        dto.billingModel = hcf.getBillingModel() != null ? hcf.getBillingModel().name() : null;
         dto.bedded = hcf.getBedded();
         dto.otherNotes = hcf.getOtherNotes();
+        dto.taxRate = hcf.getTaxRate();
+        dto.excessRatePerKg = hcf.getExcessRatePerKg();
+        dto.rejectionReason = hcf.getRejectionReason();
         dto.registrationGpsLat = hcf.getRegistrationGpsLat();
         dto.registrationGpsLon = hcf.getRegistrationGpsLon();
         dto.registrationGpsAccuracy = hcf.getRegistrationGpsAccuracy();
@@ -381,6 +395,30 @@ public class HcfDetailDTO {
         this.doctorName = doctorName;
     }
 
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getHcfType() {
+        return hcfType;
+    }
+
+    public void setHcfType(String hcfType) {
+        this.hcfType = hcfType;
+    }
+
+    public Integer getSeatCount() {
+        return seatCount;
+    }
+
+    public void setSeatCount(Integer seatCount) {
+        this.seatCount = seatCount;
+    }
+
     public String getPanNo() {
         return panNo;
     }
@@ -429,6 +467,14 @@ public class HcfDetailDTO {
         this.occupancy = occupancy;
     }
 
+    public String getBillingModel() {
+        return billingModel;
+    }
+
+    public void setBillingModel(String billingModel) {
+        this.billingModel = billingModel;
+    }
+
     public Boolean getBedded() {
         return bedded;
     }
@@ -443,6 +489,30 @@ public class HcfDetailDTO {
 
     public void setOtherNotes(String otherNotes) {
         this.otherNotes = otherNotes;
+    }
+
+    public Double getTaxRate() {
+        return taxRate;
+    }
+
+    public void setTaxRate(Double taxRate) {
+        this.taxRate = taxRate;
+    }
+
+    public Double getExcessRatePerKg() {
+        return excessRatePerKg;
+    }
+
+    public void setExcessRatePerKg(Double excessRatePerKg) {
+        this.excessRatePerKg = excessRatePerKg;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 
     public Double getRegistrationGpsLat() {

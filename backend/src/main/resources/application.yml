@@ -36,6 +36,13 @@ security:
     secret: ${JWT_SECRET:smartcbwtf-local-dev-signing-key-2025-not-for-prod}
     issuer: "smart-cbwtf"
     access-token-ttl-minutes: 30
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+      - https://portal.smartcbwtf.com
+      - https://smartcbwtf.com
+      - https://www.smartcbwtf.com
 
 logging:
   level:
@@ -43,6 +50,18 @@ logging:
     com.smartcbwtf: DEBUG
 
 app:
+  bootstrap:
+    super-admin:
+      # Set INITIAL_SUPER_ADMIN_PASSWORD on first production launch. The account
+      # will be forced to change this password immediately after login.
+      username: ${INITIAL_SUPER_ADMIN_USERNAME:}
+      password: ${INITIAL_SUPER_ADMIN_PASSWORD:}
+      email: ${INITIAL_SUPER_ADMIN_EMAIL:}
+      full-name: ${INITIAL_SUPER_ADMIN_FULL_NAME:Platform Administrator}
+
+  security:
+    expose-api-docs: ${EXPOSE_API_DOCS:false}
+
   geofence:
     hcf-radius-m: 200
     facility-default-radius-m: 200

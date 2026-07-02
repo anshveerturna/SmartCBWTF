@@ -10,10 +10,10 @@ import {
   Add as AddIcon, QrCode as QrIcon, Block as RevokeIcon, Visibility as ViewIcon,
   Download as DownloadIcon, PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
-import { listQrs, revokeQr, getHcfList, generateLabelsForHcf, downloadQrLabelPdf, type QrDetail } from '../../api/cbwtf';
+import { listQrs, revokeQr, getHcfList, generateLabelsForHcf, downloadQrLabelPdf, downloadQrOrderPdf, type QrDetail } from '../../api/cbwtf';
+import { saveBlob } from '../../api/client';
 import QRCode from 'qrcode';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const WASTE_CATEGORIES = ['YELLOW', 'RED', 'BLUE', 'WHITE'] as const;
 const STATUS_COLORS: Record<string, 'success' | 'warning' | 'error' | 'default' | 'info'> = {
   ACTIVE: 'success', USED: 'warning', VERIFIED: 'info', EXPIRED: 'default', REVOKED: 'error', BLOCKED: 'error',
@@ -22,8 +22,30 @@ const CATEGORY_COLORS: Record<string, string> = {
   YELLOW: '#FFC107', RED: '#F44336', BLUE: '#2196F3', WHITE: '#9E9E9E',
 };
 
+const dateOffset = (days: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split('T')[0];
+};
+
+const defaultGenerateForm = () => ({
+  hcfId: '',
+  categoryQuantities: { YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0 } as Record<string, number>,
+  validUntil: dateOffset(7),
+});
+
+const errorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null) {
+    const maybeResponse = error as { response?: { data?: { error?: string; message?: string } } };
+    return maybeResponse.response?.data?.error || maybeResponse.response?.data?.message || fallback;
+  }
+  return fallback;
+};
+
 export default function QrLabels() {
   const queryClient = useQueryClient();
+  const [dateBounds] = useState(() => ({ min: dateOffset(0), max: dateOffset(31) }));
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -32,11 +54,7 @@ export default function QrLabels() {
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
   });
-  const [generateForm, setGenerateForm] = useState({
-    hcfId: '',
-    categoryQuantities: { YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0 } as Record<string, number>,
-    validUntil: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-  });
+  const [generateForm, setGenerateForm] = useState(defaultGenerateForm);
 
   const totalLabels = Object.values(generateForm.categoryQuantities).reduce((sum, q) => sum + (q || 0), 0);
 
@@ -74,35 +92,24 @@ export default function QrLabels() {
         validUntil: generateForm.validUntil,
       });
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setGenerateDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['cbwtf-qrs'] });
       setSnackbar({ open: true, message: data.message || 'QR labels generated!', severity: 'success' });
-      setGenerateForm({ 
-        hcfId: '', 
-        categoryQuantities: { YELLOW: 0, RED: 0, BLUE: 0, WHITE: 0 },
-        validUntil: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
-      });
-      if (data.pdfUrl) {
-        window.open(getDownloadUrl(data.pdfUrl), '_blank');
+      setGenerateForm(defaultGenerateForm());
+      if (data.orderId) {
+        try {
+          const blob = await downloadQrOrderPdf(data.orderId);
+          saveBlob(blob, `QR-labels-${new Date().toISOString().split('T')[0]}.pdf`);
+        } catch {
+          setSnackbar({ open: true, message: 'QR labels generated, but PDF download failed', severity: 'error' });
+        }
       }
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error || error?.message || 'Failed to generate labels';
-      setSnackbar({ open: true, message, severity: 'error' });
+    onError: (error: unknown) => {
+      setSnackbar({ open: true, message: errorMessage(error, 'Failed to generate labels'), severity: 'error' });
     },
   });
-
-  const getDownloadUrl = (url: string) => {
-    if (!url) return '';
-    let filePath = url;
-    if (!url.startsWith('/files/')) {
-      const parts = url.split(/[/\\]/);
-      const filename = parts[parts.length - 1];
-      filePath = '/files/' + filename;
-    }
-    return API_BASE_URL ? API_BASE_URL + filePath : filePath;
-  };
 
   const handleGenerate = () => {
     if (!generateForm.hcfId) {
@@ -151,14 +158,7 @@ export default function QrLabels() {
     if (!selectedQr) return;
     try {
       const blob = await downloadQrLabelPdf(selectedQr.id);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `QR-${selectedQr.hcfName}-${selectedQr.wasteCategory}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      saveBlob(blob, `QR-${selectedQr.hcfName}-${selectedQr.wasteCategory}.pdf`);
     } catch {
       setSnackbar({ open: true, message: 'Failed to download QR label PDF', severity: 'error' });
     }
@@ -349,10 +349,7 @@ export default function QrLabels() {
               value={generateForm.validUntil}
               onChange={(e) => setGenerateForm({ ...generateForm, validUntil: e.target.value })}
               InputLabelProps={{ shrink: true }}
-              inputProps={{ 
-                min: new Date().toISOString().split('T')[0],
-                max: new Date(Date.now() + 31 * 86400000).toISOString().split('T')[0]
-              }}
+              inputProps={dateBounds}
               helperText="Max validity: 1 month from today"
             />
 

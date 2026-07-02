@@ -12,10 +12,6 @@ const footerLinks = {
     { href: "/about", label: "About Us" },
     { href: "/contact", label: "Contact" },
   ],
-  Legal: [
-    { href: "/privacy", label: "Privacy Policy" },
-    { href: "/terms", label: "Terms of Service" },
-  ],
   Portals: [
     { href: "/login", label: "CBWTF Admin" },
     { href: "/login", label: "HCF Admin" },

@@ -22,6 +22,10 @@ import {
   DialogActions,
   TextField,
   Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -43,6 +47,20 @@ const statusColors: Record<string, 'success' | 'warning' | 'error' | 'info' | 'd
   CANCELLED: 'default',
 };
 
+type SubscriptionPlan = 'BASIC' | 'PRO' | 'ENTERPRISE' | 'TRIAL';
+
+const defaultSubscriptionExpiry = () => {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + 1);
+  return date.toISOString().slice(0, 10);
+};
+
+const minimumSubscriptionExpiry = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().slice(0, 10);
+};
+
 export default function CBWTFDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -54,6 +72,16 @@ export default function CBWTFDetail() {
   const [suspendReason, setSuspendReason] = useState('');
   const [tempAccessDialogOpen, setTempAccessDialogOpen] = useState(false);
   const [tempAccessDays, setTempAccessDays] = useState(7);
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
+  const [subscriptionForm, setSubscriptionForm] = useState<{
+    plan: SubscriptionPlan;
+    expiresAt: string;
+    notes: string;
+  }>({
+    plan: 'BASIC',
+    expiresAt: defaultSubscriptionExpiry(),
+    notes: '',
+  });
   
   // Admin credentials state
   const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
@@ -62,6 +90,7 @@ export default function CBWTFDetail() {
   const [credentialsSuccess, setCredentialsSuccess] = useState<string | null>(null);
   const [credentialsError, setCredentialsError] = useState<string | null>(null);
   const [forceResetLoading, setForceResetLoading] = useState(false);
+  const [forceResetDialogOpen, setForceResetDialogOpen] = useState(false);
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -93,11 +122,11 @@ export default function CBWTFDetail() {
   const validatePassword = (password: string) => {
     const rules = [
       { test: (p: string) => p.length >= 8, message: 'At least 8 characters' },
-      { test: (p: string) => p.length <= 12, message: 'At most 12 characters' },
+      { test: (p: string) => p.length <= 128, message: 'At most 128 characters' },
       { test: (p: string) => /[A-Z]/.test(p), message: 'One uppercase letter' },
       { test: (p: string) => /[a-z]/.test(p), message: 'One lowercase letter' },
       { test: (p: string) => /[0-9]/.test(p), message: 'One number' },
-      { test: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p), message: 'One special character' },
+      { test: (p: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(p), message: 'One special character (!@#$%^&*...)' },
     ];
     return rules.map(rule => ({ ...rule, valid: rule.test(password) }));
   };
@@ -122,6 +151,20 @@ export default function CBWTFDetail() {
     }
   };
 
+  const handleForcePasswordReset = async () => {
+    try {
+      setForceResetLoading(true);
+      await adminApi.forceCBWTFPasswordReset(id!);
+      await refetchAdmin();
+      setCredentialsSuccess('Password reset will be required on next login');
+      setForceResetDialogOpen(false);
+    } catch {
+      setCredentialsError('Failed to force password reset');
+    } finally {
+      setForceResetLoading(false);
+    }
+  };
+
   const suspendMutation = useMutation({
     mutationFn: ({ reason }: { reason: string }) => adminApi.suspendCBWTF(id!, reason),
     onSuccess: () => {
@@ -143,6 +186,21 @@ export default function CBWTFDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cbwtf', id] });
       setTempAccessDialogOpen(false);
+    },
+  });
+
+  const subscriptionMutation = useMutation({
+    mutationFn: (data: typeof subscriptionForm) => adminApi.updateSubscription(id!, {
+      plan: data.plan,
+      expiresAt: data.expiresAt,
+      notes: data.notes.trim() || undefined,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cbwtf', id] });
+      queryClient.invalidateQueries({ queryKey: ['cbwtfs'] });
+      queryClient.invalidateQueries({ queryKey: ['cbwtf-audit', id] });
+      queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+      setSubscriptionDialogOpen(false);
     },
   });
 
@@ -208,6 +266,18 @@ export default function CBWTFDetail() {
 
   const cancelEditing = () => setIsEditing(false);
   const saveChanges = () => updateMutation.mutate(editForm);
+
+  const openSubscriptionDialog = () => {
+    if (!cbwtf) {
+      return;
+    }
+    setSubscriptionForm({
+      plan: cbwtf.subscriptionPlan as SubscriptionPlan,
+      expiresAt: cbwtf.subscriptionExpiresAt?.slice(0, 10) || defaultSubscriptionExpiry(),
+      notes: '',
+    });
+    setSubscriptionDialogOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -315,7 +385,7 @@ export default function CBWTFDetail() {
                 <Button
                   variant="outlined"
                   startIcon={<EditIcon />}
-                  onClick={() => navigate(`/superadmin/cbwtfs/${id}/edit`)}
+                  onClick={openSubscriptionDialog}
                 >
                   Edit Subscription
                 </Button>
@@ -565,19 +635,7 @@ export default function CBWTFDetail() {
                     size="small"
                     startIcon={<LockResetIcon />}
                     disabled={forceResetLoading}
-                    onClick={async () => {
-                      if (!confirm('This will require the CBWTF admin to change their password on next login. Continue?')) return;
-                      try {
-                        setForceResetLoading(true);
-                        await adminApi.forceCBWTFPasswordReset(id!);
-                        await refetchAdmin();
-                        setCredentialsSuccess('Password reset will be required on next login');
-                      } catch {
-                        setCredentialsError('Failed to force password reset');
-                      } finally {
-                        setForceResetLoading(false);
-                      }
-                    }}
+                    onClick={() => setForceResetDialogOpen(true)}
                   >
                     {forceResetLoading ? 'Processing...' : 'Force Password Reset'}
                   </Button>
@@ -620,6 +678,64 @@ export default function CBWTFDetail() {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Subscription Dialog */}
+      <Dialog open={subscriptionDialogOpen} onClose={() => setSubscriptionDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Subscription</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Plan</InputLabel>
+              <Select
+                label="Plan"
+                value={subscriptionForm.plan}
+                onChange={(e) => setSubscriptionForm({
+                  ...subscriptionForm,
+                  plan: e.target.value as SubscriptionPlan,
+                })}
+              >
+                <MenuItem value="TRIAL">Trial</MenuItem>
+                <MenuItem value="BASIC">Basic</MenuItem>
+                <MenuItem value="PRO">Pro</MenuItem>
+                <MenuItem value="ENTERPRISE">Enterprise</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Expiry Date"
+              type="date"
+              value={subscriptionForm.expiresAt}
+              onChange={(e) => setSubscriptionForm({ ...subscriptionForm, expiresAt: e.target.value })}
+              fullWidth
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ min: minimumSubscriptionExpiry() }}
+            />
+            <TextField
+              label="Notes"
+              value={subscriptionForm.notes}
+              onChange={(e) => setSubscriptionForm({ ...subscriptionForm, notes: e.target.value })}
+              fullWidth
+              multiline
+              minRows={2}
+            />
+            {subscriptionMutation.isError && (
+              <Alert severity="error">Failed to update subscription.</Alert>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSubscriptionDialogOpen(false)} disabled={subscriptionMutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => subscriptionMutation.mutate(subscriptionForm)}
+            disabled={subscriptionMutation.isPending || !subscriptionForm.expiresAt}
+          >
+            Save Subscription
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Suspend Dialog */}
       <Dialog open={suspendDialogOpen} onClose={() => setSuspendDialogOpen(false)}>
@@ -737,6 +853,26 @@ export default function CBWTFDetail() {
             disabled={credentialsSaving || !credentialsForm.username || !isPasswordValid(credentialsForm.password)}
           >
             Save Credentials
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={forceResetDialogOpen} onClose={() => setForceResetDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Force Password Reset</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Require this CBWTF admin to change their password on the next login?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setForceResetDialogOpen(false)} disabled={forceResetLoading}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={handleForcePasswordReset}
+            disabled={forceResetLoading}
+          >
+            {forceResetLoading ? 'Processing...' : 'Force Reset'}
           </Button>
         </DialogActions>
       </Dialog>

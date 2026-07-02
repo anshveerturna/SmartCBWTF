@@ -22,6 +22,8 @@ import java.util.UUID;
 })
 public class QrAuthorization {
 
+    public static final String WASTE_CATEGORY_PATTERN = "YELLOW|RED|BLUE|WHITE";
+
     // Status enum - QR lifecycle
     public enum Status {
         ACTIVE, // Valid & usable

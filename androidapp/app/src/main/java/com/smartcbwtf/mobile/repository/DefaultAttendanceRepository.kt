@@ -1,11 +1,11 @@
 package com.smartcbwtf.mobile.repository
 
-import android.util.Log
 import com.smartcbwtf.mobile.database.dao.AttendanceDao
 import com.smartcbwtf.mobile.database.entity.AttendanceEventEntity
 import com.smartcbwtf.mobile.network.api.AttendanceApi
 import com.smartcbwtf.mobile.network.model.AttendanceSyncItem
 import com.smartcbwtf.mobile.network.model.AttendanceSyncRequest
+import com.smartcbwtf.mobile.utils.Logger
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -23,12 +23,13 @@ class DefaultAttendanceRepository @Inject constructor(
 
     companion object {
         private const val TAG = "AttendanceRepo"
+        private const val MAX_SYNC_BATCH_SIZE = 500
     }
 
     override suspend fun record(event: AttendanceEventEntity) {
         withContext(ioDispatcher) {
             dao.insert(event)
-            Log.d(TAG, "Recorded attendance event: ${event.id} at HCF ${event.hcfName}")
+            Logger.d(TAG, "Recorded attendance event")
         }
     }
 
@@ -39,18 +40,19 @@ class DefaultAttendanceRepository @Inject constructor(
     override suspend fun syncPending() = withContext(ioDispatcher) {
         val pending = dao.getPendingList()
         if (pending.isEmpty()) {
-            Log.d(TAG, "No pending attendance events to sync")
+            Logger.d(TAG, "No pending attendance events to sync")
             return@withContext
         }
 
-        Log.d(TAG, "Syncing ${pending.size} attendance events")
+        val syncBatch = pending.take(MAX_SYNC_BATCH_SIZE)
+        Logger.d(TAG, "Syncing attendance events")
 
-        val syncItems = pending.map { it.toSyncItem() }
+        val syncItems = syncBatch.map { it.toSyncItem() }
         val request = AttendanceSyncRequest(events = syncItems)
 
         try {
             val response = api.sync(request)
-            Log.d(TAG, "Sync response: ${response.successCount} success, ${response.failureCount} failed")
+            Logger.d(TAG, "Attendance sync response received")
 
             // Mark successful items as synced
             val successIds = response.successIds.mapNotNull { id ->
@@ -58,7 +60,7 @@ class DefaultAttendanceRepository @Inject constructor(
             }
             if (successIds.isNotEmpty()) {
                 dao.markSynced(successIds)
-                Log.d(TAG, "Marked ${successIds.size} events as synced")
+                Logger.d(TAG, "Marked attendance events as synced")
             }
 
             // Update failed items with error messages
@@ -69,11 +71,11 @@ class DefaultAttendanceRepository @Inject constructor(
                     if (id != null) {
                         val errorMsg = result.errorMessage ?: result.errorCode ?: "Unknown error"
                         dao.markSyncError(id, errorMsg)
-                        Log.w(TAG, "Event $id failed: $errorMsg")
+                        Logger.w(TAG, "Attendance event failed to sync")
                     }
                 }
         } catch (e: Exception) {
-            Log.e(TAG, "Sync failed: ${e.message}", e)
+            Logger.e(TAG, "Attendance sync failed", e)
             throw e
         }
     }

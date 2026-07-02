@@ -25,6 +25,16 @@ class JwtServiceSecurityTest {
     }
 
     @Test
+    void constructorRejectsLocalDevDefaultSecret() {
+        assertThrows(IllegalStateException.class,
+                () -> new JwtService(
+                        "smartcbwtf-local-dev-signing-key-2025-not-for-prod",
+                        "smart-cbwtf",
+                        30,
+                        new StubSystemConfigService()));
+    }
+
+    @Test
     void parseClaimsRejectsWrongIssuer() {
         JwtService jwtService = new JwtService(SECRET, "expected-issuer", 30, new StubSystemConfigService());
         String token = Jwts.builder()
@@ -50,14 +60,35 @@ class JwtServiceSecurityTest {
         assertEquals("expected-issuer", claims.getIssuer());
     }
 
+    @Test
+    void explicitTokenTtlBypassesSessionTimeout() {
+        JwtService jwtService = new JwtService(SECRET, "expected-issuer", 30, new StubSystemConfigService(120));
+        Instant before = Instant.now();
+
+        String token = jwtService.generateToken("oauth-client",
+                Map.of("role", "CBWTF_ADMIN", "user_id", "5ef6cf5f-2b76-4aa6-9f6f-108f5ba4f2ec"),
+                5);
+
+        Instant expiration = jwtService.parseClaims(token).getExpiration().toInstant();
+        assertTrue(expiration.isAfter(before.plusSeconds(240)));
+        assertTrue(expiration.isBefore(before.plusSeconds(360)));
+    }
+
     private static class StubSystemConfigService extends SystemConfigService {
+        private final int value;
+
         StubSystemConfigService() {
+            this(0);
+        }
+
+        StubSystemConfigService(int value) {
             super(null, null, null);
+            this.value = value;
         }
 
         @Override
         public int getInt(String key, int defaultValue) {
-            return defaultValue;
+            return value == 0 ? defaultValue : value;
         }
     }
 }

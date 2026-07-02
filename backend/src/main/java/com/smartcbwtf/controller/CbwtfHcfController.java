@@ -4,27 +4,35 @@ import com.smartcbwtf.dto.*;
 import com.smartcbwtf.service.CbwtfHcfService;
 import com.smartcbwtf.service.BillingConfigService;
 import com.smartcbwtf.service.AgreementService;
+import com.smartcbwtf.service.PdfService;
+import com.smartcbwtf.service.UploadFileValidator;
 import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.Agreement;
+import com.smartcbwtf.domain.AgreementCorrectionRequest;
 import com.smartcbwtf.repository.AgreementRepository;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.net.MalformedURLException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * Controller for CBWTF Admin HCF Management.
- * 
+ *
  * All endpoints are tenant-scoped via TenantContext.
  * facility_id is NEVER accepted from request body.
  */
@@ -39,22 +47,25 @@ public class CbwtfHcfController {
     private final BillingConfigService billingConfigService;
     private final AgreementRepository agreementRepository;
     private final AgreementService agreementService;
+    private final PdfService pdfService;
 
     public CbwtfHcfController(CbwtfHcfService hcfService, BillingConfigService billingConfigService,
-            AgreementRepository agreementRepository, AgreementService agreementService) {
+            AgreementRepository agreementRepository, AgreementService agreementService, PdfService pdfService) {
         this.hcfService = hcfService;
         this.billingConfigService = billingConfigService;
         this.agreementRepository = agreementRepository;
         this.agreementService = agreementService;
+        this.pdfService = pdfService;
     }
 
     /**
      * List all HCFs with active agreements for the current CBWTF.
      */
     @GetMapping
-    public ResponseEntity<List<HcfListItemDTO>> listHcfs() {
+    public ResponseEntity<List<HcfListItemDTO>> listHcfs(
+            @RequestParam(name = "limit", defaultValue = "500") int limit) {
         UUID facilityId = TenantContext.getTenantId();
-        return ResponseEntity.ok(hcfService.listByFacility(facilityId));
+        return ResponseEntity.ok(hcfService.listByFacility(facilityId, limit));
     }
 
     /**
@@ -76,12 +87,29 @@ public class CbwtfHcfController {
             @Valid @RequestBody CbwtfAdminHcfRegistrationRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         // Get admin user ID from tenant context (set by security filter)
-        UUID adminUserId = TenantContext.getUserId();
-        if (adminUserId == null) {
-            log.warn("Could not extract user ID from tenant context, using fallback");
-            adminUserId = UUID.randomUUID();
-        }
+        UUID adminUserId = currentUserId();
         return ResponseEntity.ok(hcfService.registerHcfDirectly(facilityId, adminUserId, request));
+    }
+
+    /**
+     * Save HCF registration as draft (no validation required).
+     */
+    @PostMapping("/draft")
+    public ResponseEntity<HcfDetailDTO> saveDraft(
+            @RequestBody CbwtfAdminHcfRegistrationRequest request) {
+        UUID facilityId = TenantContext.getTenantId();
+        UUID adminUserId = currentUserId();
+        return ResponseEntity.ok(hcfService.saveDraftDirectly(facilityId, adminUserId, request));
+    }
+
+    /**
+     * List draft HCF registrations.
+     */
+    @GetMapping("/drafts")
+    public ResponseEntity<List<HcfListItemDTO>> listDraftHcfs(
+            @RequestParam(name = "limit", defaultValue = "100") int limit) {
+        UUID facilityId = TenantContext.getTenantId();
+        return ResponseEntity.ok(hcfService.listDrafts(facilityId, limit));
     }
 
     /**
@@ -93,19 +121,11 @@ public class CbwtfHcfController {
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
         UUID facilityId = TenantContext.getTenantId();
 
-        // Validate file type
-        String contentType = file.getContentType();
-        if (contentType == null ||
-                (!contentType.equals("application/pdf") &&
-                        !contentType.startsWith("image/"))) {
+        try {
+            UploadFileValidator.rentAgreementExtension(file);
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(
-                    java.util.Map.of("error", "Only PDF and image files are allowed"));
-        }
-
-        // Validate file size (20MB max)
-        if (file.getSize() > 20 * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(
-                    java.util.Map.of("error", "File size cannot exceed 20MB"));
+                    java.util.Map.of("error", e.getMessage()));
         }
 
         String url = hcfService.uploadRentAgreement(facilityId, file);
@@ -172,13 +192,23 @@ public class CbwtfHcfController {
         return ResponseEntity.ok(billingConfigService.createConfig(id, facilityId, request));
     }
 
+    @PutMapping("/{id}/billing-model")
+    public ResponseEntity<HcfListItemDTO> updatePendingBillingModel(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody HcfUpdateRequest request) {
+        request.validate();
+        UUID facilityId = TenantContext.getTenantId();
+        return ResponseEntity.ok(hcfService.updatePendingBillingModel(id, facilityId, request));
+    }
+
     /**
      * List HCFs pending approval (registered via Android app).
      */
     @GetMapping("/pending")
-    public ResponseEntity<List<HcfListItemDTO>> listPendingHcfs() {
+    public ResponseEntity<List<HcfListItemDTO>> listPendingHcfs(
+            @RequestParam(name = "limit", defaultValue = "100") int limit) {
         UUID facilityId = TenantContext.getTenantId();
-        return ResponseEntity.ok(hcfService.listPending(facilityId));
+        return ResponseEntity.ok(hcfService.listPending(facilityId, limit));
     }
 
     /**
@@ -201,10 +231,22 @@ public class CbwtfHcfController {
     @PostMapping("/{id}/reject")
     public ResponseEntity<Void> rejectHcf(
             @PathVariable("id") UUID id,
-            @RequestBody HcfRejectionRequest request) {
+            @Valid @RequestBody HcfRejectionRequest request) {
         UUID facilityId = TenantContext.getTenantId();
         hcfService.rejectHcf(id, facilityId, request);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Resubmit a rejected HCF.
+     */
+    @PostMapping("/{id}/resubmit")
+    public ResponseEntity<HcfDetailDTO> resubmitHcf(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody CbwtfAdminHcfRegistrationRequest request) {
+        UUID facilityId = TenantContext.getTenantId();
+        UUID adminUserId = currentUserId();
+        return ResponseEntity.ok(hcfService.resubmitHcf(id, facilityId, adminUserId, request));
     }
 
     /**
@@ -232,7 +274,7 @@ public class CbwtfHcfController {
     @PostMapping("/{id}/portal-admin/create")
     public ResponseEntity<?> createPortalAdmin(@PathVariable("id") UUID id) {
         UUID facilityId = TenantContext.getTenantId();
-        return ResponseEntity.ok(hcfService.createPortalAdmin(id, facilityId));
+        return privateCredentialResponse(hcfService.createPortalAdmin(id, facilityId));
     }
 
     /**
@@ -244,10 +286,12 @@ public class CbwtfHcfController {
             @PathVariable("id") UUID id,
             @Valid @RequestBody ResetPasswordRequest request) {
         UUID facilityId = TenantContext.getTenantId();
-        return ResponseEntity.ok(hcfService.resetPortalAdminPassword(id, facilityId, request.newPassword));
+        return privateCredentialResponse(hcfService.resetPortalAdminPassword(id, facilityId, request.newPassword));
     }
 
     public static class ResetPasswordRequest {
+        @NotBlank(message = "newPassword is required")
+        @Size(min = 8, max = 128, message = "newPassword must be between 8 and 128 characters")
         public String newPassword;
     }
 
@@ -259,7 +303,7 @@ public class CbwtfHcfController {
     @PostMapping("/{id}/enable-portal-access")
     public ResponseEntity<?> enablePortalAccess(@PathVariable("id") UUID id) {
         UUID facilityId = TenantContext.getTenantId();
-        return ResponseEntity.ok(hcfService.enablePortalAccessForSmallHcf(id, facilityId));
+        return privateCredentialResponse(hcfService.enablePortalAccessForSmallHcf(id, facilityId));
     }
 
     /**
@@ -270,8 +314,8 @@ public class CbwtfHcfController {
     public ResponseEntity<Resource> downloadAgreementPdf(@PathVariable("id") UUID id) {
         UUID facilityId = TenantContext.getTenantId();
 
-        // Find active agreement for this HCF under this facility
-        Agreement agreement = agreementRepository.findActiveByHcfAndFacility(id, facilityId)
+        // Find active or upcoming agreement for this HCF under this facility
+        Agreement agreement = agreementRepository.findActiveOrUpcomingByHcfAndFacility(id, facilityId)
                 .orElse(null);
 
         if (agreement == null) {
@@ -286,26 +330,19 @@ public class CbwtfHcfController {
         }
 
         try {
-            String pdfUrl = agreement.getPdfUrl();
-            Path filePath;
-            if (pdfUrl.startsWith("/")) {
-                filePath = Paths.get(pdfUrl);
-            } else {
-                filePath = Paths.get(pdfUrl.replaceFirst("^/", ""));
-            }
-
-            Resource resource = new UrlResource(filePath.toUri());
-            if (resource.exists() && resource.isReadable()) {
-                String safeNumber = agreement.getAgreementNumber().replace("/", "_");
+            Path filePath = pdfService.storedGeneratedFilePath(agreement.getPdfUrl());
+            if (Files.exists(filePath) && Files.isRegularFile(filePath) && Files.isReadable(filePath)) {
+                String safeNumber = PdfService.safeDownloadToken(agreement.getAgreementNumber());
                 String filename = "Agreement_" + safeNumber + ".pdf";
                 return ResponseEntity.ok()
+                        .cacheControl(CacheControl.noStore())
                         .contentType(MediaType.APPLICATION_PDF)
                         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                        .body(resource);
+                        .body(new FileSystemResource(filePath));
             }
             return ResponseEntity.notFound().build();
-        } catch (MalformedURLException e) {
-            return ResponseEntity.internalServerError().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 
@@ -318,7 +355,7 @@ public class CbwtfHcfController {
     public ResponseEntity<Resource> downloadAgreementPrintPdf(@PathVariable("id") UUID id) {
         UUID facilityId = TenantContext.getTenantId();
 
-        Agreement agreement = agreementRepository.findActiveByHcfAndFacility(id, facilityId)
+        Agreement agreement = agreementRepository.findActiveOrUpcomingByHcfAndFacility(id, facilityId)
                 .orElse(null);
 
         if (agreement == null) {
@@ -328,25 +365,102 @@ public class CbwtfHcfController {
         try {
             String pdfPath = agreementService.generatePrintPdf(agreement);
 
-            Path filePath;
-            if (pdfPath.startsWith("/")) {
-                filePath = Paths.get(pdfPath);
-            } else {
-                filePath = Paths.get(pdfPath.replaceFirst("^/", ""));
-            }
-
-            Resource resource = new UrlResource(filePath.toUri());
-            if (resource.exists() && resource.isReadable()) {
-                String safeNumber = agreement.getAgreementNumber().replace("/", "_");
+            Path filePath = pdfService.storedGeneratedFilePath(pdfPath);
+            if (Files.exists(filePath) && Files.isRegularFile(filePath) && Files.isReadable(filePath)) {
+                String safeNumber = PdfService.safeDownloadToken(agreement.getAgreementNumber());
                 String filename = "Agreement_Print_" + safeNumber + ".pdf";
                 return ResponseEntity.ok()
+                        .cacheControl(CacheControl.noStore())
                         .contentType(MediaType.APPLICATION_PDF)
                         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                        .body(resource);
+                        .body(new FileSystemResource(filePath));
             }
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    /**
+     * View the uploaded rent agreement for a tenant-owned HCF.
+     */
+    @GetMapping("/{id}/rent-agreement")
+    public ResponseEntity<Resource> downloadRentAgreement(@PathVariable("id") UUID id) {
+        UUID facilityId = TenantContext.getTenantId();
+        HcfDetailDTO detail = hcfService.getHcfDetail(id, facilityId);
+        return rentAgreementResponse(detail.getRentAgreementUrl(), id);
+    }
+
+    /**
+     * Submit an agreement correction request.
+     */
+    @PostMapping("/{id}/agreement/correction-request")
+    public ResponseEntity<Void> submitCorrectionRequest(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody AgreementCorrectionRequestDTO request) {
+        UUID facilityId = TenantContext.getTenantId();
+        UUID adminUserId = currentUserId();
+
+        hcfService.submitCorrectionRequest(facilityId, id, request, adminUserId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Get Correction Requests for an HCF
+     */
+    @GetMapping("/{id}/agreement/correction-requests")
+    public ResponseEntity<List<AgreementCorrectionRequest>> getCorrectionRequests(@PathVariable("id") UUID id) {
+        UUID facilityId = TenantContext.getTenantId();
+        return ResponseEntity.ok(hcfService.getCorrectionRequests(facilityId, id));
+    }
+
+    private UUID currentUserId() {
+        UUID userId = TenantContext.getUserId();
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing authenticated user context");
+        }
+        return userId;
+    }
+
+    private ResponseEntity<Map<String, Object>> privateCredentialResponse(Map<String, Object> body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
+    }
+
+    private ResponseEntity<Resource> rentAgreementResponse(String rentAgreementUrl, UUID hcfId) {
+        if (rentAgreementUrl == null || rentAgreementUrl.isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        try {
+            Path filePath = UploadFileValidator.uploadedAssetPath(rentAgreementUrl, "/uploads/rent-agreements/");
+            if (!Files.exists(filePath) || !Files.isRegularFile(filePath) || !Files.isReadable(filePath)) {
+                return ResponseEntity.notFound().build();
+            }
+            String filename = "Rent_Agreement_" + hcfId + extensionFor(filePath);
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.noStore())
+                    .contentType(mediaTypeFor(filePath))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                    .body(new FileSystemResource(filePath));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    private MediaType mediaTypeFor(Path filePath) {
+        try {
+            String contentType = Files.probeContentType(filePath);
+            return contentType != null ? MediaType.parseMediaType(contentType) : MediaType.APPLICATION_OCTET_STREAM;
+        } catch (Exception e) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+    }
+
+    private String extensionFor(Path filePath) {
+        String filename = filePath.getFileName().toString();
+        int dot = filename.lastIndexOf('.');
+        return dot >= 0 ? filename.substring(dot) : "";
     }
 }

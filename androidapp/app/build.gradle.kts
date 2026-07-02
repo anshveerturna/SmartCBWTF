@@ -1,9 +1,32 @@
+import java.net.URI
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
     id("androidx.navigation.safeargs.kotlin")
+}
+
+fun normalizedApiBaseUrl(defaultValue: String, requireHttps: Boolean): String {
+    val configured = (project.findProperty("API_BASE_URL") as String?)
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?: defaultValue
+    val normalized = if (configured.endsWith("/")) configured else "$configured/"
+    val uri = URI(normalized)
+
+    require(!uri.host.isNullOrBlank()) {
+        "API_BASE_URL must be an absolute URL, for example https://api.smartcbwtf.com/api/"
+    }
+    require(normalized.endsWith("/api/")) {
+        "API_BASE_URL must include the /api/ path and trailing slash, got: $normalized"
+    }
+    require(uri.scheme == "https" || (!requireHttps && uri.scheme == "http")) {
+        "Release API_BASE_URL must use HTTPS, got: $normalized"
+    }
+
+    return normalized
 }
 
 android {
@@ -19,25 +42,36 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val apiBaseUrl = project.findProperty("API_BASE_URL") as String? ?: "https://api.smartcbwtf.com/api/"
+        val apiBaseUrl = normalizedApiBaseUrl("https://api.smartcbwtf.com/api/", requireHttps = true)
         buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments += mapOf(
+                    "room.schemaLocation" to "$projectDir/schemas",
+                    "room.incremental" to "true"
+                )
+            }
+        }
     }
 
     buildTypes {
         debug {
             // For physical device, use production API. For emulator, pass -PAPI_BASE_URL=http://10.0.2.2:8080/api/
-            val apiBaseUrl = project.findProperty("API_BASE_URL") as String?
-                ?: "http://10.0.2.2:8080/api/"
+            val apiBaseUrl = normalizedApiBaseUrl("http://10.0.2.2:8080/api/", requireHttps = false)
             buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
         }
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            buildConfigField("String", "BASE_URL", "\"https://api.smartcbwtf.com/api/\"")
+            val apiBaseUrl = normalizedApiBaseUrl("https://api.smartcbwtf.com/api/", requireHttps = true)
+            buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
         }
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -108,6 +142,7 @@ dependencies {
     implementation("io.coil-kt:coil:2.6.0")
 
     implementation("com.google.android.gms:play-services-location:21.3.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

@@ -30,13 +30,16 @@ import {
 import { useAuth } from '../auth';
 import apiClient from '../api/client';
 
+const SPECIAL_CHARACTER_REGEX = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/;
+
 // Password requirements
 const PASSWORD_REQUIREMENTS = [
-  { id: 'length', label: 'At least 8 characters', regex: /.{8,}/ },
-  { id: 'uppercase', label: 'One uppercase letter', regex: /[A-Z]/ },
-  { id: 'lowercase', label: 'One lowercase letter', regex: /[a-z]/ },
-  { id: 'number', label: 'One number', regex: /\d/ },
-  { id: 'special', label: 'One special character (@$!%*?&)', regex: /[@$!%*?&]/ },
+  { id: 'length', label: 'At least 8 characters', test: (password: string) => password.length >= 8 },
+  { id: 'maxLength', label: 'At most 128 characters', test: (password: string) => password.length <= 128 },
+  { id: 'uppercase', label: 'One uppercase letter', test: (password: string) => /[A-Z]/.test(password) },
+  { id: 'lowercase', label: 'One lowercase letter', test: (password: string) => /[a-z]/.test(password) },
+  { id: 'number', label: 'One number', test: (password: string) => /\d/.test(password) },
+  { id: 'special', label: 'One special character (!@#$%^&*...)', test: (password: string) => SPECIAL_CHARACTER_REGEX.test(password) },
 ];
 
 // Form validation schema
@@ -45,10 +48,11 @@ const changePasswordSchema = z.object({
   newPassword: z
     .string()
     .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be at most 128 characters')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
     .regex(/\d/, 'Password must contain at least one number')
-    .regex(/[@$!%*?&]/, 'Password must contain at least one special character'),
+    .regex(SPECIAL_CHARACTER_REGEX, 'Password must contain at least one special character (!@#$%^&*...)'),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: 'Passwords do not match',
@@ -93,9 +97,11 @@ const ChangePassword: React.FC = () => {
 
       // Password changed successfully - now we need to re-login to get a fresh token
       // without the must_change_password flag
-      alert('Password changed successfully! Please log in with your new password.');
       logout();
-      navigate('/login', { replace: true });
+      navigate('/login', {
+        replace: true,
+        state: { message: 'Password changed successfully. Please log in with your new password.' },
+      });
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         const response = (err as { response?: { data?: { message?: string } } }).response;
@@ -256,7 +262,7 @@ const ChangePassword: React.FC = () => {
                 </Typography>
                 <List dense sx={{ py: 0 }}>
                   {PASSWORD_REQUIREMENTS.map((req) => {
-                    const met = req.regex.test(newPassword);
+                    const met = req.test(newPassword);
                     return (
                       <ListItem key={req.id} sx={{ py: 0, px: 0 }}>
                         <ListItemIcon sx={{ minWidth: 28 }}>

@@ -5,6 +5,8 @@ import com.smartcbwtf.service.GpsIngestionHealthService.HealthStatus;
 import com.smartcbwtf.service.GpsIngestionHealthService.IngestionHealthDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -46,7 +48,7 @@ public class GpsHealthController {
         long degraded = healthList.stream().filter(h -> h.status() == HealthStatus.DEGRADED).count();
         long down = healthList.stream().filter(h -> h.status() == HealthStatus.DOWN).count();
 
-        return ResponseEntity.ok(new HealthSummaryResponse(
+        return privateResponse(new HealthSummaryResponse(
                 healthList,
                 healthList.size(),
                 (int) healthy,
@@ -65,7 +67,7 @@ public class GpsHealthController {
         List<IngestionHealthDTO> healthList = healthService.getHealthByFacility(facilityId);
 
         if (healthList.isEmpty()) {
-            return ResponseEntity.ok(new FacilityHealthResponse(
+            return privateResponse(new FacilityHealthResponse(
                     facilityId,
                     null,
                     List.of(),
@@ -87,13 +89,20 @@ public class GpsHealthController {
 
         String facilityName = healthList.isEmpty() ? null : healthList.get(0).facilityName();
 
-        return ResponseEntity.ok(new FacilityHealthResponse(
+        return privateResponse(new FacilityHealthResponse(
                 facilityId,
                 facilityName,
                 healthList,
                 overallStatus,
                 null,
                 Instant.now()));
+    }
+
+    private static <T> ResponseEntity<T> privateResponse(T body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
     }
 
     // ============ Response DTOs ============

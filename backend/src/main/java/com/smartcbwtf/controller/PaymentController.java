@@ -6,24 +6,32 @@ import com.smartcbwtf.repository.*;
 import com.smartcbwtf.service.PaymentService;
 import com.smartcbwtf.service.ReceiptService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static com.smartcbwtf.util.PaginationUtils.pageRequest;
 
 /**
  * Payment Controller.
@@ -33,6 +41,11 @@ import java.util.UUID;
 @RequestMapping("/api/cbwtf/payments")
 @PreAuthorize("hasRole('CBWTF_ADMIN')")
 public class PaymentController {
+
+        private static final int MAX_PAYMENT_REFERENCE_LENGTH = 100;
+        private static final int MAX_PAYER_NAME_LENGTH = 255;
+        private static final int MAX_PAYMENT_NOTES_LENGTH = 2000;
+        private static final int MAX_REVERSAL_REASON_LENGTH = 1000;
 
         private final PaymentService paymentService;
         private final PaymentRepository paymentRepository;
@@ -58,15 +71,14 @@ public class PaymentController {
          */
         @PostMapping
         public ResponseEntity<?> recordPayment(
-                        @Valid @RequestBody RecordPaymentRequest request,
-                        @AuthenticationPrincipal UserDetails user) {
+                        @Valid @RequestBody RecordPaymentRequest request) {
 
                 UUID facilityId = TenantContext.getTenantId();
                 if (facilityId == null) {
                         return ResponseEntity.badRequest().body(Map.of("error", "No facility context"));
                 }
 
-                UUID userId = null; // TODO: extract from user principal
+                UUID userId = TenantContext.getUserId();
 
                 var serviceRequest = new PaymentService.RecordPaymentRequest(
                                 facilityId,
@@ -75,9 +87,9 @@ public class PaymentController {
                                 request.paymentDate(),
                                 request.amount(),
                                 request.mode(),
-                                request.referenceNumber(),
-                                request.payerName(),
-                                request.notes(),
+                                trimToNull(request.referenceNumber()),
+                                trimToNull(request.payerName()),
+                                trimToNull(request.notes()),
                                 userId);
 
                 var result = paymentService.recordPayment(serviceRequest);
@@ -100,26 +112,25 @@ public class PaymentController {
         @PostMapping("/{id}/reverse")
         public ResponseEntity<?> reversePayment(
                         @PathVariable UUID id,
-                        @Valid @RequestBody ReversePaymentRequest request,
-                        @AuthenticationPrincipal UserDetails user) {
+                        @Valid @RequestBody ReversePaymentRequest request) {
 
                 UUID facilityId = TenantContext.getTenantId();
 
                 // Verify payment belongs to facility
-                var payment = paymentRepository.findById(id).orElse(null);
-                if (payment == null || !payment.getFacility().getId().equals(facilityId)) {
+                if (findTenantPayment(id).isEmpty()) {
                         return ResponseEntity.notFound().build();
                 }
 
-                UUID userId = null; // TODO: extract from user principal
+                UUID userId = TenantContext.getUserId();
 
                 try {
-                        var result = paymentService.reversePayment(id, request.reason(), userId);
+                        String reason = trimRequired(request.reason());
+                        var result = paymentService.reversePayment(facilityId, id, reason, userId);
                         return ResponseEntity.ok(Map.of(
                                         "success", true,
                                         "reversalPaymentId", result.reversalPaymentId(),
                                         "reversalId", result.reversalId()));
-                } catch (IllegalStateException e) {
+                } catch (IllegalArgumentException | IllegalStateException e) {
                         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
                 }
         }
@@ -129,17 +140,15 @@ public class PaymentController {
          */
         @GetMapping("/{id}/receipt")
         public ResponseEntity<?> downloadReceipt(@PathVariable UUID id) {
-                UUID facilityId = TenantContext.getTenantId();
-
                 // Verify payment belongs to facility
-                var payment = paymentRepository.findById(id).orElse(null);
-                if (payment == null || !payment.getFacility().getId().equals(facilityId)) {
+                if (findTenantPayment(id).isEmpty()) {
                         return ResponseEntity.notFound().build();
                 }
 
                 try {
                         var receipt = receiptService.getReceipt(id);
                         return ResponseEntity.ok()
+                                        .cacheControl(CacheControl.noStore())
                                         .header(HttpHeaders.CONTENT_DISPOSITION,
                                                         "attachment; filename=\""
                                                                         + receipt.getReceiptNumber().replace("/", "-")
@@ -161,16 +170,18 @@ public class PaymentController {
                         @RequestParam(name = "hcfId", required = false) UUID hcfId) {
 
                 UUID facilityId = TenantContext.getTenantId();
-                var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "paymentDate"));
+                var pageable = pageRequest(page, size, 20, Sort.by(Sort.Direction.DESC, "paymentDate"));
 
                 Page<Payment> payments;
                 if (hcfId != null) {
-                        payments = paymentService.getPaymentsForHcf(hcfId, pageable);
+                        payments = paymentService.getPaymentsForHcf(facilityId, hcfId, pageable);
                 } else {
                         payments = paymentService.getPayments(facilityId, pageable);
                 }
 
-                return ResponseEntity.ok(payments.map(this::toDTO));
+                Set<UUID> reversedPaymentIds = reversedPaymentIds(payments.getContent());
+                Set<UUID> reversalEntryIds = reversalEntryIds(payments.getContent());
+                return ResponseEntity.ok(payments.map(payment -> toDTO(payment, reversedPaymentIds, reversalEntryIds)));
         }
 
         /**
@@ -180,8 +191,7 @@ public class PaymentController {
         public ResponseEntity<PaymentDetailDTO> getPayment(@PathVariable UUID id) {
                 UUID facilityId = TenantContext.getTenantId();
 
-                return paymentRepository.findById(id)
-                                .filter(p -> p.getFacility().getId().equals(facilityId))
+                return paymentRepository.findByIdAndFacilityId(id, facilityId)
                                 .map(payment -> {
                                         var allocations = invoicePaymentRepository.findByPaymentId(payment.getId());
                                         boolean isReversed = paymentService.isReversed(payment.getId());
@@ -207,7 +217,7 @@ public class PaymentController {
 
                 BigDecimal collectedMTD = paymentService.getTotalCollectedMTD(facilityId);
                 BigDecimal outstanding = paymentService.getTotalOutstanding(facilityId);
-                BigDecimal totalAdvance = BigDecimal.ZERO; // TODO: sum advance for all HCFs
+                BigDecimal totalAdvance = paymentService.getTotalAdvanceBalance(facilityId);
 
                 return ResponseEntity.ok(new ReconciliationSummaryDTO(
                                 outstanding,
@@ -220,16 +230,30 @@ public class PaymentController {
          */
         @GetMapping("/hcf/{hcfId}/advance")
         public ResponseEntity<Map<String, BigDecimal>> getHcfAdvance(@PathVariable UUID hcfId) {
-                BigDecimal balance = paymentService.getAdvanceBalance(hcfId);
+                UUID facilityId = TenantContext.getTenantId();
+                BigDecimal balance = paymentService.getAdvanceBalance(facilityId, hcfId);
                 return ResponseEntity.ok(Map.of("advanceBalance", balance));
         }
 
         // ========== DTOs ==========
 
+        private Optional<Payment> findTenantPayment(UUID paymentId) {
+                return paymentRepository.findByIdAndFacilityId(paymentId, TenantContext.getTenantId());
+        }
+
         private PaymentDTO toDTO(Payment p) {
+                boolean isReversed = reversalRepository.existsByOriginalPaymentId(p.getId());
+                boolean isReversalEntry = reversalRepository.existsByReversalPaymentId(p.getId());
+                return toDTO(p, isReversed, isReversalEntry);
+        }
+
+        private PaymentDTO toDTO(Payment p, Set<UUID> reversedPaymentIds, Set<UUID> reversalEntryIds) {
+                return toDTO(p, reversedPaymentIds.contains(p.getId()), reversalEntryIds.contains(p.getId()));
+        }
+
+        private PaymentDTO toDTO(Payment p, boolean isReversed, boolean isReversalEntry) {
                 String hcfName = p.getHcf() != null ? p.getHcf().getName() : "Unknown";
                 String bankName = p.getBankAccount() != null ? p.getBankAccount().getBankName() : null;
-                boolean isReversed = reversalRepository.existsByOriginalPaymentId(p.getId());
 
                 return new PaymentDTO(
                                 p.getId(),
@@ -242,22 +266,43 @@ public class PaymentController {
                                 p.getPayerName(),
                                 bankName,
                                 p.getCreatedAt().toString(),
-                                isReversed);
+                                isReversed,
+                                isReversalEntry);
+        }
+
+        private Set<UUID> reversedPaymentIds(List<Payment> payments) {
+                List<UUID> paymentIds = paymentIds(payments);
+                if (paymentIds.isEmpty()) {
+                        return Set.of();
+                }
+                return reversalRepository.findOriginalPaymentIdsIn(paymentIds).stream().collect(Collectors.toSet());
+        }
+
+        private Set<UUID> reversalEntryIds(List<Payment> payments) {
+                List<UUID> paymentIds = paymentIds(payments);
+                if (paymentIds.isEmpty()) {
+                        return Set.of();
+                }
+                return reversalRepository.findReversalPaymentIdsIn(paymentIds).stream().collect(Collectors.toSet());
+        }
+
+        private List<UUID> paymentIds(List<Payment> payments) {
+                return payments.stream().map(Payment::getId).toList();
         }
 
         public record RecordPaymentRequest(
                         @NotNull UUID hcfId,
                         UUID bankAccountId,
-                        @NotNull LocalDate paymentDate,
-                        @NotNull @Positive BigDecimal amount,
+                        @NotNull @PastOrPresent LocalDate paymentDate,
+                        @NotNull @Positive @DecimalMin("0.01") @Digits(integer = 13, fraction = 2) BigDecimal amount,
                         @NotNull PaymentMode mode,
-                        String referenceNumber,
-                        String payerName,
-                        String notes) {
+                        @Size(max = MAX_PAYMENT_REFERENCE_LENGTH) String referenceNumber,
+                        @Size(max = MAX_PAYER_NAME_LENGTH) String payerName,
+                        @Size(max = MAX_PAYMENT_NOTES_LENGTH) String notes) {
         }
 
         public record ReversePaymentRequest(
-                        @NotBlank String reason) {
+                        @NotBlank @Size(max = MAX_REVERSAL_REASON_LENGTH) String reason) {
         }
 
         public record PaymentDTO(
@@ -271,7 +316,8 @@ public class PaymentController {
                         String payerName,
                         String bankName,
                         String createdAt,
-                        boolean isReversed) {
+                        boolean isReversed,
+                        boolean isReversalEntry) {
         }
 
         public record PaymentDetailDTO(
@@ -291,5 +337,19 @@ public class PaymentController {
                         BigDecimal totalOutstanding,
                         BigDecimal collectedMTD,
                         BigDecimal totalAdvance) {
+        }
+
+        private static String trimRequired(String value) {
+                if (value == null || value.isBlank()) {
+                        throw new IllegalArgumentException("Required value is blank");
+                }
+                return value.trim();
+        }
+
+        private static String trimToNull(String value) {
+                if (value == null || value.isBlank()) {
+                        return null;
+                }
+                return value.trim();
         }
 }

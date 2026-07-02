@@ -48,8 +48,8 @@ public class SystemConfigFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Always allow health check and actuator
-        if (path.startsWith("/actuator") || path.equals("/health")) {
+        // Always allow health checks so probes keep working during maintenance.
+        if (isHealthCheckPath(path)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -100,6 +100,10 @@ public class SystemConfigFilter extends OncePerRequestFilter {
         // This is a simplified check - the actual auth check happens in security config
         TenantContext.TenantInfo info = TenantContext.get();
         return info != null && "SUPER_ADMIN".equals(info.role());
+    }
+
+    private boolean isHealthCheckPath(String path) {
+        return "/api/health".equals(path) || "/actuator/health".equals(path) || "/health".equals(path);
     }
 
     private boolean isMutatingRequest(HttpServletRequest request) {

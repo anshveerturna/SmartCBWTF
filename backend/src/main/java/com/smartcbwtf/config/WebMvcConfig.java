@@ -40,10 +40,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 registry.addResourceHandler("/uploads/branding/**")
                                 .addResourceLocations("file:" + brandingAbsPath + "/");
 
-                // Serve generated files (PDFs) from the files directory
-                String filesAbsPath = Paths.get("files").toAbsolutePath().toString();
-                registry.addResourceHandler("/files/**")
-                                .addResourceLocations("file:" + filesAbsPath + "/");
+                // Generated PDFs are served through tenant-scoped controller endpoints.
         }
 
         @Override

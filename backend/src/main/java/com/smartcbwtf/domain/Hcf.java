@@ -87,6 +87,9 @@ public class Hcf {
     @Column(name = "rent_agreement_url", length = 500)
     private String rentAgreementUrl;
 
+    @Column(name = "rejection_count")
+    private Integer rejectionCount = 0;
+
     // Identity fingerprint for anti-fraud detection
     @Column(name = "identity_hash", length = 64)
     private String identityHash;
@@ -403,6 +406,14 @@ public class Hcf {
 
     public void setRentAgreementUrl(String rentAgreementUrl) {
         this.rentAgreementUrl = rentAgreementUrl;
+    }
+
+    public Integer getRejectionCount() {
+        return rejectionCount;
+    }
+
+    public void setRejectionCount(Integer rejectionCount) {
+        this.rejectionCount = rejectionCount;
     }
 
     // Billing model getters/setters

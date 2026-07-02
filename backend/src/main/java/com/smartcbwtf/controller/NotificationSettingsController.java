@@ -3,6 +3,9 @@ package com.smartcbwtf.controller;
 import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.FacilityNotificationSettings;
 import com.smartcbwtf.service.NotificationSettingsService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -38,7 +41,7 @@ public class NotificationSettingsController {
      * Update notification settings.
      */
     @PutMapping
-    public ResponseEntity<SettingsDTO> updateSettings(@RequestBody UpdateSettingsRequest request) {
+    public ResponseEntity<SettingsDTO> updateSettings(@Valid @RequestBody UpdateSettingsRequest request) {
         UUID facilityId = TenantContext.getTenantId();
 
         var updateRequest = new NotificationSettingsService.UpdateRequest(
@@ -52,9 +55,17 @@ public class NotificationSettingsController {
     }
 
     public record UpdateSettingsRequest(
+            @Min(value = 1, message = "Payment reminder start days must be at least 1")
+            @Max(value = 30, message = "Payment reminder start days must be 30 or less")
             Integer paymentReminderStartDays,
+            @Min(value = 1, message = "Payment reminder frequency days must be at least 1")
+            @Max(value = 14, message = "Payment reminder frequency days must be 14 or less")
             Integer paymentReminderFrequencyDays,
+            @Min(value = 1, message = "Max overdue reminders must be at least 1")
+            @Max(value = 10, message = "Max overdue reminders must be 10 or less")
             Integer maxOverdueReminders,
+            @Min(value = 7, message = "Agreement expiry warning days must be at least 7")
+            @Max(value = 90, message = "Agreement expiry warning days must be 90 or less")
             Integer agreementExpiryWarningDays) {
     }
 

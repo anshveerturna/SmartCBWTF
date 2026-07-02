@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -34,7 +34,7 @@ export default function UserDetail() {
   const queryClient = useQueryClient();
 
   const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState<UpdateUserRequest>({});
+  const [formDraft, setFormDraft] = useState<{ userId: string; data: UpdateUserRequest } | null>(null);
   const [passwordDialog, setPasswordDialog] = useState(false);
   const [newPassword, setNewPassword] = useState('');
 
@@ -43,17 +43,6 @@ export default function UserDetail() {
     queryFn: () => adminApi.getUser(id!),
     enabled: !!id,
   });
-
-  // Initialize form data when user loads
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        fullName: user.fullName || undefined,
-        email: user.email || undefined,
-        phone: user.phone || undefined,
-      });
-    }
-  }, [user]);
 
   const { data: location } = useQuery<LocationData>({
     queryKey: ['user-location', id],
@@ -95,7 +84,12 @@ export default function UserDetail() {
   });
 
   const handleSave = () => {
-    updateMutation.mutate(formData);
+    if (!user) return;
+    updateMutation.mutate(formDraft?.userId === user.id ? formDraft.data : {
+      fullName: user.fullName || undefined,
+      email: user.email || undefined,
+      phone: user.phone || undefined,
+    });
   };
 
   const handlePasswordReset = () => {
@@ -120,6 +114,15 @@ export default function UserDetail() {
       </Box>
     );
   }
+
+  const effectiveFormData = formDraft?.userId === user.id ? formDraft.data : {
+    fullName: user.fullName || undefined,
+    email: user.email || undefined,
+    phone: user.phone || undefined,
+  };
+  const updateFormField = (field: keyof UpdateUserRequest, value: string) => {
+    setFormDraft({ userId: user.id, data: { ...effectiveFormData, [field]: value } });
+  };
 
   return (
     <Box>
@@ -156,18 +159,18 @@ export default function UserDetail() {
               <Stack spacing={2}>
                 <TextField
                   label="Full Name" fullWidth
-                  value={formData.fullName || ''} disabled={!editing}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  value={effectiveFormData.fullName || ''} disabled={!editing}
+                  onChange={(e) => updateFormField('fullName', e.target.value)}
                 />
                 <TextField
                   label="Email" fullWidth type="email"
-                  value={formData.email || ''} disabled={!editing}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={effectiveFormData.email || ''} disabled={!editing}
+                  onChange={(e) => updateFormField('email', e.target.value)}
                 />
                 <TextField
                   label="Phone" fullWidth
-                  value={formData.phone || ''} disabled={!editing}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  value={effectiveFormData.phone || ''} disabled={!editing}
+                  onChange={(e) => updateFormField('phone', e.target.value)}
                 />
               </Stack>
             </CardContent>

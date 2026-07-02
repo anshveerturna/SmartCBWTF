@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { PORTAL_URL } from "@/lib/siteConfig";
 
 export default function LoginPage() {
-  const router = useRouter();
-
   useEffect(() => {
     // Redirect to the actual web portal
-    window.location.replace("https://portal.smartcbwtf.com");
+    window.location.replace(PORTAL_URL);
   }, []);
 
   return (

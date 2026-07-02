@@ -1,6 +1,7 @@
 package com.smartcbwtf.controller;
 
 import com.smartcbwtf.config.TenantContext;
+import com.smartcbwtf.domain.AgreementNumberResetFrequency;
 import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.domain.FacilitySettings;
 import com.smartcbwtf.dto.settings.*;
@@ -8,9 +9,12 @@ import com.smartcbwtf.repository.FacilityRepository;
 import com.smartcbwtf.repository.FacilitySettingsRepository;
 import com.smartcbwtf.service.AgreementNumberGeneratorService;
 import com.smartcbwtf.service.FacilitySettingsService;
+import com.smartcbwtf.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +30,7 @@ import java.util.UUID;
 @RequestMapping("/api/cbwtf/settings")
 @PreAuthorize("hasRole('CBWTF_ADMIN')")
 public class FacilitySettingsController {
+    private static final int MAX_AGREEMENT_TERMS_TEMPLATE_LENGTH = 20_000;
 
     private final FacilitySettingsService settingsService;
     private final AgreementNumberGeneratorService agreementNumberGenerator;
@@ -153,7 +158,9 @@ public class FacilitySettingsController {
             @RequestParam(name = "separator", required = false) String separator,
             @RequestParam(name = "digits", required = false) Integer digits,
             @RequestParam(name = "includeFacilityCode", required = false) Boolean includeFacilityCode,
-            @RequestParam(name = "includeYear", required = false) Boolean includeYear) {
+            @RequestParam(name = "includeYear", required = false) Boolean includeYear,
+            @RequestParam(name = "template", required = false) String template,
+            @RequestParam(name = "resetFrequency", required = false) AgreementNumberResetFrequency resetFrequency) {
         UUID facilityId = TenantContext.getTenantId();
         Facility facility = facilityRepository.findById(facilityId)
                 .orElseThrow(() -> new IllegalArgumentException("Facility not found"));
@@ -165,10 +172,14 @@ public class FacilitySettingsController {
         int effectiveDigits = digits != null ? digits : (settings != null ? settings.getAgreementNumberSequenceDigits() : 5);
         boolean effectiveIncludeFacilityCode = includeFacilityCode != null ? includeFacilityCode : (settings != null ? settings.getAgreementNumberIncludeFacilityCode() : true);
         boolean effectiveIncludeYear = includeYear != null ? includeYear : (settings != null ? settings.getAgreementNumberIncludeYear() : true);
+        String effectiveTemplate = template != null ? template : (settings != null ? settings.getAgreementNumberTemplate() : null);
+        AgreementNumberResetFrequency effectiveResetFrequency = resetFrequency != null
+                ? resetFrequency
+                : (settings != null ? settings.getAgreementNumberResetFrequency() : AgreementNumberResetFrequency.YEARLY);
 
         String preview = agreementNumberGenerator.previewNextAgreementNumber(
                 facility, effectivePrefix, effectiveSeparator, effectiveDigits,
-                effectiveIncludeFacilityCode, effectiveIncludeYear);
+                effectiveIncludeFacilityCode, effectiveIncludeYear, effectiveTemplate, effectiveResetFrequency);
 
         return ResponseEntity.ok(Map.of("preview", preview));
     }
@@ -181,7 +192,14 @@ public class FacilitySettingsController {
             @RequestParam(name = "section", required = false) String section,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
-        return ResponseEntity.ok(settingsService.getAuditHistory(section, page, size));
+        return privateResponse(settingsService.getAuditHistory(section, page, size));
+    }
+
+    private static <T> ResponseEntity<T> privateResponse(T body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
     }
 
     /**
@@ -201,30 +219,24 @@ public class FacilitySettingsController {
      */
     @PutMapping("/agreement-terms")
     public ResponseEntity<Void> updateAgreementTerms(
-            @RequestBody Map<String, String> body,
+            @Valid @RequestBody AgreementTermsRequest body,
             HttpServletRequest request) {
+        if (body == null) {
+            throw new IllegalArgumentException("Agreement terms request is required");
+        }
         String ipAddress = extractIpAddress(request);
-        String termsTemplate = body.get("termsTemplate");
-        settingsService.updateAgreementTermsTemplate(termsTemplate, ipAddress);
+        settingsService.updateAgreementTermsTemplate(body.termsTemplate(), ipAddress);
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Extract client IP address from request.
-     * Checks X-Forwarded-For header for reverse proxy scenarios.
-     */
     private String extractIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            // Take first IP if multiple proxies
-            return xForwardedFor.split(",")[0].trim();
-        }
+        return ClientIpResolver.resolve(request);
+    }
 
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isBlank()) {
-            return xRealIp.trim();
-        }
-
-        return request.getRemoteAddr();
+    public record AgreementTermsRequest(
+            @jakarta.validation.constraints.Size(
+                    max = MAX_AGREEMENT_TERMS_TEMPLATE_LENGTH,
+                    message = "Agreement terms template must be 20000 characters or less")
+            String termsTemplate) {
     }
 }

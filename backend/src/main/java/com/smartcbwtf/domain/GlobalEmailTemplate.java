@@ -1,6 +1,9 @@
 package com.smartcbwtf.domain;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -32,10 +35,12 @@ public class GlobalEmailTemplate {
     @Column(name = "body_html", nullable = false, columnDefinition = "TEXT")
     private String bodyHtml;
 
-    @Column(name = "required_placeholders", columnDefinition = "TEXT[]")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "required_placeholders")
     private String[] requiredPlaceholders = {};
 
-    @Column(name = "optional_placeholders", columnDefinition = "TEXT[]")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "optional_placeholders")
     private String[] optionalPlaceholders = {};
 
     @Column(nullable = false)

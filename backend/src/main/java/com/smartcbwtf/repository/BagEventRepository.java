@@ -3,11 +3,13 @@ package com.smartcbwtf.repository;
 import com.smartcbwtf.domain.BagEvent;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,15 +18,32 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 
 	List<BagEvent> findByHcfIdAndEventTsBetween(UUID hcfId, Instant start, Instant end);
 
+	List<BagEvent> findByHcfIdAndEventTsBetweenOrderByEventTsDesc(UUID hcfId, Instant start, Instant end,
+			Pageable pageable);
+
 	List<BagEvent> findByFacilityIdAndEventTsBetween(UUID facilityId, Instant start, Instant end);
+
+	List<BagEvent> findByFacilityIdAndHcfIdAndEventTsBetween(UUID facilityId, UUID hcfId, Instant start, Instant end);
+
+	List<BagEvent> findByFacilityIdAndHcfIdAndEventTsBetweenOrderByEventTsDesc(UUID facilityId, UUID hcfId,
+			Instant start, Instant end, Pageable pageable);
 
 	List<BagEvent> findByFacilityIdAndEventTypeAndEventTsBetween(UUID facilityId, String eventType, Instant start,
 			Instant end);
 
 	List<BagEvent> findByFacilityIdAndEventTypeAndAnomalyState(UUID facilityId, String eventType, String anomalyState);
 
+	@EntityGraph(attributePaths = { "bagLabel", "hcf" })
+	List<BagEvent> findByFacilityIdAndEventTypeAndAnomalyStateOrderByEventTsDesc(
+			UUID facilityId, String eventType, String anomalyState, Pageable pageable);
+
 	@Query("select e from BagEvent e where e.facility.id = :facilityId and e.eventType = 'HCF_COLLECTION' and e.eventTs < :cutoff and not exists (select 1 from BagEvent v where v.bagLabel = e.bagLabel and v.eventType = 'CBWTF_VERIFICATION')")
 	List<BagEvent> findMissingBags(@Param("facilityId") UUID facilityId, @Param("cutoff") Instant cutoff);
+
+	@EntityGraph(attributePaths = { "bagLabel", "hcf" })
+	@Query("select e from BagEvent e where e.facility.id = :facilityId and e.eventType = 'HCF_COLLECTION' and e.eventTs < :cutoff and not exists (select 1 from BagEvent v where v.bagLabel = e.bagLabel and v.eventType = 'CBWTF_VERIFICATION') order by e.eventTs desc")
+	List<BagEvent> findMissingBags(@Param("facilityId") UUID facilityId, @Param("cutoff") Instant cutoff,
+			Pageable pageable);
 
 	Optional<BagEvent> findFirstByBagLabelIdAndEventTypeOrderByEventTsDesc(UUID bagLabelId, String eventType);
 
@@ -36,6 +55,8 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 	Page<BagEvent> findByFacilityId(UUID facilityId, Pageable pageable);
 
 	Page<BagEvent> findByEventType(String eventType, Pageable pageable);
+
+	long countByEventType(String eventType);
 
 	Page<BagEvent> findByEventTsBetween(Instant start, Instant end, Pageable pageable);
 
@@ -54,6 +75,20 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 
 	@Query("SELECT e FROM BagEvent e WHERE e.facility.id = :facilityId ORDER BY e.eventTs DESC LIMIT :limit")
 	List<BagEvent> findRecentByFacilityId(@Param("facilityId") UUID facilityId, @Param("limit") int limit);
+
+	@EntityGraph(attributePaths = { "bagLabel", "hcf" })
+	@Query("""
+			SELECT e FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			  AND e.eventTs >= :since
+			  AND e.anomalyState IS NOT NULL
+			  AND e.anomalyState <> 'OK'
+			ORDER BY e.eventTs DESC
+			""")
+	List<BagEvent> findRecentAnomaliesByFacilityIdSince(
+			@Param("facilityId") UUID facilityId,
+			@Param("since") Instant since,
+			Pageable pageable);
 
 	// Count by waste category for dashboard charts
 	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.facility.id = :facilityId AND e.bagLabel IS NOT NULL AND e.bagLabel.category = :category AND e.eventTs >= :since")
@@ -83,11 +118,246 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 			@Param("start") Instant start,
 			@Param("end") Instant end);
 
+	@Query("""
+			SELECT COUNT(e)
+			FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			  AND e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			""")
+	long countByFacilityIdAndHcfIdAndEventTsBetween(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
 	List<BagEvent> findTop10ByHcfIdOrderByEventTsDesc(UUID hcfId);
 
 	@Query("SELECT COALESCE(SUM(e.weightKg), 0) FROM BagEvent e WHERE e.hcf.id = :hcfId AND e.eventTs >= :start AND e.eventTs < :end")
 	java.math.BigDecimal sumWeightByHcfIdAndEventTsBetween(
 			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			  AND e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			""")
+	java.math.BigDecimal sumWeightByFacilityIdAndHcfIdAndEventTsBetween(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.hcf.id = :hcfId AND e.eventTs >= :start AND e.eventTs < :end AND (e.anomalyState IS NULL OR e.anomalyState = 'OK')")
+	long countOkByHcfIdAndEventTsBetween(
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT COUNT(e)
+			FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			  AND e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			  AND (e.anomalyState IS NULL OR e.anomalyState = 'OK')
+			""")
+	long countOkByFacilityIdAndHcfIdAndEventTsBetween(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT e.bagLabel.category, COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			WHERE e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			GROUP BY e.bagLabel.category
+			ORDER BY e.bagLabel.category
+			""")
+	List<Object[]> sumWeightGroupedByCategoryForHcfBetween(
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT e.bagLabel.category, COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			  AND e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			GROUP BY e.bagLabel.category
+			ORDER BY e.bagLabel.category
+			""")
+	List<Object[]> sumWeightGroupedByCategoryForFacilityAndHcfBetween(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT COALESCE(label.category, 'UNKNOWN'), COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			LEFT JOIN e.bagLabel label
+			WHERE e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			GROUP BY COALESCE(label.category, 'UNKNOWN')
+			ORDER BY COALESCE(label.category, 'UNKNOWN')
+			""")
+	List<Object[]> sumWeightGroupedByCategoryForHcfBetweenIncludingUnknown(
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT COALESCE(label.category, 'UNKNOWN'), COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			LEFT JOIN e.bagLabel label
+			WHERE e.facility.id = :facilityId
+			  AND e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			GROUP BY COALESCE(label.category, 'UNKNOWN')
+			ORDER BY COALESCE(label.category, 'UNKNOWN')
+			""")
+	List<Object[]> sumWeightGroupedByCategoryForFacilityAndHcfBetweenIncludingUnknown(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT COALESCE(label.category, 'UNKNOWN'), COUNT(e), COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			LEFT JOIN e.bagLabel label
+			WHERE e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			GROUP BY COALESCE(label.category, 'UNKNOWN')
+			ORDER BY COALESCE(label.category, 'UNKNOWN')
+			""")
+	List<Object[]> countAndSumWeightGroupedByCategoryForHcfBetweenIncludingUnknown(
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT COALESCE(label.category, 'UNKNOWN'), COUNT(e), COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			LEFT JOIN e.bagLabel label
+			WHERE e.facility.id = :facilityId
+			  AND e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			GROUP BY COALESCE(label.category, 'UNKNOWN')
+			ORDER BY COALESCE(label.category, 'UNKNOWN')
+			""")
+	List<Object[]> countAndSumWeightGroupedByCategoryForFacilityAndHcfBetweenIncludingUnknown(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT DATE(e.eventTs), e.bagLabel.category, COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			WHERE e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			GROUP BY DATE(e.eventTs), e.bagLabel.category
+			ORDER BY DATE(e.eventTs)
+			""")
+	List<Object[]> sumWeightGroupedByDayAndCategoryForHcf(
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT DATE(e.eventTs), e.bagLabel.category, COALESCE(SUM(e.weightKg), 0)
+			FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			  AND e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			GROUP BY DATE(e.eventTs), e.bagLabel.category
+			ORDER BY DATE(e.eventTs)
+			""")
+	List<Object[]> sumWeightGroupedByDayAndCategoryForFacilityAndHcf(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT DATE(e.eventTs), COUNT(e), COALESCE(SUM(e.weightKg), 0),
+			       SUM(CASE WHEN e.anomalyState IS NULL OR e.anomalyState = 'OK' THEN 0 ELSE 1 END)
+			FROM BagEvent e
+			WHERE e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			GROUP BY DATE(e.eventTs)
+			ORDER BY DATE(e.eventTs) DESC
+			""")
+	List<Object[]> summarizePickupsByDayForHcf(
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("""
+			SELECT DATE(e.eventTs), COUNT(e), COALESCE(SUM(e.weightKg), 0),
+			       SUM(CASE WHEN e.anomalyState IS NULL OR e.anomalyState = 'OK' THEN 0 ELSE 1 END)
+			FROM BagEvent e
+			WHERE e.facility.id = :facilityId
+			  AND e.hcf.id = :hcfId
+			  AND e.eventTs >= :start
+			  AND e.eventTs < :end
+			GROUP BY DATE(e.eventTs)
+			ORDER BY DATE(e.eventTs) DESC
+			""")
+	List<Object[]> summarizePickupsByDayForFacilityAndHcf(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.hcf.id = :hcfId AND e.bagLabel.category = :category AND e.eventTs >= :start AND e.eventTs < :end")
+	long countByHcfIdAndCategoryAndEventTsBetween(
+			@Param("hcfId") UUID hcfId,
+			@Param("category") String category,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.facility.id = :facilityId AND e.hcf.id = :hcfId AND e.bagLabel.category = :category AND e.eventTs >= :start AND e.eventTs < :end")
+	long countByFacilityIdAndHcfIdAndCategoryAndEventTsBetween(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("category") String category,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.hcf.id = :hcfId AND e.bagLabel.category = :category AND e.eventTs >= :start AND e.eventTs < :end AND (e.anomalyState IS NULL OR e.anomalyState = 'OK')")
+	long countOkByHcfIdAndCategoryAndEventTsBetween(
+			@Param("hcfId") UUID hcfId,
+			@Param("category") String category,
+			@Param("start") Instant start,
+			@Param("end") Instant end);
+
+	@Query("SELECT COUNT(e) FROM BagEvent e WHERE e.facility.id = :facilityId AND e.hcf.id = :hcfId AND e.bagLabel.category = :category AND e.eventTs >= :start AND e.eventTs < :end AND (e.anomalyState IS NULL OR e.anomalyState = 'OK')")
+	long countOkByFacilityIdAndHcfIdAndCategoryAndEventTsBetween(
+			@Param("facilityId") UUID facilityId,
+			@Param("hcfId") UUID hcfId,
+			@Param("category") String category,
 			@Param("start") Instant start,
 			@Param("end") Instant end);
 
@@ -288,4 +558,19 @@ public interface BagEventRepository extends JpaRepository<BagEvent, UUID> {
 	 */
 	@Query("SELECT MAX(e.eventTs) FROM BagEvent e WHERE e.hcf.id = :hcfId AND e.eventType = 'HCF_COLLECTION'")
 	Instant findLastPickupTimeByHcfId(@Param("hcfId") UUID hcfId);
+
+	interface HcfLastPickup {
+		UUID getHcfId();
+
+		Instant getLastPickupAt();
+	}
+
+	@Query("""
+			SELECT e.hcf.id AS hcfId, MAX(e.eventTs) AS lastPickupAt
+			FROM BagEvent e
+			WHERE e.hcf.id IN :hcfIds
+			  AND e.eventType = 'HCF_COLLECTION'
+			GROUP BY e.hcf.id
+			""")
+	List<HcfLastPickup> findLastPickupTimesByHcfIds(@Param("hcfIds") Collection<UUID> hcfIds);
 }

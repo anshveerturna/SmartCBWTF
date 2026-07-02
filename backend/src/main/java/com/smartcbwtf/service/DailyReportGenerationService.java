@@ -2,14 +2,15 @@ package com.smartcbwtf.service;
 
 import com.smartcbwtf.domain.DailyComplianceReport;
 import com.smartcbwtf.domain.Facility;
-import com.smartcbwtf.domain.ReportGenerationLock;
 import com.smartcbwtf.repository.DailyComplianceReportRepository;
 import com.smartcbwtf.repository.FacilityRepository;
-import com.smartcbwtf.repository.ReportGenerationLockRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -29,24 +30,31 @@ public class DailyReportGenerationService {
     private static final Logger log = LoggerFactory.getLogger(DailyReportGenerationService.class);
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
     private static final String REPORT_TYPE = "DAILY";
+    private static final int FACILITY_PAGE_SIZE = 100;
 
     private final DailyComplianceReportRepository reportRepository;
-    private final ReportGenerationLockRepository lockRepository;
+    private final ReportGenerationLockService lockService;
     private final FacilityRepository facilityRepository;
     private final ComplianceDataAggregator aggregator;
+    private final ComplianceReportExportService reportExportService;
     private final AuditLogService auditLogService;
+    private final TransactionTemplate transactionTemplate;
 
     public DailyReportGenerationService(
             DailyComplianceReportRepository reportRepository,
-            ReportGenerationLockRepository lockRepository,
+            ReportGenerationLockService lockService,
             FacilityRepository facilityRepository,
             ComplianceDataAggregator aggregator,
-            AuditLogService auditLogService) {
+            ComplianceReportExportService reportExportService,
+            AuditLogService auditLogService,
+            TransactionTemplate transactionTemplate) {
         this.reportRepository = reportRepository;
-        this.lockRepository = lockRepository;
+        this.lockService = lockService;
         this.facilityRepository = facilityRepository;
         this.aggregator = aggregator;
+        this.reportExportService = reportExportService;
         this.auditLogService = auditLogService;
+        this.transactionTemplate = transactionTemplate;
     }
 
     /**
@@ -56,110 +64,107 @@ public class DailyReportGenerationService {
      * @param reportDate Date to generate report for
      * @return true if report was generated, false if already exists
      */
-    @Transactional
     public boolean generateReport(UUID facilityId, LocalDate reportDate) {
         String periodKey = reportDate.toString();
 
+        if (!lockService.acquire(REPORT_TYPE, periodKey, facilityId)) {
+            log.info("Daily report generation already in progress for facility {} date {}", facilityId, reportDate);
+            return false;
+        }
+
+        try {
+            return Boolean.TRUE.equals(transactionTemplate.execute(status -> generateReportLocked(facilityId, reportDate)));
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Daily report already generated concurrently for facility {} date {}", facilityId, reportDate);
+            return false;
+        } finally {
+            lockService.release(REPORT_TYPE, periodKey, facilityId);
+        }
+    }
+
+    private boolean generateReportLocked(UUID facilityId, LocalDate reportDate) {
         // Check if already exists
         if (reportRepository.existsByFacilityIdAndReportDate(facilityId, reportDate)) {
             log.info("Daily report already exists for facility {} date {}", facilityId, reportDate);
             return false;
         }
 
-        // Acquire lock
-        try {
-            ReportGenerationLock lock = new ReportGenerationLock();
-            lock.setReportType(REPORT_TYPE);
-            lock.setPeriodKey(periodKey);
-            lock.setFacilityId(facilityId);
-            lock.setLockedAt(Instant.now());
-            lockRepository.save(lock);
-        } catch (Exception e) {
-            log.warn("Failed to acquire lock for daily report {} {}: {}", facilityId, reportDate, e.getMessage());
+        // Calculate source window (full day in IST)
+        ZonedDateTime dayStart = reportDate.atStartOfDay(IST);
+        ZonedDateTime dayEnd = dayStart.plusDays(1).minusNanos(1);
+        Instant sourceFrom = dayStart.toInstant();
+        Instant sourceTo = dayEnd.toInstant();
+
+        // Load facility
+        Facility facility = facilityRepository.findById(facilityId).orElse(null);
+        if (facility == null) {
+            log.error("Facility not found: {}", facilityId);
             return false;
         }
 
-        try {
-            // Calculate source window (full day in IST)
-            ZonedDateTime dayStart = reportDate.atStartOfDay(IST);
-            ZonedDateTime dayEnd = dayStart.plusDays(1).minusNanos(1);
-            Instant sourceFrom = dayStart.toInstant();
-            Instant sourceTo = dayEnd.toInstant();
+        // Aggregate data
+        var aggregation = aggregator.aggregateDaily(facilityId, reportDate, sourceFrom, sourceTo);
 
-            // Load facility
-            Facility facility = facilityRepository.findById(facilityId).orElse(null);
-            if (facility == null) {
-                log.error("Facility not found: {}", facilityId);
-                return false;
-            }
+        // Convert to JSON
+        String dataJson = aggregator.toJson(aggregation);
 
-            // Aggregate data
-            var aggregation = aggregator.aggregateDaily(facilityId, reportDate, sourceFrom, sourceTo);
+        // Compute checksum
+        String checksum = computeChecksum(dataJson);
 
-            // Convert to JSON
-            String dataJson = aggregator.toJson(aggregation);
+        // Determine status and completeness
+        DailyComplianceReport.Status status = aggregation.hasViolations()
+                ? DailyComplianceReport.Status.FLAGGED
+                : DailyComplianceReport.Status.READY;
 
-            // Compute checksum
-            String checksum = computeChecksum(dataJson);
+        DailyComplianceReport.DataCompleteness completeness = aggregation.unverifiedBags() > 0
+                ? DailyComplianceReport.DataCompleteness.PARTIAL
+                : DailyComplianceReport.DataCompleteness.COMPLETE;
 
-            // Determine status and completeness
-            DailyComplianceReport.Status status = aggregation.hasViolations()
-                    ? DailyComplianceReport.Status.FLAGGED
-                    : DailyComplianceReport.Status.READY;
+        // Create report
+        DailyComplianceReport report = new DailyComplianceReport();
+        report.setFacility(facility);
+        report.setReportDate(reportDate);
+        report.setReportVersion(1);
+        report.setGeneratedAt(Instant.now());
+        report.setStatus(status);
+        report.setDataCompleteness(completeness);
+        report.setSourceWindowFrom(sourceFrom);
+        report.setSourceWindowTo(sourceTo);
+        report.setDataJson(dataJson);
+        report.setChecksum(checksum);
+        report.setCreatedBy("SYSTEM");
+        report.setPdfBytes(reportExportService.dailyPdf(report));
 
-            DailyComplianceReport.DataCompleteness completeness = aggregation.unverifiedBags() > 0
-                    ? DailyComplianceReport.DataCompleteness.PARTIAL
-                    : DailyComplianceReport.DataCompleteness.COMPLETE;
+        reportRepository.save(report);
 
-            // Create report
-            DailyComplianceReport report = new DailyComplianceReport();
-            report.setFacility(facility);
-            report.setReportDate(reportDate);
-            report.setReportVersion(1);
-            report.setGeneratedAt(Instant.now());
-            report.setStatus(status);
-            report.setDataCompleteness(completeness);
-            report.setSourceWindowFrom(sourceFrom);
-            report.setSourceWindowTo(sourceTo);
-            report.setDataJson(dataJson);
-            report.setChecksum(checksum);
-            report.setCreatedBy("SYSTEM");
+        // Audit log
+        auditLogService.log("DailyComplianceReport", report.getId(), "REPORT_GENERATED", null,
+                String.format("Daily report for %s status=%s", reportDate, status));
 
-            // TODO: Generate PDF bytes here for byte-identical re-downloads
-            // report.setPdfBytes(generatePdf(report));
-
-            reportRepository.save(report);
-
-            // Audit log
-            auditLogService.log("DailyComplianceReport", report.getId(), "REPORT_GENERATED", null,
-                    String.format("Daily report for %s status=%s", reportDate, status));
-
-            log.info("Generated daily report for facility {} date {} status={}", facilityId, reportDate, status);
-            return true;
-
-        } finally {
-            // Release lock
-            lockRepository.deleteByReportTypeAndPeriodKeyAndFacilityId(REPORT_TYPE, periodKey, facilityId);
-        }
+        log.info("Generated daily report for facility {} date {} status={}", facilityId, reportDate, status);
+        return true;
     }
 
     /**
      * Generate reports for all facilities for a given date.
      */
-    @Transactional
     public int generateReportsForAllFacilities(LocalDate reportDate) {
         int count = 0;
-        var facilities = facilityRepository.findAll();
+        int pageNumber = 0;
+        Page<Facility> page;
 
-        for (var facility : facilities) {
-            try {
-                if (generateReport(facility.getId(), reportDate)) {
-                    count++;
+        do {
+            page = facilityRepository.findAll(PageRequest.of(pageNumber++, FACILITY_PAGE_SIZE));
+            for (var facility : page) {
+                try {
+                    if (generateReport(facility.getId(), reportDate)) {
+                        count++;
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to generate daily report for facility {}: {}", facility.getId(), e.getMessage());
                 }
-            } catch (Exception e) {
-                log.error("Failed to generate daily report for facility {}: {}", facility.getId(), e.getMessage());
             }
-        }
+        } while (page.hasNext());
 
         log.info("Generated {} daily reports for date {}", count, reportDate);
         return count;

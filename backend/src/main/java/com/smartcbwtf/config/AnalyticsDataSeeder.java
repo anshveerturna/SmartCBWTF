@@ -5,6 +5,7 @@ import com.smartcbwtf.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ import java.util.*;
  * Other CBWTF users will see ZERO of this data.
  */
 @Component
+@Profile("dev")
 @Order(200) // Run after Phase2DataSeeder
 public class AnalyticsDataSeeder implements CommandLineRunner {
 
@@ -74,12 +76,10 @@ public class AnalyticsDataSeeder implements CommandLineRunner {
         log.info("✅ Resolved facility: {} (ID: {})", facility.getName(), facilityId);
 
         // Step 2: Check if analytics data already seeded
-        List<Hcf> existingHcfs = hcfRepository.findAll().stream()
-                .filter(h -> h.getName() != null && h.getName().startsWith("Analytics-HCF-"))
-                .toList();
+        long existingHcfCount = hcfRepository.countByNameStartingWith("Analytics-HCF-");
 
-        if (!existingHcfs.isEmpty()) {
-            log.info("⏭️ Analytics data already seeded ({} HCFs found). Skipping.", existingHcfs.size());
+        if (existingHcfCount > 0) {
+            log.info("⏭️ Analytics data already seeded ({} HCFs found). Skipping.", existingHcfCount);
             return;
         }
 

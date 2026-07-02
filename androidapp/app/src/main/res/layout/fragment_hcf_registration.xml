@@ -330,7 +330,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_file"
-                            android:tint="?attr/colorError" />
+                            app:tint="?attr/colorError" />
 
                         <TextView
                             android:id="@+id/tvRentAgreementStatus"
@@ -479,7 +479,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_location_off"
-                            android:tint="?attr/colorError" />
+                            app:tint="?attr/colorError" />
 
                         <TextView
                             android:id="@+id/tvGpsStatus"
@@ -565,7 +565,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_chevron_right"
-                            android:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="?attr/colorOnSurfaceVariant" />
 
                     </LinearLayout>
 

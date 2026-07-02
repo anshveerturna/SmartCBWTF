@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { Box, Typography, Button } from '@mui/material';
 import { Block as BlockIcon } from '@mui/icons-material';
-import { useAuth } from './AuthContext';
+import { useAuth } from './authContextCore';
 import type { UserRole } from '../types/api';
 
 interface RoleGuardProps {
@@ -58,11 +58,3 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
 
   return <>{children}</>;
 };
-
-// Role helper constants
-export const SUPER_ADMIN_ONLY: UserRole[] = ['SUPER_ADMIN'];
-export const CBWTF_ADMIN_ONLY: UserRole[] = ['CBWTF_ADMIN'];
-export const HCF_ADMIN_ONLY: UserRole[] = ['HCF_ADMIN'];
-export const TOP_MANAGEMENT_ADMIN_ONLY: UserRole[] = ['TOP_MANAGEMENT'];
-export const ADMIN_ROLES: UserRole[] = ['SUPER_ADMIN', 'CBWTF_ADMIN'];
-export const ALL_ADMIN_ROLES: UserRole[] = ['SUPER_ADMIN', 'CBWTF_ADMIN', 'HCF_ADMIN', 'TOP_MANAGEMENT'];

@@ -7,8 +7,10 @@ import com.smartcbwtf.domain.Hcf;
 import com.smartcbwtf.repository.AgreementRepository;
 import com.smartcbwtf.service.HcfAccessGuard;
 import com.smartcbwtf.service.AgreementService;
+import com.smartcbwtf.service.PdfService;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
-import java.net.MalformedURLException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -36,36 +37,34 @@ public class HcfAgreementController {
     private final AgreementRepository agreementRepository;
     private final HcfAccessGuard accessGuard;
     private final AgreementService agreementService;
+    private final PdfService pdfService;
 
     public HcfAgreementController(AgreementRepository agreementRepository, HcfAccessGuard accessGuard,
-            AgreementService agreementService) {
+            AgreementService agreementService, PdfService pdfService) {
         this.agreementRepository = agreementRepository;
         this.accessGuard = accessGuard;
         this.agreementService = agreementService;
+        this.pdfService = pdfService;
     }
 
     @GetMapping
     public ResponseEntity<HcfAgreementDTO> getAgreement() {
         UUID hcfId = TenantContext.getHcfId();
-        accessGuard.assertPortalAccess(hcfId);
+        UUID facilityId = TenantContext.getTenantId();
+        accessGuard.assertPortalAccess(hcfId, facilityId);
 
-        // Use same pattern as HcfDuesClearanceController for consistency
-        java.util.List<Agreement> agreements = agreementRepository.findByHcfIdAndStatus(
-                hcfId, Agreement.Status.ACTIVE.name());
-
-        if (agreements.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.ok(HcfAgreementDTO.from(agreements.get(0)));
+        return agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
+                .map(agreement -> ResponseEntity.ok(HcfAgreementDTO.from(agreement)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/pdf")
     public ResponseEntity<Resource> downloadPdf() {
         UUID hcfId = TenantContext.getHcfId();
-        accessGuard.assertPortalAccess(hcfId);
+        UUID facilityId = TenantContext.getTenantId();
+        accessGuard.assertPortalAccess(hcfId, facilityId);
 
-        Agreement agreement = agreementRepository.findActiveByHcfId(hcfId)
+        Agreement agreement = agreementRepository.findActiveByHcfAndFacility(hcfId, facilityId)
                 .orElse(null);
 
         if (agreement == null) {
@@ -80,27 +79,19 @@ public class HcfAgreementController {
         }
 
         try {
-            // Handle both absolute paths and relative paths (legacy)
-            String pdfUrl = agreement.getPdfUrl();
-            Path filePath;
-            if (pdfUrl.startsWith("/")) {
-                filePath = Paths.get(pdfUrl);
-            } else {
-                filePath = Paths.get(pdfUrl.replaceFirst("^/", ""));
-            }
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (resource.exists() && resource.isReadable()) {
-                String filename = "Agreement_" + agreement.getAgreementNumber() + ".pdf";
+            Path filePath = pdfService.storedGeneratedFilePath(agreement.getPdfUrl());
+            if (Files.exists(filePath) && Files.isRegularFile(filePath) && Files.isReadable(filePath)) {
+                String filename = "Agreement_" + PdfService.safeDownloadToken(agreement.getAgreementNumber()) + ".pdf";
                 return ResponseEntity.ok()
+                        .cacheControl(CacheControl.noStore())
                         .contentType(MediaType.APPLICATION_PDF)
                         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                        .body(resource);
+                        .body(new FileSystemResource(filePath));
             } else {
                 return ResponseEntity.notFound().build();
             }
-        } catch (MalformedURLException e) {
-            return ResponseEntity.internalServerError().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 

@@ -4,9 +4,12 @@ import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.SystemConfig;
 import com.smartcbwtf.domain.SystemConfigAudit;
 import com.smartcbwtf.service.SystemConfigService;
+import com.smartcbwtf.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -122,9 +125,12 @@ public class SystemConfigController {
      */
     @GetMapping("/admin/system-config/key/{key}/audit")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public ResponseEntity<List<ConfigAuditDTO>> getAuditHistory(@PathVariable("key") String key) {
-        List<SystemConfigAudit> audits = configService.getAuditHistory(key);
-        return ResponseEntity.ok(audits.stream().map(this::toAuditDTO).collect(Collectors.toList()));
+    public ResponseEntity<List<ConfigAuditDTO>> getAuditHistory(
+            @PathVariable("key") String key,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "50") int size) {
+        List<SystemConfigAudit> audits = configService.getAuditHistory(key, page, size);
+        return privateResponse(audits.stream().map(this::toAuditDTO).collect(Collectors.toList()));
     }
 
     /**
@@ -134,7 +140,7 @@ public class SystemConfigController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<List<ConfigAuditDTO>> getRecentChanges() {
         List<SystemConfigAudit> audits = configService.getRecentChanges();
-        return ResponseEntity.ok(audits.stream().map(this::toAuditDTO).collect(Collectors.toList()));
+        return privateResponse(audits.stream().map(this::toAuditDTO).collect(Collectors.toList()));
     }
 
     /**
@@ -155,7 +161,7 @@ public class SystemConfigController {
         return new SystemConfigDTO(
                 config.getId(),
                 config.getConfigKey(),
-                config.isSensitive() ? "********" : config.getConfigValue(),
+                config.isSensitive() ? SystemConfigService.MASKED_VALUE : config.getConfigValue(),
                 config.getValueType(),
                 config.getCategory(),
                 config.getDisplayName(),
@@ -170,23 +176,27 @@ public class SystemConfigController {
     }
 
     private ConfigAuditDTO toAuditDTO(SystemConfigAudit audit) {
+        boolean sensitive = configService.isSensitiveConfigKey(audit.getConfigKey());
         return new ConfigAuditDTO(
                 audit.getId(),
                 audit.getConfigKey(),
-                audit.getOldValue(),
-                audit.getNewValue(),
+                sensitive ? SystemConfigService.MASKED_VALUE : audit.getOldValue(),
+                sensitive ? SystemConfigService.MASKED_VALUE : audit.getNewValue(),
                 audit.getChangedBy() != null ? audit.getChangedBy().getName() : null,
                 audit.getChangedAt().toString(),
                 audit.getReason(),
                 audit.getIpAddress());
     }
 
+    private static <T> ResponseEntity<T> privateResponse(T body) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(body);
+    }
+
     private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+        return ClientIpResolver.resolve(request);
     }
 
     // ========== Record Types ==========

@@ -20,12 +20,16 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(RequestLoggingFilter.class);
     private static final String TRACE_HEADER = "X-Trace-Id";
+    private static final String REQUEST_ID_HEADER = "X-Request-Id";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String traceId = UUID.randomUUID().toString();
+        String requestId = headerOrGenerated(request.getHeader(REQUEST_ID_HEADER));
+        String traceId = headerOrGenerated(request.getHeader(TRACE_HEADER));
+        response.setHeader(REQUEST_ID_HEADER, requestId);
         response.setHeader(TRACE_HEADER, traceId);
+        MDC.put("requestId", requestId);
         MDC.put("traceId", traceId);
 
         long start = System.currentTimeMillis();
@@ -36,14 +40,23 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String userId = (auth != null && auth.isAuthenticated()) ? auth.getName() : "anonymous";
             int status = response.getStatus();
-            log.info("traceId={} method={} path={} status={} user={} durationMs={}",
+            log.info("requestId={} traceId={} method={} path={} status={} user={} durationMs={} agentRunId={} agentWorkflowId={}",
+                    requestId,
                     traceId,
                     request.getMethod(),
                     request.getRequestURI(),
                     status,
                     userId,
-                    durationMs);
+                    durationMs,
+                    HttpLogSanitizer.headerForLog(request.getHeader("X-AgentAI-Run-Id")),
+                    HttpLogSanitizer.headerForLog(request.getHeader("X-AgentAI-Workflow-Id")));
+            MDC.remove("requestId");
             MDC.remove("traceId");
         }
+    }
+
+    private String headerOrGenerated(String value) {
+        String safeValue = HttpLogSanitizer.correlationIdOrNull(value);
+        return safeValue != null ? safeValue : UUID.randomUUID().toString();
     }
 }

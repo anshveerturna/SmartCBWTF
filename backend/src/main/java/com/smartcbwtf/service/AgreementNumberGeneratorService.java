@@ -1,237 +1,442 @@
 package com.smartcbwtf.service;
 
+import com.smartcbwtf.domain.AgreementNumberResetFrequency;
 import com.smartcbwtf.domain.AgreementNumberSequence;
 import com.smartcbwtf.domain.Facility;
 import com.smartcbwtf.repository.AgreementNumberSequenceRepository;
+import com.smartcbwtf.repository.AgreementRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
-import java.time.Year;
+import java.time.LocalDate;
+import java.time.format.TextStyle;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Service for generating unique agreement numbers atomically.
- * 
- * Format is configurable via application properties:
- * - app.agreement.number.prefix: Middle prefix (default: "HCF")
- * - app.agreement.number.separator: Separator character (default: "-")
- * - app.agreement.number.sequence-digits: Number of digits for sequence (default: 5)
- * - app.agreement.number.include-facility-code: Whether to include facility code (default: true)
- * - app.agreement.number.include-year: Whether to include year (default: true)
- * 
- * Default format: <FACILITY_CODE>-HCF-<YYYY>-<5-digit-sequence>
- * Example: GUT-HCF-2025-00023
+ *
+ * Supports both the legacy format builder and a template-based format such as:
+ * {{sequence}} {{month}} {{year}}
  */
 @Service
 public class AgreementNumberGeneratorService {
 
+    private static final Pattern TEMPLATE_TOKEN_PATTERN = Pattern.compile("\\{\\{([a-zA-Z]+)\\}\\}");
+    private static final int MAX_PREFIX_LENGTH = 20;
+    private static final int MAX_SEPARATOR_LENGTH = 5;
+    private static final int MAX_SEQUENCE_DIGITS = 10;
+    private static final int MAX_TEMPLATE_LENGTH = 120;
+
     private final AgreementNumberSequenceRepository sequenceRepository;
-    
+    private final AgreementRepository agreementRepository;
+    private final Clock clock;
+
     @Value("${app.agreement.number.prefix:HCF}")
     private String prefix;
-    
+
     @Value("${app.agreement.number.separator:-}")
     private String separator;
-    
+
     @Value("${app.agreement.number.sequence-digits:5}")
     private int sequenceDigits;
-    
+
     @Value("${app.agreement.number.include-facility-code:true}")
     private boolean includeFacilityCode;
-    
+
     @Value("${app.agreement.number.include-year:true}")
     private boolean includeYear;
 
-    public AgreementNumberGeneratorService(AgreementNumberSequenceRepository sequenceRepository) {
+    public AgreementNumberGeneratorService(
+            AgreementNumberSequenceRepository sequenceRepository,
+            AgreementRepository agreementRepository,
+            Clock clock) {
         this.sequenceRepository = sequenceRepository;
+        this.agreementRepository = agreementRepository;
+        this.clock = clock;
     }
 
-    /**
-     * Generate the next agreement number for a facility.
-     * Uses pessimistic locking to ensure atomicity.
-     *
-     * @param facility The CBWTF facility
-     * @return Unique agreement number
-     */
     @Transactional
     public String generateNextAgreementNumber(Facility facility) {
-        int currentYear = Year.now().getValue();
-        
-        // Try to find and lock existing sequence
-        AgreementNumberSequence sequence = sequenceRepository
-                .findByFacilityIdAndYearForUpdate(facility.getId(), currentYear)
-                .orElseGet(() -> createNewSequence(facility, currentYear));
-
-        // Increment sequence
-        int nextSeq = sequence.getLastSequence() + 1;
-        sequence.setLastSequence(nextSeq);
-        sequence.setUpdatedAt(Instant.now());
-        sequenceRepository.save(sequence);
-
-        // Build agreement number based on configuration
-        return buildAgreementNumber(facility.getCode(), currentYear, nextSeq);
+        return generateNextAgreementNumberWithSettings(facility, null, null, null, null, null, null, null);
     }
-    
-    /**
-     * Build the agreement number string based on configuration.
-     */
-    private String buildAgreementNumber(String facilityCode, int year, int sequence) {
-        StringBuilder sb = new StringBuilder();
-        
-        if (includeFacilityCode) {
-            sb.append(facilityCode.toUpperCase());
-            sb.append(separator);
-        }
-        
-        sb.append(prefix);
-        
-        if (includeYear) {
-            sb.append(separator);
-            sb.append(year);
-        }
-        
-        sb.append(separator);
-        sb.append(String.format("%0" + sequenceDigits + "d", sequence));
-        
-        return sb.toString();
-    }
-    
-    /**
-     * Generate agreement number with custom format (overrides configuration).
-     * Useful for facility-specific custom formats.
-     * 
-     * @param facility The CBWTF facility
-     * @param customPrefix Custom prefix to use instead of configured one
-     * @return Unique agreement number
-     */
+
     @Transactional
     public String generateNextAgreementNumber(Facility facility, String customPrefix) {
-        int currentYear = Year.now().getValue();
-        
+        return generateNextAgreementNumberWithSettings(facility, customPrefix, null, null, null, null, null, null);
+    }
+
+    public String previewNextAgreementNumber(Facility facility) {
+        return previewNextAgreementNumber(facility, null, null, null, null, null, null, null);
+    }
+
+    public String previewNextAgreementNumber(
+            Facility facility,
+            String customPrefix,
+            String customSeparator,
+            int customDigits,
+            boolean customIncludeFacilityCode,
+            boolean customIncludeYear) {
+        return previewNextAgreementNumber(
+                facility,
+                customPrefix,
+                customSeparator,
+                customDigits,
+                customIncludeFacilityCode,
+                customIncludeYear,
+                null,
+                null);
+    }
+
+    public String previewNextAgreementNumber(
+            Facility facility,
+            String customPrefix,
+            String customSeparator,
+            Integer customDigits,
+            Boolean customIncludeFacilityCode,
+            Boolean customIncludeYear,
+            String customTemplate,
+            AgreementNumberResetFrequency resetFrequency) {
+        AgreementNumberFormatSpec spec = resolveFormatSpec(
+                customPrefix,
+                customSeparator,
+                customDigits,
+                customIncludeFacilityCode,
+                customIncludeYear,
+                customTemplate,
+                resetFrequency);
+
+        LocalDate today = LocalDate.now(clock);
+        AgreementSequencePeriod period = resolveSequencePeriod(today, spec.resetFrequency());
+        int currentSequence = getCurrentSequenceNumber(facility, period, spec, today);
+        return buildAgreementNumber(spec, facility.getCode(), today, currentSequence + 1);
+    }
+
+    @Transactional
+    public String generateNextAgreementNumberWithSettings(
+            Facility facility,
+            String customPrefix,
+            String customSeparator,
+            Integer customDigits,
+            Boolean customIncludeFacilityCode,
+            Boolean customIncludeYear) {
+        return generateNextAgreementNumberWithSettings(
+                facility,
+                customPrefix,
+                customSeparator,
+                customDigits,
+                customIncludeFacilityCode,
+                customIncludeYear,
+                null,
+                null);
+    }
+
+    @Transactional
+    public String generateNextAgreementNumberWithSettings(
+            Facility facility,
+            String customPrefix,
+            String customSeparator,
+            Integer customDigits,
+            Boolean customIncludeFacilityCode,
+            Boolean customIncludeYear,
+            String customTemplate,
+            AgreementNumberResetFrequency resetFrequency) {
+        AgreementNumberFormatSpec spec = resolveFormatSpec(
+                customPrefix,
+                customSeparator,
+                customDigits,
+                customIncludeFacilityCode,
+                customIncludeYear,
+                customTemplate,
+                resetFrequency);
+
+        LocalDate today = LocalDate.now(clock);
+        AgreementSequencePeriod period = resolveSequencePeriod(today, spec.resetFrequency());
+
         AgreementNumberSequence sequence = sequenceRepository
-                .findByFacilityIdAndYearForUpdate(facility.getId(), currentYear)
-                .orElseGet(() -> createNewSequence(facility, currentYear));
+                .findByFacilityIdAndYearAndPeriodMonthForUpdate(facility.getId(), period.year(), period.periodMonth())
+                .orElseGet(() -> createNewSequence(
+                        facility,
+                        period.year(),
+                        period.periodMonth(),
+                        resolveExistingSequenceBaseline(facility, spec, today)));
 
-        int nextSeq = sequence.getLastSequence() + 1;
-        sequence.setLastSequence(nextSeq);
-        sequence.setUpdatedAt(Instant.now());
-        sequenceRepository.save(sequence);
+        int nextSequence = findLowestAvailableSequenceNumber(facility, spec, today, sequence.getLastSequence());
 
-        // Use custom prefix
-        StringBuilder sb = new StringBuilder();
-        if (includeFacilityCode) {
-            sb.append(facility.getCode().toUpperCase());
-            sb.append(separator);
+        // Only increase the tracked max sequence if we aren't filling a gap
+        if (nextSequence > sequence.getLastSequence()) {
+            sequence.setLastSequence(nextSequence);
+            sequence.setUpdatedAt(Instant.now(clock));
+            sequenceRepository.save(sequence);
         }
-        sb.append(customPrefix);
-        if (includeYear) {
-            sb.append(separator);
-            sb.append(currentYear);
-        }
-        sb.append(separator);
-        sb.append(String.format("%0" + sequenceDigits + "d", nextSeq));
-        
-        return sb.toString();
+
+        return buildAgreementNumber(spec, facility.getCode(), today, nextSequence);
     }
 
-    /**
-     * Create a new sequence entry for a facility/year combination.
-     */
-    private AgreementNumberSequence createNewSequence(Facility facility, int year) {
-        AgreementNumberSequence sequence = new AgreementNumberSequence();
-        sequence.setFacility(facility);
-        sequence.setYear(year);
-        sequence.setLastSequence(0);
-        sequence.setCreatedAt(Instant.now());
-        sequence.setUpdatedAt(Instant.now());
-        return sequenceRepository.save(sequence);
-    }
-
-    /**
-     * Get the current sequence number (for display purposes only).
-     */
     public int getCurrentSequenceNumber(Facility facility, int year) {
         return sequenceRepository
-                .findByFacilityIdAndYear(facility.getId(), year)
+                .findByFacilityIdAndYearAndPeriodMonth(facility.getId(), year, 0)
                 .map(AgreementNumberSequence::getLastSequence)
                 .orElse(0);
     }
-    
-    /**
-     * Preview what the next agreement number would look like without actually generating it.
-     */
-    public String previewNextAgreementNumber(Facility facility) {
-        int currentYear = Year.now().getValue();
-        int nextSeq = getCurrentSequenceNumber(facility, currentYear) + 1;
-        return buildAgreementNumber(facility.getCode(), currentYear, nextSeq);
+
+    private int getCurrentSequenceNumber(
+            Facility facility,
+            AgreementSequencePeriod period,
+            AgreementNumberFormatSpec spec,
+            LocalDate today) {
+        return sequenceRepository
+                .findByFacilityIdAndYearAndPeriodMonth(facility.getId(), period.year(), period.periodMonth())
+                .map(AgreementNumberSequence::getLastSequence)
+                .orElseGet(() -> resolveExistingSequenceBaseline(facility, spec, today));
     }
 
-    /**
-     * Preview next agreement number using per-facility format settings.
-     */
-    public String previewNextAgreementNumber(Facility facility,
-            String customPrefix, String customSeparator, int customDigits,
-            boolean customIncludeFacilityCode, boolean customIncludeYear) {
-        int currentYear = Year.now().getValue();
-        int nextSeq = getCurrentSequenceNumber(facility, currentYear) + 1;
-        return buildCustomAgreementNumber(facility.getCode(), currentYear, nextSeq,
-                customPrefix, customSeparator, customDigits, customIncludeFacilityCode, customIncludeYear);
+    private AgreementNumberSequence createNewSequence(Facility facility, int year, int periodMonth, int lastSequence) {
+        AgreementNumberSequence sequence = new AgreementNumberSequence();
+        sequence.setFacility(facility);
+        sequence.setYear(year);
+        sequence.setPeriodMonth(periodMonth);
+        sequence.setLastSequence(lastSequence);
+        sequence.setCreatedAt(Instant.now(clock));
+        sequence.setUpdatedAt(Instant.now(clock));
+        return sequenceRepository.save(sequence);
     }
 
-    /**
-     * Generate next agreement number using per-facility format settings from FacilitySettings.
-     * Falls back to application-level defaults if parameters are null.
-     */
-    @Transactional
-    public String generateNextAgreementNumberWithSettings(Facility facility,
-            String customPrefix, String customSeparator, Integer customDigits,
-            Boolean customIncludeFacilityCode, Boolean customIncludeYear) {
-        int currentYear = Year.now().getValue();
+    private int resolveExistingSequenceBaseline(
+            Facility facility,
+            AgreementNumberFormatSpec spec,
+            LocalDate today) {
+        if (!canInferResetPeriodFromFormat(spec)) {
+            return 0;
+        }
 
-        AgreementNumberSequence sequence = sequenceRepository
-                .findByFacilityIdAndYearForUpdate(facility.getId(), currentYear)
-                .orElseGet(() -> createNewSequence(facility, currentYear));
+        Pattern sequencePattern = buildAgreementNumberPattern(spec, facility.getCode(), today);
+        List<String> agreementNumbers = agreementRepository.findAgreementNumbersByFacilityId(facility.getId());
 
-        int nextSeq = sequence.getLastSequence() + 1;
-        sequence.setLastSequence(nextSeq);
-        sequence.setUpdatedAt(Instant.now());
-        sequenceRepository.save(sequence);
+        int maxSequence = 0;
+        for (String agreementNumber : agreementNumbers) {
+            Matcher matcher = sequencePattern.matcher(agreementNumber);
+            if (matcher.matches()) {
+                maxSequence = Math.max(maxSequence, Integer.parseInt(matcher.group(1)));
+            }
+        }
+        return maxSequence;
+    }
+
+    private int findLowestAvailableSequenceNumber(Facility facility, AgreementNumberFormatSpec spec, LocalDate today, int currentMaxTracked) {
+        if (!canInferResetPeriodFromFormat(spec)) {
+            return currentMaxTracked + 1;
+        }
+
+        Pattern sequencePattern = buildAgreementNumberPattern(spec, facility.getCode(), today);
+        List<String> agreementNumbers = agreementRepository.findAgreementNumbersByFacilityId(facility.getId());
+
+        java.util.Set<Integer> usedSequences = new java.util.HashSet<>();
+        int maxFound = currentMaxTracked;
+
+        for (String agreementNumber : agreementNumbers) {
+            Matcher matcher = sequencePattern.matcher(agreementNumber);
+            if (matcher.matches()) {
+                int seq = Integer.parseInt(matcher.group(1));
+                usedSequences.add(seq);
+                maxFound = Math.max(maxFound, seq);
+            }
+        }
+
+        for (int i = 1; i <= maxFound; i++) {
+            if (!usedSequences.contains(i)) {
+                return i; // Found a gap!
+            }
+        }
+
+        return maxFound + 1;
+    }
+
+    private boolean canInferResetPeriodFromFormat(AgreementNumberFormatSpec spec) {
+        return switch (spec.resetFrequency()) {
+            case NEVER -> true;
+            case YEARLY -> spec.template() == null
+                    ? spec.includeYear()
+                    : spec.template().contains("{{year}}");
+            case MONTHLY -> spec.template() != null
+                    && spec.template().contains("{{month}}")
+                    && spec.template().contains("{{year}}");
+        };
+    }
+
+    private String buildAgreementNumber(
+            AgreementNumberFormatSpec spec,
+            String facilityCode,
+            LocalDate today,
+            int sequence) {
+        if (spec.template() != null) {
+            return renderTemplate(spec.template(), tokenValues(spec, facilityCode, today, sequence), spec.sequenceDigits(), false);
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        if (spec.includeFacilityCode()) {
+            sb.append(facilityCode.toUpperCase(Locale.ENGLISH));
+            sb.append(spec.separator());
+        }
+
+        sb.append(spec.prefix());
+
+        if (spec.includeYear()) {
+            sb.append(spec.separator());
+            sb.append(today.getYear());
+        }
+
+        sb.append(spec.separator());
+        sb.append(String.format("%0" + spec.sequenceDigits() + "d", sequence));
+        return sb.toString();
+    }
+
+    private Pattern buildAgreementNumberPattern(
+            AgreementNumberFormatSpec spec,
+            String facilityCode,
+            LocalDate today) {
+        if (spec.template() != null) {
+            String regex = renderTemplate(spec.template(), tokenValues(spec, facilityCode, today, 1), spec.sequenceDigits(), true);
+            return Pattern.compile("^" + regex + "$");
+        }
+
+        StringBuilder regex = new StringBuilder();
+        if (spec.includeFacilityCode()) {
+            regex.append(Pattern.quote(facilityCode.toUpperCase(Locale.ENGLISH)));
+            regex.append(Pattern.quote(spec.separator()));
+        }
+        regex.append(Pattern.quote(spec.prefix()));
+        if (spec.includeYear()) {
+            regex.append(Pattern.quote(spec.separator()));
+            regex.append(Pattern.quote(String.valueOf(today.getYear())));
+        }
+        regex.append(Pattern.quote(spec.separator()));
+        regex.append("(\\d{").append(spec.sequenceDigits()).append("})");
+        return Pattern.compile("^" + regex + "$");
+    }
+
+    private String renderTemplate(
+            String template,
+            Map<String, String> values,
+            int digits,
+            boolean regexMode) {
+        Matcher matcher = TEMPLATE_TOKEN_PATTERN.matcher(template);
+        StringBuilder output = new StringBuilder();
+        int cursor = 0;
+
+        while (matcher.find()) {
+            String literal = template.substring(cursor, matcher.start());
+            output.append(regexMode ? Pattern.quote(literal) : literal);
+
+            String token = matcher.group(1);
+            if ("sequence".equals(token)) {
+                output.append(regexMode ? "(\\d{" + digits + "})" : values.get("sequence"));
+            } else {
+                String resolved = values.getOrDefault(token, matcher.group());
+                output.append(regexMode ? Pattern.quote(resolved) : resolved);
+            }
+            cursor = matcher.end();
+        }
+
+        String trailing = template.substring(cursor);
+        output.append(regexMode ? Pattern.quote(trailing) : trailing);
+        return output.toString();
+    }
+
+    private Map<String, String> tokenValues(
+            AgreementNumberFormatSpec spec,
+            String facilityCode,
+            LocalDate today,
+            int sequence) {
+        return Map.of(
+                "facilityCode", facilityCode.toUpperCase(Locale.ENGLISH),
+                "prefix", spec.prefix(),
+                "year", String.valueOf(today.getYear()),
+                "month", today.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH).toUpperCase(Locale.ENGLISH),
+                "sequence", String.format("%0" + spec.sequenceDigits() + "d", sequence));
+    }
+
+    private AgreementSequencePeriod resolveSequencePeriod(LocalDate today, AgreementNumberResetFrequency resetFrequency) {
+        return switch (resetFrequency) {
+            case NEVER -> new AgreementSequencePeriod(0, 0);
+            case YEARLY -> new AgreementSequencePeriod(today.getYear(), 0);
+            case MONTHLY -> new AgreementSequencePeriod(today.getYear(), today.getMonthValue());
+        };
+    }
+
+    private AgreementNumberFormatSpec resolveFormatSpec(
+            String customPrefix,
+            String customSeparator,
+            Integer customDigits,
+            Boolean customIncludeFacilityCode,
+            Boolean customIncludeYear,
+            String customTemplate,
+            AgreementNumberResetFrequency customResetFrequency) {
+        String effectiveTemplate = normalizeTemplate(customTemplate);
+        if (effectiveTemplate != null && !effectiveTemplate.contains("{{sequence}}")) {
+            throw new IllegalArgumentException("Agreement number template must include {{sequence}}");
+        }
 
         String effectivePrefix = customPrefix != null ? customPrefix : prefix;
         String effectiveSeparator = customSeparator != null ? customSeparator : separator;
         int effectiveDigits = customDigits != null ? customDigits : sequenceDigits;
-        boolean effectiveIncludeFacilityCode = customIncludeFacilityCode != null ? customIncludeFacilityCode : includeFacilityCode;
-        boolean effectiveIncludeYear = customIncludeYear != null ? customIncludeYear : includeYear;
+        validateFormatPart("Agreement number prefix", effectivePrefix, MAX_PREFIX_LENGTH);
+        validateFormatPart("Agreement number separator", effectiveSeparator, MAX_SEPARATOR_LENGTH);
+        validateFormatPart("Agreement number template", effectiveTemplate, MAX_TEMPLATE_LENGTH);
+        if (effectiveDigits < 1 || effectiveDigits > MAX_SEQUENCE_DIGITS) {
+            throw new IllegalArgumentException("Agreement number sequence digits must be between 1 and 10");
+        }
 
-        return buildCustomAgreementNumber(facility.getCode(), currentYear, nextSeq,
-                effectivePrefix, effectiveSeparator, effectiveDigits,
-                effectiveIncludeFacilityCode, effectiveIncludeYear);
+        return new AgreementNumberFormatSpec(
+                effectivePrefix,
+                effectiveSeparator,
+                effectiveDigits,
+                customIncludeFacilityCode != null ? customIncludeFacilityCode : includeFacilityCode,
+                customIncludeYear != null ? customIncludeYear : includeYear,
+                effectiveTemplate,
+                customResetFrequency != null ? customResetFrequency : AgreementNumberResetFrequency.YEARLY);
     }
 
-    /**
-     * Build agreement number with custom format parameters.
-     */
-    private String buildCustomAgreementNumber(String facilityCode, int year, int sequence,
-            String customPrefix, String customSeparator, int customDigits,
-            boolean customIncludeFacilityCode, boolean customIncludeYear) {
-        StringBuilder sb = new StringBuilder();
-
-        if (customIncludeFacilityCode) {
-            sb.append(facilityCode.toUpperCase());
-            sb.append(customSeparator);
+    private String normalizeTemplate(String template) {
+        if (template == null) {
+            return null;
         }
+        String trimmed = template.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
 
-        sb.append(customPrefix);
-
-        if (customIncludeYear) {
-            sb.append(customSeparator);
-            sb.append(year);
+    private void validateFormatPart(String label, String value, int maxLength) {
+        if (value == null) {
+            return;
         }
+        if (value.length() > maxLength) {
+            throw new IllegalArgumentException(label + " must be at most " + maxLength + " characters");
+        }
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c < 0x20 || c == 0x7F) {
+                throw new IllegalArgumentException(label + " cannot contain control characters");
+            }
+        }
+    }
 
-        sb.append(customSeparator);
-        sb.append(String.format("%0" + customDigits + "d", sequence));
+    private record AgreementNumberFormatSpec(
+            String prefix,
+            String separator,
+            int sequenceDigits,
+            boolean includeFacilityCode,
+            boolean includeYear,
+            String template,
+            AgreementNumberResetFrequency resetFrequency) {
+    }
 
-        return sb.toString();
+    private record AgreementSequencePeriod(int year, int periodMonth) {
     }
 }

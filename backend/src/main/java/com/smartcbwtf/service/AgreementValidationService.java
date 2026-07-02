@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -38,7 +37,8 @@ public class AgreementValidationService {
      */
     public AgreementEligibility checkEligibility(UUID hcfId) {
         // 1. Check for ACTIVE agreement (any CBWTF)
-        Optional<Agreement> active = agreementRepo.findActiveByHcfId(hcfId);
+        var active = agreementRepo.findFirstByHcfIdAndStatusOrderByStartDateDesc(
+                hcfId, Agreement.Status.ACTIVE.name());
         if (active.isPresent()) {
             log.info("HCF {} blocked: active agreement exists ({})", hcfId, active.get().getId());
             return AgreementEligibility.blocked(BlockReason.ACTIVE_AGREEMENT_EXISTS, active.get().getId());

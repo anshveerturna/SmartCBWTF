@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
-import { useAuth } from './AuthContext';
+import { useAuth } from './authContextCore';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -50,4 +50,3 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   return <>{children}</>;
 };
-

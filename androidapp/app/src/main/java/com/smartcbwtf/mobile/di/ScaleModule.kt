@@ -1,8 +1,5 @@
 package com.smartcbwtf.mobile.di
 
-import com.smartcbwtf.mobile.BuildConfig
-import com.smartcbwtf.mobile.bluetooth.MockScale
-import com.smartcbwtf.mobile.bluetooth.MockScaleService
 import com.smartcbwtf.mobile.bluetooth.RealBluetoothScaleService
 import com.smartcbwtf.mobile.bluetooth.RealScale
 import com.smartcbwtf.mobile.bluetooth.ScaleService
@@ -19,11 +16,6 @@ abstract class ScaleModule {
 
     @Binds
     @Singleton
-    @MockScale
-    abstract fun bindMockScaleService(service: MockScaleService): ScaleService
-
-    @Binds
-    @Singleton
     @RealScale
     abstract fun bindRealScaleService(service: RealBluetoothScaleService): ScaleService
 
@@ -31,10 +23,8 @@ abstract class ScaleModule {
         @Provides
         @Singleton
         fun provideScaleService(
-            @RealScale real: ScaleService,
-            @MockScale mock: ScaleService
+            @RealScale real: ScaleService
         ): ScaleService {
-            // Always use real Bluetooth service - mock is only for unit tests
             return real
         }
     }

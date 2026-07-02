@@ -69,7 +69,7 @@ class DefaultHcfRepository @Inject constructor(
                     val errorBody = e.response()?.errorBody()?.string()
                     if (errorBody != null) {
                         val json = org.json.JSONObject(errorBody)
-                        json.optString("message", null)
+                        json.optString("message").takeIf { it.isNotBlank() }
                     } else null
                 } catch (_: Exception) { null }
 
@@ -120,14 +120,14 @@ class DefaultHcfRepository @Inject constructor(
 
 <h4>2. RESPONSIBILITIES OF THE SERVICE PROVIDER</h4>
 <ol>
-<li>The Service Provider shall comply with provisions as stipulated in Schedule-1 of the BMW Rule 2025.</li>
+<li>The Service Provider shall comply with provisions stipulated in Schedule-I of the Bio-medical Waste Management Rules, 2016, as amended from time to time.</li>
 <li>The Service Provider shall collect the segregated bio-medical waste from the designated collection point.</li>
 <li>The Service Provider shall transport the segregated waste in closed container vehicle to its treatment facility.</li>
 </ol>
 
 <h4>3. RESPONSIBILITIES OF THE WASTE GENERATOR</h4>
 <ol>
-<li>The Waste Generator shall segregate the Bio-Medical waste at the point of generation in accordance with the BMW Rules 2025.</li>
+<li>The Waste Generator shall segregate bio-medical waste at the point of generation in accordance with the Bio-medical Waste Management Rules, 2016, as amended from time to time.</li>
 <li>The Waste Generator shall collect, pack, label and handover the segregated BMW in non-chlorinated bags.</li>
 <li>The Waste Generator shall take all necessary steps to ensure that the waste is handled without causing any adverse effect to human health and environment.</li>
 </ol>
@@ -178,4 +178,3 @@ class DefaultHcfRepository @Inject constructor(
         return name
     }
 }
-

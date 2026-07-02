@@ -51,7 +51,49 @@ public class HcfAccessGuard {
                     "Healthcare facility not found.");
         }
 
-        // Check portal eligibility (30+ beds OR manually enabled)
+        AccessCheckResult eligibility = checkHcfEligibility(hcfId, hcf);
+        if (!eligibility.isAllowed()) {
+            return eligibility;
+        }
+
+        // Check active agreement validity
+        java.util.Optional<com.smartcbwtf.domain.Agreement> activeAgreementOpt = agreementRepository
+                .findFirstByHcfIdAndStatusOrderByStartDateDesc(
+                        hcfId, com.smartcbwtf.domain.Agreement.Status.ACTIVE.name());
+        return checkAgreementValidity(hcfId, activeAgreementOpt);
+    }
+
+    /**
+     * Check if an HCF is eligible for portal access within a specific CBWTF tenant.
+     */
+    public AccessCheckResult checkPortalAccess(UUID hcfId, UUID facilityId) {
+        if (hcfId == null) {
+            return AccessCheckResult.denied("NO_HCF_LINKED",
+                    "User is not linked to any healthcare facility.");
+        }
+        if (facilityId == null) {
+            return AccessCheckResult.denied("NO_TENANT_LINKED",
+                    "User is not linked to any CBWTF tenant.");
+        }
+
+        Hcf hcf = hcfRepository.findByIdAndFacilityId(hcfId, facilityId).orElse(null);
+        if (hcf == null) {
+            return AccessCheckResult.denied("HCF_NOT_FOUND",
+                    "Healthcare facility not found.");
+        }
+
+        AccessCheckResult eligibility = checkHcfEligibility(hcfId, hcf);
+        if (!eligibility.isAllowed()) {
+            return eligibility;
+        }
+
+        // Check active agreement validity
+        java.util.Optional<com.smartcbwtf.domain.Agreement> activeAgreementOpt = agreementRepository
+                .findActiveByHcfAndFacility(hcfId, facilityId);
+        return checkAgreementValidity(hcfId, activeAgreementOpt);
+    }
+
+    private AccessCheckResult checkHcfEligibility(UUID hcfId, Hcf hcf) {
         if (!hcf.isPortalEligible()) {
             log.warn("HCF portal access denied - not eligible: hcfId={}, category={}, manuallyEnabled={}",
                     hcfId, hcf.getBedAccessCategory(), hcf.isPortalAccessManuallyEnabled());
@@ -66,10 +108,11 @@ public class HcfAccessGuard {
             return AccessCheckResult.denied("ACCESS_DENIED_NOT_APPROVED",
                     "Portal Access Unavailable — HCF Pending Approval");
         }
+        return AccessCheckResult.granted();
+    }
 
-        // Check active agreement validity
-        java.util.Optional<com.smartcbwtf.domain.Agreement> activeAgreementOpt = agreementRepository
-                .findActiveByHcfId(hcfId);
+    private AccessCheckResult checkAgreementValidity(UUID hcfId,
+            java.util.Optional<com.smartcbwtf.domain.Agreement> activeAgreementOpt) {
         if (activeAgreementOpt.isEmpty()) {
             log.warn("HCF portal access denied - no active agreement: hcfId={}", hcfId);
             return AccessCheckResult.denied("NO_ACTIVE_AGREEMENT",
@@ -97,6 +140,13 @@ public class HcfAccessGuard {
      */
     public void assertPortalAccess(UUID hcfId) {
         AccessCheckResult result = checkPortalAccess(hcfId);
+        if (!result.isAllowed()) {
+            throw new HcfAccessDeniedException(result.getErrorCode(), result.getMessage());
+        }
+    }
+
+    public void assertPortalAccess(UUID hcfId, UUID facilityId) {
+        AccessCheckResult result = checkPortalAccess(hcfId, facilityId);
         if (!result.isAllowed()) {
             throw new HcfAccessDeniedException(result.getErrorCode(), result.getMessage());
         }

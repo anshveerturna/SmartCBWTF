@@ -13,8 +13,6 @@ interface ScaleService {
     suspend fun startScan()
     suspend fun stopScan()
     suspend fun connectToDevice(device: BluetoothDevice)
-
-    suspend fun simulateWeight(value: Double? = null) { /* optional for mocks */ }
 }
 
 enum class ConnectionState {

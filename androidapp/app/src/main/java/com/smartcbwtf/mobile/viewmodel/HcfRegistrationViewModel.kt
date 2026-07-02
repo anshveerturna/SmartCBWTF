@@ -187,13 +187,13 @@ class HcfRegistrationViewModel @Inject constructor(
         }
 
         if (email.isNullOrBlank()) {
-        _state.value = RegistrationState.Error("Email is required")
-        return
-    }
+            _state.value = RegistrationState.Error("Email is required")
+            return
+        }
 
-    // PAN, GST, Aadhar are now optional
-    
-    val gps = _gpsState.value
+        // PAN, GST, Aadhar are now optional
+
+        val gps = _gpsState.value
         if (gps !is GpsState.Captured) {
             _state.value = RegistrationState.Error("GPS location is required. Please capture your location.")
             return

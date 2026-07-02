@@ -52,7 +52,7 @@ public class EmailService {
      */
     public void sendEmail(String to, String subject, String body) {
         if (!emailEnabled) {
-            log.info("[EMAIL-DEV] to={} subject={} body={}", to, subject, body);
+            log.info("[EMAIL-DEV] Email disabled; skipped simple email to={} subject={}", to, subject);
             return;
         }
 
@@ -118,8 +118,8 @@ public class EmailService {
                     templateCode, rendered.templateVersion(), rendered.templateChecksum(), to);
 
             if (!emailEnabled) {
-                log.info("[EMAIL-DEV] Template email:\nTO: {}\nSUBJECT: {}\nBODY:\n{}\nATTACHMENTS: {}",
-                        to, rendered.subject(), rendered.bodyHtml(), attachmentPaths);
+                log.info("[EMAIL-DEV] Email disabled; skipped template email to={} template={} subject={} attachments={}",
+                        to, templateCode, rendered.subject(), attachmentPaths != null ? attachmentPaths.size() : 0);
                 return;
             }
 

@@ -12,7 +12,6 @@ import {
   Button,
   TextField,
   CircularProgress,
-  Divider,
   IconButton,
   Tooltip,
   Dialog,
@@ -100,18 +99,42 @@ const previewTemplate = async (code: string, sampleData: Record<string, string>)
   return response.data;
 };
 
+const buildEmailPreviewSrcDoc = (bodyHtml: string): string => `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 14px;
+        line-height: 1.7;
+        color: #334155;
+        background: #ffffff;
+      }
+      img { max-width: 100%; height: auto; }
+      table { max-width: 100%; border-collapse: collapse; }
+      a { color: #047857; }
+    </style>
+  </head>
+  <body>${bodyHtml}</body>
+</html>`;
+
 // Sample data for previews
 const SAMPLE_DATA: Record<string, Record<string, string>> = {
-  HCF_WELCOME: { hcfName: 'City Hospital', facilityName: 'Metro CBWTF' },
-  HCF_CREDENTIALS: { hcfName: 'City Hospital', facilityName: 'Metro CBWTF', username: 'cityhospital', password: 'TempPass123', loginUrl: 'https://app.smartcbwtf.com' },
-  AGREEMENT_SUBMITTED: { hcfName: 'City Hospital', facilityName: 'Metro CBWTF', agreementNumber: 'AGR-2024-001', submittedDate: '31/12/2024' },
-  AGREEMENT_APPROVED: { hcfName: 'City Hospital', facilityName: 'Metro CBWTF', agreementNumber: 'AGR-2024-001', effectiveDate: '01/01/2025', expiryDate: '31/12/2025' },
-  AGREEMENT_REJECTED: { hcfName: 'City Hospital', facilityName: 'Metro CBWTF', agreementNumber: 'AGR-2024-001', rejectionReason: 'Incomplete documentation' },
-  AGREEMENT_EXPIRY: { hcfName: 'City Hospital', facilityName: 'Metro CBWTF', agreementNumber: 'AGR-2024-001', expiryDate: '31/12/2024', daysRemaining: '7' },
-  INVOICE_GENERATED: { hcfName: 'City Hospital', facilityName: 'Metro CBWTF', invoiceNumber: 'INV-2024-001', invoiceDate: '01/12/2024', invoiceAmount: '15,000', dueDate: '15/12/2024' },
-  PAYMENT_REMINDER: { hcfName: 'City Hospital', facilityName: 'Metro CBWTF', invoiceNumber: 'INV-2024-001', amountDue: '15,000', dueDate: '15/12/2024' },
-  PAYMENT_OVERDUE: { hcfName: 'City Hospital', facilityName: 'Metro CBWTF', invoiceNumber: 'INV-2024-001', amountDue: '15,000', daysPastDue: '10' },
-  PAYMENT_RECEIVED: { hcfName: 'City Hospital', facilityName: 'Metro CBWTF', invoiceNumber: 'INV-2024-001', amountReceived: '15,000', paymentDate: '20/12/2024', receiptNumber: 'RCT-2024-001' },
+  HCF_WELCOME: { hcfName: 'Sunrise Medical Centre', facilityName: 'GreenCycle CBWTF' },
+  HCF_CREDENTIALS: { hcfName: 'Sunrise Medical Centre', facilityName: 'GreenCycle CBWTF', username: 'sunrise-admin', password: '[temporary-password]', loginUrl: 'https://portal.smartcbwtf.com' },
+  AGREEMENT_SUBMITTED: { hcfName: 'Sunrise Medical Centre', facilityName: 'GreenCycle CBWTF', agreementNumber: 'AGR-2026-001', submittedDate: '01/07/2026' },
+  AGREEMENT_APPROVED: { hcfName: 'Sunrise Medical Centre', facilityName: 'GreenCycle CBWTF', agreementNumber: 'AGR-2026-001', effectiveDate: '01/07/2026', expiryDate: '30/06/2027' },
+  AGREEMENT_REJECTED: { hcfName: 'Sunrise Medical Centre', facilityName: 'GreenCycle CBWTF', agreementNumber: 'AGR-2026-001', rejectionReason: 'Missing authorisation attachment' },
+  AGREEMENT_EXPIRY: { hcfName: 'Sunrise Medical Centre', facilityName: 'GreenCycle CBWTF', agreementNumber: 'AGR-2026-001', expiryDate: '30/06/2027', daysRemaining: '7' },
+  AGREEMENT_EXPIRY_WARNING: { hcfName: 'Sunrise Medical Centre', facilityName: 'GreenCycle CBWTF', agreementNumber: 'AGR-2026-001', expiryDate: '30/06/2027', daysRemaining: '7' },
+  INVOICE_GENERATED: { hcfName: 'Sunrise Medical Centre', facilityName: 'GreenCycle CBWTF', invoiceNumber: 'INV-2026-001', invoiceDate: '01/07/2026', invoiceAmount: '15,000', dueDate: '15/07/2026' },
+  PAYMENT_REMINDER: { hcfName: 'Sunrise Medical Centre', facilityName: 'GreenCycle CBWTF', invoiceNumber: 'INV-2026-001', amountDue: '15,000', dueDate: '15/07/2026' },
+  PAYMENT_OVERDUE: { hcfName: 'Sunrise Medical Centre', facilityName: 'GreenCycle CBWTF', invoiceNumber: 'INV-2026-001', amountDue: '15,000', daysPastDue: '10' },
+  PAYMENT_RECEIVED: { hcfName: 'Sunrise Medical Centre', facilityName: 'GreenCycle CBWTF', invoiceNumber: 'INV-2026-001', amountReceived: '15,000', paymentDate: '20/07/2026', receiptNumber: 'RCT-2026-001' },
 };
 
 const formatTemplateName = (code: string) => code.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -608,14 +631,19 @@ export default function EmailTemplates() {
                         </Box>
                         
                         {/* Email Body */}
-                        <Box sx={{ p: 3 }}>
-                          <div 
-                            dangerouslySetInnerHTML={{ __html: preview.bodyHtml }} 
-                            style={{ 
-                              fontFamily: 'Arial, Helvetica, sans-serif', 
-                              fontSize: '14px', 
-                              lineHeight: '1.7',
-                              color: '#334155',
+                        <Box sx={{ bgcolor: '#ffffff' }}>
+                          <Box
+                            component="iframe"
+                            title={`${preview.templateCode} email preview`}
+                            sandbox=""
+                            referrerPolicy="no-referrer"
+                            srcDoc={buildEmailPreviewSrcDoc(preview.bodyHtml)}
+                            sx={{
+                              display: 'block',
+                              width: '100%',
+                              height: 420,
+                              border: 0,
+                              bgcolor: '#ffffff',
                             }}
                           />
                         </Box>

@@ -259,6 +259,10 @@ public class SubscriptionService {
             UUID performedBy,
             String performedByUsername,
             String reason) {
+        int maxTempAccessDays = Math.max(1, getMaxTempAccessDays());
+        if (days < 1 || days > maxTempAccessDays) {
+            throw new IllegalArgumentException("Temporary access days must be between 1 and " + maxTempAccessDays);
+        }
 
         Facility facility = facilityRepository.findById(facilityId)
                 .orElseThrow(() -> new IllegalArgumentException("Facility not found: " + facilityId));

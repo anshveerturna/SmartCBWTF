@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -27,6 +28,9 @@ import java.util.UUID;
 public class RouteAssignmentService {
 
         private static final Logger log = LoggerFactory.getLogger(RouteAssignmentService.class);
+        private static final Set<String> ASSIGNABLE_STAFF_ROLES = Set.of(
+                        StaffService.ROLE_DRIVER,
+                        StaffService.ROLE_PLANT_OPERATOR);
 
         private final RouteRepository routeRepository;
         private final RouteAssignmentRepository assignmentRepository;
@@ -53,13 +57,16 @@ public class RouteAssignmentService {
                 Route route = routeRepository.findByIdAndFacilityId(routeId, facilityId)
                                 .orElseThrow(() -> new EntityNotFoundException("Route not found: " + routeId));
 
-                AppUser staff = appUserRepository.findById(request.staffId())
+                AppUser staff = appUserRepository
+                                .findByIdAndFacilityIdAndRoleInAndActive(request.staffId(), facilityId,
+                                                ASSIGNABLE_STAFF_ROLES, true)
                                 .orElseThrow(() -> new EntityNotFoundException(
                                                 "Staff not found: " + request.staffId()));
 
                 Vehicle vehicle = null;
                 if (request.vehicleId() != null) {
-                        vehicle = vehicleRepository.findById(request.vehicleId())
+                        vehicle = vehicleRepository.findByIdAndFacilityIdAndStatus(request.vehicleId(), facilityId,
+                                        "ACTIVE")
                                         .orElseThrow(() -> new EntityNotFoundException(
                                                         "Vehicle not found: " + request.vehicleId()));
                 }

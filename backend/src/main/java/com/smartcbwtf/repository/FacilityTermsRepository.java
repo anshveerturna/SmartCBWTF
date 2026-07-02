@@ -34,9 +34,4 @@ public interface FacilityTermsRepository extends JpaRepository<FacilityTerms, UU
     @Query("UPDATE FacilityTerms t SET t.active = false WHERE t.facility.id = :facilityId")
     void deactivateAllForFacility(@Param("facilityId") UUID facilityId);
     
-    /**
-     * Find the latest active terms across all facilities (for global default)
-     */
-    @Query("SELECT t FROM FacilityTerms t WHERE t.active = true ORDER BY t.effectiveFrom DESC")
-    List<FacilityTerms> findAllActive();
 }

@@ -1,7 +1,6 @@
 package com.smartcbwtf.mobile.network.model
 
 import com.google.gson.annotations.SerializedName
-import java.util.UUID
 
 /**
  * Wrapper request to match backend's BagEventSyncRequest
@@ -21,8 +20,6 @@ data class BagEventPayload(
     val gpsLat: Double,
     val gpsLon: Double,
     val weightKg: Double,
-    @SerializedName("collectedByUserId")
-    val collectedByUserId: String,
     val facilityId: String?,
     val gpsAccuracyM: Double?,
     val appDeviceId: String?,

@@ -26,8 +26,19 @@ public class ContactMessage implements Serializable {
     @Column(name = "organization")
     private String organization;
 
-    @Lob
-    @Column(name = "message", nullable = false)
+    @Column(name = "organization_type")
+    private String organizationType;
+
+    @Column(name = "inquiry_type")
+    private String inquiryType;
+
+    @Column(name = "source_ip", length = 64)
+    private String sourceIp;
+
+    @Column(name = "user_agent", length = 255)
+    private String userAgent;
+
+    @Column(name = "message", nullable = false, columnDefinition = "TEXT")
     private String message;
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -74,6 +85,38 @@ public class ContactMessage implements Serializable {
 
     public void setOrganization(String organization) {
         this.organization = organization;
+    }
+
+    public String getOrganizationType() {
+        return organizationType;
+    }
+
+    public void setOrganizationType(String organizationType) {
+        this.organizationType = organizationType;
+    }
+
+    public String getInquiryType() {
+        return inquiryType;
+    }
+
+    public void setInquiryType(String inquiryType) {
+        this.inquiryType = inquiryType;
+    }
+
+    public String getSourceIp() {
+        return sourceIp;
+    }
+
+    public void setSourceIp(String sourceIp) {
+        this.sourceIp = sourceIp;
+    }
+
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public void setUserAgent(String userAgent) {
+        this.userAgent = userAgent;
     }
 
     public String getMessage() {

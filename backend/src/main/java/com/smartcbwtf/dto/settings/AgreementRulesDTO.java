@@ -1,8 +1,10 @@
 package com.smartcbwtf.dto.settings;
 
+import com.smartcbwtf.domain.AgreementNumberResetFrequency;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -19,6 +21,11 @@ public record AgreementRulesDTO(
         @Min(1) @Max(10) Integer agreementNumberSequenceDigits,
         Boolean agreementNumberIncludeFacilityCode,
         Boolean agreementNumberIncludeYear,
+        @Size(max = 120)
+        @Pattern(regexp = "^(|.*\\{\\{sequence\\}\\}.*)$", message = "Agreement number template must include {{sequence}}")
+        String agreementNumberTemplate,
+        AgreementNumberResetFrequency agreementNumberResetFrequency,
         // Agreement Terms Template
+        @Size(max = 20000, message = "Agreement terms template must be 20000 characters or less")
         String agreementTermsTemplate) {
 }

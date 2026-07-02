@@ -38,7 +38,7 @@ const OperationalRulesSection = ({ data, lockedFields, onSave }: Props) => {
   const handleChange = (field: keyof OperationalRulesDTO) => (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    let value: any;
+    let value: string | number | boolean;
     if (e.target.type === 'checkbox') {
         value = e.target.checked;
     } else if (e.target.type === 'number') {

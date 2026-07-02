@@ -29,7 +29,7 @@ import {
   StarBorder as StarBorderIcon,
   Block as BlockIcon,
 } from '@mui/icons-material';
-import axios from 'axios';
+import apiClient from '../../api/client';
 
 interface BankAccount {
   id: string;
@@ -44,10 +44,8 @@ interface BankAccount {
   disabledAt: string | null;
 }
 
-const api = axios.create({ baseURL: '/api/cbwtf' });
-
 const fetchBankAccounts = async (): Promise<BankAccount[]> => {
-  const { data } = await api.get('/bank-accounts');
+  const { data } = await apiClient.get('/api/cbwtf/bank-accounts');
   // Handle both array and paginated response
   return Array.isArray(data) ? data : (data.content ?? []);
 };
@@ -71,7 +69,7 @@ export default function BankAccounts() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData) => api.post('/bank-accounts', data),
+    mutationFn: (data: typeof formData) => apiClient.post('/api/cbwtf/bank-accounts', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       setAddDialogOpen(false);
@@ -80,12 +78,12 @@ export default function BankAccounts() {
   });
 
   const setPrimaryMutation = useMutation({
-    mutationFn: (id: string) => api.post(`/bank-accounts/${id}/set-primary`),
+    mutationFn: (id: string) => apiClient.post(`/api/cbwtf/bank-accounts/${id}/set-primary`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bankAccounts'] }),
   });
 
   const disableMutation = useMutation({
-    mutationFn: (id: string) => api.put(`/bank-accounts/${id}/disable`),
+    mutationFn: (id: string) => apiClient.put(`/api/cbwtf/bank-accounts/${id}/disable`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       setDisableDialogOpen(false);

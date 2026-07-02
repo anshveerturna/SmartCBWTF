@@ -4,11 +4,20 @@ import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.DuesClearanceRequest;
 import com.smartcbwtf.repository.DuesClearanceRequestRepository;
 import com.smartcbwtf.service.AuditLogService;
+import com.smartcbwtf.util.PaginationUtils;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -26,7 +35,7 @@ import java.util.UUID;
  * - Minimal JWT claims (role + userId only)
  * 
  * Management can:
- * - View all pending approvals (across all CBWTFs)
+ * - View pending approvals for their assigned CBWTF
  * - Approve requests (grants report access)
  * - Reject requests (with reason)
  * - Bulk approve
@@ -37,6 +46,10 @@ import java.util.UUID;
 public class ManagementDuesApprovalController {
 
     private static final Logger log = LoggerFactory.getLogger(ManagementDuesApprovalController.class);
+    private static final int DEFAULT_REQUEST_LIST_LIMIT = 100;
+    private static final int MAX_REQUEST_LIST_LIMIT = 250;
+    private static final int MAX_REASON_LENGTH = 1000;
+    private static final int MAX_BULK_APPROVAL_IDS = 100;
 
     private final DuesClearanceRequestRepository clearanceRepo;
     private final AuditLogService auditLogService;
@@ -57,15 +70,23 @@ public class ManagementDuesApprovalController {
      */
     @GetMapping
     public ResponseEntity<?> listPending(
-            @RequestParam(name = "status", required = false, defaultValue = "SUBMITTED") String status) {
+            @RequestParam(name = "status", required = false, defaultValue = "SUBMITTED") String status,
+            @RequestParam(name = "limit", defaultValue = "100") int limit) {
 
-        log.info("Management listPending called with status: {}", status);
+        log.debug("Management listPending called with status: {}", status);
 
-        List<DuesClearanceRequest> requests = status.equals("ALL") ? clearanceRepo.findAll()
-                : clearanceRepo.findByManagementStatusOrderByRequestedAtDesc(status);
+        UUID facilityId = requireTenantId();
+        PageRequest pageable = firstPage(limit);
+        List<DuesClearanceRequest> requests = status.equals("ALL")
+                ? clearanceRepo.findByFacilityIdOrderByRequestedAtDesc(facilityId, pageable)
+                : clearanceRepo.findByFacilityIdAndManagementStatusOrderByRequestedAtDesc(facilityId, status,
+                        pageable);
+        long total = status.equals("ALL")
+                ? clearanceRepo.countByFacilityId(facilityId)
+                : clearanceRepo.countByFacilityIdAndManagementStatus(facilityId, status);
 
-        log.info("Found {} requests for status {}", requests.size(), status);
-        requests.forEach(r -> log.info("Found Request ID: {} with Status: {}", r.getId(), r.getManagementStatus()));
+        log.debug("Found {} of {} requests for status {}", requests.size(), total, status);
+        requests.forEach(r -> log.trace("Found request {} with status {}", r.getId(), r.getManagementStatus()));
 
         return ResponseEntity.ok(Map.of(
                 "requests", requests.stream().map(req -> {
@@ -93,7 +114,7 @@ public class ManagementDuesApprovalController {
                     item.put("requestYear", req.getRequestYear());
                     return item;
                 }).toList(),
-                "total", requests.size()));
+                "total", total));
     }
 
     /**
@@ -101,7 +122,8 @@ public class ManagementDuesApprovalController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<?> getDetails(@PathVariable("id") UUID id) {
-        return clearanceRepo.findById(id)
+        UUID facilityId = requireTenantId();
+        return clearanceRepo.findByIdAndFacilityId(id, facilityId)
                 .map(req -> {
                     Map<String, Object> result = new HashMap<>();
                     result.put("id", req.getId().toString());
@@ -138,8 +160,9 @@ public class ManagementDuesApprovalController {
     @PostMapping("/{id}/approve")
     public ResponseEntity<?> approve(@PathVariable("id") UUID id) {
         UUID userId = TenantContext.getUserId();
+        UUID facilityId = requireTenantId();
 
-        DuesClearanceRequest request = clearanceRepo.findById(id).orElse(null);
+        DuesClearanceRequest request = clearanceRepo.findByIdAndFacilityId(id, facilityId).orElse(null);
 
         if (request == null) {
             return ResponseEntity.notFound().build();
@@ -159,10 +182,11 @@ public class ManagementDuesApprovalController {
 
         clearanceRepo.save(request);
 
-        // Update HCF Status to CLEARED
-        com.smartcbwtf.domain.Hcf hcf = request.getHcf();
-        hcf.setDuesClearStatus(com.smartcbwtf.domain.DuesClearStatus.CLEARED);
-        hcfRepository.save(hcf);
+        if (isGlobalDuesRequest(request)) {
+            com.smartcbwtf.domain.Hcf hcf = request.getHcf();
+            hcf.setDuesClearStatus(com.smartcbwtf.domain.DuesClearStatus.CLEARED);
+            hcfRepository.save(hcf);
+        }
 
         auditLogService.log("DUES_CLEARANCE", request.getId(), "APPROVED_BY_MANAGEMENT",
                 userId, "Report access granted");
@@ -181,11 +205,12 @@ public class ManagementDuesApprovalController {
     @PostMapping("/{id}/reject")
     public ResponseEntity<?> reject(
             @PathVariable("id") UUID id,
-            @RequestBody RejectRequest body) {
+            @Valid @RequestBody RejectRequest body) {
 
         UUID userId = TenantContext.getUserId();
+        UUID facilityId = requireTenantId();
 
-        DuesClearanceRequest request = clearanceRepo.findById(id).orElse(null);
+        DuesClearanceRequest request = clearanceRepo.findByIdAndFacilityId(id, facilityId).orElse(null);
 
         if (request == null) {
             return ResponseEntity.notFound().build();
@@ -197,7 +222,8 @@ public class ManagementDuesApprovalController {
                     "message", "Request must be in SUBMITTED status to reject"));
         }
 
-        if (body.reason == null || body.reason.isBlank()) {
+        String reason = normalizeReason(body != null ? body.reason() : null);
+        if (reason == null) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "REASON_REQUIRED",
                     "message", "Rejection reason is required"));
@@ -206,15 +232,15 @@ public class ManagementDuesApprovalController {
         request.setManagementStatusEnum(DuesClearanceRequest.Status.REJECTED);
         request.setApprovedBy(userId);
         request.setApprovedAt(Instant.now());
-        request.setRejectionReason(body.reason);
+        request.setRejectionReason(reason);
 
         clearanceRepo.save(request);
 
         auditLogService.log("DUES_CLEARANCE", request.getId(), "REJECTED_BY_MANAGEMENT",
-                userId, "Reason: " + body.reason);
+                userId, "Reason: " + reason);
 
         log.info("Management rejected dues clearance {} for HCF {}: {}",
-                id, request.getHcf().getId(), body.reason);
+                id, request.getHcf().getId(), reason);
 
         return ResponseEntity.ok(Map.of(
                 "id", request.getId().toString(),
@@ -226,20 +252,29 @@ public class ManagementDuesApprovalController {
      * Bulk approve multiple requests.
      */
     @PostMapping("/bulk-approve")
-    public ResponseEntity<?> bulkApprove(@RequestBody BulkApproveRequest body) {
+    public ResponseEntity<?> bulkApprove(@Valid @RequestBody BulkApproveRequest body) {
         UUID userId = TenantContext.getUserId();
+        UUID facilityId = requireTenantId();
 
-        if (body.ids == null || body.ids.isEmpty()) {
+        if (body == null || body.ids() == null || body.ids().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "NO_IDS",
                     "message", "Request IDs are required"));
         }
+        if (body.ids().size() > MAX_BULK_APPROVAL_IDS) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "TOO_MANY_IDS",
+                    "message", "Bulk approval is limited to " + MAX_BULK_APPROVAL_IDS + " requests"));
+        }
 
         int approved = 0;
         int failed = 0;
+        Map<UUID, DuesClearanceRequest> requestsById = new HashMap<>();
+        clearanceRepo.findByFacilityIdAndIdIn(facilityId, body.ids())
+                .forEach(request -> requestsById.put(request.getId(), request));
 
-        for (UUID id : body.ids) {
-            DuesClearanceRequest request = clearanceRepo.findById(id).orElse(null);
+        for (UUID id : body.ids()) {
+            DuesClearanceRequest request = requestsById.get(id);
             if (request != null &&
                     DuesClearanceRequest.Status.SUBMITTED.name().equals(request.getManagementStatus())) {
 
@@ -249,10 +284,11 @@ public class ManagementDuesApprovalController {
                 request.grantReportAccess();
                 clearanceRepo.save(request);
 
-                // Update HCF Status to CLEARED
-                com.smartcbwtf.domain.Hcf hcf = request.getHcf();
-                hcf.setDuesClearStatus(com.smartcbwtf.domain.DuesClearStatus.CLEARED);
-                hcfRepository.save(hcf);
+                if (isGlobalDuesRequest(request)) {
+                    com.smartcbwtf.domain.Hcf hcf = request.getHcf();
+                    hcf.setDuesClearStatus(com.smartcbwtf.domain.DuesClearStatus.CLEARED);
+                    hcfRepository.save(hcf);
+                }
 
                 auditLogService.log("DUES_CLEARANCE", request.getId(),
                         "BULK_APPROVED_BY_MANAGEMENT", userId, null);
@@ -270,11 +306,47 @@ public class ManagementDuesApprovalController {
                 "message", "Bulk approval completed"));
     }
 
-    public static class RejectRequest {
-        public String reason;
+    public record RejectRequest(
+            @NotBlank(message = "Rejection reason is required")
+            @Size(max = MAX_REASON_LENGTH, message = "Rejection reason must be 1000 characters or fewer")
+            String reason) {
     }
 
-    public static class BulkApproveRequest {
-        public List<UUID> ids;
+    public record BulkApproveRequest(
+            @NotEmpty(message = "Request IDs are required")
+            @Size(max = MAX_BULK_APPROVAL_IDS, message = "Bulk approval is limited to 100 requests")
+            List<@NotNull(message = "Request ID is required") UUID> ids) {
+    }
+
+    private UUID requireTenantId() {
+        UUID facilityId = TenantContext.getTenantId();
+        if (facilityId == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tenant context is required");
+        }
+        return facilityId;
+    }
+
+    private static PageRequest firstPage(int requestedLimit) {
+        int limit = PaginationUtils.normalizeSize(requestedLimit, DEFAULT_REQUEST_LIST_LIMIT, MAX_REQUEST_LIST_LIMIT);
+        return PageRequest.of(0, limit);
+    }
+
+    private static String normalizeReason(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.strip();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        if (normalized.length() > MAX_REASON_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Rejection reason must be " + MAX_REASON_LENGTH + " characters or fewer");
+        }
+        return normalized;
+    }
+
+    private static boolean isGlobalDuesRequest(DuesClearanceRequest request) {
+        return request.getRequestMonth() == null && request.getRequestYear() == null;
     }
 }

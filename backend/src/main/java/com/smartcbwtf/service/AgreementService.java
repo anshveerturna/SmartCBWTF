@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.Year;
 import java.util.List;
 import java.util.UUID;
@@ -138,7 +137,7 @@ public class AgreementService {
         // Check if PDF already exists on disk
         if (agreement.getPdfUrl() != null && !agreement.getPdfUrl().isBlank()) {
             try {
-                if (Files.exists(Paths.get(agreement.getPdfUrl()))) {
+                if (Files.exists(pdfService.storedGeneratedFilePath(agreement.getPdfUrl()))) {
                     return agreement; // PDF exists, nothing to do
                 }
             } catch (Exception e) {

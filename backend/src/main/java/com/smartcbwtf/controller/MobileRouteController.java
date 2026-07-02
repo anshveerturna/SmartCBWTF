@@ -46,9 +46,10 @@ public class MobileRouteController {
     @PreAuthorize("hasAnyRole('DRIVER', 'PLANT_OPERATOR')")
     public ResponseEntity<MobileRouteDTO> getMyRoute() {
         UUID staffId = TenantContext.getUserId();
+        UUID tenantId = TenantContext.getTenantId();
 
-        if (staffId == null) {
-            log.warn("No user ID in context for my-route request");
+        if (staffId == null || tenantId == null) {
+            log.warn("Missing tenant context for my-route request");
             return ResponseEntity.notFound().build();
         }
 
@@ -61,6 +62,11 @@ public class MobileRouteController {
 
         var assignment = assignmentOpt.get();
         var route = assignment.getRoute();
+        if (route == null || route.getFacility() == null || !tenantId.equals(route.getFacility().getId())) {
+            log.warn("Route assignment for staff {} is outside tenant {}", staffId, tenantId);
+            return ResponseEntity.notFound().build();
+        }
+
         var facility = route.getFacility();
 
         // Determine the current cycle's time range

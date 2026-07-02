@@ -4,7 +4,6 @@ import com.smartcbwtf.config.TenantContext;
 import com.smartcbwtf.domain.Alert;
 import com.smartcbwtf.service.AlertService;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.UUID;
+
+import static com.smartcbwtf.util.PaginationUtils.pageRequest;
 
 /**
  * Alert Controller.
@@ -38,7 +39,7 @@ public class AlertController {
             @RequestParam(name = "category", required = false) String category) {
 
         UUID facilityId = TenantContext.getTenantId();
-        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        var pageable = pageRequest(page, size, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<Alert> alerts;
         if (category != null && !category.isEmpty() && !category.equalsIgnoreCase("ALL")) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -34,6 +34,7 @@ import type {
   ConsumableItemDTO,
   ConsumableCategoryDTO,
 } from '../../api/cbwtf';
+import { apiAssetUrl } from '../../api/client';
 
 const Consumables: React.FC = () => {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ const Consumables: React.FC = () => {
   const [includeInactive, setIncludeInactive] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -60,11 +61,11 @@ const Consumables: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [includeInactive]);
 
   useEffect(() => {
     fetchData();
-  }, [includeInactive]);
+  }, [fetchData]);
 
   const formatCurrency = (amount: number | null) => {
     if (amount === null) return '—';
@@ -190,7 +191,7 @@ const Consumables: React.FC = () => {
                   >
                     <TableCell>
                       <Avatar
-                        src={item.imageUrl ? `http://localhost:8080${item.imageUrl}?t=${new Date(item.updatedAt).getTime()}` : undefined}
+                        src={apiAssetUrl(item.imageUrl, new Date(item.updatedAt).getTime())}
                         variant="rounded"
                         sx={{ width: 40, height: 40, bgcolor: 'grey.200' }}
                       >

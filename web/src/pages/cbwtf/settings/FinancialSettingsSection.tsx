@@ -12,8 +12,10 @@ import {
   FormControlLabel,
   Divider,
   Paper,
-  IconButton,
-  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -28,7 +30,7 @@ import {
   uploadPaymentQr,
   deletePaymentQr,
 } from '../../../api/cbwtf';
-import { API_BASE_URL } from '../../../api/client';
+import { apiAssetUrl } from '../../../api/client';
 
 interface Props {
   data: FinancialSettingsDTO;
@@ -40,6 +42,7 @@ const FinancialSettingsSection = ({ data, lockedFields, onSave }: Props) => {
   const [formData, setFormData] = useState<FinancialSettingsDTO>(data);
   const [error, setError] = useState<string | null>(null);
   const [qrUploading, setQrUploading] = useState(false);
+  const [deleteQrDialogOpen, setDeleteQrDialogOpen] = useState(false);
   const qrInputRef = useRef<HTMLInputElement>(null);
 
   const mutation = useMutation({
@@ -91,19 +94,14 @@ const FinancialSettingsSection = ({ data, lockedFields, onSave }: Props) => {
   };
 
   const handleDeleteQr = async () => {
-    if (!confirm('Are you sure you want to remove the payment QR code?')) return;
     try {
       await deletePaymentQr();
       setFormData({ ...formData, paymentQrUrl: undefined });
+      setDeleteQrDialogOpen(false);
       onSave();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete QR');
     }
-  };
-
-  const getQrSrc = (url: string | undefined) => {
-    if (!url) return undefined;
-    return url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -260,7 +258,7 @@ const FinancialSettingsSection = ({ data, lockedFields, onSave }: Props) => {
               {formData.paymentQrUrl ? (
                 <Box
                   component="img"
-                  src={getQrSrc(formData.paymentQrUrl)}
+                  src={apiAssetUrl(formData.paymentQrUrl)}
                   alt="Payment QR"
                   sx={{ width: 100, height: 100, objectFit: 'contain', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
                 />
@@ -298,7 +296,7 @@ const FinancialSettingsSection = ({ data, lockedFields, onSave }: Props) => {
                     color="error"
                     size="small"
                     startIcon={<DeleteIcon />}
-                    onClick={handleDeleteQr}
+                    onClick={() => setDeleteQrDialogOpen(true)}
                     disabled={qrUploading}
                   >
                     Remove
@@ -309,6 +307,20 @@ const FinancialSettingsSection = ({ data, lockedFields, onSave }: Props) => {
           </Paper>
         </Grid>
       </Grid>
+      <Dialog open={deleteQrDialogOpen} onClose={() => setDeleteQrDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Remove Payment QR</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Remove the UPI QR code from future agreement PDFs?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteQrDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleDeleteQr}>
+            Remove
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
