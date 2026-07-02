@@ -26,6 +26,7 @@ read_external_yaml() {
   local path="$2"
   [ -f "$file" ] || return 1
   python3 - "$file" "$path" <<'PY'
+import os
 import re
 import sys
 
@@ -52,6 +53,9 @@ for raw in lines:
     if current == wanted_path and value:
         if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
             value = value[1:-1]
+        placeholder = re.fullmatch(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::(.*))?\}", value)
+        if placeholder:
+            value = os.environ.get(placeholder.group(1), placeholder.group(2) or "")
         print(value)
         sys.exit(0)
     stack.append((indent, key))
