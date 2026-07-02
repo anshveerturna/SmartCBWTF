@@ -40,6 +40,9 @@ fi
 if [ "${JAVA_BIN+x}" ]; then
   REMOTE_ENV="$REMOTE_ENV JAVA_BIN=$(printf '%q' "$JAVA_BIN")"
 fi
+if [ "${SPRING_FLYWAY_OUT_OF_ORDER+x}" ]; then
+  REMOTE_ENV="$REMOTE_ENV SPRING_FLYWAY_OUT_OF_ORDER=$(printf '%q' "$SPRING_FLYWAY_OUT_OF_ORDER")"
+fi
 ssh "${SSH_OPTS[@]}" "$HOST" "chmod +x '$REMOTE_HOME/deploy.sh' && $REMOTE_ENV '$REMOTE_HOME/deploy.sh'"
 
 sleep 10

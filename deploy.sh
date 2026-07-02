@@ -167,13 +167,43 @@ backup_database() {
   backup_path="$DB_BACKUP_DIR/${DEPLOY_ENV}-smartcbwtf-${timestamp}.dump"
 
   echo "Creating pre-migration DB backup: $backup_path"
-  PGPASSWORD="$DB_PASSWORD" pg_dump \
+  if PGPASSWORD="$DB_PASSWORD" pg_dump \
     --format=custom \
     --no-owner \
     --no-privileges \
     --dbname="$pg_url" \
     --username="$DB_USERNAME" \
-    --file="$backup_path"
+    --file="$backup_path"; then
+    chmod 600 "$backup_path"
+    echo "DB backup complete: $backup_path"
+    return
+  fi
+
+  rm -f "$backup_path"
+
+  local db_name
+  db_name="$(printf '%s' "$pg_url" | sed -E 's#^postgresql://([^/]+/)?([^?]+).*#\2#')"
+  if [ -z "$db_name" ] || [ "$db_name" = "$pg_url" ]; then
+    echo "DB backup failed and database name could not be parsed for local postgres fallback."
+    exit 1
+  fi
+  if ! command -v sudo >/dev/null 2>&1; then
+    echo "DB backup failed and sudo is unavailable for local postgres fallback."
+    exit 1
+  fi
+
+  local temp_backup
+  temp_backup="/tmp/$(basename "$backup_path")"
+  rm -f "$temp_backup"
+  echo "Password backup failed; trying local postgres backup fallback."
+  sudo -n -u postgres pg_dump \
+    --format=custom \
+    --no-owner \
+    --no-privileges \
+    --dbname="$db_name" \
+    --file="$temp_backup"
+  sudo chown "$(id -u):$(id -g)" "$temp_backup"
+  mv "$temp_backup" "$backup_path"
   chmod 600 "$backup_path"
   echo "DB backup complete: $backup_path"
 }
