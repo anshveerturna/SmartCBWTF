@@ -36,6 +36,9 @@ Thumbs.db
 # Logs
 *.log
 
+# Local planning drafts
+SMARTCBWTF_NATIVE_LAYER.md
+
 # Node
 node_modules/
 
