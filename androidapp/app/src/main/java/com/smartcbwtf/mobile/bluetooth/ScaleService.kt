@@ -13,6 +13,9 @@ interface ScaleService {
     suspend fun startScan()
     suspend fun stopScan()
     suspend fun connectToDevice(device: BluetoothDevice)
+    fun rememberedDevice(): BluetoothDevice?
+    fun bondedDevices(): List<BluetoothDevice>
+    fun forgetRememberedDevice()
 }
 
 enum class ConnectionState {

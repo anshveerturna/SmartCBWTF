@@ -1,5 +1,6 @@
 package com.smartcbwtf.mobile.viewmodel
 
+import android.bluetooth.BluetoothDevice
 import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -193,7 +194,11 @@ class ScanWeighViewModel @Inject constructor(
         }
     }
 
-    fun connectToDevice(device: android.bluetooth.BluetoothDevice) {
+    fun rememberedScale(): BluetoothDevice? = scaleService.rememberedDevice()
+
+    fun bondedScales(): List<BluetoothDevice> = scaleService.bondedDevices()
+
+    fun connectToDevice(device: BluetoothDevice) {
         viewModelScope.launch {
             _error.value = null
             try {
