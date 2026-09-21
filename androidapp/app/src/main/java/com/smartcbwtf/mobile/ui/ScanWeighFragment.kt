@@ -12,8 +12,6 @@ import android.provider.Settings
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.OvershootInterpolator
-import android.widget.ArrayAdapter
-import android.widget.ListView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,6 +37,7 @@ import com.smartcbwtf.mobile.viewmodel.LocationState
 import com.smartcbwtf.mobile.ui.adapter.BagAdapter
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -64,6 +63,7 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
     private var connectingDialog: AlertDialog? = null
     private var geofenceBlockingDialog: AlertDialog? = null
     private var connectionTimeoutJob: Job? = null
+    private var connectingStateJob: Job? = null
     private lateinit var bagAdapter: BagAdapter
     
     companion object {
@@ -79,10 +79,17 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
     ) { _ ->
         val bluetoothManager = requireContext().getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         if (bluetoothManager.adapter?.isEnabled == true) {
-            // Bluetooth is now enabled, proceed with device picker
-            showBluetoothDevicePicker()
+            connectRememberedScaleOrChoosePairedDevice()
         } else {
             Toast.makeText(requireContext(), "Bluetooth is required to connect scale", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val bluetoothSettingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        if (permissionHelper.hasBluetoothPermissions()) {
+            connectRememberedScaleOrChoosePairedDevice()
         }
     }
     
@@ -108,6 +115,7 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
             Toast.makeText(requireContext(), "Permissions needed for scan/weight", Toast.LENGTH_LONG).show()
         } else {
             viewModel.refreshLocation()
+            reconnectRememberedScale()
         }
     }
 
@@ -125,6 +133,8 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         setupUI()
         setupListeners()
         setupObservers()
+
+        reconnectRememberedScale()
 
         if (permissionHelper.hasLocationPermission()) {
             if (isVerificationMode) {
@@ -173,11 +183,17 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         // Connect/Disconnect Scale
         binding.btnConnectScale.setOnClickListener {
             animateButtonPress(it)
-            if (permissionHelper.hasBluetoothPermissions()) {
-                checkBluetoothAndShowPicker()
-            } else {
-                Toast.makeText(requireContext(), "Bluetooth permission required", Toast.LENGTH_SHORT).show()
-                requestPermissionLauncher.launch(permissionHelper.getRequiredPermissions().toTypedArray())
+            when (viewModel.connectionState.value) {
+                ConnectionState.CONNECTED -> viewModel.disconnectScale()
+                ConnectionState.CONNECTING, ConnectionState.SCANNING -> Unit
+                else -> {
+                    if (permissionHelper.hasBluetoothPermissions()) {
+                        checkBluetoothAndConnect()
+                    } else {
+                        Toast.makeText(requireContext(), "Bluetooth permission required", Toast.LENGTH_SHORT).show()
+                        requestPermissionLauncher.launch(permissionHelper.getRequiredPermissions().toTypedArray())
+                    }
+                }
             }
         }
 
@@ -239,15 +255,6 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
                     ConnectionState.SCANNING -> "Scanning..."
                     else -> "Connect Scale"
                 }
-                binding.btnConnectScale.setOnClickListener {
-                    animateButtonPress(it)
-                    if (state == ConnectionState.CONNECTED) {
-                        viewModel.disconnectScale()
-                    } else if (state != ConnectionState.SCANNING && state != ConnectionState.CONNECTING) {
-                        showBluetoothDevicePicker()
-                    }
-                }
-                
                 // Update scale status text
                 binding.tvScaleStatus.text = when (state) {
                     ConnectionState.CONNECTED -> "Scale connected and ready"
@@ -614,7 +621,7 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
     /**
      * Check if Bluetooth is enabled and prompt user to enable if not
      */
-    private fun checkBluetoothAndShowPicker() {
+    private fun checkBluetoothAndConnect() {
         val bluetoothManager = requireContext().getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         val bluetoothAdapter = bluetoothManager.adapter
         
@@ -628,9 +635,29 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
                 showEnableBluetoothDialog()
             }
             else -> {
-                // Bluetooth is enabled, proceed with device picker
-                showBluetoothDevicePicker()
+                connectRememberedScaleOrChoosePairedDevice()
             }
+        }
+    }
+
+    private fun reconnectRememberedScale() {
+        if (!permissionHelper.hasBluetoothPermissions()) return
+        val bluetoothManager = requireContext().getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        if (bluetoothManager.adapter?.isEnabled != true) return
+        if (viewModel.connectionState.value == ConnectionState.CONNECTED ||
+            viewModel.connectionState.value == ConnectionState.CONNECTING
+        ) return
+        if (viewModel.rememberedScale() != null) {
+            viewModel.connectScale()
+        }
+    }
+
+    private fun connectRememberedScaleOrChoosePairedDevice() {
+        val rememberedDevice = viewModel.rememberedScale()
+        if (rememberedDevice != null) {
+            showConnectingDialog(rememberedDevice)
+        } else {
+            showPairedDevicePicker()
         }
     }
     
@@ -654,121 +681,45 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
     }
 
     @SuppressLint("MissingPermission")
-    private fun showBluetoothDevicePicker() {
-        // Start scanning for devices
-        viewModel.connectScale()
-        
-        val deviceList = mutableListOf<BluetoothDevice>()
-        val deviceNames = mutableListOf<String>()
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, deviceNames)
-        
-        // Calculate max height (roughly 5 items worth, ~300dp)
-        val maxHeightPx = (300 * resources.displayMetrics.density).toInt()
-        
-        val listView = ListView(requireContext()).apply {
-            this.adapter = adapter
-            setPadding(32, 16, 32, 16)
+    private fun showPairedDevicePicker() {
+        val devices = viewModel.bondedScales()
+        if (devices.isEmpty()) {
+            bluetoothDialog = MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Pair the HC-05")
+                .setMessage("Pair the scale in Android Bluetooth settings first. Return here after HC-05 appears under paired devices.")
+                .setPositiveButton("Bluetooth Settings") { dialog, _ ->
+                    dialog.dismiss()
+                    bluetoothSettingsLauncher.launch(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+            return
         }
-        
-        // Wrap ListView in a ScrollView-like container with constrained height
-        val container = android.widget.LinearLayout(requireContext()).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            addView(listView, android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                weight = 0f
-            })
-        }
-        
+
+        val labels = devices.map { device ->
+            val name = try {
+                device.name?.takeIf { it.isNotBlank() } ?: "Bluetooth device"
+            } catch (e: SecurityException) {
+                "Bluetooth device"
+            }
+            "$name\n${device.address}"
+        }.toTypedArray()
+
         bluetoothDialog = MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Select Bluetooth Scale")
-            .setMessage("Scanning for nearby devices...")
-            .setView(container)
-            .setNegativeButton("Cancel") { dialog, _ ->
-                cancelBluetoothConnection()
+            .setTitle("Select paired scale")
+            .setItems(labels) { dialog, position ->
+                val selectedDevice = devices[position]
                 dialog.dismiss()
-            }
-            .setCancelable(false)
-            .create()
-        
-        bluetoothDialog?.show()
-        
-        // Observe discovered devices
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.discoveredDevices.collect { devices ->
-                deviceList.clear()
-                deviceNames.clear()
-                deviceList.addAll(devices)
-                devices.forEach { device ->
-                    // Safely get device name - requires BLUETOOTH_CONNECT permission on Android 12+
-                    val name = try {
-                        device.name?.takeIf { it.isNotBlank() } ?: "BLE Device"
-                    } catch (e: SecurityException) {
-                        "BLE Device"
-                    }
-                    val address = device.address
-                    // Show name prominently, with address in smaller text below
-                    deviceNames.add("$name\n$address")
-                }
-                adapter.notifyDataSetChanged()
-                
-                // Constrain list height after update if too many devices
-                listView.post {
-                    // Measure ListView's desired height
-                    var totalHeight = 0
-                    for (i in 0 until adapter.count) {
-                        val listItem = adapter.getView(i, null, listView)
-                        listItem.measure(
-                            android.view.View.MeasureSpec.makeMeasureSpec(listView.width.takeIf { it > 0 } ?: 500, android.view.View.MeasureSpec.AT_MOST),
-                            android.view.View.MeasureSpec.UNSPECIFIED
-                        )
-                        totalHeight += listItem.measuredHeight
-                    }
-                    totalHeight += listView.dividerHeight * (adapter.count - 1).coerceAtLeast(0)
-                    
-                    val params = listView.layoutParams
-                    params.height = if (totalHeight > maxHeightPx) maxHeightPx else android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-                    listView.layoutParams = params
-                }
-                
-                // Update message based on found devices
-                if (devices.isEmpty()) {
-                    bluetoothDialog?.setMessage("Scanning for nearby devices...")
-                } else {
-                    bluetoothDialog?.setMessage("${devices.size} device(s) found. Tap to connect:")
-                }
-            }
-        }
-        
-        // Handle device selection
-        listView.setOnItemClickListener { _, _, position, _ ->
-            val selectedDevice = deviceList.getOrNull(position)
-            if (selectedDevice != null) {
-                bluetoothDialog?.dismiss()
                 bluetoothDialog = null
                 showConnectingDialog(selectedDevice)
             }
-        }
-        
-        // Auto-close dialog when connected
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.connectionState.collect { state ->
-                when (state) {
-                    ConnectionState.CONNECTED -> {
-                        bluetoothDialog?.dismiss()
-                        bluetoothDialog = null
-                    }
-                    ConnectionState.ERROR -> {
-                        bluetoothDialog?.setMessage("Error scanning. Please try again.")
-                    }
-                    ConnectionState.DISCONNECTED -> {
-                        // Dialog might have been dismissed, no action needed
-                    }
-                    else -> { /* Keep scanning */ }
-                }
+            .setNeutralButton("Bluetooth Settings") { dialog, _ ->
+                dialog.dismiss()
+                bluetoothSettingsLauncher.launch(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
             }
-        }
+            .setNegativeButton("Cancel", null)
+            .create()
+        bluetoothDialog?.show()
     }
     
     /**
@@ -777,9 +728,9 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
     @SuppressLint("MissingPermission")
     private fun showConnectingDialog(device: BluetoothDevice) {
         val deviceName = try {
-            device.name?.takeIf { it.isNotBlank() } ?: "BLE Device (${device.address.takeLast(8)})"
+            device.name?.takeIf { it.isNotBlank() } ?: "Bluetooth device (${device.address.takeLast(8)})"
         } catch (e: SecurityException) {
-            "BLE Device (${device.address.takeLast(8)})"
+            "Bluetooth device (${device.address.takeLast(8)})"
         }
         
         connectingDialog = MaterialAlertDialogBuilder(requireContext())
@@ -793,9 +744,6 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
             .create()
         
         connectingDialog?.show()
-        
-        // Start connection
-        viewModel.connectToDevice(device)
         
         // Start connection timeout
         connectionTimeoutJob?.cancel()
@@ -811,33 +759,46 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
         }
         
         // Observe connection state
-        viewLifecycleOwner.lifecycleScope.launch {
+        connectingStateJob?.cancel()
+        connectingStateJob = viewLifecycleOwner.lifecycleScope.launch {
+            var connectionStarted = false
             viewModel.connectionState.collect { state ->
+                if (state == ConnectionState.CONNECTING) connectionStarted = true
                 when (state) {
                     ConnectionState.CONNECTED -> {
                         connectionTimeoutJob?.cancel()
                         connectingDialog?.dismiss()
                         connectingDialog = null
                         Snackbar.make(binding.root, "Scale connected successfully", Snackbar.LENGTH_SHORT).show()
+                        connectingStateJob = null
+                        this@launch.cancel()
                     }
                     ConnectionState.ERROR -> {
+                        if (!connectionStarted) return@collect
                         connectionTimeoutJob?.cancel()
                         connectingDialog?.dismiss()
                         connectingDialog = null
                         Toast.makeText(requireContext(), "Failed to connect. Please try again.", Toast.LENGTH_LONG).show()
+                        connectingStateJob = null
+                        this@launch.cancel()
                     }
                     ConnectionState.DISCONNECTED -> {
                         // If we were connecting and got disconnected, it's a failure
-                        if (connectingDialog?.isShowing == true) {
+                        if (connectionStarted && connectingDialog?.isShowing == true) {
                             connectionTimeoutJob?.cancel()
                             connectingDialog?.dismiss()
                             connectingDialog = null
+                            connectingStateJob = null
+                            this@launch.cancel()
                         }
                     }
                     else -> { /* Keep waiting */ }
                 }
             }
         }
+
+        // Start connection after the observer is ready so fast failures are not missed.
+        viewModel.connectToDevice(device)
     }
     
     /**
@@ -852,8 +813,10 @@ class ScanWeighFragment : Fragment(R.layout.fragment_scan_weigh) {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // Cancel any ongoing Bluetooth connection when leaving the page
-        cancelBluetoothConnection()
+        connectionTimeoutJob?.cancel()
+        connectionTimeoutJob = null
+        connectingStateJob?.cancel()
+        connectingStateJob = null
         bluetoothDialog?.dismiss()
         bluetoothDialog = null
         connectingDialog?.dismiss()

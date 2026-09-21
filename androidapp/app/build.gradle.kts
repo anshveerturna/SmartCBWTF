@@ -37,8 +37,8 @@ android {
         applicationId = "com.smartcbwtf.mobile"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 8
+        versionName = "1.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -55,6 +55,18 @@ android {
         }
     }
 
+    signingConfigs {
+        val releaseStorePath = System.getenv("ANDROID_RELEASE_STORE_FILE")
+        if (!releaseStorePath.isNullOrBlank()) {
+            create("release") {
+                storeFile = file(releaseStorePath)
+                storePassword = System.getenv("ANDROID_RELEASE_STORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // For physical device, use production API. For emulator, pass -PAPI_BASE_URL=http://10.0.2.2:8080/api/
@@ -67,6 +79,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             val apiBaseUrl = normalizedApiBaseUrl("https://api.smartcbwtf.com/api/", requireHttps = true)
             buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
@@ -104,6 +117,9 @@ dependencies {
     implementation("androidx.navigation:navigation-ui-ktx:$navVersion")
     implementation("androidx.activity:activity-ktx:1.9.1")
     implementation("androidx.fragment:fragment-ktx:1.7.1")
+
+    implementation("com.google.android.play:app-update:2.1.0")
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
 
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 

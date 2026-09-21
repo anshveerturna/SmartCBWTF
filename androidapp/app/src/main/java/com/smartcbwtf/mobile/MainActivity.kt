@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -14,6 +15,14 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
+import com.google.android.material.snackbar.Snackbar
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.install.model.UpdateAvailability
 import com.smartcbwtf.mobile.databinding.ActivityMainBinding
 import com.smartcbwtf.mobile.repository.AuthRepository
 import com.smartcbwtf.mobile.repository.LocationRepository
@@ -40,6 +49,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var navController: NavController
+    private lateinit var appUpdateManager: AppUpdateManager
+    private var updateReadySnackbar: Snackbar? = null
+
+    private val updateResultLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) {
+            Log.w(TAG, "In-app update flow ended with result ${result.resultCode}")
+        }
+    }
+
+    private val installStateListener = InstallStateUpdatedListener { state ->
+        if (state.installStatus() == InstallStatus.DOWNLOADED) {
+            showUpdateReadyPrompt()
+        }
+    }
 
     @Inject
     lateinit var authRepository: AuthRepository
@@ -64,6 +89,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        appUpdateManager = AppUpdateManagerFactory.create(this)
+        appUpdateManager.registerListener(installStateListener)
+        checkForAppUpdate()
 
         setSupportActionBar(binding.toolbar)
 
@@ -169,6 +198,59 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (BuildConfig.DEBUG || !::appUpdateManager.isInitialized) return
+
+        appUpdateManager.appUpdateInfo.addOnSuccessListener { updateInfo ->
+            if (updateInfo.installStatus() == InstallStatus.DOWNLOADED) {
+                showUpdateReadyPrompt()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        if (::appUpdateManager.isInitialized) {
+            appUpdateManager.unregisterListener(installStateListener)
+        }
+        updateReadySnackbar?.dismiss()
+        super.onDestroy()
+    }
+
+    private fun checkForAppUpdate() {
+        if (BuildConfig.DEBUG) return
+
+        appUpdateManager.appUpdateInfo
+            .addOnSuccessListener { updateInfo ->
+                val flexibleUpdateAvailable =
+                    updateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE &&
+                        updateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)
+                if (flexibleUpdateAvailable) {
+                    val options = AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
+                    appUpdateManager.startUpdateFlowForResult(
+                        updateInfo,
+                        updateResultLauncher,
+                        options
+                    )
+                }
+            }
+            .addOnFailureListener { error ->
+                Log.w(TAG, "Unable to check for an app update", error)
+            }
+    }
+
+    private fun showUpdateReadyPrompt() {
+        if (updateReadySnackbar?.isShown == true) return
+        updateReadySnackbar = Snackbar.make(
+            binding.root,
+            "Update downloaded",
+            Snackbar.LENGTH_INDEFINITE
+        ).setAction("Restart") {
+            appUpdateManager.completeUpdate()
+        }
+        updateReadySnackbar?.show()
     }
 
     /**
